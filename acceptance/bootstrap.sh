@@ -46,7 +46,9 @@ curl -fsS -c "$COOKIES" -b "$COOKIES" -X POST "${ENDPOINT}/api/auth/sign-in/emai
 ORG_RESPONSE="$(curl -fsS -b "$COOKIES" "${ENDPOINT}/api/trpc/organization.all")"
 ORG_ID="$(printf '%s' "$ORG_RESPONSE" | grep -oE '"organizationId":"[^"]*"' | head -1 | cut -d'"' -f4)"
 if [ -z "$ORG_ID" ]; then
-  echo "failed to resolve an organization id from: $ORG_RESPONSE" >&2
+  # Never print the raw response: even though org ids aren't secrets, the
+  # response also carries account/session details we have no reason to log.
+  echo "failed to resolve an organization id: organization.all returned ${#ORG_RESPONSE} bytes (HTTP call succeeded) but no \"organizationId\" field was found; the response shape may have changed" >&2
   exit 1
 fi
 
@@ -60,7 +62,11 @@ RESPONSE="$(curl -fsS -b "$COOKIES" -X POST "${ENDPOINT}/api/trpc/user.createApi
 API_KEY="$(printf '%s' "$RESPONSE" | grep -oE '"key":"[^"]*"' | head -1 | cut -d'"' -f4)"
 
 if [ -z "$API_KEY" ]; then
-  echo "failed to extract an api key from: $RESPONSE" >&2
+  # Never print $RESPONSE: on a real Dokploy install this body is the
+  # createApiKey response and contains the actual secret key, even when
+  # our "key" field match fails for shape reasons (renamed field, wrapped
+  # envelope, etc.) — a fragment could still leak it.
+  echo "failed to extract an api key: createApiKey returned ${#RESPONSE} bytes (HTTP call succeeded) but no \"key\" field was found; the response shape may have changed (response body withheld, it may contain the real key)" >&2
   exit 1
 fi
 

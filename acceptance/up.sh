@@ -31,7 +31,37 @@ docker exec "$NAME" docker info >/dev/null 2>&1 || {
 
 echo "installing dokploy (this pulls images; first run takes minutes)..." >&2
 docker exec "$NAME" sh -c \
-  'apk add --no-cache bash curl >/dev/null && curl -sSL https://dokploy.com/install.sh | ADVERTISE_ADDR=127.0.0.1 bash'
+  'apk add --no-cache bash curl >/dev/null && curl -sSL https://dokploy.com/install.sh | ADVERTISE_ADDR=127.0.0.1 bash' &
+INSTALL_PID=$!
+
+# Some hosts (nested docker-in-docker, e.g. an outer podman runtime without
+# br_netfilter) can't route Swarm's VIP/IPVS load-balancing between
+# services on a single node. When that happens the "dokploy" app service
+# crash-loops forever trying to reach dokploy-postgres by its VIP, and the
+# install script's own convergence wait (above) never returns. Switching
+# both services to DNS round-robin bypasses IPVS entirely and resolves
+# service names straight to real task IPs. This is a harmless no-op on
+# hosts where VIP routing already works, so we always apply it, to each
+# service as soon as it exists, while the install is still converging.
+echo "applying dnsrr endpoint-mode (works around broken swarm VIP routing on some nested-docker hosts; harmless elsewhere)..." >&2
+REMEDIATED_PG=0
+REMEDIATED_APP=0
+for _ in $(seq 1 300); do
+  kill -0 "$INSTALL_PID" 2>/dev/null || break
+  if [ "$REMEDIATED_PG" -eq 0 ] && docker exec "$NAME" docker service inspect dokploy-postgres >/dev/null 2>&1; then
+    docker exec "$NAME" docker service update --endpoint-mode dnsrr dokploy-postgres >/dev/null 2>&1 && REMEDIATED_PG=1
+  fi
+  if [ "$REMEDIATED_APP" -eq 0 ] && docker exec "$NAME" docker service inspect dokploy >/dev/null 2>&1; then
+    docker exec "$NAME" docker service update --endpoint-mode dnsrr dokploy >/dev/null 2>&1 && REMEDIATED_APP=1
+  fi
+  [ "$REMEDIATED_PG" -eq 1 ] && [ "$REMEDIATED_APP" -eq 1 ] && break
+  sleep 2
+done
+
+if ! wait "$INSTALL_PID"; then
+  echo "dokploy install script failed" >&2
+  exit 1
+fi
 
 echo "waiting for the dokploy ui on :${PORT}..." >&2
 for _ in $(seq 1 120); do
