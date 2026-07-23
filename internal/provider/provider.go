@@ -2,15 +2,48 @@ package provider
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
 
 var _ provider.Provider = (*DokployProvider)(nil)
+
+type resolvedConfig struct {
+	endpoint string
+	apiKey   string
+	insecure bool
+}
+
+// resolveConfig applies the DOKPLOY_ENDPOINT / DOKPLOY_API_KEY fallbacks
+// and reports which required settings are still missing.
+func resolveConfig(m DokployProviderModel, getenv func(string) string) (resolvedConfig, []string) {
+	rc := resolvedConfig{
+		endpoint: m.Endpoint.ValueString(),
+		apiKey:   m.ApiKey.ValueString(),
+		insecure: m.Insecure.ValueBool(),
+	}
+	if rc.endpoint == "" {
+		rc.endpoint = getenv("DOKPLOY_ENDPOINT")
+	}
+	if rc.apiKey == "" {
+		rc.apiKey = getenv("DOKPLOY_API_KEY")
+	}
+	var missing []string
+	if rc.endpoint == "" {
+		missing = append(missing, `"endpoint" (or the DOKPLOY_ENDPOINT environment variable)`)
+	}
+	if rc.apiKey == "" {
+		missing = append(missing, `"api_key" (or the DOKPLOY_API_KEY environment variable)`)
+	}
+	return rc, missing
+}
 
 type DokployProvider struct {
 	version string
@@ -55,7 +88,28 @@ func (p *DokployProvider) Schema(_ context.Context, _ provider.SchemaRequest, re
 }
 
 func (p *DokployProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	// Filled in by the provider-configuration task.
+	var config DokployProviderModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	rc, missing := resolveConfig(config, os.Getenv)
+	for _, m := range missing {
+		resp.Diagnostics.AddError(
+			"Missing provider configuration",
+			fmt.Sprintf("The %s must be set.", m),
+		)
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	c, err := client.New(rc.endpoint, rc.apiKey, rc.insecure, p.version)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid provider configuration", err.Error())
+		return
+	}
+	resp.ResourceData = c
+	resp.DataSourceData = c
 }
 
 func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resource {
