@@ -1,0 +1,6 @@
+/terraform-provider-dokploy
+/dist/
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
