@@ -1,0 +1,125 @@
+package client
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+const postgresJSON = `{
+	"postgresId": "pg1",
+	"name": "db",
+	"appName": "db-x1y2",
+	"databaseName": "app",
+	"databaseUser": "app",
+	"databasePassword": "hunter2",
+	"dockerImage": "postgres:16-alpine",
+	"externalPort": 5432,
+	"applicationStatus": "done",
+	"environmentId": "e1",
+	"createdAt": "2026-07-23T10:00:00.000Z"
+}`
+
+func TestCreateAndGetPostgres(t *testing.T) {
+	var createBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/postgres.create":
+			raw, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(raw, &createBody)
+			fmt.Fprint(w, postgresJSON)
+		case "/api/postgres.one":
+			if r.URL.Query().Get("postgresId") != "pg1" {
+				t.Errorf("query = %v", r.URL.Query())
+			}
+			fmt.Fprint(w, postgresJSON)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	c := testClient(t, srv)
+	pg, err := c.CreatePostgres(context.Background(), CreatePostgresRequest{
+		Name: "db", DatabaseName: "app", DatabaseUser: "app",
+		DatabasePassword: "hunter2", EnvironmentID: "e1",
+	})
+	if err != nil {
+		t.Fatalf("CreatePostgres: %v", err)
+	}
+	if pg.PostgresID != "pg1" {
+		t.Errorf("postgres = %+v", pg)
+	}
+	// Required create fields present, optional empties omitted.
+	for _, k := range []string{"name", "databaseName", "databaseUser", "databasePassword", "environmentId"} {
+		if _, ok := createBody[k]; !ok {
+			t.Errorf("create body missing %q: %v", k, createBody)
+		}
+	}
+	if _, ok := createBody["appName"]; ok {
+		t.Errorf("empty appName must be omitted: %v", createBody)
+	}
+
+	got, err := c.GetPostgres(context.Background(), "pg1")
+	if err != nil {
+		t.Fatalf("GetPostgres: %v", err)
+	}
+	if got.ExternalPort == nil || *got.ExternalPort != 5432 || got.ApplicationStatus != "done" {
+		t.Errorf("got = %+v", got)
+	}
+}
+
+func TestPostgresMutations(t *testing.T) {
+	var calls []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.URL.Path)
+		var body map[string]any
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		if body["postgresId"] != "pg1" {
+			t.Errorf("%s body = %v", r.URL.Path, body)
+		}
+		if r.URL.Path == "/api/postgres.saveExternalPort" && body["externalPort"] != float64(5433) {
+			t.Errorf("externalPort = %v", body["externalPort"])
+		}
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	ctx := context.Background()
+	c := testClient(t, srv)
+	if err := c.UpdatePostgres(ctx, UpdatePostgresRequest{PostgresID: "pg1", Name: "renamed"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SavePostgresEnvironment(ctx, "pg1", "KEY=value"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SavePostgresExternalPort(ctx, "pg1", 5433); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeployPostgres(ctx, "pg1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeletePostgres(ctx, "pg1"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"/api/postgres.update",
+		"/api/postgres.saveEnvironment",
+		"/api/postgres.saveExternalPort",
+		"/api/postgres.deploy",
+		"/api/postgres.remove", // spec: postgres delete verb is .remove
+	}
+	if len(calls) != len(want) {
+		t.Fatalf("calls = %v", calls)
+	}
+	for i := range want {
+		if calls[i] != want[i] {
+			t.Errorf("call %d = %s, want %s", i, calls[i], want[i])
+		}
+	}
+}
