@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/postgres"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 )
 
@@ -117,6 +118,7 @@ func (p *DokployProvider) Configure(ctx context.Context, req provider.ConfigureR
 func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		project.NewResource,
+		postgres.NewResource,
 	}
 }
 
