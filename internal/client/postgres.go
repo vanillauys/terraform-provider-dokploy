@@ -70,7 +70,11 @@ func (c *Client) SavePostgresEnvironment(ctx context.Context, id, env string) er
 	return c.Post(ctx, "/postgres.saveEnvironment", map[string]string{"postgresId": id, "env": env}, nil)
 }
 
-func (c *Client) SavePostgresExternalPort(ctx context.Context, id string, port int64) error {
+// SavePostgresExternalPort sets or clears the external port. A nil port
+// marshals to JSON null, which the API accepts to clear a previously set
+// port (verified against a live instance 2026-07-23: postgres.one reports
+// externalPort: null after a saveExternalPort call with externalPort: null).
+func (c *Client) SavePostgresExternalPort(ctx context.Context, id string, port *int64) error {
 	return c.Post(ctx, "/postgres.saveExternalPort", map[string]any{"postgresId": id, "externalPort": port}, nil)
 }
 

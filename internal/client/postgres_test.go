@@ -75,6 +75,7 @@ func TestCreateAndGetPostgres(t *testing.T) {
 
 func TestPostgresMutations(t *testing.T) {
 	var calls []string
+	var externalPortBodies []any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls = append(calls, r.URL.Path)
 		var body map[string]any
@@ -83,8 +84,14 @@ func TestPostgresMutations(t *testing.T) {
 		if body["postgresId"] != "pg1" {
 			t.Errorf("%s body = %v", r.URL.Path, body)
 		}
-		if r.URL.Path == "/api/postgres.saveExternalPort" && body["externalPort"] != float64(5433) {
-			t.Errorf("externalPort = %v", body["externalPort"])
+		if r.URL.Path == "/api/postgres.saveExternalPort" {
+			// externalPort key must always be present; nil marshals to
+			// JSON null (raw), a set port to its numeric value.
+			if v, ok := body["externalPort"]; !ok {
+				t.Errorf("externalPort key missing: %v", body)
+			} else {
+				externalPortBodies = append(externalPortBodies, v)
+			}
 		}
 		fmt.Fprint(w, `{}`)
 	}))
@@ -98,7 +105,12 @@ func TestPostgresMutations(t *testing.T) {
 	if err := c.SavePostgresEnvironment(ctx, "pg1", "KEY=value"); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.SavePostgresExternalPort(ctx, "pg1", 5433); err != nil {
+	port := int64(5433)
+	if err := c.SavePostgresExternalPort(ctx, "pg1", &port); err != nil {
+		t.Fatal(err)
+	}
+	// Clearing: a nil port must marshal to JSON null, not be omitted.
+	if err := c.SavePostgresExternalPort(ctx, "pg1", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.DeployPostgres(ctx, "pg1"); err != nil {
@@ -111,6 +123,7 @@ func TestPostgresMutations(t *testing.T) {
 		"/api/postgres.update",
 		"/api/postgres.saveEnvironment",
 		"/api/postgres.saveExternalPort",
+		"/api/postgres.saveExternalPort",
 		"/api/postgres.deploy",
 		"/api/postgres.remove", // spec: postgres delete verb is .remove
 	}
@@ -121,5 +134,8 @@ func TestPostgresMutations(t *testing.T) {
 		if calls[i] != want[i] {
 			t.Errorf("call %d = %s, want %s", i, calls[i], want[i])
 		}
+	}
+	if len(externalPortBodies) != 2 || externalPortBodies[0] != float64(5433) || externalPortBodies[1] != nil {
+		t.Errorf("externalPort bodies = %v", externalPortBodies)
 	}
 }

@@ -39,9 +39,23 @@ func checkPostgresDestroy(s *terraform.State) error {
 	return nil
 }
 
+// getAccPostgres re-reads the resource directly via the API (spec §7:
+// verify server-side truth, not just Terraform's view of state).
+func getAccPostgres(s *terraform.State) (*client.Postgres, error) {
+	rs, ok := s.RootModule().Resources["dokploy_postgres.test"]
+	if !ok {
+		return nil, fmt.Errorf("dokploy_postgres.test not found in state")
+	}
+	c, err := acctest.ClientFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	return c.GetPostgres(context.Background(), rs.Primary.ID)
+}
+
 func TestAccPostgres_lifecycle(t *testing.T) {
 	name := acctest.RandomName("pg")
-	base := func(env string) string {
+	base := func(env string, externalPort string) string {
 		return fmt.Sprintf(`
 resource "dokploy_project" "test" {
   name = %q
@@ -56,7 +70,8 @@ resource "dokploy_postgres" "test" {
   docker_image       = "postgres:16-alpine"
   env                = %q
   deployment_timeout = "10m"
-}`, name+"-proj", name, env)
+  %s
+}`, name+"-proj", name, env, externalPort)
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -66,18 +81,13 @@ resource "dokploy_postgres" "test" {
 			{
 				// Create deploys (deploy_on_change defaults to true) and
 				// must end with the service in status done.
-				Config: base("TZ=UTC"),
+				Config: base("TZ=UTC", ""),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("dokploy_postgres.test", "id"),
 					resource.TestCheckResourceAttrSet("dokploy_postgres.test", "app_name"),
 					resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
 					func(s *terraform.State) error {
-						rs := s.RootModule().Resources["dokploy_postgres.test"]
-						c, err := acctest.ClientFromEnv()
-						if err != nil {
-							return err
-						}
-						pg, err := c.GetPostgres(context.Background(), rs.Primary.ID)
+						pg, err := getAccPostgres(s)
 						if err != nil {
 							return err
 						}
@@ -90,8 +100,49 @@ resource "dokploy_postgres" "test" {
 			},
 			{
 				// env is a deploy trigger; update must redeploy and converge.
-				Config: base("TZ=UTC\nPGDATA_DEBUG=1"),
+				Config: base("TZ=UTC\nPGDATA_DEBUG=1", ""),
 				Check:  resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
+			},
+			{
+				// external_port is a deploy trigger too; setting it must
+				// redeploy, converge, and persist server-side.
+				Config: base("TZ=UTC\nPGDATA_DEBUG=1", "external_port = 55432"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "external_port", "55432"),
+					func(s *terraform.State) error {
+						pg, err := getAccPostgres(s)
+						if err != nil {
+							return err
+						}
+						if pg.ExternalPort == nil || *pg.ExternalPort != 55432 {
+							return fmt.Errorf("external_port not saved: %v", pg.ExternalPort)
+						}
+						return nil
+					},
+				),
+			},
+			{
+				// Removing external_port from config must clear it
+				// server-side too (fix round 1): otherwise state commits
+				// null while the server keeps the old port, and Read
+				// re-populates it on every subsequent plan — permanent
+				// non-convergence for the attribute (spec §5.6).
+				Config: base("TZ=UTC\nPGDATA_DEBUG=1", ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
+					resource.TestCheckNoResourceAttr("dokploy_postgres.test", "external_port"),
+					func(s *terraform.State) error {
+						pg, err := getAccPostgres(s)
+						if err != nil {
+							return err
+						}
+						if pg.ExternalPort != nil {
+							return fmt.Errorf("external_port not cleared server-side: %v", *pg.ExternalPort)
+						}
+						return nil
+					},
+				),
 			},
 			{
 				ResourceName:      "dokploy_postgres.test",

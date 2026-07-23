@@ -182,7 +182,8 @@ func (r *postgresResource) Create(ctx context.Context, req resource.CreateReques
 		}
 	}
 	if !plan.ExternalPort.IsNull() {
-		if err := r.client.SavePostgresExternalPort(ctx, created.PostgresID, plan.ExternalPort.ValueInt64()); err != nil {
+		// Nothing to clear on a fresh service; only save when set.
+		if err := r.client.SavePostgresExternalPort(ctx, created.PostgresID, plan.ExternalPort.ValueInt64Pointer()); err != nil {
 			r.persistPartial(ctx, resp, plan, "saving the external port", err)
 			return
 		}
@@ -266,8 +267,13 @@ func (r *postgresResource) Update(ctx context.Context, req resource.UpdateReques
 			return
 		}
 	}
-	if !plan.ExternalPort.Equal(state.ExternalPort) && !plan.ExternalPort.IsNull() {
-		if err := r.client.SavePostgresExternalPort(ctx, id, plan.ExternalPort.ValueInt64()); err != nil {
+	// No IsNull() guard here (unlike Create): removing external_port from
+	// config must clear it server-side too, or state would commit null
+	// while the server keeps the old port, and Read would re-populate it
+	// on every subsequent plan (permanent non-convergence, spec §5.6).
+	// A nil pointer marshals to JSON null, which the API accepts to clear.
+	if !plan.ExternalPort.Equal(state.ExternalPort) {
+		if err := r.client.SavePostgresExternalPort(ctx, id, plan.ExternalPort.ValueInt64Pointer()); err != nil {
 			resp.Diagnostics.AddError("Saving the external port", err.Error())
 			return
 		}
