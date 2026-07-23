@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 )
 
 var _ provider.Provider = (*DokployProvider)(nil)
@@ -113,7 +114,9 @@ func (p *DokployProvider) Configure(ctx context.Context, req provider.ConfigureR
 }
 
 func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		project.NewResource,
+	}
 }
 
 func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.DataSource {

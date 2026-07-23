@@ -55,10 +55,23 @@ fi
 # 4. Mint a fresh API key via the tRPC user.createApiKey mutation. Named
 #    with a timestamp+pid so re-running this script never collides with a
 #    key name from a previous bootstrap run.
+#
+#    rateLimitEnabled:false is load-bearing: Dokploy's api-key plugin
+#    (@better-auth/api-key) rate-limits every key server-side by default
+#    (confirmed empirically against this rig: a default key 401s after ~5
+#    x-api-key requests, logging "Rate limit exceeded" server-side —
+#    surfaced to callers as a generic 401 Unauthorized, not 429, because
+#    the failure is caught and folded into "no session"). A single
+#    resource's acceptance lifecycle (create+read, refresh+update+read,
+#    import+read, destroy) already exceeds that budget, so every
+#    acceptance test beyond the simplest would flake without this. This
+#    field is accepted here because Dokploy's own tRPC handler calls
+#    auth.createApiKey server-side (bypassing the plugin's client-request
+#    guard that would otherwise reject caller-supplied rate-limit fields).
 KEY_NAME="acceptance-$(date +%s)-$$"
 RESPONSE="$(curl -fsS -b "$COOKIES" -X POST "${ENDPOINT}/api/trpc/user.createApiKey" \
   -H 'Content-Type: application/json' \
-  -d "{\"json\":{\"name\":\"${KEY_NAME}\",\"metadata\":{\"organizationId\":\"${ORG_ID}\"}}}")"
+  -d "{\"json\":{\"name\":\"${KEY_NAME}\",\"metadata\":{\"organizationId\":\"${ORG_ID}\"},\"rateLimitEnabled\":false}}")"
 API_KEY="$(printf '%s' "$RESPONSE" | grep -oE '"key":"[^"]*"' | head -1 | cut -d'"' -f4)"
 
 if [ -z "$API_KEY" ]; then

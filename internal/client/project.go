@@ -32,11 +32,24 @@ type UpdateProjectRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+// createProjectResponse matches the real /project.create response shape:
+// unlike every other project.* endpoint, it wraps its result as
+// {"project": {...}, "environment": {...}} instead of returning a flat
+// Project object (discovered against the live acceptance rig; the plain
+// Project shape decodes to all zero values, silently breaking the
+// follow-up project.one read with an empty projectId).
+type createProjectResponse struct {
+	Project     Project     `json:"project"`
+	Environment Environment `json:"environment"`
+}
+
 func (c *Client) CreateProject(ctx context.Context, req CreateProjectRequest) (*Project, error) {
-	var p Project
-	if err := c.Post(ctx, "/project.create", req, &p); err != nil {
+	var resp createProjectResponse
+	if err := c.Post(ctx, "/project.create", req, &resp); err != nil {
 		return nil, err
 	}
+	p := resp.Project
+	p.Environments = []Environment{resp.Environment}
 	return &p, nil
 }
 

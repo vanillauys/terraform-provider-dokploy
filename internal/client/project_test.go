@@ -18,6 +18,20 @@ const projectJSON = `{
 	"environments": [{"environmentId": "e1", "name": "production", "projectId": "p1"}]
 }`
 
+// createProjectJSON matches the real /project.create response: unlike
+// every other project.* endpoint, it wraps its result as
+// {"project": {...}, "environment": {...}} rather than a flat Project
+// (confirmed against the live acceptance rig).
+const createProjectJSON = `{
+	"project": {
+		"projectId": "p1",
+		"name": "demo",
+		"description": "a demo",
+		"createdAt": "2026-07-23T10:00:00.000Z"
+	},
+	"environment": {"environmentId": "e1", "name": "production", "projectId": "p1"}
+}`
+
 func TestCreateProject(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/project.create" || r.Method != http.MethodPost {
@@ -29,7 +43,7 @@ func TestCreateProject(t *testing.T) {
 		if body["name"] != "demo" {
 			t.Errorf("body = %v", body)
 		}
-		fmt.Fprint(w, projectJSON)
+		fmt.Fprint(w, createProjectJSON)
 	}))
 	defer srv.Close()
 
@@ -39,6 +53,9 @@ func TestCreateProject(t *testing.T) {
 	}
 	if p.ProjectID != "p1" || p.Name != "demo" {
 		t.Errorf("project = %+v", p)
+	}
+	if len(p.Environments) != 1 || p.Environments[0].EnvironmentID != "e1" {
+		t.Errorf("environments = %+v", p.Environments)
 	}
 }
 
