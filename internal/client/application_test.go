@@ -1,0 +1,149 @@
+package client
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+const applicationJSON = `{
+	"applicationId": "app1",
+	"name": "web",
+	"appName": "web-a1b2",
+	"environmentId": "e1",
+	"applicationStatus": "idle",
+	"sourceType": "docker",
+	"dockerImage": "traefik/whoami:v1.10",
+	"buildType": "nixpacks",
+	"createdAt": "2026-07-23T10:00:00.000Z"
+}`
+
+func TestCreateAndGetApplication(t *testing.T) {
+	var createBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/application.create":
+			raw, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(raw, &createBody)
+			fmt.Fprint(w, applicationJSON)
+		case "/api/application.one":
+			if r.URL.Query().Get("applicationId") != "app1" {
+				t.Errorf("query = %v", r.URL.Query())
+			}
+			fmt.Fprint(w, applicationJSON)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	c := testClient(t, srv)
+	app, err := c.CreateApplication(context.Background(), CreateApplicationRequest{Name: "web", EnvironmentID: "e1"})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	if app.ApplicationID != "app1" {
+		t.Errorf("app = %+v", app)
+	}
+	// Spec Appendix B: create accepts ONLY name/environmentId/appName/description/serverId.
+	for k := range createBody {
+		switch k {
+		case "name", "environmentId", "appName", "description", "serverId":
+		default:
+			t.Errorf("create body contains field %q that application.create does not accept", k)
+		}
+	}
+
+	got, err := c.GetApplication(context.Background(), "app1")
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	if got.SourceType != "docker" || got.DockerImage == nil || *got.DockerImage != "traefik/whoami:v1.10" {
+		t.Errorf("got = %+v", got)
+	}
+}
+
+func TestApplicationOrchestrationCalls(t *testing.T) {
+	var calls []string
+	bodies := map[string]map[string]any{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.URL.Path)
+		var body map[string]any
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		bodies[r.URL.Path] = body
+		if body["applicationId"] != "app1" {
+			t.Errorf("%s body = %v", r.URL.Path, body)
+		}
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	ctx := context.Background()
+	c := testClient(t, srv)
+	sshKey := "key-1"
+	user := "bot"
+	if err := c.SaveGithubProvider(ctx, SaveGithubProviderRequest{
+		ApplicationID: "app1", Owner: "vanillauys", Repository: "app", Branch: "main", BuildPath: "/", GithubID: "gh-1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SaveGitProvider(ctx, SaveGitProviderRequest{
+		ApplicationID: "app1", CustomGitURL: "git@example.com:x.git", CustomGitBranch: "main", CustomGitBuildPath: "/", CustomGitSSHKeyID: &sshKey,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SaveDockerProvider(ctx, SaveDockerProviderRequest{
+		ApplicationID: "app1", DockerImage: "nginx:1", Username: &user,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SaveBuildType(ctx, SaveBuildTypeRequest{ApplicationID: "app1", BuildType: "nixpacks"}); err != nil {
+		t.Fatal(err)
+	}
+	env := "A=1"
+	if err := c.SaveApplicationEnvironment(ctx, "app1", &env, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeployApplication(ctx, "app1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.UpdateApplication(ctx, UpdateApplicationRequest{ApplicationID: "app1", Name: "renamed"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeleteApplication(ctx, "app1"); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{
+		"/api/application.saveGithubProvider",
+		"/api/application.saveGitProvider",
+		"/api/application.saveDockerProvider",
+		"/api/application.saveBuildType",
+		"/api/application.saveEnvironment",
+		"/api/application.deploy",
+		"/api/application.update",
+		"/api/application.delete", // spec: application delete verb is .delete
+	}
+	if len(calls) != len(want) {
+		t.Fatalf("calls = %v", calls)
+	}
+	for i := range want {
+		if calls[i] != want[i] {
+			t.Errorf("call %d = %s, want %s", i, calls[i], want[i])
+		}
+	}
+	if bodies["/api/application.saveGithubProvider"]["owner"] != "vanillauys" {
+		t.Errorf("github body = %v", bodies["/api/application.saveGithubProvider"])
+	}
+	if bodies["/api/application.saveGitProvider"]["customGitUrl"] != "git@example.com:x.git" {
+		t.Errorf("git body = %v", bodies["/api/application.saveGitProvider"])
+	}
+	if bodies["/api/application.saveDockerProvider"]["dockerImage"] != "nginx:1" {
+		t.Errorf("docker body = %v", bodies["/api/application.saveDockerProvider"])
+	}
+}
