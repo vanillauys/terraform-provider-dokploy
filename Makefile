@@ -15,4 +15,7 @@ lint:
 acc-up:
 	./acceptance/up.sh
 
-.PHONY: default build test testacc lint acc-up
+docs:
+	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name dokploy
+
+.PHONY: default build test testacc lint acc-up docs
