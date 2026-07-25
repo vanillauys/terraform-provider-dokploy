@@ -2,13 +2,13 @@ package application
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 var (
@@ -50,21 +50,31 @@ func (d *applicationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"source_type":    schema.StringAttribute{Computed: true, Description: "Configured source type (github, git, docker)."},
 			"status":         schema.StringAttribute{Computed: true, Description: "Application status."},
 			"created_at":     schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
-			"env":            schema.StringAttribute{Computed: true, Description: "Environment variables (multiline)."},
+			// Marked sensitive, unlike the resource's `env`. On the resource
+			// the value is authored by the practitioner, who can decide what
+			// it holds; here it is whatever anyone put in the Dokploy UI —
+			// commonly database URLs and API tokens — and a data-source
+			// consumer has no way to mark it sensitive themselves. Sensitive
+			// keeps it out of plan output; note that Terraform state is still
+			// unencrypted, hence the wording below. The sibling
+			// `dokploy_postgres` data source makes the same call more bluntly
+			// by not exposing the database password at all.
+			"env": schema.StringAttribute{
+				Computed:  true,
+				Sensitive: true,
+				Description: "Environment variables (multiline `KEY=value`), exactly as stored in Dokploy. " +
+					"Marked sensitive because it typically holds credentials that this provider did not author; it is redacted in plan output but, like all Terraform data, stored in plain text in state.",
+			},
 		},
 	}
 }
 
 func (d *applicationDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
+	c, diags := tfutil.ClientFromProviderData(req.ProviderData)
+	resp.Diagnostics.Append(diags...)
+	if c != nil {
+		d.client = c
 	}
-	c, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError("Unexpected provider data", fmt.Sprintf("expected *client.Client, got %T", req.ProviderData))
-		return
-	}
-	d.client = c
 }
 
 func (d *applicationDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {

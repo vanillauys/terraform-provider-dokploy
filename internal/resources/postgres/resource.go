@@ -88,8 +88,19 @@ func (r *postgresResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			Description:   "Remote server to run the service on. Defaults to the Dokploy host.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
-		"status":     schema.StringAttribute{Computed: true, Description: "Service status reported by Dokploy."},
-		"created_at": schema.StringAttribute{Computed: true, Description: "Creation timestamp (server-side)."},
+		// status deliberately has NO UseStateForUnknown: it is genuinely
+		// server-mutable (a deploy moves it idle -> running -> done), so
+		// pinning the prior value as a *known* plan value makes Terraform core
+		// reject the apply with "Provider produced inconsistent result after
+		// apply". See the long note on the same attribute in
+		// internal/resources/application/resource.go.
+		"status": schema.StringAttribute{Computed: true, Description: "Service status reported by Dokploy."},
+		// created_at is immutable server-side, so pinning it is always safe.
+		"created_at": schema.StringAttribute{
+			Computed:      true,
+			Description:   "Creation timestamp (server-side).",
+			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		},
 	}
 	for k, v := range tfutil.DeployAttributes() {
 		attrs[k] = v
@@ -101,15 +112,11 @@ func (r *postgresResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 }
 
 func (r *postgresResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
+	c, diags := tfutil.ClientFromProviderData(req.ProviderData)
+	resp.Diagnostics.Append(diags...)
+	if c != nil {
+		r.client = c
 	}
-	c, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError("Unexpected provider data", fmt.Sprintf("expected *client.Client, got %T", req.ProviderData))
-		return
-	}
-	r.client = c
 }
 
 // persistPartial records what exists so far and the error; the next apply
@@ -142,6 +149,17 @@ func (r *postgresResource) persistPartial(ctx context.Context, state *resource.C
 // `deployment.byPostgresId` exist (404 Not found). Database services are
 // applied via a direct docker service update rather than a tracked
 // build/deploy pipeline, so there is nothing to look up here.
+//
+// This also means postgres cannot use the "wait until a deployment newer than
+// the one that existed before the deploy call appears" gate that
+// applicationResource.fetchStatus uses to avoid mistaking a stale terminal
+// status for success. It does not need one: measured against the same live
+// instance (v0.29.13, 2026-07-25), postgres.deploy is fully SYNCHRONOUS — the
+// POST itself takes ~2s and does not return until the service has already
+// reached applicationStatus "done", so the waiter's first poll is reading the
+// new deploy's outcome, never the previous one's. (application.deploy by
+// contrast returns in ~30ms, having committed status "running" and the new
+// deployment row before responding.)
 func (r *postgresResource) fetchStatus(id string) deploy.Fetch {
 	return func(ctx context.Context) (deploy.Status, string, error) {
 		pg, err := r.client.GetPostgres(ctx, id)
@@ -176,7 +194,8 @@ func (r *postgresResource) Create(ctx context.Context, req resource.CreateReques
 	plan.ID = types.StringValue(created.PostgresID)
 
 	if !plan.Env.IsNull() {
-		if err := r.client.SavePostgresEnvironment(ctx, created.PostgresID, plan.Env.ValueString()); err != nil {
+		// Nothing to clear on a fresh service; only save when set.
+		if err := r.client.SavePostgresEnvironment(ctx, created.PostgresID, plan.Env.ValueStringPointer()); err != nil {
 			r.persistPartial(ctx, resp, plan, "saving environment variables", err)
 			return
 		}
@@ -261,8 +280,13 @@ func (r *postgresResource) Update(ctx context.Context, req resource.UpdateReques
 		resp.Diagnostics.AddError("Updating postgres", err.Error())
 		return
 	}
+	// ValueStringPointer(), not ValueString(): removing `env` from config must
+	// reach the server as an explicit null so the stored value is cleared.
+	// ValueString() yields "" for a null, which the server would store
+	// verbatim, leaving Read to report "" against a null state forever
+	// (spec §5.6). See SavePostgresEnvironment's doc comment.
 	if !plan.Env.Equal(state.Env) {
-		if err := r.client.SavePostgresEnvironment(ctx, id, plan.Env.ValueString()); err != nil {
+		if err := r.client.SavePostgresEnvironment(ctx, id, plan.Env.ValueStringPointer()); err != nil {
 			resp.Diagnostics.AddError("Saving environment variables", err.Error())
 			return
 		}
@@ -312,4 +336,10 @@ func (r *postgresResource) Delete(ctx context.Context, req resource.DeleteReques
 
 func (r *postgresResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	// deploy_on_change / deployment_timeout are provider-only: there is
+	// nothing server-side to read them back from, so they must be seeded with
+	// their schema defaults or the plan after an import is never empty. See
+	// tfutil.ImportDeployDefaults for why the framework re-applies defaults on
+	// every plan, not just on create.
+	resp.Diagnostics.Append(tfutil.ImportDeployDefaults(ctx, &resp.State)...)
 }

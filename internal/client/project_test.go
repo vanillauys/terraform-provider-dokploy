@@ -43,7 +43,7 @@ func TestCreateProject(t *testing.T) {
 		if body["name"] != "demo" {
 			t.Errorf("body = %v", body)
 		}
-		fmt.Fprint(w, createProjectJSON)
+		_, _ = fmt.Fprint(w, createProjectJSON)
 	}))
 	defer srv.Close()
 
@@ -64,7 +64,7 @@ func TestGetProject(t *testing.T) {
 		if r.URL.Path != "/api/project.one" || r.URL.Query().Get("projectId") != "p1" {
 			t.Errorf("unexpected call: %s %s", r.URL.Path, r.URL.RawQuery)
 		}
-		fmt.Fprint(w, projectJSON)
+		_, _ = fmt.Fprint(w, projectJSON)
 	}))
 	defer srv.Close()
 
@@ -82,15 +82,17 @@ func TestGetProject(t *testing.T) {
 
 func TestUpdateAndDeleteProject(t *testing.T) {
 	var paths []string
+	bodies := map[string]map[string]any{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths = append(paths, r.URL.Path)
 		var body map[string]any
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &body)
+		bodies[r.URL.Path] = body
 		if body["projectId"] != "p1" {
 			t.Errorf("%s body = %v", r.URL.Path, body)
 		}
-		fmt.Fprint(w, `{}`)
+		_, _ = fmt.Fprint(w, `{}`)
 	}))
 	defer srv.Close()
 
@@ -105,6 +107,26 @@ func TestUpdateAndDeleteProject(t *testing.T) {
 	if len(paths) != 2 || paths[0] != "/api/project.update" || paths[1] != "/api/project.remove" {
 		t.Errorf("paths = %v", paths)
 	}
+
+	// Verified empirically against a live Dokploy instance (v0.29.13,
+	// 2026-07-25): project.update with `description` entirely absent from the
+	// body returns the project unchanged and project.one still reports the
+	// OLD description, while `"description": null` clears it. An absent key
+	// therefore means "keep", which is worse than a 400 — clearing
+	// `description` from config would never converge. The key must always be
+	// present, so a nil *string has to marshal as explicit null rather than
+	// being dropped by `omitempty`. This distinguishes an absent key from a
+	// present-null one; `body["description"] == nil` alone cannot.
+	updateBody := bodies["/api/project.update"]
+	if _, ok := updateBody["description"]; !ok {
+		t.Errorf("project.update body missing required (nullable) key %q: %v", "description", updateBody)
+	}
+	if updateBody["description"] != nil {
+		t.Errorf("update body description = %v, want explicit null so the field is clearable", updateBody["description"])
+	}
+	if updateBody["name"] != "renamed" {
+		t.Errorf("update body name = %v, want \"renamed\"", updateBody["name"])
+	}
 }
 
 func TestListProjects(t *testing.T) {
@@ -112,7 +134,7 @@ func TestListProjects(t *testing.T) {
 		if r.URL.Path != "/api/project.all" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
-		fmt.Fprintf(w, "[%s]", projectJSON)
+		_, _ = fmt.Fprintf(w, "[%s]", projectJSON)
 	}))
 	defer srv.Close()
 

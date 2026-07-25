@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -90,8 +92,9 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 		},
 		"git": schema.SingleNestedAttribute{
-			Optional:    true,
-			Description: "Custom git source (any reachable repo over https/ssh).",
+			Optional: true,
+			Description: "Custom git source (any reachable repo over https/ssh). " +
+				"Saving this also clears the application's **watch paths** in Dokploy, which this resource does not expose.",
 			Attributes: map[string]schema.Attribute{
 				"url":        schema.StringAttribute{Required: true, Description: "Clone URL."},
 				"branch":     schema.StringAttribute{Required: true, Description: "Branch to deploy."},
@@ -131,8 +134,10 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			Description:   "Build settings; server default is nixpacks.",
 			Attributes: map[string]schema.Attribute{
 				"type": schema.StringAttribute{
-					Required:    true,
-					Description: "Build type.",
+					Required: true,
+					Description: "Build type: one of `nixpacks`, `dockerfile`, `heroku_buildpacks`, `paketo_buildpacks`, `static`, `railpack`. " +
+						"Note that `heroku_buildpacks` and `railpack` take a builder version in Dokploy which this provider does not expose; " +
+						"it is always sent unset, so those two build types always use the server's default builder version and any version chosen in the Dokploy UI is reset on apply.",
 					Validators: []validator.String{
 						stringvalidator.OneOf("nixpacks", "dockerfile", "heroku_buildpacks", "paketo_buildpacks", "static", "railpack"),
 					},
@@ -144,8 +149,9 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 		},
 		"env": schema.StringAttribute{
-			Optional:    true,
-			Description: "Environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values.",
+			Optional: true,
+			Description: "Environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. " +
+				"Setting this also clears the application's **build secrets** in Dokploy, which this resource does not expose.",
 		},
 		"build_args": schema.StringAttribute{
 			Optional:    true,
@@ -178,8 +184,10 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		attrs[k] = v
 	}
 	resp.Schema = schema.Schema{
-		Description: "An application service in a Dokploy environment. One unified resource over Dokploy's create + save* orchestration (source, build, env are separate API calls under the hood).",
-		Attributes:  attrs,
+		Description: "An application service in a Dokploy environment: its source, build settings, and environment variables managed as a single resource.\n\n" +
+			"~> **Terraform owns the whole application.** Applying this resource rewrites the application's source, build and environment configuration wholesale. " +
+			"Two Dokploy settings that this resource does not expose — **watch paths** and **build secrets** — are reset to empty on every apply, so values set for them in the Dokploy UI will be lost. Manage such applications either in Terraform or in the UI, not both.",
+		Attributes: attrs,
 	}
 }
 
@@ -225,15 +233,11 @@ func (r *applicationResource) ModifyPlan(ctx context.Context, req resource.Modif
 }
 
 func (r *applicationResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
+	c, diags := tfutil.ClientFromProviderData(req.ProviderData)
+	resp.Diagnostics.Append(diags...)
+	if c != nil {
+		r.client = c
 	}
-	c, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError("Unexpected provider data", fmt.Sprintf("expected *client.Client, got %T", req.ProviderData))
-		return
-	}
-	r.client = c
 }
 
 func (r *applicationResource) persistPartial(ctx context.Context, resp *resource.CreateResponse, m resourceModel, step string, err error) {
@@ -252,6 +256,24 @@ func (r *applicationResource) persistPartial(ctx context.Context, resp *resource
 	)
 }
 
+// diagsError renders diagnostics as a human-readable error. Formatting the
+// diag.Diagnostics value itself with %v dumps Go struct internals
+// (`[{{} summary detail}]`) straight into a Terraform error message.
+func diagsError(d diag.Diagnostics) error {
+	msgs := make([]string, 0, len(d))
+	for _, entry := range d {
+		msg := entry.Summary()
+		if detail := entry.Detail(); detail != "" {
+			msg += ": " + detail
+		}
+		msgs = append(msgs, msg)
+	}
+	if len(msgs) == 0 {
+		return errors.New("unknown error")
+	}
+	return errors.New(strings.Join(msgs, "; "))
+}
+
 // saveSource pushes whichever source block is set to the matching save*
 // endpoint. Returns the step label for error reporting.
 func (r *applicationResource) saveSource(ctx context.Context, id string, m resourceModel) (string, error) {
@@ -259,7 +281,7 @@ func (r *applicationResource) saveSource(ctx context.Context, id string, m resou
 	case !m.Github.IsNull():
 		var gh githubModel
 		if d := m.Github.As(ctx, &gh, objectAsOptions); d.HasError() {
-			return "reading the github block", fmt.Errorf("%v", d)
+			return "reading the github block", diagsError(d)
 		}
 		return "saving the github source", r.client.SaveGithubProvider(ctx, client.SaveGithubProviderRequest{
 			ApplicationID: id,
@@ -272,7 +294,7 @@ func (r *applicationResource) saveSource(ctx context.Context, id string, m resou
 	case !m.Git.IsNull():
 		var g gitModel
 		if d := m.Git.As(ctx, &g, objectAsOptions); d.HasError() {
-			return "reading the git block", fmt.Errorf("%v", d)
+			return "reading the git block", diagsError(d)
 		}
 		return "saving the git source", r.client.SaveGitProvider(ctx, client.SaveGitProviderRequest{
 			ApplicationID:      id,
@@ -283,8 +305,8 @@ func (r *applicationResource) saveSource(ctx context.Context, id string, m resou
 		})
 	case !m.Docker.IsNull():
 		var d dockerModel
-		if diag := m.Docker.As(ctx, &d, objectAsOptions); diag.HasError() {
-			return "reading the docker block", fmt.Errorf("%v", diag)
+		if diags := m.Docker.As(ctx, &d, objectAsOptions); diags.HasError() {
+			return "reading the docker block", diagsError(diags)
 		}
 		return "saving the docker source", r.client.SaveDockerProvider(ctx, client.SaveDockerProviderRequest{
 			ApplicationID: id,
@@ -303,7 +325,7 @@ func (r *applicationResource) saveBuild(ctx context.Context, id string, m resour
 	}
 	var b buildModel
 	if d := m.Build.As(ctx, &b, objectAsOptions); d.HasError() {
-		return fmt.Errorf("%v", d)
+		return diagsError(d)
 	}
 	return r.client.SaveBuildType(ctx, client.SaveBuildTypeRequest{
 		ApplicationID:     id,
@@ -315,17 +337,64 @@ func (r *applicationResource) saveBuild(ctx context.Context, id string, m resour
 	})
 }
 
-func (r *applicationResource) fetchStatus(id string) deploy.Fetch {
+// newestDeploymentID reports the id of the application's most recent
+// deployment. Best-effort: an empty id means "unknown", never an error.
+func (r *applicationResource) newestDeploymentID(ctx context.Context, id string) string {
+	if ds, err := r.client.ListDeployments(ctx, "application", id); err == nil && len(ds) > 0 {
+		return ds[0].DeploymentID
+	}
+	return ""
+}
+
+// fetchStatus builds the poll function for the deploy waiter.
+//
+// priorDeploymentID is the newest deployment id observed BEFORE the deploy
+// call was fired, and it closes a real hole: `applicationStatus` describes the
+// most recent deploy, so on an update the value going in is already "done"
+// from the *previous* deploy. A poll that lands before the server has moved it
+// would read that stale "done", the waiter would return success, and the apply
+// would report a deploy that never ran. Gating on "a deployment id we have not
+// seen before" makes the check causal instead of timing-dependent: the id can
+// only change because this deploy created a record. On create the id is empty
+// (no deployments yet), so the gate is inert and the first poll is trusted.
+//
+// Measured against the live rig (v0.29.13, 2026-07-25), application.deploy
+// commits both status="running" and the new deployment row before its HTTP
+// response returns, so the gate is already satisfied on the very first poll
+// and costs no wall-clock time — but nothing in the API contract promises that
+// ordering, and this makes the waiter correct without relying on it.
+//
+// Deployment history is read at most twice per wait, not once per poll as
+// before: once for the gate (which then latches) and once more only if the
+// status is "error", where the id is actually used in the diagnostic. A
+// three-minute build used to spend ~72 extra GETs here purely to build an
+// error message it never emitted, against an API that rate-limits keys
+// server-side (see acceptance/bootstrap.sh).
+func (r *applicationResource) fetchStatus(id, priorDeploymentID string) deploy.Fetch {
+	started := priorDeploymentID == ""
 	return func(ctx context.Context) (deploy.Status, string, error) {
 		app, err := r.client.GetApplication(ctx, id)
 		if err != nil {
 			return "", "", err
 		}
-		depID := ""
-		if ds, derr := r.client.ListDeployments(ctx, "application", id); derr == nil && len(ds) > 0 {
-			depID = ds[0].DeploymentID
+		status := deploy.Status(app.ApplicationStatus)
+		if !started {
+			ds, derr := r.client.ListDeployments(ctx, "application", id)
+			// Fail open. If the history cannot be read we have no way to gate,
+			// and hanging until the deployment_timeout would turn a transient
+			// read failure into a failed apply on a deploy that succeeded.
+			started = derr != nil || len(ds) == 0 || ds[0].DeploymentID != priorDeploymentID
+			if !started {
+				// Still the previous deploy's record: whatever status says, it
+				// is not about the deploy we are waiting on. Report a
+				// non-terminal status so the waiter keeps polling.
+				return deploy.StatusRunning, "", nil
+			}
 		}
-		return deploy.Status(app.ApplicationStatus), depID, nil
+		if status != deploy.StatusError {
+			return status, "", nil
+		}
+		return status, r.newestDeploymentID(ctx, id), nil
 	}
 }
 
@@ -334,10 +403,14 @@ func (r *applicationResource) deployAndWait(ctx context.Context, plan *resourceM
 	if err != nil {
 		return fmt.Errorf("invalid deployment_timeout: %w", err)
 	}
-	if err := r.client.DeployApplication(ctx, plan.ID.ValueString()); err != nil {
+	id := plan.ID.ValueString()
+	// Captured before the deploy is fired, so the waiter can tell this
+	// deploy's outcome from the previous one's. See fetchStatus.
+	prior := r.newestDeploymentID(ctx, id)
+	if err := r.client.DeployApplication(ctx, id); err != nil {
 		return err
 	}
-	return r.waiter.Wait(ctx, timeout, r.fetchStatus(plan.ID.ValueString()))
+	return r.waiter.Wait(ctx, timeout, r.fetchStatus(id, prior))
 }
 
 func (r *applicationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -491,4 +564,10 @@ func (r *applicationResource) Delete(ctx context.Context, req resource.DeleteReq
 
 func (r *applicationResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	// deploy_on_change / deployment_timeout are provider-only: there is
+	// nothing server-side to read them back from, so they must be seeded with
+	// their schema defaults or the plan after an import is never empty. See
+	// tfutil.ImportDeployDefaults for why the framework re-applies defaults on
+	// every plan, not just on create.
+	resp.Diagnostics.Append(tfutil.ImportDeployDefaults(ctx, &resp.State)...)
 }

@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/acctest"
@@ -38,42 +39,80 @@ func checkProjectDestroy(s *terraform.State) error {
 	return nil
 }
 
+// getAccProject re-reads the resource directly via the API (spec §7: verify
+// server-side truth, not just Terraform's view of state).
+func getAccProject(s *terraform.State) (*client.Project, error) {
+	rs, ok := s.RootModule().Resources["dokploy_project.test"]
+	if !ok {
+		return nil, fmt.Errorf("dokploy_project.test not found in state")
+	}
+	c, err := acctest.ClientFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	return c.GetProject(context.Background(), rs.Primary.ID)
+}
+
 func TestAccProject_lifecycle(t *testing.T) {
 	name := acctest.RandomName("proj")
+	// description is passed through so a step can drop it entirely, which is
+	// what spec §5.6 (clearable back to null) requires.
+	config := func(description string) string {
+		return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+%s
+}`, name, description)
+	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkProjectDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-resource "dokploy_project" "test" {
-  name        = %q
-  description = "made by acceptance"
-}`, name),
+				Config: config(`  description = "made by acceptance"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("dokploy_project.test", "id"),
 					resource.TestCheckResourceAttr("dokploy_project.test", "name", name),
 					resource.TestCheckResourceAttrSet("dokploy_project.test", "created_at"),
 					resource.TestCheckResourceAttrSet("dokploy_project.test", "environments.0.id"),
 					func(s *terraform.State) error { // verify via direct API read (spec §7)
-						rs := s.RootModule().Resources["dokploy_project.test"]
-						c, err := acctest.ClientFromEnv()
-						if err != nil {
-							return err
-						}
-						_, err = c.GetProject(context.Background(), rs.Primary.ID)
+						_, err := getAccProject(s)
 						return err
 					},
 				),
 			},
 			{
-				Config: fmt.Sprintf(`
-resource "dokploy_project" "test" {
-  name        = %q
-  description = "updated"
-}`, name),
-				Check: resource.TestCheckResourceAttr("dokploy_project.test", "description", "updated"),
+				Config: config(`  description = "updated"`),
+				Check:  resource.TestCheckResourceAttr("dokploy_project.test", "description", "updated"),
+			},
+			{
+				// Spec §5.6: optional attributes must be clearable back to
+				// null, not merely settable. Dropping description from config
+				// has to reach the server, not just Terraform state — with
+				// `omitempty` on UpdateProjectRequest.Description the key
+				// vanished from the body, project.update read that as "keep
+				// the stored value" (verified live), the next Read flattened
+				// the stale text back in, and every subsequent plan showed the
+				// same diff forever. ExpectEmptyPlan catches exactly that; the
+				// direct API read catches state-only clearing.
+				Config: config(""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_project.test", "description"),
+					func(s *terraform.State) error {
+						p, err := getAccProject(s)
+						if err != nil {
+							return err
+						}
+						if p.Description != nil && *p.Description != "" {
+							return fmt.Errorf("server still stores description %q; it was removed from config", *p.Description)
+						}
+						return nil
+					},
+				),
 			},
 			{
 				ResourceName:      "dokploy_project.test",

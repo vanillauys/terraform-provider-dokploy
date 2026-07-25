@@ -31,7 +31,7 @@ func TestGetSendsAuthHeadersAndQuery(t *testing.T) {
 		gotKey = r.Header.Get("x-api-key")
 		gotUA = r.Header.Get("User-Agent")
 		gotProjectID = r.URL.Query().Get("projectId")
-		fmt.Fprint(w, `{"ok":true}`)
+		_, _ = fmt.Fprint(w, `{"ok":true}`)
 	}))
 	defer srv.Close()
 
@@ -64,7 +64,7 @@ func TestPostSendsJSONBody(t *testing.T) {
 		gotContentType = r.Header.Get("Content-Type")
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &gotBody)
-		fmt.Fprint(w, `{}`)
+		_, _ = fmt.Fprint(w, `{}`)
 	}))
 	defer srv.Close()
 
@@ -95,7 +95,7 @@ func TestNotFoundMapsToSentinel(t *testing.T) {
 func TestErrorEnvelopeParsed(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, `{"message":"Project not valid","code":"BAD_REQUEST"}`)
+		_, _ = fmt.Fprint(w, `{"message":"Project not valid","code":"BAD_REQUEST"}`)
 	}))
 	defer srv.Close()
 
@@ -122,7 +122,7 @@ func TestGetRetriesOn5xx(t *testing.T) {
 			w.WriteHeader(http.StatusBadGateway)
 			return
 		}
-		fmt.Fprint(w, `{}`)
+		_, _ = fmt.Fprint(w, `{}`)
 	}))
 	defer srv.Close()
 

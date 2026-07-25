@@ -47,6 +47,66 @@ func TestFlattenSourceDockerOnly(t *testing.T) {
 	}
 }
 
+// The github source has no automated coverage anywhere else: its acceptance
+// test is gated behind DOKPLOY_ACC_GITHUB_ID (a GitHub App must be installed
+// in the instance by hand), which CI never sets, so that test always skips.
+func TestFlattenSourceGithubOnly(t *testing.T) {
+	app := &client.Application{
+		ApplicationID:     "app1",
+		Name:              "web",
+		AppName:           "web-a1b2",
+		EnvironmentID:     "e1",
+		ApplicationStatus: "done",
+		SourceType:        "github",
+		Owner:             strPtr("vanillauys"),
+		Repository:        strPtr("vanillauys-app"),
+		Branch:            strPtr("master"),
+		BuildPath:         strPtr("/"),
+		GithubID:          strPtr("gh-1"),
+		BuildType:         "nixpacks",
+		CreatedAt:         "2026-07-23T10:00:00.000Z",
+	}
+	var m resourceModel
+	if diags := flatten(context.Background(), app, &m); diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	if m.Github.IsNull() {
+		t.Fatal("github source must be populated")
+	}
+	if !m.Git.IsNull() || !m.Docker.IsNull() {
+		t.Error("inactive source blocks must be null")
+	}
+	var gh githubModel
+	m.Github.As(context.Background(), &gh, objectAsOptions)
+	if gh.Owner.ValueString() != "vanillauys" || gh.Repository.ValueString() != "vanillauys-app" ||
+		gh.Branch.ValueString() != "master" || gh.BuildPath.ValueString() != "/" || gh.GithubID.ValueString() != "gh-1" {
+		t.Errorf("github = %+v", gh)
+	}
+}
+
+// A github application whose optional fields the server reports as null must
+// flatten to null attributes, not to "" — otherwise every plan would show a
+// `"" -> null` diff for them.
+func TestFlattenSourceGithubNilFields(t *testing.T) {
+	app := &client.Application{
+		ApplicationID: "app1",
+		SourceType:    "github",
+		Owner:         strPtr("vanillauys"),
+		Repository:    strPtr("vanillauys-app"),
+		Branch:        strPtr("master"),
+		BuildType:     "nixpacks",
+	}
+	var m resourceModel
+	if diags := flatten(context.Background(), app, &m); diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	var gh githubModel
+	m.Github.As(context.Background(), &gh, objectAsOptions)
+	if !gh.BuildPath.IsNull() || !gh.GithubID.IsNull() {
+		t.Errorf("nil server fields must map to null, got build_path=%v github_id=%v", gh.BuildPath, gh.GithubID)
+	}
+}
+
 func TestDeployNeededApplication(t *testing.T) {
 	ctx := context.Background()
 	docker := func(image string) types.Object {

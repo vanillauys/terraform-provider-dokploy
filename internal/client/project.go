@@ -26,10 +26,20 @@ type CreateProjectRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+// UpdateProjectRequest. Description is deliberately NOT omitempty, for the
+// same reason as UpdateApplicationRequest.Description: verified empirically
+// against a live Dokploy instance (v0.29.13, 2026-07-25) that project.update
+// treats an absent `description` key as "leave the stored value alone"
+// (project.one still reports the old text afterwards), while an explicit
+// JSON null clears it (project.one then reports null). With omitempty a nil
+// pointer vanished from the body, so removing `description` from config
+// could never converge: state recorded null, the next Read flattened the
+// server's stale value back in, and every plan showed the same diff forever
+// (spec §5.6: optional attributes must be clearable back to null).
 type UpdateProjectRequest struct {
 	ProjectID   string  `json:"projectId"`
 	Name        string  `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
+	Description *string `json:"description"`
 }
 
 // createProjectResponse matches the real /project.create response shape:

@@ -12,6 +12,7 @@ import (
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	resproject "github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 var (
@@ -67,15 +68,11 @@ func (d *projectDataSource) ConfigValidators(_ context.Context) []datasource.Con
 }
 
 func (d *projectDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
+	c, diags := tfutil.ClientFromProviderData(req.ProviderData)
+	resp.Diagnostics.Append(diags...)
+	if c != nil {
+		d.client = c
 	}
-	c, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError("Unexpected provider data", fmt.Sprintf("expected *client.Client, got %T", req.ProviderData))
-		return
-	}
-	d.client = c
 }
 
 // findByName does the client-side exact-match filter the spec prescribes

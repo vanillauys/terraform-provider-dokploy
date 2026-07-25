@@ -22,7 +22,7 @@ func TestListDeployments(t *testing.T) {
 		if q.Get("id") != "svc-1" || q.Get("type") != "application" {
 			t.Errorf("query = %v", q)
 		}
-		fmt.Fprint(w, `[{"deploymentId":"dep-2","status":"error","createdAt":"2026-07-23T11:00:00.000Z"}]`)
+		_, _ = fmt.Fprint(w, `[{"deploymentId":"dep-2","status":"error","createdAt":"2026-07-23T11:00:00.000Z"}]`)
 	}))
 	defer srv.Close()
 

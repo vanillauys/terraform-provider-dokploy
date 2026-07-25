@@ -83,5 +83,25 @@ if [ -z "$API_KEY" ]; then
   exit 1
 fi
 
+# Register the freshly minted key as a secret with the GitHub Actions runner
+# before printing it, so it is redacted from every subsequent log line rather
+# than sitting in the workflow log in clear text (the CI jobs feed this
+# script's output straight into $GITHUB_ENV).
+#
+# Two details make this the shape it is:
+#   - It belongs HERE, not in the workflow. The workflow only ever sees the key
+#     after this script has already printed it, and masking is retroactive only
+#     for output the runner has not processed yet.
+#   - It goes to STDERR, not stdout. The callers redirect this script's stdout
+#     (`bootstrap.sh | sed ... >> "$GITHUB_ENV"`, or `eval "$(bootstrap.sh)"`),
+#     so a workflow command written to stdout would be captured into the env
+#     file or the eval instead of reaching the runner's log processor. Stderr is
+#     left attached to the step, and the runner scans it for workflow commands
+#     too.
+# Guarded on GITHUB_ACTIONS so a local run doesn't print a stray directive.
+if [ -n "${GITHUB_ACTIONS:-}" ]; then
+  echo "::add-mask::${API_KEY}" >&2
+fi
+
 echo "export DOKPLOY_ENDPOINT=${ENDPOINT}"
 echo "export DOKPLOY_API_KEY=${API_KEY}"

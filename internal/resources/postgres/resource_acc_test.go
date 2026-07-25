@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/acctest"
@@ -55,23 +56,33 @@ func getAccPostgres(s *terraform.State) (*client.Postgres, error) {
 
 func TestAccPostgres_lifecycle(t *testing.T) {
 	name := acctest.RandomName("pg")
-	base := func(env string, externalPort string) string {
+	// optionals is spliced in verbatim so a step can drop previously-set
+	// optional attributes ENTIRELY (not set them to ""), which is what spec
+	// §5.6 (clearable back to null) requires.
+	//
+	// deployment_timeout is deliberately left out of this config so it takes
+	// its schema default. That is the case the final import step needs: since
+	// import cannot see config, ImportState can only seed the defaults, so
+	// ImportStateVerify only matches strictly when the config used the
+	// defaults too — which is also the overwhelmingly common real-world
+	// config. (A config that sets a non-default value still plans one diff
+	// after import; that is inherent to a provider-only attribute, and it is
+	// no worse than the null state it replaced.)
+	base := func(optionals string) string {
 		return fmt.Sprintf(`
 resource "dokploy_project" "test" {
   name = %q
 }
 
 resource "dokploy_postgres" "test" {
-  name               = %q
-  environment_id     = dokploy_project.test.environments[0].id
-  database_name      = "acc"
-  database_user      = "acc"
-  database_password  = "acc-password-1"
-  docker_image       = "postgres:16-alpine"
-  env                = %q
-  deployment_timeout = "10m"
-  %s
-}`, name+"-proj", name, env, externalPort)
+  name              = %q
+  environment_id    = dokploy_project.test.environments[0].id
+  database_name     = "acc"
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  docker_image      = "postgres:16-alpine"
+%s
+}`, name+"-proj", name, optionals)
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -81,11 +92,12 @@ resource "dokploy_postgres" "test" {
 			{
 				// Create deploys (deploy_on_change defaults to true) and
 				// must end with the service in status done.
-				Config: base("TZ=UTC", ""),
+				Config: base("  env         = \"TZ=UTC\"\n  description = \"managed by the acceptance suite\""),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("dokploy_postgres.test", "id"),
 					resource.TestCheckResourceAttrSet("dokploy_postgres.test", "app_name"),
 					resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "description", "managed by the acceptance suite"),
 					func(s *terraform.State) error {
 						pg, err := getAccPostgres(s)
 						if err != nil {
@@ -100,13 +112,13 @@ resource "dokploy_postgres" "test" {
 			},
 			{
 				// env is a deploy trigger; update must redeploy and converge.
-				Config: base("TZ=UTC\nPGDATA_DEBUG=1", ""),
+				Config: base("  env         = \"TZ=UTC\\nPGDATA_DEBUG=1\"\n  description = \"managed by the acceptance suite\""),
 				Check:  resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
 			},
 			{
 				// external_port is a deploy trigger too; setting it must
 				// redeploy, converge, and persist server-side.
-				Config: base("TZ=UTC\nPGDATA_DEBUG=1", "external_port = 55432"),
+				Config: base("  env           = \"TZ=UTC\\nPGDATA_DEBUG=1\"\n  description   = \"managed by the acceptance suite\"\n  external_port = 55432"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
 					resource.TestCheckResourceAttr("dokploy_postgres.test", "external_port", "55432"),
@@ -123,15 +135,29 @@ resource "dokploy_postgres" "test" {
 				),
 			},
 			{
-				// Removing external_port from config must clear it
-				// server-side too (fix round 1): otherwise state commits
-				// null while the server keeps the old port, and Read
-				// re-populates it on every subsequent plan — permanent
-				// non-convergence for the attribute (spec §5.6).
-				Config: base("TZ=UTC\nPGDATA_DEBUG=1", ""),
+				// Spec §5.6: every optional attribute must be clearable back
+				// to null, not merely settable — and the clear has to reach
+				// the SERVER, not just Terraform state. Each of these three
+				// failed in a different way before this round of fixes:
+				//   - external_port: fixed earlier (nil -> explicit JSON null).
+				//   - description: `omitempty` dropped the key, and
+				//     postgres.update reads an absent key as "keep the stored
+				//     value" (verified live), so the old text came straight
+				//     back on the next Read.
+				//   - env: SavePostgresEnvironment took a `string`, so a null
+				//     config value was sent as "" and stored verbatim; Read
+				//     then reported "" against a null state forever.
+				// ExpectEmptyPlan is what catches all three: each one leaves a
+				// permanent non-empty plan.
+				Config: base(""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
 					resource.TestCheckNoResourceAttr("dokploy_postgres.test", "external_port"),
+					resource.TestCheckNoResourceAttr("dokploy_postgres.test", "description"),
+					resource.TestCheckNoResourceAttr("dokploy_postgres.test", "env"),
 					func(s *terraform.State) error {
 						pg, err := getAccPostgres(s)
 						if err != nil {
@@ -140,16 +166,24 @@ resource "dokploy_postgres" "test" {
 						if pg.ExternalPort != nil {
 							return fmt.Errorf("external_port not cleared server-side: %v", *pg.ExternalPort)
 						}
+						if pg.Description != nil && *pg.Description != "" {
+							return fmt.Errorf("server still stores description %q; it was removed from config", *pg.Description)
+						}
+						if pg.Env != nil && *pg.Env != "" {
+							return fmt.Errorf("server still stores env %q; it was removed from config", *pg.Env)
+						}
 						return nil
 					},
 				),
 			},
 			{
+				// No ImportStateVerifyIgnore. deploy_on_change and
+				// deployment_timeout are provider-only, so ImportState seeds
+				// them with their schema defaults; ignoring them here used to
+				// paper over an import that could never produce a clean plan.
 				ResourceName:      "dokploy_postgres.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Provider-only attributes are not stored server-side.
-				ImportStateVerifyIgnore: []string{"deploy_on_change", "deployment_timeout"},
 			},
 		},
 	})

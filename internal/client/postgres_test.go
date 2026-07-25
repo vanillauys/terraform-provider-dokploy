@@ -31,12 +31,12 @@ func TestCreateAndGetPostgres(t *testing.T) {
 		case "/api/postgres.create":
 			raw, _ := io.ReadAll(r.Body)
 			_ = json.Unmarshal(raw, &createBody)
-			fmt.Fprint(w, postgresJSON)
+			_, _ = fmt.Fprint(w, postgresJSON)
 		case "/api/postgres.one":
 			if r.URL.Query().Get("postgresId") != "pg1" {
 				t.Errorf("query = %v", r.URL.Query())
 			}
-			fmt.Fprint(w, postgresJSON)
+			_, _ = fmt.Fprint(w, postgresJSON)
 		default:
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
@@ -76,6 +76,7 @@ func TestCreateAndGetPostgres(t *testing.T) {
 func TestPostgresMutations(t *testing.T) {
 	var calls []string
 	var externalPortBodies []any
+	var envBodies []map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls = append(calls, r.URL.Path)
 		var body map[string]any
@@ -84,7 +85,8 @@ func TestPostgresMutations(t *testing.T) {
 		if body["postgresId"] != "pg1" {
 			t.Errorf("%s body = %v", r.URL.Path, body)
 		}
-		if r.URL.Path == "/api/postgres.saveExternalPort" {
+		switch r.URL.Path {
+		case "/api/postgres.saveExternalPort":
 			// externalPort key must always be present; nil marshals to
 			// JSON null (raw), a set port to its numeric value.
 			if v, ok := body["externalPort"]; !ok {
@@ -92,8 +94,26 @@ func TestPostgresMutations(t *testing.T) {
 			} else {
 				externalPortBodies = append(externalPortBodies, v)
 			}
+		case "/api/postgres.saveEnvironment":
+			envBodies = append(envBodies, body)
+		case "/api/postgres.update":
+			// Verified empirically against a live Dokploy instance
+			// (v0.29.13, 2026-07-25): postgres.update with `description`
+			// entirely absent returns true and postgres.one still reports the
+			// OLD description, while `"description": null` clears it. An
+			// absent key therefore means "keep", which is worse than a 400 —
+			// clearing `description` from config would never converge, so the
+			// key must always be present. Checking presence separately from
+			// value is the point: `body["description"] == nil` is also true
+			// for an absent key, which is exactly the broken case.
+			if _, ok := body["description"]; !ok {
+				t.Errorf("postgres.update body missing required (nullable) key %q: %v", "description", body)
+			}
+			if body["description"] != nil {
+				t.Errorf("update body description = %v, want explicit null so the field is clearable", body["description"])
+			}
 		}
-		fmt.Fprint(w, `{}`)
+		_, _ = fmt.Fprint(w, `{}`)
 	}))
 	defer srv.Close()
 
@@ -102,7 +122,14 @@ func TestPostgresMutations(t *testing.T) {
 	if err := c.UpdatePostgres(ctx, UpdatePostgresRequest{PostgresID: "pg1", Name: "renamed"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.SavePostgresEnvironment(ctx, "pg1", "KEY=value"); err != nil {
+	env := "KEY=value"
+	if err := c.SavePostgresEnvironment(ctx, "pg1", &env); err != nil {
+		t.Fatal(err)
+	}
+	// Clearing: a nil env must marshal to JSON null, not "" and not be
+	// omitted (an omitted key 400s, "" is stored verbatim — see the
+	// SavePostgresEnvironment doc comment).
+	if err := c.SavePostgresEnvironment(ctx, "pg1", nil); err != nil {
 		t.Fatal(err)
 	}
 	port := int64(5433)
@@ -122,6 +149,7 @@ func TestPostgresMutations(t *testing.T) {
 	want := []string{
 		"/api/postgres.update",
 		"/api/postgres.saveEnvironment",
+		"/api/postgres.saveEnvironment",
 		"/api/postgres.saveExternalPort",
 		"/api/postgres.saveExternalPort",
 		"/api/postgres.deploy",
@@ -137,5 +165,21 @@ func TestPostgresMutations(t *testing.T) {
 	}
 	if len(externalPortBodies) != 2 || externalPortBodies[0] != float64(5433) || externalPortBodies[1] != nil {
 		t.Errorf("externalPort bodies = %v", externalPortBodies)
+	}
+	// The `env` key must be present in BOTH bodies: absent 400s server-side,
+	// and only an explicit null clears the stored value.
+	if len(envBodies) != 2 {
+		t.Fatalf("saveEnvironment bodies = %v", envBodies)
+	}
+	for i, body := range envBodies {
+		if _, ok := body["env"]; !ok {
+			t.Errorf("saveEnvironment body %d missing required (nullable) key %q: %v", i, "env", body)
+		}
+	}
+	if envBodies[0]["env"] != "KEY=value" {
+		t.Errorf("saveEnvironment body 0 env = %v, want \"KEY=value\"", envBodies[0]["env"])
+	}
+	if envBodies[1]["env"] != nil {
+		t.Errorf("saveEnvironment body 1 env = %v, want explicit null so the field is clearable", envBodies[1]["env"])
 	}
 }

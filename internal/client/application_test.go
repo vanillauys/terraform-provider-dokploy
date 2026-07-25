@@ -29,12 +29,12 @@ func TestCreateAndGetApplication(t *testing.T) {
 		case "/api/application.create":
 			raw, _ := io.ReadAll(r.Body)
 			_ = json.Unmarshal(raw, &createBody)
-			fmt.Fprint(w, applicationJSON)
+			_, _ = fmt.Fprint(w, applicationJSON)
 		case "/api/application.one":
 			if r.URL.Query().Get("applicationId") != "app1" {
 				t.Errorf("query = %v", r.URL.Query())
 			}
-			fmt.Fprint(w, applicationJSON)
+			_, _ = fmt.Fprint(w, applicationJSON)
 		default:
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
@@ -79,7 +79,7 @@ func TestApplicationOrchestrationCalls(t *testing.T) {
 		if body["applicationId"] != "app1" {
 			t.Errorf("%s body = %v", r.URL.Path, body)
 		}
-		fmt.Fprint(w, `{}`)
+		_, _ = fmt.Fprint(w, `{}`)
 	}))
 	defer srv.Close()
 

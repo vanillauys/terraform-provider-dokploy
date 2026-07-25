@@ -65,6 +65,10 @@ func TestAccApplication_dockerLifecycle(t *testing.T) {
 	name := acctest.RandomName("app")
 	// optionals lets a step drop previously-set optional attributes
 	// entirely, which is what spec §5.6 (clearable back to null) requires.
+	//
+	// deployment_timeout is deliberately left out so it takes its schema
+	// default: the final import step needs it, because import cannot see
+	// config and so can only seed the defaults (see tfutil.ImportDeployDefaults).
 	config := func(image, optionals string) string {
 		return fmt.Sprintf(`
 resource "dokploy_project" "test" {
@@ -79,7 +83,6 @@ resource "dokploy_application" "test" {
     image = %q
   }
 %s
-  deployment_timeout = "10m"
 }`, name+"-proj", name, image, optionals)
 	}
 	withOptionals := `
@@ -139,10 +142,13 @@ resource "dokploy_application" "test" {
 				),
 			},
 			{
-				ResourceName:            "dokploy_application.test",
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"deploy_on_change", "deployment_timeout"},
+				// No ImportStateVerifyIgnore. deploy_on_change and
+				// deployment_timeout are provider-only, so ImportState seeds
+				// them with their schema defaults; ignoring them here used to
+				// paper over an import that could never produce a clean plan.
+				ResourceName:      "dokploy_application.test",
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

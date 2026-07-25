@@ -2,13 +2,13 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 var (
@@ -58,15 +58,11 @@ func (d *postgresDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 }
 
 func (d *postgresDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
+	c, diags := tfutil.ClientFromProviderData(req.ProviderData)
+	resp.Diagnostics.Append(diags...)
+	if c != nil {
+		d.client = c
 	}
-	c, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError("Unexpected provider data", fmt.Sprintf("expected *client.Client, got %T", req.ProviderData))
-		return
-	}
-	d.client = c
 }
 
 func (d *postgresDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {

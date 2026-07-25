@@ -34,10 +34,21 @@ type CreatePostgresRequest struct {
 	ServerID         *string `json:"serverId,omitempty"`
 }
 
+// UpdatePostgresRequest. Description is deliberately NOT omitempty, for the
+// same reason as UpdateApplicationRequest.Description: verified empirically
+// against a live Dokploy instance (v0.29.13, 2026-07-25) that postgres.update
+// treats an absent `description` key as "leave the stored value alone"
+// (returns true, postgres.one still reports the old text), while an explicit
+// JSON null clears it (returns true, postgres.one then reports null). With
+// omitempty a nil pointer vanished from the body, so removing `description`
+// from config could never converge: state recorded null, the next Read
+// flattened the server's stale value back in, and every plan showed the same
+// diff forever (spec §5.6: optional attributes must be clearable back to
+// null).
 type UpdatePostgresRequest struct {
 	PostgresID       string  `json:"postgresId"`
 	Name             string  `json:"name,omitempty"`
-	Description      *string `json:"description,omitempty"`
+	Description      *string `json:"description"`
 	DockerImage      string  `json:"dockerImage,omitempty"`
 	DatabasePassword string  `json:"databasePassword,omitempty"`
 }
@@ -66,8 +77,21 @@ func (c *Client) DeletePostgres(ctx context.Context, id string) error {
 	return c.Post(ctx, "/postgres.remove", map[string]string{"postgresId": id}, nil)
 }
 
-func (c *Client) SavePostgresEnvironment(ctx context.Context, id, env string) error {
-	return c.Post(ctx, "/postgres.saveEnvironment", map[string]string{"postgresId": id, "env": env}, nil)
+// SavePostgresEnvironment sets or clears the extra environment variables. env
+// is a *string, not a string, so that a null config value reaches the server
+// as an explicit JSON null instead of an empty string: verified empirically
+// against a live Dokploy instance (v0.29.13, 2026-07-25) that
+// postgres.saveEnvironment declares `env` nullable-but-required in its zod
+// schema — an entirely absent key 400s with "Input validation failed" /
+// "expected nonoptional, received undefined", while an explicit JSON null is
+// accepted and clears the stored value (postgres.one then reports env: null).
+// The previous map[string]string signature could not express null at all, so
+// clearing `env` from config stored "" server-side, Read flattened that back
+// as types.StringValue(""), and every subsequent plan showed a permanent
+// `"" -> null` diff (spec §5.6). Mirrors SavePostgresExternalPort, which
+// already used *int64/map[string]any for exactly this reason.
+func (c *Client) SavePostgresEnvironment(ctx context.Context, id string, env *string) error {
+	return c.Post(ctx, "/postgres.saveEnvironment", map[string]any{"postgresId": id, "env": env}, nil)
 }
 
 // SavePostgresExternalPort sets or clears the external port. A nil port

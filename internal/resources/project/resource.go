@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 var (
@@ -50,9 +51,17 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:    true,
 				Description: "Free-form description.",
 			},
+			// created_at is immutable server-side, so pinning the prior value
+			// into the plan is always safe and keeps it out of the framework's
+			// MarkComputedNilsAsUnknown sweep (see the package comment on
+			// internal/tfutil). Deliberately NOT applied to `status` on the
+			// service resources — that one is genuinely server-mutable and
+			// pinning it caused "Provider produced inconsistent result after
+			// apply"; see internal/resources/application/resource.go.
 			"created_at": schema.StringAttribute{
-				Computed:    true,
-				Description: "Creation timestamp (server-side).",
+				Computed:      true,
+				Description:   "Creation timestamp (server-side).",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"environments": schema.ListNestedAttribute{
 				Computed:    true,
@@ -69,15 +78,11 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 }
 
 func (r *projectResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
+	c, diags := tfutil.ClientFromProviderData(req.ProviderData)
+	resp.Diagnostics.Append(diags...)
+	if c != nil {
+		r.client = c
 	}
-	c, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError("Unexpected provider data", fmt.Sprintf("expected *client.Client, got %T", req.ProviderData))
-		return
-	}
-	r.client = c
 }
 
 func (r *projectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
