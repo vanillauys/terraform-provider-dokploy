@@ -1,0 +1,29 @@
+name: acceptance
+on:
+  pull_request:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install Dokploy on the runner
+        run: curl -sSL https://dokploy.com/install.sh | sudo bash
+      - name: Wait for Dokploy
+        run: |
+          for _ in $(seq 1 120); do
+            curl -fsS http://localhost:3000 >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          echo "dokploy never became reachable" >&2
+          exit 1
+      - name: Bootstrap admin and API key
+        run: ./acceptance/bootstrap.sh | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Run acceptance tests
+        run: make testacc

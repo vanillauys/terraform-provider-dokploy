@@ -1,0 +1,51 @@
+name: test
+on:
+  push:
+    branches: [master]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          # Pinned: the action resolves the linter at runtime otherwise, so the
+          # ruleset (and whether this job passes at all) could change without a
+          # commit. Verified green against this exact version locally.
+          version: v2.12.2
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - run: go test ./... -count=1
+  # go.mod is kept tidy in-tree so the release build never has to tidy it —
+  # see the `before.hooks` comment in .goreleaser.yml. This job is what keeps
+  # that true: a pin regression surfaces in the PR that causes it rather than
+  # being silently baked into a tagged release artifact.
+  tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - run: go mod tidy
+      - run: git diff --exit-code go.mod go.sum
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - run: make docs
+      - run: git diff --exit-code

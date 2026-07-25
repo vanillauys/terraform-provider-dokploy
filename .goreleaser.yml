@@ -1,0 +1,44 @@
+version: 2
+project_name: terraform-provider-dokploy
+before:
+  hooks:
+    # Deliberately NOT `go mod tidy`. Tidying here would rewrite go.mod/go.sum
+    # on the release runner, so the published binary would be built from a
+    # dependency graph CI never tested and a re-run of the same tag would not
+    # be guaranteed to reproduce it. go.mod is kept tidy in-tree instead; the
+    # `tidy` job in .github/workflows/test.yml fails the build if it drifts.
+    - go mod download
+builds:
+  - env:
+      - CGO_ENABLED=0
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath
+    ldflags:
+      - '-s -w -X main.version={{ .Version }}'
+    goos: [freebsd, windows, linux, darwin]
+    goarch: ['386', amd64, arm, arm64]
+    ignore:
+      - goos: darwin
+        goarch: '386'
+      - goos: darwin
+        goarch: arm
+    binary: '{{ .ProjectName }}_v{{ .Version }}'
+archives:
+  - formats: [zip]
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+checksum:
+  extra_files:
+    - glob: terraform-registry-manifest.json
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
+  name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
+  algorithm: sha256
+signs:
+  - artifacts: checksum
+    args: ['--batch', '--local-user', '{{ .Env.GPG_FINGERPRINT }}', '--output', '${signature}', '--detach-sign', '${artifact}']
+release:
+  extra_files:
+    - glob: terraform-registry-manifest.json
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
+changelog:
+  disable: true
