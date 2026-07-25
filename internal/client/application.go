@@ -53,10 +53,20 @@ type CreateApplicationRequest struct {
 	ServerID      *string `json:"serverId,omitempty"`
 }
 
+// UpdateApplicationRequest. Description is deliberately NOT omitempty:
+// verified empirically against a live Dokploy instance (2026-07-25) that
+// application.update treats an absent `description` key as "leave the
+// stored value alone" (returns true, subsequent application.one still
+// reports the old text), while an explicit JSON null clears it (returns
+// true, application.one then reports null). With omitempty a nil pointer
+// vanished from the body, so removing `description` from config could
+// never converge: state recorded null, the next Read flattened the
+// server's stale value back in, and every plan showed the same diff
+// forever (spec §5.6: optional attributes must be clearable back to null).
 type UpdateApplicationRequest struct {
 	ApplicationID string  `json:"applicationId"`
 	Name          string  `json:"name,omitempty"`
-	Description   *string `json:"description,omitempty"`
+	Description   *string `json:"description"`
 }
 
 type SaveGithubProviderRequest struct {

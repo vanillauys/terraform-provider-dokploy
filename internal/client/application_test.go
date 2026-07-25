@@ -179,6 +179,20 @@ func TestApplicationOrchestrationCalls(t *testing.T) {
 	buildTypeBody := "/api/application.saveBuildType"
 	requireKeyPresent(t, buildTypeBody, "dockerfile", "dockerContextPath", "dockerBuildStage", "publishDirectory", "herokuVersion", "railpackVersion")
 
+	// application.update is the odd one out: an absent `description` key does
+	// NOT 400, it silently means "keep the stored value" (verified live,
+	// 2026-07-25). That is worse than a 400 — clearing `description` from
+	// config would never converge. An explicit null clears it, so the key
+	// must always be present.
+	updateBody := "/api/application.update"
+	requireKeyPresent(t, updateBody, "description")
+	if bodies[updateBody]["description"] != nil {
+		t.Errorf("update body description = %v, want explicit null so the field is clearable", bodies[updateBody]["description"])
+	}
+	if bodies[updateBody]["name"] != "renamed" {
+		t.Errorf("update body name = %v, want \"renamed\"", bodies[updateBody]["name"])
+	}
+
 	envBody := "/api/application.saveEnvironment"
 	requireKeyPresent(t, envBody, "env", "buildArgs", "buildSecrets", "createEnvFile")
 	if bodies[envBody]["env"] != "A=1" {

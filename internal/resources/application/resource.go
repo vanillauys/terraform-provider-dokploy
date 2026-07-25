@@ -27,6 +27,7 @@ var (
 	_ resource.ResourceWithConfigure        = (*applicationResource)(nil)
 	_ resource.ResourceWithImportState      = (*applicationResource)(nil)
 	_ resource.ResourceWithConfigValidators = (*applicationResource)(nil)
+	_ resource.ResourceWithModifyPlan       = (*applicationResource)(nil)
 )
 
 type applicationResource struct {
@@ -111,15 +112,21 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		"build": schema.SingleNestedAttribute{
 			Optional: true,
 			Computed: true,
-			// Optional+Computed nested attributes need an explicit plan
-			// modifier or the framework marks the whole object unknown on
-			// every plan when config leaves it unset — an unbounded diff
-			// (spec §5.6 convergence). Verified empirically: without this,
-			// TestAccApplication_dockerLifecycle's post-apply plan check
-			// ("the non-refresh plan was not empty") failed even though
-			// nothing had changed. Mirrors the UseStateForUnknown pattern
-			// already used for docker_image/app_name in the sibling
-			// postgres resource.
+			// THE root cause of the "perpetual non-empty plan" this resource
+			// showed during Task 12 (re-diagnosed empirically 2026-07-25, see
+			// task-12-report.md "Fix round 1"). When config omits `build`,
+			// terraform core's objchange proposes null for a nested-type
+			// attribute rather than carrying the prior object forward. That
+			// alone makes the proposed plan differ from prior state, which
+			// opens the gate in the framework's PlanResourceChange
+			// (fwserver/server_planresourcechange.go:200) guarding
+			// MarkComputedNilsAsUnknown — and that pass then marks EVERY
+			// Computed attribute with a null *config* value unknown
+			// (ibid. :252/:466/:471), sweeping up status, created_at,
+			// app_name and id as collateral. Restoring `build` from state
+			// here keeps the whole chain from starting (spec §5.6
+			// convergence). Verified: with `build` set in config the plan is
+			// empty even with no modifier on status at all.
 			PlanModifiers: []planmodifier.Object{objectplanmodifier.UseStateForUnknown()},
 			Description:   "Build settings; server default is nixpacks.",
 			Attributes: map[string]schema.Attribute{
@@ -144,19 +151,23 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			Optional:    true,
 			Description: "Build-time arguments in the same multiline format.",
 		},
-		// status/created_at need UseStateForUnknown like id above: verified
-		// empirically that a Computed (non-Optional) attribute with no plan
-		// modifier is marked unknown on every plan, which by itself makes
-		// Terraform propose an update-in-place with nothing else changed —
-		// reproduced against a live instance as
-		// TestAccApplication_dockerLifecycle's post-apply plan check
-		// ("the non-refresh plan was not empty") failing on exactly these
-		// two attributes and no others (spec §5.6 convergence).
+		// status deliberately has NO UseStateForUnknown. It is genuinely
+		// server-mutable: a deploy moves it (idle -> running -> done), so
+		// pinning the prior value into the plan as a *known* value makes
+		// Terraform core reject the apply with "Provider produced
+		// inconsistent result after apply" the moment the post-apply status
+		// differs (e.g. create with deploy_on_change = false leaves "idle",
+		// then an image change with deploy_on_change = true leaves "done").
+		// Framework providers get none of the legacy SDK's suppression of
+		// that check. ModifyPlan below restores the prior value only when
+		// the apply would be a no-op anyway — see there.
 		"status": schema.StringAttribute{
-			Computed:      true,
-			Description:   "Application status reported by Dokploy.",
-			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			Computed:    true,
+			Description: "Application status reported by Dokploy.",
 		},
+		// created_at is immutable server-side, so pinning it is safe and
+		// keeps it out of the MarkComputedNilsAsUnknown sweep described on
+		// `build` above.
 		"created_at": schema.StringAttribute{
 			Computed:      true,
 			Description:   "Creation timestamp (server-side).",
@@ -170,6 +181,47 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		Description: "An application service in a Dokploy environment. One unified resource over Dokploy's create + save* orchestration (source, build, env are separate API calls under the hood).",
 		Attributes:  attrs,
 	}
+}
+
+// ModifyPlan settles `status` when — and only when — the apply would
+// otherwise change nothing.
+//
+// Background: `status` is Computed with a null config, so the framework's
+// MarkComputedNilsAsUnknown pass marks it unknown on any plan where core's
+// proposed state already differs from prior state (see the comment on the
+// `build` attribute for the full chain). Left alone that produces a
+// permanent "status = idle -> (known after apply)" diff — the resource
+// never converges (spec §5.6).
+//
+// The obvious cure, stringplanmodifier.UseStateForUnknown(), is wrong here:
+// it writes the prior status into the plan as a *known* value, and Terraform
+// core then requires the post-apply value to match it exactly or fails the
+// apply with "Provider produced inconsistent result after apply". `status`
+// is server-mutable, so that is reachable in normal use.
+//
+// Restoring it only when every other attribute is already identical is safe
+// by construction: the resulting plan equals prior state, so core computes a
+// no-op and never calls ApplyResourceChange at all — there is no post-apply
+// value to be inconsistent with. Whenever anything genuinely changes,
+// `status` stays unknown and the apply may write whatever the server
+// reports. Resource-level ModifyPlan runs after all attribute plan
+// modifiers (fwserver/server_planresourcechange.go:293 then :347), so
+// `build`/`created_at`/`app_name`/`id` have already been restored from
+// state by the time this comparison happens.
+func (r *applicationResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return // create or destroy: nothing to carry forward
+	}
+	var plan, state resourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !unchangedExceptStatus(plan, state) {
+		return
+	}
+	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("status"), state.Status)...)
 }
 
 func (r *applicationResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {

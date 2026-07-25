@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -85,5 +86,75 @@ func TestDeployNeededApplication(t *testing.T) {
 	plan.Env = types.StringValue("A=2")
 	if !deployNeeded(plan, state) {
 		t.Error("env change must trigger a deploy")
+	}
+}
+
+// unchangedExceptStatus gates ModifyPlan's decision to carry the prior
+// `status` forward. If it ever returns true while some other attribute
+// really did change, ModifyPlan would pin a known status into a plan that
+// does get applied — exactly the "Provider produced inconsistent result
+// after apply" failure the plan modifier was removed to avoid. This test
+// walks resourceModel by reflection so a newly added field that
+// unchangedExceptStatus forgets to compare fails the build's tests rather
+// than silently widening that hole.
+func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
+	ctx := context.Background()
+	dockerImage := func(image string) types.Object {
+		obj, d := types.ObjectValueFrom(ctx, dockerAttrTypes, dockerModel{
+			Image:       types.StringValue(image),
+			Username:    types.StringNull(),
+			Password:    types.StringNull(),
+			RegistryURL: types.StringNull(),
+		})
+		if d.HasError() {
+			t.Fatalf("building docker object: %v", d)
+		}
+		return obj
+	}
+	docker, otherDocker := dockerImage("nginx:1"), dockerImage("nginx:2")
+	base := resourceModel{
+		ID:                types.StringValue("app1"),
+		Name:              types.StringValue("web"),
+		Description:       types.StringValue("desc"),
+		EnvironmentID:     types.StringValue("e1"),
+		AppName:           types.StringValue("web-a1b2"),
+		ServerID:          types.StringValue("s1"),
+		Github:            types.ObjectNull(githubAttrTypes),
+		Git:               types.ObjectNull(gitAttrTypes),
+		Docker:            docker,
+		Build:             types.ObjectNull(buildAttrTypes),
+		Env:               types.StringValue("A=1"),
+		BuildArgs:         types.StringValue("B=2"),
+		Status:            types.StringValue("done"),
+		CreatedAt:         types.StringValue("2026-07-23T10:00:00.000Z"),
+		DeployOnChange:    types.BoolValue(true),
+		DeploymentTimeout: types.StringValue("10m"),
+	}
+	if !unchangedExceptStatus(base, base) {
+		t.Fatal("identical models must compare equal")
+	}
+
+	rv := reflect.ValueOf(base)
+	for i := range rv.NumField() {
+		field := rv.Type().Field(i)
+		mutated := base
+		target := reflect.ValueOf(&mutated).Elem().Field(i)
+		switch target.Interface().(type) {
+		case types.String:
+			target.Set(reflect.ValueOf(types.StringValue("mutated")))
+		case types.Bool:
+			target.Set(reflect.ValueOf(types.BoolValue(false)))
+		case types.Object:
+			target.Set(reflect.ValueOf(otherDocker))
+		default:
+			t.Fatalf("field %s has unhandled type %T: extend this test AND unchangedExceptStatus",
+				field.Name, target.Interface())
+		}
+		// Every field except Status must be detected as a change.
+		want := field.Name == "Status"
+		if got := unchangedExceptStatus(mutated, base); got != want {
+			t.Errorf("unchangedExceptStatus with %s mutated = %v, want %v (unchangedExceptStatus is missing this field)",
+				field.Name, got, want)
+		}
 	}
 }

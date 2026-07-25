@@ -92,6 +92,32 @@ func deployNeeded(plan, state resourceModel) bool {
 		!plan.BuildArgs.Equal(state.BuildArgs)
 }
 
+// unchangedExceptStatus reports whether plan and state agree on every
+// attribute other than `status`. When they do, the apply is a no-op and
+// ModifyPlan may safely carry the prior status forward (see ModifyPlan's
+// doc comment for why doing so unconditionally would be a bug).
+//
+// Every field of resourceModel except Status must be listed here.
+// TestUnchangedExceptStatusCoversEveryField fails if a field is added to
+// the model and forgotten here.
+func unchangedExceptStatus(plan, state resourceModel) bool {
+	return plan.ID.Equal(state.ID) &&
+		plan.Name.Equal(state.Name) &&
+		plan.Description.Equal(state.Description) &&
+		plan.EnvironmentID.Equal(state.EnvironmentID) &&
+		plan.AppName.Equal(state.AppName) &&
+		plan.ServerID.Equal(state.ServerID) &&
+		plan.Github.Equal(state.Github) &&
+		plan.Git.Equal(state.Git) &&
+		plan.Docker.Equal(state.Docker) &&
+		plan.Build.Equal(state.Build) &&
+		plan.Env.Equal(state.Env) &&
+		plan.BuildArgs.Equal(state.BuildArgs) &&
+		plan.CreatedAt.Equal(state.CreatedAt) &&
+		plan.DeployOnChange.Equal(state.DeployOnChange) &&
+		plan.DeploymentTimeout.Equal(state.DeploymentTimeout)
+}
+
 func strOrNull(s *string) types.String { return types.StringPointerValue(s) }
 
 // setComputed copies server-computed fields, keeping planned values.

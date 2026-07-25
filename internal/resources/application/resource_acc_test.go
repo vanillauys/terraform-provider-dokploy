@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/acctest"
@@ -41,10 +42,126 @@ func checkApplicationDestroy(s *terraform.State) error {
 	return nil
 }
 
+// fetchApplication runs fn against the live API object behind
+// dokploy_application.test, so an assertion can distinguish "Terraform
+// state says null" from "the server actually stores null".
+func fetchApplication(fn func(*client.Application) error) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs := s.RootModule().Resources["dokploy_application.test"]
+		c, err := acctest.ClientFromEnv()
+		if err != nil {
+			return err
+		}
+		app, err := c.GetApplication(context.Background(), rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		return fn(app)
+	}
+}
+
 // Docker source: fastest to deploy, exercises the full engine.
 func TestAccApplication_dockerLifecycle(t *testing.T) {
 	name := acctest.RandomName("app")
-	config := func(image string) string {
+	// optionals lets a step drop previously-set optional attributes
+	// entirely, which is what spec §5.6 (clearable back to null) requires.
+	config := func(image, optionals string) string {
+		return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_application" "test" {
+  name           = %q
+  environment_id = dokploy_project.test.environments[0].id
+
+  docker = {
+    image = %q
+  }
+%s
+  deployment_timeout = "10m"
+}`, name+"-proj", name, image, optionals)
+	}
+	withOptionals := `
+  description = "managed by the acceptance suite"
+  env         = "WHOAMI_NAME=acceptance"
+`
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkApplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config("traefik/whoami:v1.10", withOptionals),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("dokploy_application.test", "id"),
+					resource.TestCheckResourceAttrSet("dokploy_application.test", "app_name"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "status", "done"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "description", "managed by the acceptance suite"),
+					fetchApplication(func(app *client.Application) error {
+						if app.SourceType != "docker" {
+							return fmt.Errorf("sourceType = %q, want docker", app.SourceType)
+						}
+						return nil
+					}),
+				),
+			},
+			{
+				// Image change is a deploy trigger.
+				Config: config("traefik/whoami:v1.10.2", withOptionals),
+				Check:  resource.TestCheckResourceAttr("dokploy_application.test", "status", "done"),
+			},
+			{
+				// Spec §5.6: optional attributes must be clearable back to
+				// null, not merely settable. Dropping description and env
+				// from config must reach the server, not just Terraform
+				// state — with `omitempty` on UpdateApplicationRequest.
+				// Description the server silently kept the old text, the
+				// next Read flattened it back in, and every subsequent plan
+				// showed the same diff forever. ExpectEmptyPlan below is
+				// what catches exactly that.
+				Config: config("traefik/whoami:v1.10.2", ""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "description"),
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "env"),
+					fetchApplication(func(app *client.Application) error {
+						if app.Description != nil && *app.Description != "" {
+							return fmt.Errorf("server still stores description %q; it was removed from config", *app.Description)
+						}
+						if app.Env != nil && *app.Env != "" {
+							return fmt.Errorf("server still stores env %q; it was removed from config", *app.Env)
+						}
+						return nil
+					}),
+				),
+			},
+			{
+				ResourceName:            "dokploy_application.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"deploy_on_change", "deployment_timeout"},
+			},
+		},
+	})
+}
+
+// A deploy moves `status` (idle -> running -> done), so the plan must leave
+// it unknown whenever an apply will actually run. This sequence pins that
+// down: step 1 skips the deploy and settles at "idle", step 2 changes the
+// image and turns deploying on, so the apply necessarily writes "done".
+// While `status` carried stringplanmodifier.UseStateForUnknown() the step-2
+// plan pinned the known "idle" and Terraform core rejected the apply with
+// `Provider produced inconsistent result after apply: .status: was
+// cty.StringVal("idle"), but now cty.StringVal("done")` (reproduced against
+// the live rig at commit a7bc6d2, 2026-07-25). The final empty-plan check
+// guards the other side of the trade: dropping that modifier must not
+// reintroduce the perpetual non-empty plan it was added to cure.
+func TestAccApplication_deployOnChangeFlip(t *testing.T) {
+	name := acctest.RandomName("app-flip")
+	config := func(image string, deploy bool) string {
 		return fmt.Sprintf(`
 resource "dokploy_project" "test" {
   name = %q
@@ -58,9 +175,9 @@ resource "dokploy_application" "test" {
     image = %q
   }
 
-  env                = "WHOAMI_NAME=acceptance"
+  deploy_on_change   = %t
   deployment_timeout = "10m"
-}`, name+"-proj", name, image)
+}`, name+"-proj", name, image, deploy)
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -68,38 +185,15 @@ resource "dokploy_application" "test" {
 		CheckDestroy:             checkApplicationDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: config("traefik/whoami:v1.10"),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("dokploy_application.test", "id"),
-					resource.TestCheckResourceAttrSet("dokploy_application.test", "app_name"),
-					resource.TestCheckResourceAttr("dokploy_application.test", "status", "done"),
-					func(s *terraform.State) error {
-						rs := s.RootModule().Resources["dokploy_application.test"]
-						c, err := acctest.ClientFromEnv()
-						if err != nil {
-							return err
-						}
-						app, err := c.GetApplication(context.Background(), rs.Primary.ID)
-						if err != nil {
-							return err
-						}
-						if app.SourceType != "docker" {
-							return fmt.Errorf("sourceType = %q, want docker", app.SourceType)
-						}
-						return nil
-					},
-				),
+				Config: config("traefik/whoami:v1.10", false),
+				Check:  resource.TestCheckResourceAttr("dokploy_application.test", "status", "idle"),
 			},
 			{
-				// Image change is a deploy trigger.
-				Config: config("traefik/whoami:v1.10.2"),
-				Check:  resource.TestCheckResourceAttr("dokploy_application.test", "status", "done"),
-			},
-			{
-				ResourceName:            "dokploy_application.test",
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"deploy_on_change", "deployment_timeout"},
+				Config: config("traefik/whoami:v1.10.2", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_application.test", "status", "done"),
 			},
 		},
 	})
