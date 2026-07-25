@@ -146,4 +146,51 @@ func TestApplicationOrchestrationCalls(t *testing.T) {
 	if bodies["/api/application.saveDockerProvider"]["dockerImage"] != "nginx:1" {
 		t.Errorf("docker body = %v", bodies["/api/application.saveDockerProvider"])
 	}
+
+	// Verified empirically against a live Dokploy instance (2026-07-25):
+	// application.saveDockerProvider/saveGitProvider/saveBuildType/
+	// saveEnvironment all declare several fields nullable-but-required in
+	// their zod schemas — a key entirely absent from the JSON body 400s
+	// with "expected nonoptional, received undefined", but an explicit
+	// JSON null is accepted. These assertions guard against a regression
+	// (e.g. re-adding `omitempty`) silently reintroducing that 400.
+	requireKeyPresent := func(t *testing.T, path string, keys ...string) {
+		t.Helper()
+		body := bodies[path]
+		for _, k := range keys {
+			if _, ok := body[k]; !ok {
+				t.Errorf("%s body missing required (nullable) key %q: %v", path, k, body)
+			}
+		}
+	}
+
+	dockerBody := "/api/application.saveDockerProvider"
+	requireKeyPresent(t, dockerBody, "username", "password", "registryUrl")
+	if bodies[dockerBody]["password"] != nil {
+		t.Errorf("docker body password = %v, want explicit null", bodies[dockerBody]["password"])
+	}
+
+	gitBody := "/api/application.saveGitProvider"
+	requireKeyPresent(t, gitBody, "customGitSSHKeyId", "watchPaths")
+	if bodies[gitBody]["watchPaths"] != nil {
+		t.Errorf("git body watchPaths = %v, want explicit null (no resource attribute exposes it)", bodies[gitBody]["watchPaths"])
+	}
+
+	buildTypeBody := "/api/application.saveBuildType"
+	requireKeyPresent(t, buildTypeBody, "dockerfile", "dockerContextPath", "dockerBuildStage", "publishDirectory", "herokuVersion", "railpackVersion")
+
+	envBody := "/api/application.saveEnvironment"
+	requireKeyPresent(t, envBody, "env", "buildArgs", "buildSecrets", "createEnvFile")
+	if bodies[envBody]["env"] != "A=1" {
+		t.Errorf("env body env = %v, want \"A=1\"", bodies[envBody]["env"])
+	}
+	if bodies[envBody]["buildArgs"] != nil {
+		t.Errorf("env body buildArgs = %v, want explicit null", bodies[envBody]["buildArgs"])
+	}
+	if bodies[envBody]["buildSecrets"] != nil {
+		t.Errorf("env body buildSecrets = %v, want explicit null (no resource attribute exposes it)", bodies[envBody]["buildSecrets"])
+	}
+	if bodies[envBody]["createEnvFile"] != true {
+		t.Errorf("env body createEnvFile = %v, want true (matches application.create's own default)", bodies[envBody]["createEnvFile"])
+	}
 }
