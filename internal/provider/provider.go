@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	dsapplication "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/application"
+	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dspostgres "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/postgres"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
@@ -135,5 +136,6 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsproject.NewDataSource,
 		dsapplication.NewDataSource,
 		dspostgres.NewDataSource,
+		dsenvironment.NewDataSource,
 	}
 }
