@@ -5,14 +5,6 @@ import (
 	"net/url"
 )
 
-// Environment is modeled from Dokploy's Drizzle schema; only the fields
-// wave 0 needs. Dokploy auto-creates a "production" environment per project.
-type Environment struct {
-	EnvironmentID string `json:"environmentId"`
-	Name          string `json:"name"`
-	ProjectID     string `json:"projectId"`
-}
-
 type Project struct {
 	ProjectID    string        `json:"projectId"`
 	Name         string        `json:"name"`
