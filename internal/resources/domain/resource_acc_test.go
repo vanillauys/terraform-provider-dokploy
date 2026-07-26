@@ -104,34 +104,60 @@ resource "dokploy_domain" "test" {
 				),
 			},
 			{
+				// Every optional attribute is set away from its default/null
+				// here, not just the four this step used to check. Without
+				// forward_auth_enabled, custom_cert_resolver and service_name
+				// going non-default somewhere in the suite, the revert step
+				// "reverting" them proves nothing — there is nothing to
+				// revert from.
 				Config: config(`  port                 = 8080
   https                = true
   certificate_type     = "letsencrypt"
   path                 = "/api"
   internal_path        = "/v1"
   strip_path           = true
-  custom_entrypoint    = "websecure"`),
+  custom_entrypoint    = "websecure"
+  custom_cert_resolver = "myresolver"
+  service_name         = "web"
+  forward_auth_enabled = true`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("dokploy_domain.test", "port", "8080"),
 					resource.TestCheckResourceAttr("dokploy_domain.test", "https", "true"),
 					resource.TestCheckResourceAttr("dokploy_domain.test", "certificate_type", "letsencrypt"),
 					resource.TestCheckResourceAttr("dokploy_domain.test", "custom_entrypoint", "websecure"),
+					resource.TestCheckResourceAttr("dokploy_domain.test", "custom_cert_resolver", "myresolver"),
+					resource.TestCheckResourceAttr("dokploy_domain.test", "service_name", "web"),
+					resource.TestCheckResourceAttr("dokploy_domain.test", "forward_auth_enabled", "true"),
 				),
 			},
 			{
 				// Spec §5.6 / dialect B: domain.update KEEPS any key it does
 				// not receive, so dropping these from config only converges if
-				// Update sends every field on every call. Without that, the
-				// server would still report custom_entrypoint = "websecure"
-				// and the plan would never be empty.
+				// Update sends every field on every call. All ten attributes
+				// the previous step set non-default are checked here, both
+				// through Terraform state and via a direct API read, so a
+				// regression that dropped a single field from expandUpdate
+				// (e.g. ForwardAuthEnabled) would leave the server reporting
+				// its last-sent value forever and be caught — not just the
+				// four this step used to check.
 				Config: config(""),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
+					// Plain Optional, no schema default: revert to null.
 					resource.TestCheckNoResourceAttr("dokploy_domain.test", "custom_entrypoint"),
+					resource.TestCheckNoResourceAttr("dokploy_domain.test", "custom_cert_resolver"),
+					resource.TestCheckNoResourceAttr("dokploy_domain.test", "service_name"),
+					// Optional+Computed with a schema Default: revert to that
+					// default, never to null.
 					resource.TestCheckResourceAttr("dokploy_domain.test", "port", "3000"),
+					resource.TestCheckResourceAttr("dokploy_domain.test", "https", "false"),
+					resource.TestCheckResourceAttr("dokploy_domain.test", "path", "/"),
+					resource.TestCheckResourceAttr("dokploy_domain.test", "internal_path", "/"),
+					resource.TestCheckResourceAttr("dokploy_domain.test", "strip_path", "false"),
 					resource.TestCheckResourceAttr("dokploy_domain.test", "certificate_type", "none"),
+					resource.TestCheckResourceAttr("dokploy_domain.test", "forward_auth_enabled", "false"),
 					func(s *terraform.State) error {
 						d, err := fetchDomain(s, "dokploy_domain.test")
 						if err != nil {
@@ -140,8 +166,16 @@ resource "dokploy_domain" "test" {
 						if d.CustomEntrypoint != nil {
 							return fmt.Errorf("server still stores custom_entrypoint %q after it was removed from config", *d.CustomEntrypoint)
 						}
-						if d.Port != 3000 || d.CertificateType != "none" {
-							return fmt.Errorf("server did not revert to defaults: port=%d certificateType=%q", d.Port, d.CertificateType)
+						if d.CustomCertResolver != nil {
+							return fmt.Errorf("server still stores custom_cert_resolver %q after it was removed from config", *d.CustomCertResolver)
+						}
+						if d.ServiceName != nil {
+							return fmt.Errorf("server still stores service_name %q after it was removed from config", *d.ServiceName)
+						}
+						if d.Port != 3000 || d.CertificateType != "none" || d.HTTPS || d.Path != "/" || d.InternalPath != "/" || d.StripPath || d.ForwardAuthEnabled {
+							return fmt.Errorf(
+								"server did not revert to defaults: port=%d https=%t path=%q internalPath=%q stripPath=%t certificateType=%q forwardAuthEnabled=%t",
+								d.Port, d.HTTPS, d.Path, d.InternalPath, d.StripPath, d.CertificateType, d.ForwardAuthEnabled)
 						}
 						return nil
 					},
