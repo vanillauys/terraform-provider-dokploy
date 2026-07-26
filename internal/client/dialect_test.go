@@ -23,6 +23,12 @@ var mustAlwaysSend = []struct {
 	{UpdateProjectRequest{}, []string{"description"}},
 	{UpdatePostgresRequest{}, []string{"description"}},
 	{UpdateApplicationRequest{}, []string{"description"}},
+	{UpdateDomainRequest{}, []string{
+		"host", "path", "internalPath", "port", "https", "stripPath",
+		"certificateType", "customCertResolver", "customEntrypoint",
+		"serviceName", "forwardAuthEnabled", "domainType",
+		"applicationId", "composeId",
+	}},
 }
 
 func TestRequestStructsNeverOmitMustSendFields(t *testing.T) {
