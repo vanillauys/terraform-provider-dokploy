@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -89,6 +90,35 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 	}
 	if len(got.Postgres) != 1 || got.Postgres[0].ID != "pg1" {
 		t.Errorf("postgres = %+v, want one entry with id pg1", got.Postgres)
+	}
+}
+
+// Dokploy allows two services of the same kind in one environment to share a
+// name, so a name lookup must refuse an ambiguous match rather than silently
+// taking the first.
+func TestFindServiceByName(t *testing.T) {
+	refs := []ServiceRef{
+		{ID: "a1", Name: "frontend"},
+		{ID: "a2", Name: "shared"},
+		{ID: "a3", Name: "shared"},
+	}
+
+	got, err := FindServiceByName(refs, "frontend", "application")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "a1" {
+		t.Errorf("id = %q, want a1", got)
+	}
+
+	if _, err := FindServiceByName(refs, "shared", "application"); err == nil {
+		t.Error("two applications named shared must be an error, not a silent pick")
+	} else if !strings.Contains(err.Error(), "multiple") {
+		t.Errorf("error %q should mention multiple matches", err)
+	}
+
+	if _, err := FindServiceByName(refs, "absent", "application"); err == nil {
+		t.Error("no match must be an error")
 	}
 }
 
