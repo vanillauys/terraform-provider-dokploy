@@ -60,8 +60,22 @@ func (d *environmentDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				Description: "Exact environment name, searched within `project_id`. Errors when zero or multiple environments match — Dokploy does not enforce unique names.",
 			},
 			"description": schema.StringAttribute{Computed: true, Description: "Free-form description."},
-			"env":         schema.StringAttribute{Computed: true, Description: "Environment-level variables shared by every service in this environment."},
-			"is_default":  schema.BoolAttribute{Computed: true, Description: "True for the `production` environment Dokploy creates with each project."},
+			// Marked sensitive, unlike the resource's `env`. On the resource
+			// the value is authored by the practitioner, who can decide what
+			// it holds; here it is whatever anyone put in the Dokploy UI —
+			// commonly database URLs and API tokens — and a data-source
+			// consumer has no way to mark it sensitive themselves. Sensitive
+			// keeps it out of plan output; note that Terraform state is still
+			// unencrypted, hence the wording below. The sibling
+			// `dokploy_postgres` data source makes the same call more bluntly
+			// by not exposing the database password at all.
+			"env": schema.StringAttribute{
+				Computed:  true,
+				Sensitive: true,
+				Description: "Environment-level variables shared by every service in this environment, exactly as stored in Dokploy. " +
+					"Marked sensitive because it typically holds credentials that this provider did not author; it is redacted in plan output but, like all Terraform data, stored in plain text in state.",
+			},
+			"is_default": schema.BoolAttribute{Computed: true, Description: "True for the `production` environment Dokploy creates with each project."},
 		},
 	}
 }

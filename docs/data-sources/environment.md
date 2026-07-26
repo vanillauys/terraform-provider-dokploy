@@ -46,5 +46,5 @@ resource "dokploy_postgres" "db" {
 ### Read-Only
 
 - `description` (String) Free-form description.
-- `env` (String) Environment-level variables shared by every service in this environment.
+- `env` (String, Sensitive) Environment-level variables shared by every service in this environment, exactly as stored in Dokploy. Marked sensitive because it typically holds credentials that this provider did not author; it is redacted in plan output but, like all Terraform data, stored in plain text in state.
 - `is_default` (Boolean) True for the `production` environment Dokploy creates with each project.
