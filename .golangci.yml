@@ -1,0 +1,9 @@
+version: "2"
+
+# The linter's defaults cap identical findings at 3 (`max-same-issues`), which
+# has hidden real repeat findings in this repo before — a run reporting 8
+# concealed 8 more of the same kind. Zero means unlimited: one run shows
+# everything, locally and in CI.
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
