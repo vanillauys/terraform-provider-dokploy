@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 )
 
@@ -94,4 +95,66 @@ func (c *Client) ListEnvironments(ctx context.Context, projectID string) ([]Envi
 		es[i].ProjectID = projectID
 	}
 	return es, nil
+}
+
+// ServiceRef is the minimum needed to resolve a service name to an id.
+type ServiceRef struct {
+	ID   string
+	Name string
+}
+
+// EnvironmentServices lists the services in an environment, for name-based
+// data-source lookup.
+//
+// environment.one embeds every service collection, so one call resolves a
+// name for any service kind. Only the two kinds this provider ships are
+// decoded; the rest (mysql, mariadb, mongo, redis, libsql, compose) are
+// ignored until they have resources.
+type EnvironmentServices struct {
+	Applications []ServiceRef
+	Postgres     []ServiceRef
+}
+
+func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) (*EnvironmentServices, error) {
+	var raw struct {
+		Applications []struct {
+			ApplicationID string `json:"applicationId"`
+			Name          string `json:"name"`
+		} `json:"applications"`
+		Postgres []struct {
+			PostgresID string `json:"postgresId"`
+			Name       string `json:"name"`
+		} `json:"postgres"`
+	}
+	if err := c.Get(ctx, "/environment.one", url.Values{"environmentId": {environmentID}}, &raw); err != nil {
+		return nil, err
+	}
+	out := &EnvironmentServices{}
+	for _, a := range raw.Applications {
+		out.Applications = append(out.Applications, ServiceRef{ID: a.ApplicationID, Name: a.Name})
+	}
+	for _, p := range raw.Postgres {
+		out.Postgres = append(out.Postgres, ServiceRef{ID: p.PostgresID, Name: p.Name})
+	}
+	return out, nil
+}
+
+// FindServiceByName resolves an exact service name to its id. It errors on
+// multiple matches rather than picking one: Dokploy does not enforce unique
+// service names within an environment.
+func FindServiceByName(refs []ServiceRef, name, kind string) (string, error) {
+	var found string
+	for _, r := range refs {
+		if r.Name != name {
+			continue
+		}
+		if found != "" {
+			return "", fmt.Errorf("multiple %s services named %q in this environment; look it up by id instead", kind, name)
+		}
+		found = r.ID
+	}
+	if found == "" {
+		return "", fmt.Errorf("no %s service named %q in this environment", kind, name)
+	}
+	return found, nil
 }

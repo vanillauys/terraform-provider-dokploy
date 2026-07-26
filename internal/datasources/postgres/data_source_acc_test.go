@@ -42,10 +42,18 @@ resource "dokploy_postgres" "test" {
 
 data "dokploy_postgres" "test" {
   id = dokploy_postgres.test.id
+}
+
+data "dokploy_postgres" "by_name" {
+  environment_id = dokploy_project.test.environments[0].id
+  name           = dokploy_postgres.test.name
 }`, name+"-proj", name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.dokploy_postgres.test", "database_name", "acc"),
 					resource.TestCheckResourceAttrSet("data.dokploy_postgres.test", "app_name"),
+					resource.TestCheckResourceAttrPair(
+						"data.dokploy_postgres.by_name", "id",
+						"dokploy_postgres.test", "id"),
 				),
 			},
 		},

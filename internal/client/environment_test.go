@@ -63,6 +63,35 @@ func TestGetEnvironmentDecodesNullDescriptionAsEmptyString(t *testing.T) {
 	}
 }
 
+func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// environment.one embeds each service collection.
+		_, _ = w.Write([]byte(`{
+			"environmentId":"e1","name":"production","projectId":"p1",
+			"description":null,"env":"","isDefault":true,
+			"applications":[{"applicationId":"a1","name":"frontend"},
+			                {"applicationId":"a2","name":"api"}],
+			"postgres":[{"postgresId":"pg1","name":"db"}]
+		}`))
+	}))
+	defer srv.Close()
+
+	c, _ := New(srv.URL, "k", false, "test")
+	got, err := c.EnvironmentServices(context.Background(), "e1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Applications) != 2 {
+		t.Fatalf("got %d applications, want 2", len(got.Applications))
+	}
+	if got.Applications[0].ID != "a1" || got.Applications[0].Name != "frontend" {
+		t.Errorf("applications[0] = %+v, want {a1 frontend}", got.Applications[0])
+	}
+	if len(got.Postgres) != 1 || got.Postgres[0].ID != "pg1" {
+		t.Errorf("postgres = %+v, want one entry with id pg1", got.Postgres)
+	}
+}
+
 func TestListEnvironmentsBackfillsProjectID(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// environment.byProjectId omits BOTH projectId and env from every row

@@ -40,10 +40,18 @@ resource "dokploy_application" "test" {
 
 data "dokploy_application" "test" {
   id = dokploy_application.test.id
+}
+
+data "dokploy_application" "by_name" {
+  environment_id = dokploy_project.test.environments[0].id
+  name           = dokploy_application.test.name
 }`, name+"-proj", name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "name", name),
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "source_type", "docker"),
+					resource.TestCheckResourceAttrPair(
+						"data.dokploy_application.by_name", "id",
+						"dokploy_application.test", "id"),
 				),
 			},
 		},

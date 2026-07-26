@@ -3,8 +3,10 @@ package application
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
@@ -12,8 +14,9 @@ import (
 )
 
 var (
-	_ datasource.DataSource              = (*applicationDataSource)(nil)
-	_ datasource.DataSourceWithConfigure = (*applicationDataSource)(nil)
+	_ datasource.DataSource                     = (*applicationDataSource)(nil)
+	_ datasource.DataSourceWithConfigure        = (*applicationDataSource)(nil)
+	_ datasource.DataSourceWithConfigValidators = (*applicationDataSource)(nil)
 )
 
 type applicationDataSource struct {
@@ -40,16 +43,28 @@ func (d *applicationDataSource) Metadata(_ context.Context, req datasource.Metad
 
 func (d *applicationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Look up a Dokploy application by id.",
+		Description: "Look up a Dokploy application by id, or by name within an environment.",
 		Attributes: map[string]schema.Attribute{
-			"id":             schema.StringAttribute{Required: true, Description: "Application id."},
-			"name":           schema.StringAttribute{Computed: true, Description: "Display name."},
-			"app_name":       schema.StringAttribute{Computed: true, Description: "Dokploy-internal app name."},
-			"description":    schema.StringAttribute{Computed: true, Description: "Description."},
-			"environment_id": schema.StringAttribute{Computed: true, Description: "Environment id."},
-			"source_type":    schema.StringAttribute{Computed: true, Description: "Configured source type (github, git, docker)."},
-			"status":         schema.StringAttribute{Computed: true, Description: "Application status."},
-			"created_at":     schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
+			"id": schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "Application id. Set either this or both `environment_id` and `name`.",
+			},
+			"name": schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "Exact application name, searched within `environment_id`. Errors when zero or multiple applications match.",
+			},
+			"app_name":    schema.StringAttribute{Computed: true, Description: "Dokploy-internal app name."},
+			"description": schema.StringAttribute{Computed: true, Description: "Description."},
+			"environment_id": schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "Id of the environment to search. Required with `name`.",
+			},
+			"source_type": schema.StringAttribute{Computed: true, Description: "Configured source type (github, git, docker)."},
+			"status":      schema.StringAttribute{Computed: true, Description: "Application status."},
+			"created_at":  schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
 			// Marked sensitive, unlike the resource's `env`. On the resource
 			// the value is authored by the practitioner, who can decide what
 			// it holds; here it is whatever anyone put in the Dokploy UI —
@@ -69,6 +84,13 @@ func (d *applicationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 	}
 }
 
+func (d *applicationDataSource) ConfigValidators(_ context.Context) []datasource.ConfigValidator {
+	return []datasource.ConfigValidator{
+		datasourcevalidator.ExactlyOneOf(path.MatchRoot("id"), path.MatchRoot("name")),
+		datasourcevalidator.RequiredTogether(path.MatchRoot("environment_id"), path.MatchRoot("name")),
+	}
+}
+
 func (d *applicationDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	c, diags := tfutil.ClientFromProviderData(req.ProviderData)
 	resp.Diagnostics.Append(diags...)
@@ -83,11 +105,27 @@ func (d *applicationDataSource) Read(ctx context.Context, req datasource.ReadReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	app, err := d.client.GetApplication(ctx, config.ID.ValueString())
+
+	id := config.ID.ValueString()
+	if config.ID.IsNull() {
+		services, err := d.client.EnvironmentServices(ctx, config.EnvironmentID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Listing applications", err.Error())
+			return
+		}
+		id, err = client.FindServiceByName(services.Applications, config.Name.ValueString(), "application")
+		if err != nil {
+			resp.Diagnostics.AddError("Looking up application by name", err.Error())
+			return
+		}
+	}
+
+	app, err := d.client.GetApplication(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Reading application", err.Error())
 		return
 	}
+	config.ID = types.StringValue(app.ApplicationID)
 	config.Name = types.StringValue(app.Name)
 	config.AppName = types.StringValue(app.AppName)
 	config.Description = types.StringPointerValue(app.Description)
