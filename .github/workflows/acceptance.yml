@@ -13,17 +13,22 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
+      # Every piped step below sets pipefail explicitly. GitHub's default shell
+      # is `bash -e`, which inspects only the LAST command in a pipeline: a
+      # failing curl or bootstrap.sh was reported as a green step, and the job
+      # went on to run the whole suite with no credentials — surfacing as nine
+      # baffling 0.00s test failures instead of "bootstrap failed" (observed
+      # for real in nightly run 30190067403).
       - name: Install Dokploy on the runner
-        run: curl -sSL https://dokploy.com/install.sh | sudo bash
-      - name: Wait for Dokploy
         run: |
-          for _ in $(seq 1 120); do
-            curl -fsS http://localhost:3000 >/dev/null 2>&1 && exit 0
-            sleep 2
-          done
-          echo "dokploy never became reachable" >&2
-          exit 1
+          set -euo pipefail
+          curl -sSL https://dokploy.com/install.sh | sudo bash
+      # No separate "wait for Dokploy" step: `GET /` answering is not a
+      # readiness signal for the auth stack, which is what we actually need.
+      # bootstrap.sh polls that condition itself.
       - name: Bootstrap admin and API key
-        run: ./acceptance/bootstrap.sh | sed 's/^export //' >> "$GITHUB_ENV"
+        run: |
+          set -euo pipefail
+          ./acceptance/bootstrap.sh | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Run acceptance tests
         run: make testacc

@@ -29,21 +29,61 @@ PASSWORD="${DOKPLOY_ACC_PASSWORD:-acc-Password-1!}"
 COOKIES="$(mktemp)"
 trap 'rm -f "$COOKIES"' EXIT
 
-# 1. Register the admin account (idempotent: a 4xx here means it exists —
-#    confirmed as {"code":"USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"}).
-curl -sS -c "$COOKIES" -X POST "${ENDPOINT}/api/auth/sign-up/email" \
-  -H 'Content-Type: application/json' \
-  -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\",\"name\":\"acceptance\"}" >/dev/null 2>&1 || true
+BODY="$(mktemp)"
+trap 'rm -f "$COOKIES" "$BODY"' EXIT
 
-# 2. Sign in to get a session cookie (works whether step 1 just created the
-#    account or it already existed from a prior bootstrap run).
-curl -fsS -c "$COOKIES" -b "$COOKIES" -X POST "${ENDPOINT}/api/auth/sign-in/email" \
-  -H 'Content-Type: application/json' \
-  -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}" >/dev/null
+# Readiness is polled, not assumed. A freshly installed instance serves `GET /`
+# with 200 before its auth stack will accept a sign-in: nightly run
+# 30190067403 got a 403 from the auth endpoints 221ms after the workflow's port
+# check passed on its FIRST attempt, while the identical script against the
+# identical image digest (dokploy/dokploy:v0.29.13) succeeds locally and on a
+# CI re-run. The trigger is intermittent and not observable from outside the
+# instance, so rather than waiting on a proxy (a port that answers) we poll the
+# condition we actually require — a sign-in that returns 2xx — and on timeout
+# report which call failed with which status, so a recurrence diagnoses itself.
+READY_TIMEOUT="${DOKPLOY_ACC_READY_TIMEOUT:-180}"
+READY_INTERVAL="${DOKPLOY_ACC_READY_INTERVAL:-3}"
+
+# status METHOD URL [curl args...] — prints the HTTP status and writes the body
+# to $BODY. Never prints the body: these responses carry session tokens.
+status() {
+  local method="$1" url="$2"
+  shift 2
+  curl -sS -o "$BODY" -w '%{http_code}' -X "$method" "$url" "$@" 2>/dev/null || printf '000'
+}
+
+# 1+2. Register the admin account and sign in, retrying until the session is
+#      real. Sign-up is attempted on every pass and its status deliberately
+#      ignored: on a fresh instance it is what creates the account, and on a
+#      re-run it returns {"code":"USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"}
+#      forever. Sign-in returning 2xx is the only success condition that
+#      distinguishes the two, so that is what is polled.
+DEADLINE=$(( $(date +%s) + READY_TIMEOUT ))
+SIGNUP_STATUS=000
+SIGNIN_STATUS=000
+while :; do
+  SIGNUP_STATUS="$(status POST "${ENDPOINT}/api/auth/sign-up/email" \
+    -c "$COOKIES" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\",\"name\":\"acceptance\"}")"
+  SIGNIN_STATUS="$(status POST "${ENDPOINT}/api/auth/sign-in/email" \
+    -c "$COOKIES" -b "$COOKIES" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}")"
+  case "$SIGNIN_STATUS" in 2??) break ;; esac
+  if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+    echo "bootstrap: the auth stack at ${ENDPOINT} never accepted a sign-in within ${READY_TIMEOUT}s (last sign-up HTTP ${SIGNUP_STATUS}, last sign-in HTTP ${SIGNIN_STATUS}). The instance is serving HTTP but refusing authentication; response bodies are withheld because they carry session tokens." >&2
+    exit 1
+  fi
+  sleep "$READY_INTERVAL"
+done
 
 # 3. Resolve the organization id: sign-up auto-creates one ("My
 #    Organization") and user.createApiKey requires it explicitly.
-ORG_RESPONSE="$(curl -fsS -b "$COOKIES" "${ENDPOINT}/api/trpc/organization.all")"
+ORG_STATUS="$(status GET "${ENDPOINT}/api/trpc/organization.all" -b "$COOKIES")"
+case "$ORG_STATUS" in
+  2??) ;;
+  *) echo "bootstrap: organization.all returned HTTP ${ORG_STATUS} with a session that had just signed in successfully" >&2; exit 1 ;;
+esac
+ORG_RESPONSE="$(cat "$BODY")"
 ORG_ID="$(printf '%s' "$ORG_RESPONSE" | grep -oE '"organizationId":"[^"]*"' | head -1 | cut -d'"' -f4)"
 if [ -z "$ORG_ID" ]; then
   # Never print the raw response: even though org ids aren't secrets, the
@@ -69,9 +109,14 @@ fi
 #    auth.createApiKey server-side (bypassing the plugin's client-request
 #    guard that would otherwise reject caller-supplied rate-limit fields).
 KEY_NAME="acceptance-$(date +%s)-$$"
-RESPONSE="$(curl -fsS -b "$COOKIES" -X POST "${ENDPOINT}/api/trpc/user.createApiKey" \
-  -H 'Content-Type: application/json' \
+KEY_STATUS="$(status POST "${ENDPOINT}/api/trpc/user.createApiKey" \
+  -b "$COOKIES" -H 'Content-Type: application/json' \
   -d "{\"json\":{\"name\":\"${KEY_NAME}\",\"metadata\":{\"organizationId\":\"${ORG_ID}\"},\"rateLimitEnabled\":false}}")"
+case "$KEY_STATUS" in
+  2??) ;;
+  *) echo "bootstrap: user.createApiKey returned HTTP ${KEY_STATUS} (response body withheld, it may contain the real key)" >&2; exit 1 ;;
+esac
+RESPONSE="$(cat "$BODY")"
 API_KEY="$(printf '%s' "$RESPONSE" | grep -oE '"key":"[^"]*"' | head -1 | cut -d'"' -f4)"
 
 if [ -z "$API_KEY" ]; then
