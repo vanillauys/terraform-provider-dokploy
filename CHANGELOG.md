@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-26
+
+### Added
+
+- `dokploy_environment` resource and data source. Environments sit between a
+  project and its services; wave 0 exposed them only as a read-only list on
+  `dokploy_project`.
+- `dokploy_domain` resource, for attaching hostnames to applications and
+  compose services.
+- Name-based lookup on the `dokploy_application` and `dokploy_postgres` data
+  sources, via `environment_id` + `name`.
+- `dogfood/`, a read-only harness that checks the provider can round-trip a
+  live stack with an empty plan.
+
+### Notes
+
+- Dokploy refuses to delete a project's default `production` environment.
+  Destroying a `dokploy_environment` with `is_default = true` fails with an
+  explanatory error; use `terraform state rm`, or destroy the whole project.
+- `dokploy_environment` has no `created_at`. Dokploy's read endpoint does not
+  return one, though its create and update endpoints do.
+- `dokploy_domain.middlewares` is read-only until the provider gains
+  middleware resources.
+- Environment names and domain hosts are not unique in Dokploy. Any lookup by
+  name errors on multiple matches rather than picking one.
+
 ## [0.1.0] - 2026-07-25
 
 ### Added
