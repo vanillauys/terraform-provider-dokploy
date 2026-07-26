@@ -29,8 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   return one, though its create and update endpoints do.
 - `dokploy_domain.middlewares` is read-only until the provider gains
   middleware resources.
-- Environment names and domain hosts are not unique in Dokploy. Any lookup by
-  name errors on multiple matches rather than picking one.
+- Environment, application and postgres names are not unique in Dokploy. The
+  data sources that look them up by name error on multiple matches rather
+  than picking one. Domain hosts are not unique either (the same host may be
+  attached to more than one domain), but there is no `dokploy_domain` data
+  source, so nothing looks a domain up by host.
 
 ## [0.1.0] - 2026-07-25
 

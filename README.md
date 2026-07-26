@@ -58,8 +58,11 @@ newer versions are exercised as they ship; older ones are untested.
 - **The default `production` environment of a project cannot be deleted**
   through the API, so `terraform destroy` on an imported one fails by design.
   Remove it from state instead.
-- **Environment names and domain hostnames are not unique in Dokploy.** Data
-  sources that look up by name error when more than one record matches.
+- **Environment, application and postgres names are not unique in Dokploy.**
+  The data sources that look them up by name error when more than one record
+  matches. Domain hosts are not unique either (the same host may be attached
+  to more than one domain); there is no `dokploy_domain` data source, so
+  nothing looks domains up by host.
 
 ## Development
 
