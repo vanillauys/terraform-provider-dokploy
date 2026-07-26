@@ -1,0 +1,36 @@
+name: acceptance-suite
+# The shared acceptance job, called by acceptance.yml (pull requests) and
+# nightly.yml (cron + manual). It exists so a fix to the suite cannot land in
+# one caller and silently miss the other — which has happened before.
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      # Every piped step below sets pipefail explicitly. GitHub's default shell
+      # is `bash -e`, which inspects only the LAST command in a pipeline: a
+      # failing curl or bootstrap.sh was reported as a green step, and the job
+      # went on to run the whole suite with no credentials — surfacing as nine
+      # baffling 0.00s test failures instead of "bootstrap failed" (observed
+      # for real in nightly run 30190067403).
+      - name: Install Dokploy on the runner
+        run: |
+          set -euo pipefail
+          curl -sSL https://dokploy.com/install.sh | sudo bash
+      # No separate "wait for Dokploy" step: `GET /` answering is not a
+      # readiness signal for the auth stack, which is what we actually need.
+      # bootstrap.sh polls that condition itself.
+      - name: Bootstrap admin and API key
+        run: |
+          set -euo pipefail
+          ./acceptance/bootstrap.sh | sed 's/^export //' >> "$GITHUB_ENV"
+      - name: Run acceptance tests
+        run: make testacc
