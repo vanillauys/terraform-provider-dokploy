@@ -8,7 +8,6 @@ Output goes to stdout as HCL.
 import json
 import os
 import re
-import sys
 import urllib.parse
 import urllib.request
 
@@ -37,22 +36,32 @@ def emit(resource_type, name, ident):
 
 
 def main():
+    # Every label includes the resource's own ID. Names alone are not unique:
+    # two environments in one project can share a name, and two domains on
+    # one application can share a host (live-verified, see
+    # .claude/skills/dokploy-api-quirks). A name-only label can therefore
+    # collide across two distinct resources, which Terraform rejects as a
+    # duplicate `to` address at the very first plan. The ID is the API's own
+    # primary key, so appending it guarantees a unique label regardless of
+    # what collides on the name/host alone. Applied to every resource type
+    # here, not just the two documented collision cases, to keep the naming
+    # scheme uniform.
     for project in get("project.all"):
         pid, pname = project["projectId"], project["name"]
-        emit("dokploy_project", label(pname), pid)
+        emit("dokploy_project", label(pname, pid), pid)
 
         for env in get("environment.byProjectId", projectId=pid):
             eid = env["environmentId"]
-            emit("dokploy_environment", label(pname, env["name"]), eid)
+            emit("dokploy_environment", label(pname, env["name"], eid), eid)
 
             full = get("environment.one", environmentId=eid)
             for app in full.get("applications") or []:
                 aid = app["applicationId"]
-                emit("dokploy_application", label(pname, app["name"]), aid)
+                emit("dokploy_application", label(pname, app["name"], aid), aid)
                 for dom in get("domain.byApplicationId", applicationId=aid) or []:
-                    emit("dokploy_domain", label(pname, dom["host"]), dom["domainId"])
+                    emit("dokploy_domain", label(pname, dom["host"], dom["domainId"]), dom["domainId"])
             for pg in full.get("postgres") or []:
-                emit("dokploy_postgres", label(pname, pg["name"]), pg["postgresId"])
+                emit("dokploy_postgres", label(pname, pg["name"], pg["postgresId"]), pg["postgresId"])
 
 
 if __name__ == "__main__":
