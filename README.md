@@ -57,8 +57,12 @@ newer versions are exercised as they ship; older ones are untested.
 
 ## Development
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full picture (toolchain notes,
+git hooks, test layout, engineering contract). Quick reference:
+
 - `make test` — unit tests
 - `./acceptance/up.sh && eval "$(./acceptance/bootstrap.sh)" && make testacc` — acceptance tests against a disposable Dokploy (never point these at a real instance)
 - `make docs` — regenerate registry docs
+- `make hooks` — enable the gitleaks pre-commit secret scan (automatic on first `make build`)
 
 Wave-0 scope and the full design live in the project's design spec.
