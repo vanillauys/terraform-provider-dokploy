@@ -15,6 +15,7 @@ import (
 	dspostgres "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/postgres"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/postgres"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
@@ -125,6 +126,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		environment.NewResource,
 		postgres.NewResource,
 		application.NewResource,
+		domain.NewResource,
 	}
 }
 
