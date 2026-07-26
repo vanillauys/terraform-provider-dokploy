@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# Version-controlled pre-commit hook: scans staged changes for secrets with
+# gitleaks. Enabled via `git config core.hooksPath .githooks` — the `make
+# hooks` target wires this (and runs automatically on first `make build`).
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  if [ -f /etc/NIXOS ]; then
+    install_hint='NixOS: add pkgs.gitleaks to the system profile, or ad-hoc: nix-shell -p gitleaks'
+  elif [ "$(uname -s)" = "Darwin" ]; then
+    install_hint='macOS: brew install gitleaks'
+  elif command -v apt-get >/dev/null 2>&1; then
+    install_hint='Debian/Ubuntu: grab the binary from https://github.com/gitleaks/gitleaks/releases, or: go install github.com/gitleaks/gitleaks/v8@latest'
+  else
+    install_hint='See https://github.com/gitleaks/gitleaks#installing'
+  fi
+  {
+    echo '⚠ gitleaks is not installed — skipping the staged secret scan.'
+    echo '  Install it to enable local protection:'
+    echo "    ${install_hint}"
+  } >&2
+  exit 0
+fi
+
+if ! gitleaks git --staged --redact --no-banner; then
+  cat >&2 <<'EOF'
+
+✖ gitleaks found a potential secret in your staged changes (see above).
+  • Remove it and load the value from an env var / 1Password instead.
+  • Already rotated / genuine false positive? Add a `gitleaks:allow` comment on
+    the offending line, or extend the allowlist in .gitleaks.toml.
+  • To bypass in an emergency (discouraged): git commit --no-verify
+EOF
+  exit 1
+fi

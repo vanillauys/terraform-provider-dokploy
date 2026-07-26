@@ -1,0 +1,21 @@
+# gitleaks configuration for terraform-provider-dokploy
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+#
+# Used by the .githooks/pre-commit hook (scans staged changes). This repo has
+# already rotated one GPG key after a leak — keep this strict.
+
+title = "terraform-provider-dokploy"
+
+[extend]
+# Start from the full set of built-in gitleaks rules, then layer our allowlist on top.
+useDefault = true
+
+[allowlist]
+description = "Local agent config and generated artefacts"
+# Paths are regexes matched against the repo-relative file path.
+paths = [
+  # Local-only agent skills/notes (kept out of git via .git/info/exclude, never pushed)
+  '''(^|/)\.claude/''',
+  # GoReleaser build output
+  '''(^|/)dist/''',
+]
