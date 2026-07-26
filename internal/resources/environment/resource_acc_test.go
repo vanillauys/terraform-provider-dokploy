@@ -131,15 +131,19 @@ resource "dokploy_environment" "test" {
 	})
 }
 
-// The auto-created production environment must import cleanly and report
-// is_default = true. That flag is what makes Delete refuse.
+// TestAccEnvironment_defaultIsFlagged confirms that the environment Dokploy
+// auto-creates with every project comes back with is_default = true. That
+// flag is the only input the Delete guard has to work with, so this is
+// checking the guard's precondition against a live server rather than the
+// guard itself.
 //
-// There is deliberately NO acceptance test that destroys a default
-// environment. The refusal is real and permanent, so resource.Test's own
-// end-of-test destroy would hit it and fail the run no matter how the step
-// itself is written. The refusal path is covered by
-// TestDeleteBlockedReason in model_test.go instead.
-func TestAccEnvironment_importDefault(t *testing.T) {
+// It deliberately does not import or destroy that environment. Either one
+// would put it into this test's state, and resource.Test always runs its
+// own destroy after the last step — which would hit Dokploy's permanent
+// refusal to delete a default environment and fail the run no matter how
+// the step itself is written. That refusal path is covered separately, as a
+// plain unit test, by TestDeleteBlockedReason in model_test.go.
+func TestAccEnvironment_defaultIsFlagged(t *testing.T) {
 	projectName := acctest.RandomName("proj")
 	config := fmt.Sprintf(`
 resource "dokploy_project" "test" {
