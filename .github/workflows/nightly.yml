@@ -24,13 +24,9 @@ jobs:
         run: |
           set -euo pipefail
           curl -sSL https://dokploy.com/install.sh | sudo bash
-      - name: Wait for Dokploy
-        run: |
-          for _ in $(seq 1 120); do
-            curl -fsS http://localhost:3000 >/dev/null 2>&1 && exit 0
-            sleep 2
-          done
-          exit 1
+      # No separate "wait for Dokploy" step: `GET /` answering is not a
+      # readiness signal for the auth stack, which is what we actually need.
+      # bootstrap.sh polls that condition itself.
       - name: Bootstrap admin and API key
         run: |
           set -euo pipefail
