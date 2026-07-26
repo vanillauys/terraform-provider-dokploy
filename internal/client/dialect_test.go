@@ -10,12 +10,15 @@ import (
 // reach the server on every call.
 //
 // See doc.go for why. In short: for dialect A an absent key is an HTTP 400,
-// and for dialect B an absent key silently keeps the stored value. Neither
-// ever means "clear this". So `omitempty` on any field listed here makes the
-// corresponding Terraform attribute impossible to set back to null, which
-// surfaces as a plan that shows the same diff forever.
+// for dialect B an absent key silently keeps the stored value, and for
+// dialect C an absent key ALSO silently keeps the stored value (only ""
+// clears). None of the three ever means "clear this" for an absent key. So
+// `omitempty` on any field listed here makes the corresponding Terraform
+// attribute impossible to set back to null, which surfaces as a plan that
+// shows the same diff forever.
 //
-// When you add a request struct for a dialect A or B endpoint, add it here.
+// When you add a request struct for a dialect A, B, or C endpoint, add it
+// here.
 var mustAlwaysSend = []struct {
 	value  any
 	fields []string
@@ -29,6 +32,8 @@ var mustAlwaysSend = []struct {
 		"serviceName", "forwardAuthEnabled", "domainType",
 		"applicationId", "composeId",
 	}},
+	{UpdateEnvironmentRequest{}, []string{"name", "description", "env"}},
+	{CreateEnvironmentRequest{}, []string{"description"}},
 }
 
 func TestRequestStructsNeverOmitMustSendFields(t *testing.T) {
