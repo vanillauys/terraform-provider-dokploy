@@ -270,7 +270,7 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 	setComputed(r.kind, current, &plan)
 
-	if plan.DeployOnChange.ValueBool() && deployNeeded(plan, state) {
+	if plan.DeployOnChange.ValueBool() && deployNeeded(r.kind, plan, state) {
 		if err := r.deployAndWait(ctx, &plan); err != nil {
 			resp.Diagnostics.Append(setModel(ctx, &resp.State, plan)...)
 			resp.Diagnostics.AddError(fmt.Sprintf("Deploying %s", r.kind.Name), err.Error())

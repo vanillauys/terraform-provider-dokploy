@@ -7,8 +7,8 @@ description: |-
 # Dokploy Provider
 
 Manage [Dokploy](https://dokploy.com) resources with Terraform: projects,
-applications (github/git/docker sources), and PostgreSQL databases, with
-deploy-on-change semantics and full import support.
+applications (github/git/docker sources), and PostgreSQL and MySQL databases,
+with deploy-on-change semantics and full import support.
 
 Works with Terraform >= 1.5 and OpenTofu. Developed and tested against
 **Dokploy v0.29.13**; newer releases are exercised by the acceptance suite as

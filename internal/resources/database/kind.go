@@ -64,6 +64,31 @@ type CredentialAttr struct {
 	// job (Tasks 5-7); the generic engine only needs to know this
 	// attribute is settable and refreshable, which Computed expresses.
 	Computed bool
+	// DeployTrigger marks a credential attribute whose value the running
+	// container does not pick up from a plain Update call alone — only a
+	// subsequent Deploy actually applies it. Added for wave-2 task 5 after
+	// live evidence (v0.29.13, 2026-07-27) that this is a real, not
+	// hypothetical, split for mysql's databaseRootPassword: calling
+	// mysql.update with a new value changes the STORED record
+	// (mysql.one reports the new password immediately) but leaves the
+	// live docker service's MYSQL_ROOT_PASSWORD environment variable
+	// completely unchanged (verified with `docker service inspect` against
+	// the acceptance rig, before and after the update, with no deploy
+	// call in between) — only a following mysql.deploy rewrites the
+	// service spec's env and the value takes effect. This mirrors exactly
+	// why database_password (in the uniform set) is already a deploy
+	// trigger: a credential the server stores separately from the
+	// container's actual runtime configuration needs an explicit deploy
+	// to converge, or Terraform would report success while the real
+	// database keeps its old credential indefinitely - a silent
+	// desired-vs-actual drift, not merely a cosmetic diff. RequiresReplace
+	// attributes never reach Update at all, so this only has an effect on
+	// Computed attributes in practice, but it is declared independently of
+	// Computed (rather than implied by it) since deploy-propagation is a
+	// distinct, separately-verifiable property of one specific field, not
+	// every Computed credential automatically shares it. See
+	// deployNeeded's doc comment in model.go for how this is consumed.
+	DeployTrigger bool
 }
 
 // schemaAttribute builds this credential attribute's Terraform schema

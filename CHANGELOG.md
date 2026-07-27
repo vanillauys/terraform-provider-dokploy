@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `dokploy_mysql` resource and data source, the first of wave 2's additional
+  database engines. Diverges from `dokploy_postgres` in one field:
+  `database_root_password` is server-generated when left unset, settable, and
+  clearable, but changing it (like `database_password`) only takes effect on
+  the next deploy.
+
 ## [0.2.0] - 2026-07-27
 
 ### Added

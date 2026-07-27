@@ -52,9 +52,15 @@ newer versions are exercised as they ship; older ones are untested.
   and `deployment_timeout` exist only in Terraform, so import seeds them with
   their schema defaults (`true` / `"15m"`). Importing a resource whose config
   sets a non-default value plans one diff to reconcile it.
-- **Databases other than PostgreSQL are not covered**, nor are compose services
-  or backups. Wave 0 covered projects, applications and PostgreSQL; wave 1 adds
-  environments and domains.
+- **Databases other than PostgreSQL and MySQL are not covered**, nor are
+  compose services or backups. Wave 0 covered projects, applications and
+  PostgreSQL; wave 1 added environments and domains; wave 2 is adding the
+  remaining database engines (MySQL shipped, MariaDB/MongoDB/Redis to follow).
+- **MySQL's root password is server-generated when left unset**, and, like
+  `database_password`, changing it only takes effect on the next deploy.
+  `deploy_on_change` (default `true`) covers the common case; setting it to
+  `false` means a `database_root_password` change is stored but not applied
+  until a manual deploy.
 - **The default `production` environment of a project cannot be deleted**
   through the API, so `terraform destroy` on an imported one fails by design.
   Remove it from state instead.

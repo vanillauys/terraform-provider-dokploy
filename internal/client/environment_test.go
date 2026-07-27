@@ -72,7 +72,8 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 			"description":null,"env":"","isDefault":true,
 			"applications":[{"applicationId":"a1","name":"frontend"},
 			                {"applicationId":"a2","name":"api"}],
-			"postgres":[{"postgresId":"pg1","name":"db"}]
+			"postgres":[{"postgresId":"pg1","name":"db"}],
+			"mysql":[{"mysqlId":"my1","name":"mydb"}]
 		}`))
 	}))
 	defer srv.Close()
@@ -90,6 +91,9 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 	}
 	if len(got.Postgres) != 1 || got.Postgres[0].ID != "pg1" {
 		t.Errorf("postgres = %+v, want one entry with id pg1", got.Postgres)
+	}
+	if len(got.Mysql) != 1 || got.Mysql[0].ID != "my1" || got.Mysql[0].Name != "mydb" {
+		t.Errorf("mysql = %+v, want one entry {my1 mydb}", got.Mysql)
 	}
 }
 

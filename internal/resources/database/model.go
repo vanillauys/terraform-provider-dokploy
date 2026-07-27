@@ -53,16 +53,33 @@ type genericModel struct {
 // overlay's deploy_triggers concept, handwritten for wave 0). Generalized
 // from postgres's version: docker_image, database_password, env and
 // external_port are the uniform set's deploy triggers for every engine.
-// CredentialAttrs are deliberately not included here — postgres's two are
-// both RequiresReplace (a change never reaches Update at all), and this is
-// the brief's explicit instruction for the generalized rule; a Computed
-// credential attr (mysql/mariadb's databaseRootPassword) needing its own
-// deploy trigger is left to Tasks 5-7 to evaluate against live evidence.
-func deployNeeded(plan, state genericModel) bool {
-	return !plan.DockerImage.Equal(state.DockerImage) ||
+//
+// CredentialAttrs are checked too, but only the ones whose
+// CredentialAttr.DeployTrigger is set — task 3/4's version of this function
+// left them out entirely ("a Computed credential attr needing its own
+// deploy trigger is left to Tasks 5-7 to evaluate against live evidence").
+// Task 5 evaluated it: mysql's databaseRootPassword needs one (see
+// DeployTrigger's doc comment in kind.go for the live evidence — updating it
+// alone leaves the running container's env untouched; only a Deploy applies
+// it). postgres's two CredentialAttrs are both RequiresReplace, so they
+// never reach here regardless (a change to either replaces the whole
+// resource), and simply leave DeployTrigger at its zero value (false).
+func deployNeeded(k Kind, plan, state genericModel) bool {
+	if !plan.DockerImage.Equal(state.DockerImage) ||
 		!plan.DatabasePassword.Equal(state.DatabasePassword) ||
 		!plan.Env.Equal(state.Env) ||
-		!plan.ExternalPort.Equal(state.ExternalPort)
+		!plan.ExternalPort.Equal(state.ExternalPort) {
+		return true
+	}
+	for _, ca := range k.CredentialAttrs {
+		if !ca.DeployTrigger {
+			continue
+		}
+		if !plan.Credentials[ca.TFName].Equal(state.Credentials[ca.TFName]) {
+			return true
+		}
+	}
+	return false
 }
 
 // setComputed copies server-computed fields from the API object, keeping

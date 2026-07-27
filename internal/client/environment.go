@@ -108,12 +108,25 @@ type ServiceRef struct {
 // data-source lookup.
 //
 // environment.one embeds every service collection, so one call resolves a
-// name for any service kind. Only the two kinds this provider ships are
-// decoded; the rest (mysql, mariadb, mongo, redis, libsql, compose) are
-// ignored until they have resources.
+// name for any service kind. Only the kinds this provider ships resources
+// for are decoded; the rest (mariadb, mongo, redis, libsql, compose) are
+// ignored until they have resources too (verified live 2026-07-27: the raw
+// environment.one response already carries top-level "mariadb", "mongo",
+// "redis" arrays alongside "mysql" and "postgres" - this struct just
+// doesn't decode them yet).
+//
+// Mysql was added in wave-2 task 5, alongside dokploy_mysql - it is NOT one
+// of the files task 5's brief listed as needing a change, but
+// resourcedb.MysqlKind's ListByEnvironment (internal/resources/database/
+// mysql.go) has no other way to resolve a mysql service by name: it must
+// decode the SAME environment.one call this type already wraps, and this is
+// the one shared place that decode can live without every Kind constructor
+// duplicating its own raw-JSON struct. Tasks 6-7 (mariadb, mongo, redis)
+// will need the same addition here for their own kinds.
 type EnvironmentServices struct {
 	Applications []ServiceRef
 	Postgres     []ServiceRef
+	Mysql        []ServiceRef
 }
 
 func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) (*EnvironmentServices, error) {
@@ -126,6 +139,10 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 			PostgresID string `json:"postgresId"`
 			Name       string `json:"name"`
 		} `json:"postgres"`
+		Mysql []struct {
+			MysqlID string `json:"mysqlId"`
+			Name    string `json:"name"`
+		} `json:"mysql"`
 	}
 	if err := c.Get(ctx, "/environment.one", url.Values{"environmentId": {environmentID}}, &raw); err != nil {
 		return nil, err
@@ -136,6 +153,9 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 	}
 	for _, p := range raw.Postgres {
 		out.Postgres = append(out.Postgres, ServiceRef{ID: p.PostgresID, Name: p.Name})
+	}
+	for _, m := range raw.Mysql {
+		out.Mysql = append(out.Mysql, ServiceRef{ID: m.MysqlID, Name: m.Name})
 	}
 	return out, nil
 }

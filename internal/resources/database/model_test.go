@@ -20,13 +20,13 @@ func TestDeployNeeded(t *testing.T) {
 
 	state := base()
 	plan := base()
-	if deployNeeded(plan, state) {
+	if deployNeeded(Kind{}, plan, state) {
 		t.Error("identical models must not trigger a deploy")
 	}
 
 	plan = base()
 	plan.Name = types.StringValue("renamed")
-	if deployNeeded(plan, state) {
+	if deployNeeded(Kind{}, plan, state) {
 		t.Error("name is not a deploy trigger")
 	}
 
@@ -38,9 +38,61 @@ func TestDeployNeeded(t *testing.T) {
 	} {
 		plan = base()
 		mutate(&plan)
-		if !deployNeeded(plan, state) {
+		if !deployNeeded(Kind{}, plan, state) {
 			t.Errorf("%s change must trigger a deploy", name)
 		}
+	}
+}
+
+// TestDeployNeeded_CredentialAttr pins wave-2 task 5's addition:
+// CredentialAttr.DeployTrigger, added after live evidence that
+// mysql.update alone does not propagate a changed databaseRootPassword to
+// the running container — only a following Deploy does (see DeployTrigger's
+// doc comment in kind.go). A credential attribute changing must trigger a
+// deploy when DeployTrigger is set, and must NOT when it isn't (postgres's
+// database_name/database_user default, and the zero value generally).
+func TestDeployNeeded_CredentialAttr(t *testing.T) {
+	k := Kind{
+		CredentialAttrs: []CredentialAttr{
+			{TFName: "database_root_password", Computed: true, DeployTrigger: true},
+			{TFName: "database_name", RequiresReplace: true}, // DeployTrigger left false
+		},
+	}
+	base := func() genericModel {
+		return genericModel{
+			DockerImage:      types.StringValue("mysql:8"),
+			DatabasePassword: types.StringValue("hunter2"),
+			Env:              types.StringValue("A=1"),
+			ExternalPort:     types.Int64Value(3306),
+			Credentials: map[string]types.String{
+				"database_root_password": types.StringValue("root1"),
+				"database_name":          types.StringValue("app"),
+			},
+		}
+	}
+
+	state := base()
+	plan := base()
+	if deployNeeded(k, plan, state) {
+		t.Error("identical models must not trigger a deploy")
+	}
+
+	plan = base()
+	plan.Credentials = map[string]types.String{
+		"database_root_password": types.StringValue("root2"),
+		"database_name":          types.StringValue("app"),
+	}
+	if !deployNeeded(k, plan, state) {
+		t.Error("a DeployTrigger credential attr change must trigger a deploy")
+	}
+
+	plan = base()
+	plan.Credentials = map[string]types.String{
+		"database_root_password": types.StringValue("root1"),
+		"database_name":          types.StringValue("renamed"),
+	}
+	if deployNeeded(k, plan, state) {
+		t.Error("a credential attr change with DeployTrigger unset must not trigger a deploy")
 	}
 }
 

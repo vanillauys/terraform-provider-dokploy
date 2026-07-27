@@ -25,6 +25,7 @@ var mustAlwaysSend = []struct {
 }{
 	{UpdateProjectRequest{}, []string{"description"}},
 	{UpdatePostgresRequest{}, []string{"description"}},
+	{UpdateMysqlRequest{}, []string{"description", "databaseRootPassword"}},
 	{UpdateApplicationRequest{}, []string{"description"}},
 	{UpdateDomainRequest{}, []string{
 		"host", "path", "internalPath", "port", "https", "stripPath",

@@ -149,6 +149,10 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		// doc comment for the same reasoning from the other side. Tasks 5-7
 		// must register their engines' Kinds the same way.
 		func() resource.Resource { return database.NewResource(database.PostgresKind(p.client))() },
+		// Same reasoning as PostgresKind above, mirrored exactly for mysql
+		// (wave-2 task 5). Tasks 6-7 register mariadb/mongo/redis the same
+		// way.
+		func() resource.Resource { return database.NewResource(database.MysqlKind(p.client))() },
 		application.NewResource,
 		domain.NewResource,
 	}
@@ -168,6 +172,8 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		// on the resource-side registration and dsdatabase.genericDataSource's
 		// doc comment for why this data source has no Configure() of its own.
 		func() datasource.DataSource { return dsdatabase.NewDataSource(database.PostgresKind(p.client))() },
+		// Same reasoning, mirrored for mysql (wave-2 task 5).
+		func() datasource.DataSource { return dsdatabase.NewDataSource(database.MysqlKind(p.client))() },
 		dsenvironment.NewDataSource,
 	}
 }
