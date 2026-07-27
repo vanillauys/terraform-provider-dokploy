@@ -122,10 +122,54 @@ func (r *genericResource) fetchStatus(id string) deploy.Fetch {
 	}
 }
 
+// checkCredentialsCreatable rejects an explicit empty string on any Computed
+// credential attribute (today: mysql/mariadb's database_root_password) at
+// CREATE time. Create's own plan.Credentials[name].ValueString() call below
+// collapses BOTH "left Unknown so the server generates one" (the normal,
+// intended case) and "config explicitly set database_root_password = \"\""
+// to the identical Go "" — harmless for the former (CreateMysqlRequest's
+// own `omitempty` then drops the key, and the server generates a real
+// value either way), but for the latter Terraform plans "" as a KNOWN
+// value while the server actually returns a different, generated one, so
+// apply then fails with "Provider produced inconsistent result after
+// apply" — a confusing, framework-level error that names no attribute
+// (wave-2 task 9 carry item C3).
+//
+// Checking IsUnknown()/IsNull() before ValueString() is what tells the two
+// cases apart, and it MUST happen here rather than as a schema-level
+// Validator: a Validator's ValidateResourceConfig runs identically for
+// create and update, but "" is a real, live-verified, documented way to
+// clear this exact attribute via Update (UpdateMysqlRequest's doc comment
+// in internal/client/mysql.go: "explicit \"\": HTTP 200 ... this is the
+// ONLY way to clear it") — a Validator would have silently taken that
+// capability away too. An earlier version of this fix did exactly that,
+// caught during review before it shipped, not by any test: nothing in this
+// package's acceptance suite exercises the update-to-empty path either.
+func checkCredentialsCreatable(k Kind, plan genericModel, resp *resource.CreateResponse) bool {
+	ok := true
+	for _, ca := range k.CredentialAttrs {
+		if !ca.Computed {
+			continue
+		}
+		v := plan.Credentials[ca.TFName]
+		if !v.IsUnknown() && !v.IsNull() && v.ValueString() == "" {
+			resp.Diagnostics.AddError(
+				fmt.Sprintf("Invalid %s", ca.TFName),
+				fmt.Sprintf("%s cannot be set to an explicit empty string. That is wire-indistinguishable from omitting it entirely, so the server generates a real value while Terraform's plan promised \"\" — apply would fail with a confusing \"Provider produced inconsistent result after apply\" instead. Omit this attribute entirely to let the server generate one.", ca.TFName),
+			)
+			ok = false
+		}
+	}
+	return ok
+}
+
 func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan, diags := getModel(ctx, r.kind, req.Plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !checkCredentialsCreatable(r.kind, plan, resp) {
 		return
 	}
 

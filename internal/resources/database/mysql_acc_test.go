@@ -373,3 +373,37 @@ resource "dokploy_mysql" "test" {
 		},
 	})
 }
+
+// TestAccMysql_emptyRootPasswordRejectedAtCreate pins carry item C3: an
+// explicit database_root_password = "" at create must fail cleanly with
+// this provider's own diagnostic, not with Terraform core's confusing
+// "Provider produced inconsistent result after apply" (the failure mode
+// that an explicit "" collapsing to the same wire request as an unset
+// value produces — see checkCredentialsCreatable's doc comment in
+// resource.go).
+func TestAccMysql_emptyRootPasswordRejectedAtCreate(t *testing.T) {
+	name := acctest.RandomName("my")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkMysqlDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_mysql" "test" {
+  name                    = %q
+  environment_id          = dokploy_project.test.environments[0].id
+  database_name           = "acc"
+  database_user           = "acc"
+  database_password       = "acc-password-1"
+  database_root_password  = ""
+}`, name+"-proj", name),
+				ExpectError: regexp.MustCompile(`cannot be set to an explicit empty string`),
+			},
+		},
+	})
+}
