@@ -72,20 +72,30 @@
 //     https false, certificateType "none", domainType "application", ...).
 //   - Any other key, if OMITTED, silently takes that same schema default —
 //     never a 400, and there is no old value to fall back to.
-//   - Any other key, given an explicit JSON null, is ACCEPTED (200) and
-//     stored as a literal null — not coerced to the default (unlike an
-//     absent key) and not rejected (unlike dialect C's null handling).
-//     {"host":"x","port":null} produces a stored record with port: null,
-//     not port: 3000.
 //
-// So domain.create's rule is "absent = schema default, explicit null =
-// stored verbatim" — it 400s on nothing but a missing host, the opposite of
-// dialect A's absent-key 400, unrelated to dialect B (no old value exists
-// yet to keep), and unrelated to dialect C (which 400s on null).
-// CreateDomainRequest already sidesteps the question by sending every field
-// explicitly with a concrete value or a typed nil pointer on every call
-// (see its doc comment in domain.go) — there is no bug here, only a gap in
-// this file's classification that this paragraph closes.
+// An explicit JSON null on every other field was probed individually
+// (single-field {"host":"x","<field>":null} calls); the result is NOT
+// uniform across fields, so no single rule covers all of them:
+//
+//	stores a literal null:    path, internalPath, port, customCertResolver,
+//	                          customEntrypoint, serviceName, domainType,
+//	                          applicationId, composeId
+//	coerces to its default    https (-> false), stripPath (-> false),
+//	(does NOT store null):    forwardAuthEnabled (-> false)
+//	rejected outright (400):  certificateType ("Invalid option: expected
+//	                          one of \"letsencrypt\"|\"none\"|\"custom\"" —
+//	                          it has no nullable variant in the zod schema)
+//
+// So domain.create's rule is "absent = schema default" for every field, but
+// explicit null is three-way per field: stored verbatim for most, silently
+// re-defaulted for the three booleans, and outright rejected for the one
+// enum. This has no relationship to dialect A's absent-key 400, dialect B
+// (no old value exists yet to keep), or dialect C (which 400s on null
+// uniformly). CreateDomainRequest sidesteps the whole question by sending
+// every field explicitly with a concrete value or a typed nil pointer on
+// every call (see its doc comment in domain.go) rather than ever relying
+// on omission or null — there is no bug here, only a gap in this file's
+// classification that this paragraph closes.
 //
 // # Database engines: postgres, mysql, mariadb, mongo, redis
 //
@@ -121,6 +131,17 @@
 // databaseName). The per-engine field set must be modelled explicitly, not
 // derived from postgres by analogy.
 //
+// mysql.update/mariadb.update are dialect B overall (see the list above),
+// but databaseRootPassword is a DIALECT C EXCEPTION within that same
+// endpoint, not dialect B — verified live on isolated single-field calls
+// against both engines: an absent databaseRootPassword key keeps the old
+// value (200, matching dialect B), but an explicit JSON null is REJECTED
+// ("expected string, received null", HTTP 400 — dialect A/B would accept
+// and clear it), and only an explicit "" is accepted and stored, clearing
+// the field. A struct that treats every dialect-B endpoint's fields
+// uniformly (pointer, no omitempty, null clears) will 400 live the first
+// time it tries to clear databaseRootPassword with null instead of "".
+//
 // The default dockerImage a bare .create picks is not always a real,
 // pullable image tag:
 //
@@ -135,14 +156,20 @@
 // mongo.saveExternalPort, called against a record still on its default
 // image, both return HTTP 500 "Error on deploy ...Error: Error response
 // from daemon: manifest for mariadb:6 (or mongo:15) not found: manifest
-// unknown: manifest unknown"; the identical call against a record created
-// with an explicit valid dockerImage (mariadb:11.4) succeeds. Plain
-// .create and .update never trigger a deploy and succeed regardless of the
-// image; .saveEnvironment against the same broken-image records also
-// succeeded (HTTP 200) — in this version only saveExternalPort synchronously
-// attempts a redeploy. A real .deploy call would plausibly fail the same
-// way but was not probed here. Tasks building the mariadb/mongo resources
-// and their acceptance tests must not rely on the server's default image:
-// a bare-default mariadb or mongo instance will 500 the moment anything
-// calls saveExternalPort (or presumably .deploy) against it.
+// unknown: manifest unknown". The identical call against a record created
+// with an explicit valid dockerImage (mariadb:11.4, mongo:7) succeeds for
+// both engines, AND the full dialect-A round trip was completed on those
+// valid-image records — set externalPort to a concrete value (200, value
+// persisted), then set it to null (200, mariadb.one/mongo.one report
+// externalPort: null) — so saveExternalPort's dialect-A classification for
+// mariadb and mongo is fully proven, not just the absent-key-400 half.
+// Plain .create and .update never trigger a deploy and succeed regardless
+// of the image; .saveEnvironment against the same broken-image records
+// also succeeded (HTTP 200) — in this version only saveExternalPort
+// synchronously attempts a redeploy. A real .deploy call would plausibly
+// fail the same way but was not probed here. Tasks building the
+// mariadb/mongo resources and their acceptance tests must not rely on the
+// server's default image: a bare-default mariadb or mongo instance will
+// 500 the moment anything calls saveExternalPort (or presumably .deploy)
+// against it.
 package client

@@ -144,12 +144,16 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 // service names within an environment.
 //
 // The "have I found one yet" sentinel is a *string, not a string compared
-// against "": a service can have an empty id (verified live — some
-// still-provisioning or malformed records report id ""), and the old
-// found != "" check treated that first empty-id match as "nothing found
-// yet", silently letting a second same-named ref win instead of erroring.
-// Mirrors datasources/environment.FindByName, which uses the same
-// nil-pointer sentinel for the same reason.
+// against "": that comparison can't tell "nothing matched yet" apart from
+// "matched a ref whose ID happens to be empty". The old found != "" check
+// conflated the two, so a same-named ref with an empty ID would not be
+// counted as a first match, and a second same-named ref could silently win
+// instead of the lookup erroring. Nothing in the introspection for this
+// provider observed Dokploy actually returning an empty service ID — this
+// is a defensive correction for what the sentinel's own logic could not
+// distinguish, not a report of live server behavior. Mirrors
+// datasources/environment.FindByName, which uses the same nil-pointer
+// sentinel for the same reason.
 func FindServiceByName(refs []ServiceRef, name, kind string) (string, error) {
 	var found *string
 	for i := range refs {

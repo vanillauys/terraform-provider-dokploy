@@ -121,10 +121,12 @@ func TestFindServiceByName(t *testing.T) {
 		t.Error("no match must be an error")
 	}
 
-	// A service can have an empty id (Dokploy returns "" for some
-	// still-provisioning or malformed records); the sentinel that tracks
-	// "have I already found one" must not treat an empty id as "not found
-	// yet" and let a second same-named ref through unchallenged.
+	// Synthetic fixture, not an observed server behavior: this is a
+	// defensive case proving the sentinel's own logic, not a claim that
+	// Dokploy actually hands out empty service IDs. A string sentinel
+	// compared against "" cannot tell "not found yet" apart from "found,
+	// and its ID is empty" — this ref set forces exactly that collision so
+	// a second same-named ref cannot silently win unchallenged.
 	emptyIDDup := []ServiceRef{
 		{ID: "", Name: "dup"},
 		{ID: "b2", Name: "dup"},
