@@ -13,6 +13,9 @@ import (
 func TestCreateEnvironmentSendsDescriptionAsPlainString(t *testing.T) {
 	var body map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/environment.create" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &body)
 		_, _ = w.Write([]byte(`{"environmentId":"e1","name":"qa","projectId":"p1","description":"","env":"","isDefault":false}`))
@@ -44,11 +47,12 @@ func TestCreateEnvironmentSendsDescriptionAsPlainString(t *testing.T) {
 }
 
 func TestGetEnvironmentDecodesNullDescriptionAsEmptyString(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		// environment.one returns null for a never-set description, and omits
-		// createdAt entirely — both verified live.
-		_, _ = w.Write([]byte(`{"environmentId":"e1","name":"qa","projectId":"p1","description":null,"env":"","isDefault":true}`))
-	}))
+	// environment.one returns null for a never-set description, and omits
+	// createdAt entirely — both verified live.
+	srv := testRoutes(t, route{
+		Method: http.MethodGet, Path: "/api/environment.one", Status: http.StatusOK,
+		Body: `{"environmentId":"e1","name":"qa","projectId":"p1","description":null,"env":"","isDefault":true}`,
+	})
 	defer srv.Close()
 
 	c, _ := New(srv.URL, "k", false, "test")
@@ -65,9 +69,10 @@ func TestGetEnvironmentDecodesNullDescriptionAsEmptyString(t *testing.T) {
 }
 
 func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		// environment.one embeds each service collection.
-		_, _ = w.Write([]byte(`{
+	// environment.one embeds each service collection.
+	srv := testRoutes(t, route{
+		Method: http.MethodGet, Path: "/api/environment.one", Status: http.StatusOK,
+		Body: `{
 			"environmentId":"e1","name":"production","projectId":"p1",
 			"description":null,"env":"","isDefault":true,
 			"applications":[{"applicationId":"a1","name":"frontend"},
@@ -77,8 +82,8 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 			"redis":[{"redisId":"rd1","name":"cache"}],
 			"mariadb":[{"mariadbId":"md1","name":"mariadata"}],
 			"mongo":[{"mongoId":"mo1","name":"documentdata"}]
-		}`))
-	}))
+		}`,
+	})
 	defer srv.Close()
 
 	c, _ := New(srv.URL, "k", false, "test")
@@ -155,11 +160,12 @@ func TestFindServiceByName(t *testing.T) {
 }
 
 func TestListEnvironmentsBackfillsProjectID(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		// environment.byProjectId omits BOTH projectId and env from every row
-		// (verified live) — unlike environment.one, which returns them.
-		_, _ = w.Write([]byte(`[{"environmentId":"e1","name":"production","description":null,"isDefault":true}]`))
-	}))
+	// environment.byProjectId omits BOTH projectId and env from every row
+	// (verified live) — unlike environment.one, which returns them.
+	srv := testRoutes(t, route{
+		Method: http.MethodGet, Path: "/api/environment.byProjectId", Status: http.StatusOK,
+		Body: `[{"environmentId":"e1","name":"production","description":null,"isDefault":true}]`,
+	})
 	defer srv.Close()
 
 	c, _ := New(srv.URL, "k", false, "test")

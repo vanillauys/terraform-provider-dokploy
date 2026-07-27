@@ -25,18 +25,18 @@ const applicationJSON = `{
 func TestCreateAndGetApplication(t *testing.T) {
 	var createBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/application.create":
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/application.create":
 			raw, _ := io.ReadAll(r.Body)
 			_ = json.Unmarshal(raw, &createBody)
 			_, _ = fmt.Fprint(w, applicationJSON)
-		case "/api/application.one":
+		case r.Method == http.MethodGet && r.URL.Path == "/api/application.one":
 			if r.URL.Query().Get("applicationId") != "app1" {
 				t.Errorf("query = %v", r.URL.Query())
 			}
 			_, _ = fmt.Fprint(w, applicationJSON)
 		default:
-			t.Errorf("unexpected path %s", r.URL.Path)
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
 	defer srv.Close()
@@ -71,6 +71,9 @@ func TestApplicationOrchestrationCalls(t *testing.T) {
 	var calls []string
 	bodies := map[string]map[string]any{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("unexpected method %s for %s", r.Method, r.URL.Path)
+		}
 		calls = append(calls, r.URL.Path)
 		var body map[string]any
 		raw, _ := io.ReadAll(r.Body)

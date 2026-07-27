@@ -27,18 +27,18 @@ const postgresJSON = `{
 func TestCreateAndGetPostgres(t *testing.T) {
 	var createBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/postgres.create":
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/postgres.create":
 			raw, _ := io.ReadAll(r.Body)
 			_ = json.Unmarshal(raw, &createBody)
 			_, _ = fmt.Fprint(w, postgresJSON)
-		case "/api/postgres.one":
+		case r.Method == http.MethodGet && r.URL.Path == "/api/postgres.one":
 			if r.URL.Query().Get("postgresId") != "pg1" {
 				t.Errorf("query = %v", r.URL.Query())
 			}
 			_, _ = fmt.Fprint(w, postgresJSON)
 		default:
-			t.Errorf("unexpected path %s", r.URL.Path)
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	}))
 	defer srv.Close()
@@ -78,7 +78,7 @@ func TestPostgresMutations(t *testing.T) {
 	var externalPortBodies []any
 	var envBodies []map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls = append(calls, r.URL.Path)
+		calls = append(calls, r.Method+" "+r.URL.Path)
 		var body map[string]any
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &body)
@@ -147,13 +147,13 @@ func TestPostgresMutations(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"/api/postgres.update",
-		"/api/postgres.saveEnvironment",
-		"/api/postgres.saveEnvironment",
-		"/api/postgres.saveExternalPort",
-		"/api/postgres.saveExternalPort",
-		"/api/postgres.deploy",
-		"/api/postgres.remove", // spec: postgres delete verb is .remove
+		"POST /api/postgres.update",
+		"POST /api/postgres.saveEnvironment",
+		"POST /api/postgres.saveEnvironment",
+		"POST /api/postgres.saveExternalPort",
+		"POST /api/postgres.saveExternalPort",
+		"POST /api/postgres.deploy",
+		"POST /api/postgres.remove", // spec: postgres delete verb is .remove
 	}
 	if len(calls) != len(want) {
 		t.Fatalf("calls = %v", calls)

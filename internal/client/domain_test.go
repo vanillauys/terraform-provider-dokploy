@@ -20,9 +20,9 @@ const domainResponse = `{
 }`
 
 func TestGetDomainDecodesEveryField(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(domainResponse))
-	}))
+	srv := testRoutes(t, route{
+		Method: http.MethodGet, Path: "/api/domain.one", Status: http.StatusOK, Body: domainResponse,
+	})
 	defer srv.Close()
 
 	c, _ := New(srv.URL, "k", false, "test")
@@ -52,6 +52,9 @@ func TestGetDomainDecodesEveryField(t *testing.T) {
 func TestUpdateDomainSendsExplicitNullsForClearedFields(t *testing.T) {
 	var body map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/domain.update" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &body)
 		_, _ = w.Write([]byte(`true`))

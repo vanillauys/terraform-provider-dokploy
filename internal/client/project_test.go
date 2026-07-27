@@ -61,8 +61,8 @@ func TestCreateProject(t *testing.T) {
 
 func TestGetProject(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/project.one" || r.URL.Query().Get("projectId") != "p1" {
-			t.Errorf("unexpected call: %s %s", r.URL.Path, r.URL.RawQuery)
+		if r.Method != http.MethodGet || r.URL.Path != "/api/project.one" || r.URL.Query().Get("projectId") != "p1" {
+			t.Errorf("unexpected call: %s %s %s", r.Method, r.URL.Path, r.URL.RawQuery)
 		}
 		_, _ = fmt.Fprint(w, projectJSON)
 	}))
@@ -81,10 +81,10 @@ func TestGetProject(t *testing.T) {
 }
 
 func TestUpdateAndDeleteProject(t *testing.T) {
-	var paths []string
+	var calls []string
 	bodies := map[string]map[string]any{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		paths = append(paths, r.URL.Path)
+		calls = append(calls, r.Method+" "+r.URL.Path)
 		var body map[string]any
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &body)
@@ -104,8 +104,9 @@ func TestUpdateAndDeleteProject(t *testing.T) {
 		t.Fatalf("DeleteProject: %v", err)
 	}
 	// Spec: delete verb for projects is project.remove (not .delete).
-	if len(paths) != 2 || paths[0] != "/api/project.update" || paths[1] != "/api/project.remove" {
-		t.Errorf("paths = %v", paths)
+	want := []string{"POST /api/project.update", "POST /api/project.remove"}
+	if len(calls) != len(want) || calls[0] != want[0] || calls[1] != want[1] {
+		t.Errorf("calls = %v", calls)
 	}
 
 	// Verified empirically against a live Dokploy instance (v0.29.13,
@@ -130,12 +131,10 @@ func TestUpdateAndDeleteProject(t *testing.T) {
 }
 
 func TestListProjects(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/project.all" {
-			t.Errorf("path = %s", r.URL.Path)
-		}
-		_, _ = fmt.Fprintf(w, "[%s]", projectJSON)
-	}))
+	srv := testRoutes(t, route{
+		Method: http.MethodGet, Path: "/api/project.all",
+		Status: http.StatusOK, Body: fmt.Sprintf("[%s]", projectJSON),
+	})
 	defer srv.Close()
 
 	ps, err := testClient(t, srv).ListProjects(context.Background())

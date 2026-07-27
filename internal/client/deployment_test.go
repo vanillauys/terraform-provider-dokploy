@@ -15,8 +15,8 @@ func TestListDeployments(t *testing.T) {
 	// exercises the client's path/query plumbing, which is serviceType-
 	// agnostic.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/deployment.allByType" {
-			t.Errorf("path = %s", r.URL.Path)
+		if r.Method != http.MethodGet || r.URL.Path != "/api/deployment.allByType" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 		q := r.URL.Query()
 		if q.Get("id") != "svc-1" || q.Get("type") != "application" {
