@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-07-27
 
 ### Added
 
@@ -32,10 +32,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Internal: `dokploy_postgres` and the four new engines above now share one
+  generic, `Kind`-parameterized resource and data-source implementation
+  instead of five near-duplicates. No schema or behavior change for
+  `dokploy_postgres` — its docs regenerate byte-identical.
 - Names are not unique in Dokploy. Every data source that looks up by name
   (project, environment, application, and — as of this wave — all five
   database engines) errors when more than one record matches, rather than
   silently picking one.
+- `domain_type` now uses `UseStateForUnknown`. Both of its inputs
+  (`application_id`, `compose_id`) require replace, so it is provably
+  immutable, and it no longer surfaces a spurious diff on the plan after an
+  apply.
+- The `env` attribute description, on `dokploy_environment` and every
+  database engine, now documents that omitting it and setting it to `""` are
+  indistinguishable on read — both come back null; use omission, not `""`,
+  to clear it.
+- Internal tooling, no user-visible effect: `make hooks` now works from a
+  git worktree (it previously checked for a `.git` directory, which a
+  worktree does not have); the pre-commit secret scan detects a pre-8.19
+  `gitleaks` binary (missing the `git` subcommand the hook uses) and reports
+  the version mismatch plainly instead of misreporting it as a found secret;
+  and the `application`/`project`/`environment`/`domain`/`postgres`/
+  `deployment` client tests now assert HTTP method and path, matching the
+  bar every database-engine client test already held itself to.
+
+### Fixed
+
+- `dogfood/dry-run.sh` (this repo's live-server round-trip harness; not part
+  of CI) previously could not complete for any stack containing a database
+  engine resource: `terraform plan -generate-config-out` refuses to write a
+  value for a `Sensitive` schema attribute, and `database_password` is both
+  `Required` and `Sensitive` on every engine, so Terraform Core rejected the
+  generated config before the provider ever ran. The harness now patches
+  those attributes back in from the same live, read-only API it already
+  calls, then continues the round-trip — this strengthens the assertion
+  rather than weakening it (see `dogfood/README.md` for the full analysis).
+  Not a provider bug: `dokploy_postgres` has shipped with this exact schema
+  shape since wave 1; the gap was simply never exercised end-to-end against
+  a live server until this wave ran the harness against a stack containing a
+  database engine for the first time.
 
 ## [0.2.0] - 2026-07-27
 
