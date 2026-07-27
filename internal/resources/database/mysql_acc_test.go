@@ -28,13 +28,13 @@ import (
 // in this review round, once this file's checkMysqlDestroy/getAccMysql made
 // checkPostgresDestroy/getAccPostgres a character-for-character copy for the
 // second time.
-var checkMysqlDestroy = checkDestroy("dokploy_mysql", func(c *client.Client, ctx context.Context, id string) error {
+var checkMysqlDestroy = checkDestroy("dokploy_mysql", func(ctx context.Context, c *client.Client, id string) error {
 	_, err := c.GetMysql(ctx, id)
 	return err
 })
 
 func getAccMysql(s *terraform.State) (*client.Mysql, error) {
-	return getAccObject(s, "dokploy_mysql.test", func(c *client.Client, ctx context.Context, id string) (*client.Mysql, error) {
+	return getAccObject(s, "dokploy_mysql.test", func(ctx context.Context, c *client.Client, id string) (*client.Mysql, error) {
 		return c.GetMysql(ctx, id)
 	})
 }

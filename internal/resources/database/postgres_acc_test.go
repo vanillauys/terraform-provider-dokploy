@@ -28,13 +28,13 @@ import (
 // extracted there in review round 1 on wave-2 task 5's mysql round, once
 // mysql's own checkMysqlDestroy/getAccMysql made this a two-way (soon
 // five-way) character-for-character copy.
-var checkPostgresDestroy = checkDestroy("dokploy_postgres", func(c *client.Client, ctx context.Context, id string) error {
+var checkPostgresDestroy = checkDestroy("dokploy_postgres", func(ctx context.Context, c *client.Client, id string) error {
 	_, err := c.GetPostgres(ctx, id)
 	return err
 })
 
 func getAccPostgres(s *terraform.State) (*client.Postgres, error) {
-	return getAccObject(s, "dokploy_postgres.test", func(c *client.Client, ctx context.Context, id string) (*client.Postgres, error) {
+	return getAccObject(s, "dokploy_postgres.test", func(ctx context.Context, c *client.Client, id string) (*client.Postgres, error) {
 		return c.GetPostgres(ctx, id)
 	})
 }

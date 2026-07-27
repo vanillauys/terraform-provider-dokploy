@@ -355,6 +355,76 @@ func TestResolveCredentials_NonComputedSentVerbatim(t *testing.T) {
 	}
 }
 
+// TestCredentialsNeedServerValue pins the carried fix from wave-2 task 6's
+// review of task 5: resource.go's pre-Update Get must be skipped whenever
+// resolveCredentials would never dereference it. credentialsNeedServerValue
+// is the predicate that decides that — true iff some Computed
+// CredentialAttr's planned value IsNull() or IsUnknown(), mirroring
+// resolveCredentials' own per-attribute branch exactly, so the two can never
+// disagree about whether `current` gets read.
+func TestCredentialsNeedServerValue(t *testing.T) {
+	k := mysqlLikeKind() // database_root_password Computed; database_name/user not
+
+	cases := []struct {
+		name string
+		plan genericModel
+		want bool
+	}{
+		{
+			name: "Computed credential known -> no server read needed",
+			plan: genericModel{Credentials: map[string]types.String{
+				"database_name":          types.StringValue("app"),
+				"database_user":          types.StringValue("app"),
+				"database_root_password": types.StringValue("explicit-value"),
+			}},
+			want: false,
+		},
+		{
+			name: "Computed credential null -> server read needed",
+			plan: genericModel{Credentials: map[string]types.String{
+				"database_name":          types.StringValue("app"),
+				"database_user":          types.StringValue("app"),
+				"database_root_password": types.StringNull(),
+			}},
+			want: true,
+		},
+		{
+			name: "Computed credential unknown -> server read needed",
+			plan: genericModel{Credentials: map[string]types.String{
+				"database_name":          types.StringValue("app"),
+				"database_user":          types.StringValue("app"),
+				"database_root_password": types.StringUnknown(),
+			}},
+			want: true,
+		},
+		{
+			name: "non-Computed credential null -> never needs a server read",
+			plan: genericModel{Credentials: map[string]types.String{
+				"database_name":          types.StringNull(),
+				"database_user":          types.StringValue("app"),
+				"database_root_password": types.StringValue("set"),
+			}},
+			want: false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := credentialsNeedServerValue(k, tc.plan); got != tc.want {
+				t.Errorf("credentialsNeedServerValue() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+
+	// Zero-CredentialAttrs Kind (redis/mongo/postgres-shaped): must always be
+	// false regardless of what Credentials happens to hold, since there is no
+	// CredentialAttr to iterate at all.
+	zeroKind := Kind{Name: "redis"}
+	anyPlan := genericModel{Credentials: map[string]types.String{"leftover": types.StringNull()}}
+	if credentialsNeedServerValue(zeroKind, anyPlan) {
+		t.Error("a zero-CredentialAttr Kind must never need a server read")
+	}
+}
+
 // TestResolveUnknownComputedCredentials_ResolvesViaGet pins
 // persistPartial's matching defense: an Unknown Computed credential must be
 // resolved from the server (via a best-effort Get) rather than committed

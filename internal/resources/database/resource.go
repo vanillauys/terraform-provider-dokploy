@@ -234,10 +234,22 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 	// after the update (and again after a deploy), to refresh the rest of
 	// computed state — this earlier read cannot stand in for that, since
 	// the Update call itself may be what changes some of those fields.
-	before, err := r.kind.Client.Get(ctx, id)
-	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Reading %s before update", r.kind.Name), err.Error())
-		return
+	//
+	// Only issued when credentialsNeedServerValue reports resolveCredentials
+	// will actually consult it: a Kind with zero Computed CredentialAttrs
+	// (postgres, mongo, redis) or one whose Computed credential's planned
+	// value is already known never reads `before` at all, so spending a Get
+	// call — and a new Update-abort path on its error — for a value nothing
+	// downstream uses would be pure waste against a rate-limited API. See
+	// credentialsNeedServerValue's doc comment in model.go.
+	var before *Object
+	var err error
+	if credentialsNeedServerValue(r.kind, plan) {
+		before, err = r.kind.Client.Get(ctx, id)
+		if err != nil {
+			resp.Diagnostics.AddError(fmt.Sprintf("Reading %s before update", r.kind.Name), err.Error())
+			return
+		}
 	}
 
 	err = r.kind.Client.Update(ctx, UpdateSpec{

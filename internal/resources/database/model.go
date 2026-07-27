@@ -153,6 +153,39 @@ func resolveCredentials(k Kind, plan genericModel, current *Object) map[string]s
 	return creds
 }
 
+// credentialsNeedServerValue reports whether resolveCredentials above will
+// actually dereference `current` for this plan: true iff at least one
+// Computed CredentialAttr's planned value IsNull() or IsUnknown(). It exists
+// so Update's pre-Update Get (resource.go) can be skipped entirely when the
+// answer is false — which is every Update call for a Kind with zero Computed
+// CredentialAttrs (postgres, mongo, redis all have none; see kind.go's
+// CredentialAttr.Computed doc comment) AND every Update call for a Kind that
+// does have one (mysql/mariadb's database_root_password) but whose planned
+// value is already genuinely known (the common case: an explicit config
+// value, or a value UseStateForUnknown already carried forward as known from
+// prior state).
+//
+// This was originally an unconditional Get before every Update, spent on a
+// value resolveCredentials would then never read back for these Kinds — a
+// wasted round trip against a rate-limited API (dokploy-api-quirks: normal
+// keys 401, not 429, after ~5 requests) plus an extra error-return path on
+// every Update, for a fetch nothing downstream consults. Flagged in wave-2
+// task 5's re-review and fixed here, first, in wave-2 task 6, before mariadb
+// and mongo would have copied the unconditional version a second and third
+// time.
+func credentialsNeedServerValue(k Kind, plan genericModel) bool {
+	for _, ca := range k.CredentialAttrs {
+		if !ca.Computed {
+			continue
+		}
+		v := plan.Credentials[ca.TFName]
+		if v.IsNull() || v.IsUnknown() {
+			return true
+		}
+	}
+	return false
+}
+
 // resolveUnknownComputedCredentials is persistPartial's matching defense
 // on the Create path: a Computed credential attribute (mysql's
 // database_root_password) can still be Unknown at the point Create gives
