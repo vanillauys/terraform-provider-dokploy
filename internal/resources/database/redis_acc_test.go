@@ -13,7 +13,6 @@ package database_test
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -267,37 +266,11 @@ resource "dokploy_redis" "test" {
 	})
 }
 
-// TestAccRedis_zeroCredentialAttrsSchema is a light schema-level sanity
-// check, mirroring the design intent behind
-// TestSchemaAttributes_ZeroCredentialAttrs (model_test.go, an anticipatory
-// unit test added ahead of this task): a plan built entirely from the
-// dokploy_redis resource must never reference database_name, database_user
-// or database_root_password at all — those attributes must not exist on
-// this resource's schema, not merely be unset. ExpectError's regex matches
-// Terraform core's own "An argument named ... is not expected here" wording
-// for an attribute absent from a resource's schema.
-func TestAccRedis_noCredentialAttrsInSchema(t *testing.T) {
-	name := acctest.RandomName("redisschema")
-	config := fmt.Sprintf(`
-resource "dokploy_project" "test" {
-  name = %q
-}
-
-resource "dokploy_redis" "test" {
-  name              = %q
-  environment_id    = dokploy_project.test.environments[0].id
-  database_password = "acc-password-1"
-  database_name     = "should-not-exist"
-}`, name+"-proj", name)
-
-	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
-		ProtoV6ProviderFactories: acctest.ProviderFactories(),
-		Steps: []resource.TestStep{
-			{
-				Config:      config,
-				ExpectError: regexp.MustCompile(`An argument named "database_name" is not expected here`),
-			},
-		},
-	})
-}
+// Note: this file previously also had TestAccRedis_noCredentialAttrsInSchema,
+// a rig-gated acceptance test asserting that database_name is rejected as an
+// unknown argument. It never reached the API — Terraform core rejects an
+// unknown attribute at config-validation time — so it re-proved, at acceptance
+// cost, exactly what TestSchemaAttributes_ZeroCredentialAttrs already pins for
+// free as a unit test in both internal/resources/database/model_test.go and
+// internal/datasources/database/data_source_test.go. Dropped as redundant;
+// not a shape to propagate to mariadb/mongo.

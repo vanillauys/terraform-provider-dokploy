@@ -51,10 +51,8 @@ type Redis struct {
 // comment). This is the postgres/mysql shape minus two-to-three fields, not
 // a smaller version of the same shape with blanks - there is nothing for a
 // Terraform schema to expose for these, and CredentialAttrs is correspondingly
-// empty on RedisKind (kind.go already supports this: see
-// TestSchemaAttributes_ZeroCredentialAttrs in
-// internal/resources/database/model_test.go, added ahead of this task as
-// the anticipated redis shape).
+// empty on RedisKind (see TestSchemaAttributes_ZeroCredentialAttrs in
+// internal/resources/database/model_test.go).
 type CreateRedisRequest struct {
 	Name             string  `json:"name"`
 	AppName          string  `json:"appName,omitempty"`
@@ -127,16 +125,6 @@ func (c *Client) SaveRedisEnvironment(ctx context.Context, id string, env *strin
 // "expected nonoptional, received undefined"; explicit value sets it and
 // synchronously redeploys - applicationStatus moved idle -> done in the
 // same probe that set it; explicit null clears a previously set port).
-//
-// This endpoint's existence is the answer to this task's central design
-// question: doc.go already lists `redis.saveExternalPort` alongside every
-// other engine's in its dialect-A endpoint table ("All five expose the same
-// six-endpoint shape ... redis.saveEnvironment, redis.saveExternalPort"),
-// and this task re-verified it live rather than trusting that record blind -
-// so RedisKind's SaveExternalPort adapter below is populated exactly like
-// every other engine's, never nil. See RedisKind's doc comment in
-// resources/database/redis.go for the full evidence and why the Kind
-// descriptor did not need to flex for this engine after all.
 func (c *Client) SaveRedisExternalPort(ctx context.Context, id string, port *int64) error {
 	return c.Post(ctx, "/redis.saveExternalPort", map[string]any{"redisId": id, "externalPort": port}, nil)
 }
