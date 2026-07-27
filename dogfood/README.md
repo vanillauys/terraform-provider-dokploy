@@ -29,9 +29,11 @@ inspected:
 - a failure partway through the `terraform import` loop (for example a stale
   ID from acceptance debris that no longer exists server-side) also preserves
   `dogfood/scratch/` instead of deleting it, the same as the plan-diff
-  failure path. The cleanup trap is deliberately disarmed for the duration of
-  that loop and re-armed immediately after, so the scratch state — including
-  whichever imports already succeeded and `generated.tf` — survives for
+  failure path. Cleanup is a single explicit call made only at the script's
+  one PASS exit, never an `EXIT` trap, so no failure path — including one
+  partway through this loop — ever deletes `$SCRATCH`; it survives by doing
+  nothing, the same as every other failure, so the scratch state (including
+  whichever imports already succeeded and `generated.tf`) is left for
   inspection.
 
 This is **not** part of CI — it needs a real server, and CI only ever has a

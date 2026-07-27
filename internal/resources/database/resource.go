@@ -58,9 +58,16 @@ func (r *genericResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 // Configure does not read req.ProviderData: unlike every other resource in
 // this provider, genericResource never needs a raw *client.Client, because
 // Kind.Client's closures already close over one (see NewResource's comment
-// and provider.go's registration). This only checks that the binding
-// actually happened, turning what would otherwise be a nil-pointer panic on
-// first use into a clear diagnostic.
+// and provider.go's registration). Every constructor-built Kind (e.g.
+// postgres.go's PostgresKind) sets Kind.Client.Create to a real, bound
+// closure at construction time, before this method is ever called, so this
+// check can never catch a Configure that "didn't happen" — a nil
+// *client.Client reached through those closures would panic inside the
+// client call itself, not here. What it actually catches is an entirely
+// unwired Kind.Client: a Kind assembled without its constructor (e.g. a bare
+// struct literal) or a registration bug in provider.go. This turns that
+// provider bug into a clear diagnostic instead of a nil-pointer panic on
+// first use.
 func (r *genericResource) Configure(_ context.Context, _ resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if r.kind.Client.Create == nil {
 		resp.Diagnostics.AddError(

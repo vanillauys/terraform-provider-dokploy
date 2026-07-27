@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   MongoDB's server-side default `docker_image` (`mongo:15`) does not exist
   on Docker Hub; set an explicit tag such as `mongo:7`.
 
-### Notes
+### Changed
 
 - Names are not unique in Dokploy. Every data source that looks up by name
   (project, environment, application, and — as of this wave — all five
