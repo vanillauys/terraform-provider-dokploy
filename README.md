@@ -55,7 +55,7 @@ newer versions are exercised as they ship; older ones are untested.
 - **Databases other than PostgreSQL, MySQL, MariaDB, MongoDB and Redis are
   not covered**, nor are compose services or backups. Wave 0 covered
   projects, applications and PostgreSQL; wave 1 added environments and
-  domains; wave 2 added the remaining database engines (MySQL, Redis,
+  domains; wave 2 adds the remaining database engines (MySQL, Redis,
   MariaDB and MongoDB).
 - **MySQL's and MariaDB's root password is server-generated when left
   unset**, and, like `database_password`, changing it only takes effect on
@@ -84,11 +84,12 @@ newer versions are exercised as they ship; older ones are untested.
 - **The default `production` environment of a project cannot be deleted**
   through the API, so `terraform destroy` on an imported one fails by design.
   Remove it from state instead.
-- **Environment, application and postgres names are not unique in Dokploy.**
-  The data sources that look them up by name error when more than one record
-  matches. Domain hosts are not unique either (the same host may be attached
-  to more than one domain); there is no `dokploy_domain` data source, so
-  nothing looks domains up by host.
+- **Names are not unique in Dokploy.** Every data source that looks up by
+  name (project, environment, application, and all five database engines)
+  errors when more than one record matches, rather than silently picking
+  one. Domain hosts are not unique either (the same host may be attached to
+  more than one domain); there is no `dokploy_domain` data source, so nothing
+  looks domains up by host.
 
 ## Development
 

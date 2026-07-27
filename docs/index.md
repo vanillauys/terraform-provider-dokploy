@@ -1,7 +1,7 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, applications, and databases with Terraform.
+  Manage Dokploy projects, environments, applications, databases, and domains with Terraform.
 ---
 
 # Dokploy Provider

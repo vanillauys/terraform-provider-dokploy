@@ -43,7 +43,7 @@ resource "dokploy_environment" "staging" {
 ### Optional
 
 - `description` (String) Free-form description. Dokploy stores a cleared description as an empty string rather than null; the provider reports both as null.
-- `env` (String) Environment-level variables shared by every service in this environment, as `KEY=value` lines. Dokploy's create endpoint ignores this field, so setting it on a new environment costs one extra API call.
+- `env` (String) Environment-level variables shared by every service in this environment, as `KEY=value` lines. Dokploy's create endpoint ignores this field, so setting it on a new environment costs one extra API call. Omitting this attribute and setting it to "" are indistinguishable on read — both come back null. Use omission, not "", to clear it.
 
 ### Read-Only
 

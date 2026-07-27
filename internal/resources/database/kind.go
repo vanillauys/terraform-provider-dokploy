@@ -225,7 +225,7 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 		"description": schema.StringAttribute{Optional: true, Description: "Free-form description."},
 		"env": schema.StringAttribute{
 			Optional:    true,
-			Description: "Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values.",
+			Description: "Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. Omitting this attribute and setting it to \"\" are indistinguishable on read — both come back null. Use omission, not \"\", to clear it.",
 		},
 		"external_port": schema.Int64Attribute{
 			Optional:    true,

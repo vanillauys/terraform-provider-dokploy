@@ -14,10 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clearable, but changing it (like `database_password`) only takes effect on
   the next deploy.
 - `dokploy_redis` resource and data source. Redis has no `database_name`,
-  `database_user` or `database_root_password` field at all — the only
-  credential attribute it exposes beyond the shared `database_password` set
-  is none; its schema is the uniform database attribute set with zero
-  engine-specific additions.
+  `database_user` or `database_root_password` field at all — it exposes no
+  credential attributes beyond the shared `database_password`; its schema is
+  the uniform database attribute set with zero engine-specific additions.
 - `dokploy_mariadb` resource and data source. Field-for-field identical to
   `dokploy_mysql`: `database_root_password` is server-generated when left
   unset, settable, and clearable, but changing it only takes effect on the
@@ -30,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a Terraform attribute (every instance is created in standalone mode).
   MongoDB's server-side default `docker_image` (`mongo:15`) does not exist
   on Docker Hub; set an explicit tag such as `mongo:7`.
+
+### Notes
+
+- Names are not unique in Dokploy. Every data source that looks up by name
+  (project, environment, application, and — as of this wave — all five
+  database engines) errors when more than one record matches, rather than
+  silently picking one.
 
 ## [0.2.0] - 2026-07-27
 

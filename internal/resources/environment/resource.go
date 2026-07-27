@@ -57,7 +57,7 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"env": schema.StringAttribute{
 				Optional:    true,
-				Description: "Environment-level variables shared by every service in this environment, as `KEY=value` lines. Dokploy's create endpoint ignores this field, so setting it on a new environment costs one extra API call.",
+				Description: "Environment-level variables shared by every service in this environment, as `KEY=value` lines. Dokploy's create endpoint ignores this field, so setting it on a new environment costs one extra API call. Omitting this attribute and setting it to \"\" are indistinguishable on read — both come back null. Use omission, not \"\", to clear it.",
 			},
 			// is_default is server-assigned and immutable: Dokploy exposes no
 			// endpoint that promotes or demotes an environment, so pinning the

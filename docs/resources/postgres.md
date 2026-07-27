@@ -45,7 +45,7 @@ resource "dokploy_postgres" "example" {
 - `deployment_timeout` (String) How long to wait for a triggered deployment to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout the apply fails but the server-side deployment keeps running.
 - `description` (String) Free-form description.
 - `docker_image` (String) Postgres docker image, e.g. `postgres:16-alpine`. Server default when omitted.
-- `env` (String) Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values.
+- `env` (String) Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. Omitting this attribute and setting it to "" are indistinguishable on read — both come back null. Use omission, not "", to clear it.
 - `external_port` (Number) Host port to expose PostgreSQL on. Unset keeps the database internal-only.
 - `server_id` (String) Remote server to run the service on. Defaults to the Dokploy host.
 
