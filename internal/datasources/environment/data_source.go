@@ -2,6 +2,7 @@ package environment
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/lookup"
 	resenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
@@ -100,21 +102,23 @@ func (d *environmentDataSource) Configure(_ context.Context, req datasource.Conf
 // where the API has no lookup query. It errors on multiple matches: Dokploy
 // permits two environments in one project to share a name, so taking the
 // first would silently bind to an arbitrary one.
+//
+// This builds on lookup.Find rather than lookup.ByName: the latter returns
+// a bare id, but callers here need the full matched record (and this
+// package's own "environments"/"project" wording, not ByName's generic
+// "services"/"environment" phrasing) — exactly the gap lookup.Find exists
+// to close (wave-2 task 9 carry item C2).
 func FindByName(envs []client.Environment, name string) (*client.Environment, error) {
-	var found *client.Environment
-	for i := range envs {
-		if envs[i].Name != name {
-			continue
-		}
-		if found != nil {
-			return nil, fmt.Errorf("multiple environments named %q in this project; look it up by id instead", name)
-		}
-		found = &envs[i]
-	}
-	if found == nil {
+	e, err := lookup.Find(envs, func(e client.Environment) bool { return e.Name == name })
+	switch {
+	case errors.Is(err, lookup.ErrMultipleMatches):
+		return nil, fmt.Errorf("multiple environments named %q in this project; look it up by id instead", name)
+	case errors.Is(err, lookup.ErrNoMatch):
 		return nil, fmt.Errorf("no environment named %q in this project", name)
+	case err != nil:
+		return nil, err
 	}
-	return found, nil
+	return &e, nil
 }
 
 func (d *environmentDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
