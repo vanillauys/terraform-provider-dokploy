@@ -1,14 +1,14 @@
-// Package postgres_test (an external test package, deliberately distinct
-// from package postgres) holds the acceptance test. It must live outside
-// package postgres: acctest imports provider, and provider imports
-// postgres to register dokploy_postgres — so an internal test file
-// (package postgres) importing acctest here would form an import cycle
-// (postgres -> acctest -> provider -> postgres), which the Go toolchain
+// Package database_test (an external test package, deliberately distinct
+// from package database) holds the acceptance test. It must live outside
+// package database: acctest imports provider, and provider imports
+// database to register dokploy_postgres — so an internal test file
+// (package database) importing acctest here would form an import cycle
+// (database -> acctest -> provider -> database), which the Go toolchain
 // rejects with "import cycle not allowed in test". Keeping this file in
-// the external postgres_test package sidesteps that: it depends on
-// postgres (indirectly, via provider) without itself being part of
-// postgres. Mirrors internal/resources/project/resource_acc_test.go.
-package postgres_test
+// the external database_test package sidesteps that: it depends on
+// database (indirectly, via provider) without itself being part of
+// database. Mirrors internal/resources/project/resource_acc_test.go.
+package database_test
 
 import (
 	"context"

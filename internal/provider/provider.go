@@ -16,9 +16,9 @@ import (
 	dspostgres "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/postgres"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
-	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/postgres"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 )
 
@@ -56,6 +56,12 @@ func resolveConfig(m DokployProviderModel, getenv func(string) string) (resolved
 
 type DokployProvider struct {
 	version string
+	// client is read (never written) by the database package's Kind
+	// constructors, which Resources() calls fresh on every invocation — see
+	// the comment on that registration below for why that makes a client
+	// captured here, rather than one passed once at registration time,
+	// necessary.
+	client *client.Client
 }
 
 type DokployProviderModel struct {
@@ -117,6 +123,7 @@ func (p *DokployProvider) Configure(ctx context.Context, req provider.ConfigureR
 		resp.Diagnostics.AddError("Invalid provider configuration", err.Error())
 		return
 	}
+	p.client = c
 	resp.ResourceData = c
 	resp.DataSourceData = c
 }
@@ -125,7 +132,23 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 	return []func() resource.Resource{
 		project.NewResource,
 		environment.NewResource,
-		postgres.NewResource,
+		// database.PostgresKind(p.client) is deliberately NOT hoisted out of
+		// this closure into a value computed once here. Resources() itself
+		// runs exactly once, cached by the framework from its very first
+		// GetProviderSchema call — which always precedes Configure, so
+		// p.client would still be nil at that point. But the closure below
+		// (the `func() resource.Resource` element of this slice) is what the
+		// framework actually caches; it re-invokes THAT closure fresh for
+		// every subsequent Create/Read/Update/Delete/ImportState call, all of
+		// which happen after Configure has already set p.client. So
+		// `database.PostgresKind(p.client)` reads the field lazily, at call
+		// time, and only ever observes the nil client on the harmless
+		// Metadata/Schema-only pass. Verified directly against
+		// terraform-plugin-framework v1.19.0 (internal/fwserver/server.go,
+		// Server.Resource) rather than assumed; see database.PostgresKind's
+		// doc comment for the same reasoning from the other side. Tasks 5-7
+		// must register their engines' Kinds the same way.
+		func() resource.Resource { return database.NewResource(database.PostgresKind(p.client))() },
 		application.NewResource,
 		domain.NewResource,
 	}
