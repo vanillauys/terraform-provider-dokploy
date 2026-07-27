@@ -33,7 +33,7 @@ echo "==> writing import blocks"
 python3 "$REPO_ROOT/dogfood/generate_imports.py" > "$SCRATCH/imports.tf"
 import_count="$(grep -c '^import' "$SCRATCH/imports.tf" || true)"
 echo "    import blocks: $import_count"
-if [ "$import_count" -eq 0 ]; then
+if [ "${import_count:-0}" -eq 0 ]; then
   echo
   echo "FAIL: nothing to import (empty stack or generator bug)"
   exit 1
@@ -70,7 +70,37 @@ echo "==> terraform init"
 terraform -chdir="$SCRATCH" init -input=false
 
 echo "==> generating config from live state"
+# Terraform Core never writes a value for a Sensitive schema attribute into
+# generated config (it emits `null # sensitive` instead), and a null on a
+# Required attribute (database_password, on every database engine) makes
+# THIS SAME `plan -generate-config-out` command exit nonzero -- but it still
+# writes generated.tf first, with every non-sensitive attribute populated
+# correctly and every Required+Sensitive one left as `null # sensitive` for
+# the next step to patch. So this specific command's exit code is captured
+# rather than trusted to `set -e`, and only treated as fatal if generated.tf
+# never actually appeared (a different failure than the one this step exists
+# to tolerate).
+set +e
 terraform -chdir="$SCRATCH" plan -generate-config-out=generated.tf -input=false
+generate_status=$?
+set -e
+if [ ! -s "$SCRATCH/generated.tf" ]; then
+  echo
+  echo "FAIL: terraform did not produce a generated.tf to patch (exit $generate_status)."
+  exit 1
+fi
+if [ "$generate_status" -ne 0 ]; then
+  echo "    (plan -generate-config-out exited $generate_status, generated.tf was still written -- patching Required+Sensitive attributes below before continuing)"
+fi
+
+# See dogfood/README.md's "Known limitation" section for the full analysis
+# of why the failure above happens and why patching real values back in
+# (rather than exempting the attribute from this gate) is the fix. This
+# patches every `<attr> = null # sensitive` line back in from the same
+# read-only API this whole harness already uses, generically (by pattern,
+# not by attribute name).
+echo "==> patching Required+Sensitive attributes with live values (read-only)"
+python3 "$REPO_ROOT/dogfood/generate_imports.py" --patch-sensitive "$SCRATCH/imports.tf" "$SCRATCH/generated.tf"
 
 # Import blocks only ever get materialized into state by `terraform apply` --
 # which this harness must never run. Without an actual import, every
