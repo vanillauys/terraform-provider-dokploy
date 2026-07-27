@@ -52,22 +52,25 @@ Error: Missing Configuration for Required Attribute
   the provider has marked it as required.
 ```
 
-Root cause: `database_password` (and mysql/mariadb's
-`database_root_password`) are `Required` + `Sensitive` in every engine's
-schema — correctly so, since the server genuinely requires a caller-supplied
-password and never generates one. Terraform's config generation refuses to
-write a value for any `Sensitive` attribute (`null # sensitive` is emitted
-instead), and a `null` on a `Required` attribute is then rejected by
-Terraform Core itself, ahead of any provider code running. This is not a
-provider read-path bug: hand-patching the real password value into
-`generated.tf` and continuing the import + re-plan by hand converges to
-`No changes` cleanly for every resource in the stack, including the new
-mysql/redis resources (full transcript: wave-2 task-8 report). It is a
-structural mismatch between `-generate-config-out` and any schema with a
-`Required`+`Sensitive` attribute, and it is not new to the four engines this
-task added — postgres has shipped this way since wave 1. It was simply never
-exercised end-to-end before, because this harness had never been run against
-a stack containing any database engine until now.
+Root cause: `database_password` is `Required` + `Sensitive` in every
+engine's schema — correctly so, since the server genuinely requires a
+caller-supplied password and never generates one. Terraform's config
+generation refuses to write a value for any `Sensitive` attribute
+(`null # sensitive` is emitted instead), and a `null` on a `Required`
+attribute is then rejected by Terraform Core itself, ahead of any provider
+code running. (mysql/mariadb's `database_root_password` is also `Sensitive`
+but is `Optional+Computed`, not `Required` — it gets the same `null #
+sensitive` treatment in generated config but does NOT error, since Terraform
+allows a null on an Optional+Computed attribute and defers to the provider.)
+This is not a provider read-path bug: hand-patching the real
+`database_password` value into `generated.tf` and continuing the import +
+re-plan by hand converges to `No changes` cleanly for every resource in the
+stack, including the new mysql/redis resources (full transcript: wave-2
+task-8 report). It is a structural mismatch between `-generate-config-out`
+and any schema with a `Required`+`Sensitive` attribute, and it is not new to
+the four engines this task added — postgres has shipped this way since wave
+1. It was simply never exercised end-to-end before, because this harness had
+never been run against a stack containing any database engine until now.
 
 Practical effect: the release gate that requires a passing dogfood run
 against a stack with a database engine and a domain (wave-2 task 10) is
