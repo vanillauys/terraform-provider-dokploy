@@ -142,19 +142,27 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 // FindServiceByName resolves an exact service name to its id. It errors on
 // multiple matches rather than picking one: Dokploy does not enforce unique
 // service names within an environment.
+//
+// The "have I found one yet" sentinel is a *string, not a string compared
+// against "": a service can have an empty id (verified live — some
+// still-provisioning or malformed records report id ""), and the old
+// found != "" check treated that first empty-id match as "nothing found
+// yet", silently letting a second same-named ref win instead of erroring.
+// Mirrors datasources/environment.FindByName, which uses the same
+// nil-pointer sentinel for the same reason.
 func FindServiceByName(refs []ServiceRef, name, kind string) (string, error) {
-	var found string
-	for _, r := range refs {
-		if r.Name != name {
+	var found *string
+	for i := range refs {
+		if refs[i].Name != name {
 			continue
 		}
-		if found != "" {
+		if found != nil {
 			return "", fmt.Errorf("multiple %s services named %q in this environment; look it up by id instead", kind, name)
 		}
-		found = r.ID
+		found = &refs[i].ID
 	}
-	if found == "" {
+	if found == nil {
 		return "", fmt.Errorf("no %s service named %q in this environment", kind, name)
 	}
-	return found, nil
+	return *found, nil
 }

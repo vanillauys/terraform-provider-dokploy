@@ -120,6 +120,20 @@ func TestFindServiceByName(t *testing.T) {
 	if _, err := FindServiceByName(refs, "absent", "application"); err == nil {
 		t.Error("no match must be an error")
 	}
+
+	// A service can have an empty id (Dokploy returns "" for some
+	// still-provisioning or malformed records); the sentinel that tracks
+	// "have I already found one" must not treat an empty id as "not found
+	// yet" and let a second same-named ref through unchallenged.
+	emptyIDDup := []ServiceRef{
+		{ID: "", Name: "dup"},
+		{ID: "b2", Name: "dup"},
+	}
+	if _, err := FindServiceByName(emptyIDDup, "dup", "application"); err == nil {
+		t.Error("two applications named dup must be an error even when the first match has an empty id")
+	} else if !strings.Contains(err.Error(), "multiple") {
+		t.Errorf("error %q should mention multiple matches", err)
+	}
 }
 
 func TestListEnvironmentsBackfillsProjectID(t *testing.T) {
