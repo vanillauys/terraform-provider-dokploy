@@ -197,4 +197,140 @@
 // acceptance tests must not rely on the server's default image: a
 // bare-default mariadb or mongo instance will 500 the moment anything
 // calls saveExternalPort OR .deploy against it.
+// # Service child resources: mounts, port, redirects, security
+//
+// All probed live against the rig (v0.29.13, 2026-07-28, wave-3 task 2)
+// against a scratch project holding one application and one postgres. Full
+// transcripts in the task report.
+//
+// ## mounts — dialect B, and a corrupting update path
+//
+//	mounts.create   requires only type ("bind"|"volume"|"file"), mountPath,
+//	                serviceId (+ serviceType). Everything else is optional.
+//	mounts.update   dialect B: an absent key keeps the old value (HTTP 200),
+//	                an explicit null clears it.
+//	mounts.remove   { mountId }
+//
+// Two traps, neither guessable:
+//
+// 1. THE SUBTYPE FIELDS ARE NOT SERVER-ENFORCED. A type="bind" mount with
+// no hostPath is accepted (200, hostPath null); so is type="volume" with no
+// volumeName. The server validates only the enum and mountPath. Any
+// per-subtype required-field rule is therefore PROVIDER policy, enforced at
+// plan time, not a server contract being mirrored — say so in the schema
+// descriptions rather than implying the server would reject it.
+//
+// 2. mounts.update NEVER CLEARS THE OTHER PARENT COLUMNS, so retargeting a
+// mount through it corrupts the record. Verified step by step on one mount
+// created against an application:
+//
+//	after update {serviceId:<pg>, serviceType:"postgres"}
+//	  -> serviceType="postgres" BUT applicationId still set, postgresId null
+//	after update {postgresId:<pg>}
+//	  -> postgresId set AND applicationId STILL SET — two parents at once
+//
+// The create/update field asymmetry is real (create takes serviceId +
+// serviceType; update takes per-type columns applicationId, postgresId,
+// mysqlId, mariadbId, mongoId, redisId, libsqlId, composeId), but the fix
+// is not to model update's columns: it is to make the parent attributes
+// RequiresReplace so update is never asked to retarget anything.
+//
+// 3. DATABASE ENGINES AUTO-CREATE A MOUNT NOBODY ASKED FOR. A freshly
+// created postgres already owns a volume mount
+// (volumeName "postgres-<appName>-data", mountPath
+// "/var/lib/postgresql/18/docker") the moment .create returns. It is a
+// perfectly ordinary mount — mounts.remove deletes it (200) — but nothing
+// in Terraform asked for it, so anything that ENUMERATES a service's mounts
+// (dogfood/generate_imports.py, an import sweep) will surface a
+// server-owned object as if it were user configuration. Handle it there
+// deliberately; do not let it be discovered during a migration.
+//
+// 4. type="file" mounts have filesystem side effects: mounts.create writes
+// under /etc/dokploy/applications/<appName>/files, and a second file mount
+// whose directory already exists fails with HTTP 400
+// "EEXIST: file already exists, mkdir ...". Creation is not idempotent and
+// not order-independent.
+//
+// ## port, redirects, security — dialect A, uniform where it matters
+//
+//	<router>.create   port: applicationId, publishedPort, targetPort,
+//	                        protocol, publishMode
+//	                  redirects: applicationId, regex, replacement, permanent
+//	                  security: applicationId, username, password
+//	<router>.update   DIALECT A — the full field set is required. A body of
+//	                  {<id>} alone is HTTP 400 for all three, naming every
+//	                  missing field. There is no partial update.
+//	<router>.delete   NOTE the verb: .delete, not .remove (mounts uses
+//	                  .remove). Takes { portId | redirectId | securityId }.
+//
+// Uniform: one parent (applicationId only), flat records, dialect A update,
+// .delete. That is enough to justify one resource-layer engine.
+//
+// NOT uniform — the response envelopes, which is a client-layer problem and
+// must stay visible per router:
+//
+//	port.create        returns the created record  { portId, ... }
+//	redirects.create   returns literal `true`
+//	security.create    returns literal `true`
+//	port.update        returns the record
+//	redirects.update   returns the record
+//	security.update    returns literal `null`
+//
+// So for redirects and security THE CREATED ID IS NOT IN THE CREATE
+// RESPONSE. It has to be recovered from application.one's embedded
+// `redirects` / `security` array afterwards. Those arrays are also the only
+// list endpoints: there is no redirects.all / security.all.
+//
+// security.password is returned in CLEARTEXT by both security.one and
+// application.one. Mark it Sensitive in the schema and never log it.
+//
+// # application.saveGithubProvider: triggerType, and a 500 that is really a 404
+//
+// Probed live, wave-3 task 2. saveGithubProvider VALIDATES a bogus githubId
+// only at the database layer: an unknown value returns HTTP 500 with a
+// "Failed query: update \"application\" set ..." body, not a 400 and not a
+// 404. Any probe of this endpoint on a rig with no GitHub provider
+// configured therefore fails for FK reasons and proves nothing about field
+// semantics — use saveGitProvider (no foreign key) to learn the shared
+// watchPaths/enableSubmodules behaviour, as this file's findings below did.
+//
+// The 500 body is still evidence: it echoes the SQL SET list, which names
+// exactly the columns the endpoint writes for that request. That is how the
+// following was established without a working githubId.
+//
+//	triggerType   enum "push"|"tag". The OpenAPI document marks it REQUIRED,
+//	              but the server accepts a request without it (validation
+//	              passes; the failure is the FK 500), and the SET list still
+//	              contains triggerType — i.e. a zod default is applied and
+//	              WRITTEN. Omitting it does not preserve the stored value; it
+//	              overwrites it with the default. Model it explicitly.
+//
+// # The blind-field findings, corrected by live evidence
+//
+// Wave 3's spec predicted eight blind fields behaving alike. They do not.
+// Probed individually (saveGitProvider for the shared git fields):
+//
+//	watchPaths        REQUIRED on saveGitProvider — omitting it is HTTP 400,
+//	                  not a silent keep. The client sends it as an explicit
+//	                  null on every call, which CLEARS it. This is a real,
+//	                  reproducible wipe.
+//	buildSecrets      saveEnvironment, sent as a hardcoded nil. Confirmed
+//	                  wipe: set to "S=secret", then one ordinary apply-shaped
+//	                  call returns it to null.
+//	createEnvFile     saveEnvironment, sent as a hardcoded true. Confirmed
+//	                  overwrite: set to false, one apply-shaped call returns
+//	                  it to true.
+//	enableSubmodules  optional, and NOT written when omitted — the SET list
+//	                  does not contain it. The current client does not wipe
+//	                  it; the field is merely unmanageable.
+//	isStaticSpa       same: set to true, then a saveBuildType call omitting
+//	                  it leaves it true. Unmanageable, not wiped.
+//	triggerType       overwritten with the zod default, as above.
+//
+// So the honest split is three wipes (watchPaths, buildSecrets,
+// createEnvFile), one silent default-overwrite (triggerType), and two
+// merely-missing attributes (enableSubmodules, isStaticSpa). All six still
+// need schema attributes — an attribute the user cannot set is a real gap —
+// but only the first four are data loss, and the CHANGELOG should say so
+// precisely rather than claiming eight wipes.
 package client
