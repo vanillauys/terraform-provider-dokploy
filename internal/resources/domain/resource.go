@@ -125,8 +125,9 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Description: "Traefik middlewares attached to this domain. Read-only: middlewares are created outside this provider, so a writable list would reference names Terraform cannot manage.",
 			},
 			"domain_type": schema.StringAttribute{
-				Computed:    true,
-				Description: "`application` or `compose`, derived from which of `application_id` / `compose_id` is set.",
+				Computed:      true,
+				Description:   "`application` or `compose`, derived from which of `application_id` / `compose_id` is set.",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"unique_config_key": schema.Int64Attribute{
 				Computed:    true,
