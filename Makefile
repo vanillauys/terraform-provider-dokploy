@@ -27,8 +27,10 @@ docs:
 
 # Point git at the version-controlled hooks in .githooks/ so every clone gets
 # the gitleaks pre-commit secret scan without a manual step. Idempotent; no-op
-# outside a git working copy (e.g. CI source archives).
+# outside a git working copy (e.g. CI source archives). `git rev-parse
+# --git-dir` (rather than `[ -d .git ]`) also works from a worktree, where
+# .git is a file pointing at the real gitdir, not a directory.
 hooks:
-	@[ -d .git ] && git config core.hooksPath .githooks || true
+	@git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true
 
 .PHONY: default build test testacc lint acc-up docs hooks

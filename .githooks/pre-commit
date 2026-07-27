@@ -23,6 +23,18 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 0
 fi
 
+# The `git` subcommand (used below) was added in gitleaks 8.19. On an older
+# binary this probe fails, and running the real scan command would otherwise
+# fail as "unknown command", which the naive `if ! gitleaks git ...` check
+# below would misreport as "found a potential secret" — a confusing error
+# that names the wrong problem. Diagnose the version mismatch honestly
+# instead, and skip the scan (matching the not-installed case above) rather
+# than block every commit until the tool is upgraded.
+if ! gitleaks git --help >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks >= 8.19 required (found $(gitleaks version))" >&2
+  exit 0
+fi
+
 if ! gitleaks git --staged --redact --no-banner; then
   cat >&2 <<'EOF'
 
