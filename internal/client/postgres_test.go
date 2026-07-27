@@ -10,6 +10,13 @@ import (
 	"testing"
 )
 
+// description/env/serverId are explicit JSON nulls, not omitted keys: this
+// is what a live Dokploy read actually returns for a never-set nullable
+// field (matches domain_test.go/environment_test.go's fixtures), and it
+// exercises the *string field's json tag on the decode path instead of
+// leaving it untouched by an absent key. Extended here to match mysql/
+// mariadb/mongo's fixtures (wave-2 task 9 carry item C5; sibling-consistent
+// sweep, not itself named in the ledger's C5 file list).
 const postgresJSON = `{
 	"postgresId": "pg1",
 	"name": "db",
@@ -21,7 +28,10 @@ const postgresJSON = `{
 	"externalPort": 5432,
 	"applicationStatus": "done",
 	"environmentId": "e1",
-	"createdAt": "2026-07-23T10:00:00.000Z"
+	"createdAt": "2026-07-23T10:00:00.000Z",
+	"description": null,
+	"env": null,
+	"serverId": null
 }`
 
 func TestCreateAndGetPostgres(t *testing.T) {
@@ -68,7 +78,17 @@ func TestCreateAndGetPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPostgres: %v", err)
 	}
-	if got.ExternalPort == nil || *got.ExternalPort != 5432 || got.ApplicationStatus != "done" {
+	// Decode test must assert every field of the response struct
+	// (dokploy-api-quirks: a tag typo on an unasserted field decodes
+	// silently wrong and stays green) — matches the bar every other
+	// engine's decode test already holds itself to.
+	if got.Name != "db" || got.AppName != "db-x1y2" || got.DatabaseName != "app" ||
+		got.DatabaseUser != "app" || got.DatabasePassword != "hunter2" ||
+		got.DockerImage != "postgres:16-alpine" ||
+		got.ExternalPort == nil || *got.ExternalPort != 5432 ||
+		got.ApplicationStatus != "done" || got.EnvironmentID != "e1" ||
+		got.CreatedAt != "2026-07-23T10:00:00.000Z" ||
+		got.Description != nil || got.Env != nil || got.ServerID != nil {
 		t.Errorf("got = %+v", got)
 	}
 }

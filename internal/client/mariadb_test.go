@@ -10,6 +10,11 @@ import (
 	"testing"
 )
 
+// description/env/serverId are explicit JSON nulls, not omitted keys: this
+// is what a live Dokploy read actually returns for a never-set nullable
+// field (matches domain_test.go/environment_test.go's fixtures), and it
+// exercises the *string field's json tag on the decode path instead of
+// leaving it untouched by an absent key (wave-2 task 9 carry item C5).
 const mariadbJSON = `{
 	"mariadbId": "md1",
 	"name": "db",
@@ -22,7 +27,10 @@ const mariadbJSON = `{
 	"externalPort": 3307,
 	"applicationStatus": "done",
 	"environmentId": "e1",
-	"createdAt": "2026-07-23T10:00:00.000Z"
+	"createdAt": "2026-07-23T10:00:00.000Z",
+	"description": null,
+	"env": null,
+	"serverId": null
 }`
 
 func TestCreateAndGetMariadb(t *testing.T) {

@@ -21,6 +21,9 @@ import (
 // recorded redis divergence — not modelled here since this struct, like
 // Mysql/Postgres, only declares the fields it cares about and ignores the
 // rest).
+// description/env/serverId are explicit JSON nulls, not omitted keys (wave-2
+// task 9 carry item C5; see mysql_test.go's fixture comment for the full
+// rationale — extended here for sibling consistency).
 const redisJSON = `{
 	"redisId": "rd1",
 	"name": "db",
@@ -30,7 +33,10 @@ const redisJSON = `{
 	"externalPort": 6379,
 	"applicationStatus": "done",
 	"environmentId": "e1",
-	"createdAt": "2026-07-23T10:00:00.000Z"
+	"createdAt": "2026-07-23T10:00:00.000Z",
+	"description": null,
+	"env": null,
+	"serverId": null
 }`
 
 func TestCreateAndGetRedis(t *testing.T) {

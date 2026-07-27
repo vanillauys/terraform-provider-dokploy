@@ -18,6 +18,11 @@ import (
 // returned 200 with no databaseName or databaseRootPassword field anywhere
 // in the response. replicaSets is present in the response (bool, defaults
 // false) but not modelled by this struct - see Mongo's doc comment.
+// description/env/serverId are explicit JSON nulls, not omitted keys: this
+// is what a live Dokploy read actually returns for a never-set nullable
+// field (matches domain_test.go/environment_test.go's fixtures), and it
+// exercises the *string field's json tag on the decode path instead of
+// leaving it untouched by an absent key (wave-2 task 9 carry item C5).
 const mongoJSON = `{
 	"mongoId": "mo1",
 	"name": "db",
@@ -29,7 +34,10 @@ const mongoJSON = `{
 	"applicationStatus": "done",
 	"environmentId": "e1",
 	"createdAt": "2026-07-23T10:00:00.000Z",
-	"replicaSets": false
+	"replicaSets": false,
+	"description": null,
+	"env": null,
+	"serverId": null
 }`
 
 func TestCreateAndGetMongo(t *testing.T) {
