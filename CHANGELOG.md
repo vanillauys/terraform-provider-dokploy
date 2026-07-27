@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   credential attribute it exposes beyond the shared `database_password` set
   is none; its schema is the uniform database attribute set with zero
   engine-specific additions.
+- `dokploy_mariadb` resource and data source. Field-for-field identical to
+  `dokploy_mysql`: `database_root_password` is server-generated when left
+  unset, settable, and clearable, but changing it only takes effect on the
+  next deploy. MariaDB's server-side default `docker_image` (`mariadb:6`)
+  does not exist on Docker Hub; set an explicit tag such as `mariadb:11.4`.
 
 ## [0.2.0] - 2026-07-27
 

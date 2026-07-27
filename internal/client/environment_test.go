@@ -74,7 +74,8 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 			                {"applicationId":"a2","name":"api"}],
 			"postgres":[{"postgresId":"pg1","name":"db"}],
 			"mysql":[{"mysqlId":"my1","name":"mydb"}],
-			"redis":[{"redisId":"rd1","name":"cache"}]
+			"redis":[{"redisId":"rd1","name":"cache"}],
+			"mariadb":[{"mariadbId":"md1","name":"mariadata"}]
 		}`))
 	}))
 	defer srv.Close()
@@ -98,6 +99,9 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 	}
 	if len(got.Redis) != 1 || got.Redis[0].ID != "rd1" || got.Redis[0].Name != "cache" {
 		t.Errorf("redis = %+v, want one entry {rd1 cache}", got.Redis)
+	}
+	if len(got.Mariadb) != 1 || got.Mariadb[0].ID != "md1" || got.Mariadb[0].Name != "mariadata" {
+		t.Errorf("mariadb = %+v, want one entry {md1 mariadata}", got.Mariadb)
 	}
 }
 
