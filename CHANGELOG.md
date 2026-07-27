@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `database_root_password` is server-generated when left unset, settable, and
   clearable, but changing it (like `database_password`) only takes effect on
   the next deploy.
+- `dokploy_redis` resource and data source. Redis has no `database_name`,
+  `database_user` or `database_root_password` field at all — the only
+  credential attribute it exposes beyond the shared `database_password` set
+  is none; its schema is the uniform database attribute set with zero
+  engine-specific additions.
 
 ## [0.2.0] - 2026-07-27
 

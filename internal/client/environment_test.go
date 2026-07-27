@@ -73,7 +73,8 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 			"applications":[{"applicationId":"a1","name":"frontend"},
 			                {"applicationId":"a2","name":"api"}],
 			"postgres":[{"postgresId":"pg1","name":"db"}],
-			"mysql":[{"mysqlId":"my1","name":"mydb"}]
+			"mysql":[{"mysqlId":"my1","name":"mydb"}],
+			"redis":[{"redisId":"rd1","name":"cache"}]
 		}`))
 	}))
 	defer srv.Close()
@@ -94,6 +95,9 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 	}
 	if len(got.Mysql) != 1 || got.Mysql[0].ID != "my1" || got.Mysql[0].Name != "mydb" {
 		t.Errorf("mysql = %+v, want one entry {my1 mydb}", got.Mysql)
+	}
+	if len(got.Redis) != 1 || got.Redis[0].ID != "rd1" || got.Redis[0].Name != "cache" {
+		t.Errorf("redis = %+v, want one entry {rd1 cache}", got.Redis)
 	}
 }
 

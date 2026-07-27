@@ -52,15 +52,21 @@ newer versions are exercised as they ship; older ones are untested.
   and `deployment_timeout` exist only in Terraform, so import seeds them with
   their schema defaults (`true` / `"15m"`). Importing a resource whose config
   sets a non-default value plans one diff to reconcile it.
-- **Databases other than PostgreSQL and MySQL are not covered**, nor are
-  compose services or backups. Wave 0 covered projects, applications and
+- **Databases other than PostgreSQL, MySQL and Redis are not covered**, nor
+  are compose services or backups. Wave 0 covered projects, applications and
   PostgreSQL; wave 1 added environments and domains; wave 2 is adding the
-  remaining database engines (MySQL shipped, MariaDB/MongoDB/Redis to follow).
+  remaining database engines (MySQL and Redis shipped, MariaDB/MongoDB to
+  follow).
 - **MySQL's root password is server-generated when left unset**, and, like
   `database_password`, changing it only takes effect on the next deploy.
   `deploy_on_change` (default `true`) covers the common case; setting it to
   `false` means a `database_root_password` change is stored but not applied
   until a manual deploy.
+- **`dokploy_redis` has no `database_name`, `database_user` or
+  `database_root_password` attribute.** Unlike every other database engine
+  this provider supports, Redis has no per-engine credential fields at all
+  beyond the shared `database_password` — this is a genuine gap in Dokploy's
+  own data model for this engine, not an omission in the schema.
 - **The default `production` environment of a project cannot be deleted**
   through the API, so `terraform destroy` on an imported one fails by design.
   Remove it from state instead.

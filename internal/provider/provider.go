@@ -153,6 +153,9 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		// (wave-2 task 5). Tasks 6-7 register mariadb/mongo/redis the same
 		// way.
 		func() resource.Resource { return database.NewResource(database.MysqlKind(p.client))() },
+		// Same reasoning again, mirrored for redis (wave-2 task 6). Task 7
+		// registers mariadb/mongo the same way.
+		func() resource.Resource { return database.NewResource(database.RedisKind(p.client))() },
 		application.NewResource,
 		domain.NewResource,
 	}
@@ -174,6 +177,8 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		func() datasource.DataSource { return dsdatabase.NewDataSource(database.PostgresKind(p.client))() },
 		// Same reasoning, mirrored for mysql (wave-2 task 5).
 		func() datasource.DataSource { return dsdatabase.NewDataSource(database.MysqlKind(p.client))() },
+		// Same reasoning, mirrored for redis (wave-2 task 6).
+		func() datasource.DataSource { return dsdatabase.NewDataSource(database.RedisKind(p.client))() },
 		dsenvironment.NewDataSource,
 	}
 }

@@ -109,11 +109,11 @@ type ServiceRef struct {
 //
 // environment.one embeds every service collection, so one call resolves a
 // name for any service kind. Only the kinds this provider ships resources
-// for are decoded; the rest (mariadb, mongo, redis, libsql, compose) are
-// ignored until they have resources too (verified live 2026-07-27: the raw
+// for are decoded; the rest (mariadb, mongo, libsql, compose) are ignored
+// until they have resources too (verified live 2026-07-27: the raw
 // environment.one response already carries top-level "mariadb", "mongo",
 // "redis" arrays alongside "mysql" and "postgres" - this struct just
-// doesn't decode them yet).
+// doesn't decode mariadb/mongo yet).
 //
 // Mysql was added in wave-2 task 5, alongside dokploy_mysql - it is NOT one
 // of the files task 5's brief listed as needing a change, but
@@ -121,12 +121,16 @@ type ServiceRef struct {
 // mysql.go) has no other way to resolve a mysql service by name: it must
 // decode the SAME environment.one call this type already wraps, and this is
 // the one shared place that decode can live without every Kind constructor
-// duplicating its own raw-JSON struct. Tasks 6-7 (mariadb, mongo, redis)
-// will need the same addition here for their own kinds.
+// duplicating its own raw-JSON struct.
+//
+// Redis was added in wave-2 task 6, the identical addition mysql needed:
+// resourcedb.RedisKind's ListByEnvironment decodes this same field. Task 7
+// (mariadb, mongo) needs the same addition here for its own kinds.
 type EnvironmentServices struct {
 	Applications []ServiceRef
 	Postgres     []ServiceRef
 	Mysql        []ServiceRef
+	Redis        []ServiceRef
 }
 
 func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) (*EnvironmentServices, error) {
@@ -143,6 +147,10 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 			MysqlID string `json:"mysqlId"`
 			Name    string `json:"name"`
 		} `json:"mysql"`
+		Redis []struct {
+			RedisID string `json:"redisId"`
+			Name    string `json:"name"`
+		} `json:"redis"`
 	}
 	if err := c.Get(ctx, "/environment.one", url.Values{"environmentId": {environmentID}}, &raw); err != nil {
 		return nil, err
@@ -156,6 +164,9 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 	}
 	for _, m := range raw.Mysql {
 		out.Mysql = append(out.Mysql, ServiceRef{ID: m.MysqlID, Name: m.Name})
+	}
+	for _, r := range raw.Redis {
+		out.Redis = append(out.Redis, ServiceRef{ID: r.RedisID, Name: r.Name})
 	}
 	return out, nil
 }
