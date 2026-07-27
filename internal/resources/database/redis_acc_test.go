@@ -265,12 +265,3 @@ resource "dokploy_redis" "test" {
 		},
 	})
 }
-
-// Note: this file previously also had TestAccRedis_noCredentialAttrsInSchema,
-// a rig-gated acceptance test asserting that database_name is rejected as an
-// unknown argument. It never reached the API — Terraform core rejects an
-// unknown attribute at config-validation time — so it re-proved, at acceptance
-// cost, exactly what TestSchemaAttributes_ZeroCredentialAttrs already pins for
-// free as a unit test in both internal/resources/database/model_test.go and
-// internal/datasources/database/data_source_test.go. Dropped as redundant;
-// not a shape to propagate to mariadb/mongo.

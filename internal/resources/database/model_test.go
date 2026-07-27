@@ -663,3 +663,79 @@ func TestSchemaAttributes_ZeroCredentialAttrs(t *testing.T) {
 		t.Errorf("unexpected database_password description: %q", dbPassword.Description)
 	}
 }
+
+// TestKindCredentialDescriptors pins each engine's *Kind(nil) constructor's
+// CredentialAttrs shape directly, unlike TestSchemaAttributes_*CredentialAttrs
+// above (which build a synthetic Kind literal shaped like an engine and never
+// call the real constructor - they pin schemaAttributes' HANDLING of a given
+// shape, not that any particular *Kind function PRODUCES that shape).
+// Review round 1 on wave-2 task 7 found that gap: nothing outside rig-gated
+// acceptance pinned that MongoKind has exactly one credential attr and no
+// database_name, that MariadbKind's root password is
+// Computed+Sensitive+DeployTrigger, or that any of these five constructors'
+// CredentialAttrs matches what their doc comments claim. Closed here, at
+// zero rig cost, for every engine at once.
+func TestKindCredentialDescriptors(t *testing.T) {
+	type wantAttr struct {
+		tfName          string
+		required        bool
+		requiresReplace bool
+		computed        bool
+		sensitive       bool
+		deployTrigger   bool
+	}
+	cases := []struct {
+		name  string
+		kind  Kind
+		attrs []wantAttr
+	}{
+		{"postgres", PostgresKind(nil), []wantAttr{
+			{tfName: "database_name", required: true, requiresReplace: true},
+			{tfName: "database_user", required: true, requiresReplace: true},
+		}},
+		{"mysql", MysqlKind(nil), []wantAttr{
+			{tfName: "database_name", required: true, requiresReplace: true},
+			{tfName: "database_user", required: true, requiresReplace: true},
+			{tfName: "database_root_password", computed: true, sensitive: true, deployTrigger: true},
+		}},
+		{"mariadb", MariadbKind(nil), []wantAttr{
+			{tfName: "database_name", required: true, requiresReplace: true},
+			{tfName: "database_user", required: true, requiresReplace: true},
+			{tfName: "database_root_password", computed: true, sensitive: true, deployTrigger: true},
+		}},
+		{"mongo", MongoKind(nil), []wantAttr{
+			{tfName: "database_user", required: true, requiresReplace: true},
+		}},
+		{"redis", RedisKind(nil), nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.kind.CredentialAttrs
+			if len(got) != len(tc.attrs) {
+				t.Fatalf("%s: CredentialAttrs = %+v, want %d entries matching %+v", tc.name, got, len(tc.attrs), tc.attrs)
+			}
+			for i, want := range tc.attrs {
+				ca := got[i]
+				if ca.TFName != want.tfName {
+					t.Errorf("%s: CredentialAttrs[%d].TFName = %q, want %q", tc.name, i, ca.TFName, want.tfName)
+				}
+				if ca.Required != want.required {
+					t.Errorf("%s: %s.Required = %v, want %v", tc.name, ca.TFName, ca.Required, want.required)
+				}
+				if ca.RequiresReplace != want.requiresReplace {
+					t.Errorf("%s: %s.RequiresReplace = %v, want %v", tc.name, ca.TFName, ca.RequiresReplace, want.requiresReplace)
+				}
+				if ca.Computed != want.computed {
+					t.Errorf("%s: %s.Computed = %v, want %v", tc.name, ca.TFName, ca.Computed, want.computed)
+				}
+				if ca.Sensitive != want.sensitive {
+					t.Errorf("%s: %s.Sensitive = %v, want %v", tc.name, ca.TFName, ca.Sensitive, want.sensitive)
+				}
+				if ca.DeployTrigger != want.deployTrigger {
+					t.Errorf("%s: %s.DeployTrigger = %v, want %v", tc.name, ca.TFName, ca.DeployTrigger, want.deployTrigger)
+				}
+			}
+		})
+	}
+}

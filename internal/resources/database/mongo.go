@@ -44,9 +44,19 @@ import (
 // engine change than the field-map configuration this task is scoped to,
 // and one that would need to be re-verified against every existing engine's
 // tests. Every dokploy_mongo instance this provider creates therefore gets
-// the server's standalone (non-replica-set) default. See this wave's task-7
+// the server's standalone (non-replica-set) default. Deferring it is safe:
+// mongo.update is dialect B (doc.go), and UpdateMongoRequest declares no
+// replicaSets field, so a server-side replicaSets: true (set out-of-band,
+// e.g. via the Dokploy UI) survives every provider Update call untouched -
+// there is no clobber risk in leaving this gap open. See this wave's task-7
 // report for the full rationale and live evidence; a follow-up task should
-// pick this up if replica-set mongo instances are ever needed.
+// pick this up if replica-set mongo instances are ever needed. Whenever that
+// happens, the attribute MUST be Optional+Computed, not plain Optional: Read
+// (flatten) will populate it from the server's actual value on every
+// refresh, and a plain Optional attribute left unset in config would fight
+// that server-reported value as a permanent diff forever (spec §5.6) rather
+// than adopting it, exactly the trap UseStateForUnknown/Computed exists to
+// avoid for docker_image/app_name above.
 func MongoKind(c *client.Client) Kind {
 	return Kind{
 		Name:      "mongo",
