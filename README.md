@@ -52,11 +52,11 @@ newer versions are exercised as they ship; older ones are untested.
   and `deployment_timeout` exist only in Terraform, so import seeds them with
   their schema defaults (`true` / `"15m"`). Importing a resource whose config
   sets a non-default value plans one diff to reconcile it.
-- **Databases other than PostgreSQL, MySQL, MariaDB and Redis are not
-  covered**, nor are compose services or backups. Wave 0 covered projects,
-  applications and PostgreSQL; wave 1 added environments and domains; wave 2
-  is adding the remaining database engines (MySQL, Redis and MariaDB
-  shipped, MongoDB to follow).
+- **Databases other than PostgreSQL, MySQL, MariaDB, MongoDB and Redis are
+  not covered**, nor are compose services or backups. Wave 0 covered
+  projects, applications and PostgreSQL; wave 1 added environments and
+  domains; wave 2 added the remaining database engines (MySQL, Redis,
+  MariaDB and MongoDB).
 - **MySQL's and MariaDB's root password is server-generated when left
   unset**, and, like `database_password`, changing it only takes effect on
   the next deploy. `deploy_on_change` (default `true`) covers the common
@@ -67,6 +67,13 @@ newer versions are exercised as they ship; older ones are untested.
   this provider supports, Redis has no per-engine credential fields at all
   beyond the shared `database_password` — this is a genuine gap in Dokploy's
   own data model for this engine, not an omission in the schema.
+- **`dokploy_mongo` has no `database_name` or `database_root_password`
+  attribute.** MongoDB has no separate database-name concept at create time
+  and no root-password credential distinct from `database_user`/
+  `database_password`. Dokploy's MongoDB support also has a `replicaSets`
+  option (standalone vs. replica-set topology) that this provider does not
+  currently expose as a Terraform attribute; every `dokploy_mongo` instance
+  is created in the server's default standalone mode.
 - **MariaDB's and MongoDB's server-side default `docker_image` does not
   exist on Docker Hub** (`mariadb:6` / `mongo:15` as of Dokploy v0.29.13).
   Leaving `docker_image` unset on `dokploy_mariadb`/`dokploy_mongo` and then

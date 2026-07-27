@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unset, settable, and clearable, but changing it only takes effect on the
   next deploy. MariaDB's server-side default `docker_image` (`mariadb:6`)
   does not exist on Docker Hub; set an explicit tag such as `mariadb:11.4`.
+- `dokploy_mongo` resource and data source, the last of wave 2's database
+  engines. Diverges from every other engine: no `database_name` and no
+  `database_root_password` field at all — its only credential attribute is
+  `database_user`. Dokploy's MongoDB `replicaSets` option is not exposed as
+  a Terraform attribute (every instance is created in standalone mode).
+  MongoDB's server-side default `docker_image` (`mongo:15`) does not exist
+  on Docker Hub; set an explicit tag such as `mongo:7`.
 
 ## [0.2.0] - 2026-07-27
 

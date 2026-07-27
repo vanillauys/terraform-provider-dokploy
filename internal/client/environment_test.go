@@ -75,7 +75,8 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 			"postgres":[{"postgresId":"pg1","name":"db"}],
 			"mysql":[{"mysqlId":"my1","name":"mydb"}],
 			"redis":[{"redisId":"rd1","name":"cache"}],
-			"mariadb":[{"mariadbId":"md1","name":"mariadata"}]
+			"mariadb":[{"mariadbId":"md1","name":"mariadata"}],
+			"mongo":[{"mongoId":"mo1","name":"documentdata"}]
 		}`))
 	}))
 	defer srv.Close()
@@ -102,6 +103,9 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 	}
 	if len(got.Mariadb) != 1 || got.Mariadb[0].ID != "md1" || got.Mariadb[0].Name != "mariadata" {
 		t.Errorf("mariadb = %+v, want one entry {md1 mariadata}", got.Mariadb)
+	}
+	if len(got.Mongo) != 1 || got.Mongo[0].ID != "mo1" || got.Mongo[0].Name != "documentdata" {
+		t.Errorf("mongo = %+v, want one entry {mo1 documentdata}", got.Mongo)
 	}
 }
 

@@ -109,10 +109,8 @@ type ServiceRef struct {
 //
 // environment.one embeds every service collection, so one call resolves a
 // name for any service kind. Only the kinds this provider ships resources
-// for are decoded; the rest (mongo, libsql, compose) are ignored until they
-// have resources too (verified live 2026-07-27: the raw environment.one
-// response already carries top-level "mariadb", "mongo", "redis" arrays
-// alongside "mysql" and "postgres").
+// for are decoded; the rest (libsql, compose) are ignored until they have
+// resources too.
 //
 // Each engine's own Kind.Client.ListByEnvironment (internal/resources/
 // database/<engine>.go) decodes the matching field here: there is no other
@@ -124,6 +122,7 @@ type EnvironmentServices struct {
 	Mysql        []ServiceRef
 	Redis        []ServiceRef
 	Mariadb      []ServiceRef
+	Mongo        []ServiceRef
 }
 
 func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) (*EnvironmentServices, error) {
@@ -148,6 +147,10 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 			MariadbID string `json:"mariadbId"`
 			Name      string `json:"name"`
 		} `json:"mariadb"`
+		Mongo []struct {
+			MongoID string `json:"mongoId"`
+			Name    string `json:"name"`
+		} `json:"mongo"`
 	}
 	if err := c.Get(ctx, "/environment.one", url.Values{"environmentId": {environmentID}}, &raw); err != nil {
 		return nil, err
@@ -167,6 +170,9 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 	}
 	for _, m := range raw.Mariadb {
 		out.Mariadb = append(out.Mariadb, ServiceRef{ID: m.MariadbID, Name: m.Name})
+	}
+	for _, m := range raw.Mongo {
+		out.Mongo = append(out.Mongo, ServiceRef{ID: m.MongoID, Name: m.Name})
 	}
 	return out, nil
 }

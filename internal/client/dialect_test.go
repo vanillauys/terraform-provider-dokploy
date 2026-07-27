@@ -28,6 +28,7 @@ var mustAlwaysSend = []struct {
 	{UpdateMysqlRequest{}, []string{"description", "databaseRootPassword"}},
 	{UpdateMariadbRequest{}, []string{"description", "databaseRootPassword"}},
 	{UpdateRedisRequest{}, []string{"description"}},
+	{UpdateMongoRequest{}, []string{"description"}},
 	{UpdateApplicationRequest{}, []string{"description"}},
 	{UpdateDomainRequest{}, []string{
 		"host", "path", "internalPath", "port", "https", "stripPath",
