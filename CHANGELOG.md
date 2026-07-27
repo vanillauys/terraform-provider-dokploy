@@ -34,8 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Internal: `dokploy_postgres` and the four new engines above now share one
   generic, `Kind`-parameterized resource and data-source implementation
-  instead of five near-duplicates. No schema or behavior change for
-  `dokploy_postgres` — its docs regenerate byte-identical.
+  instead of five near-duplicates. No behavior or schema-shape change for
+  `dokploy_postgres`; the only doc changes are the `env` attribute's clearing
+  caveat (below) and its data source's description noting that any
+  `Sensitive` credential attribute is exposed but marked `Sensitive` (true of
+  every engine's data source; postgres itself has none).
 - Names are not unique in Dokploy. Every data source that looks up by name
   (project, environment, application, and — as of this wave — all five
   database engines) errors when more than one record matches, rather than

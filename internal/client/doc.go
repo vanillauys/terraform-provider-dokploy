@@ -166,10 +166,14 @@
 // Plain .create and .update never trigger a deploy and succeed regardless
 // of the image; .saveEnvironment against the same broken-image records
 // also succeeded (HTTP 200) — in this version only saveExternalPort
-// synchronously attempts a redeploy. A real .deploy call would plausibly
-// fail the same way but was not probed here. Tasks building the
-// mariadb/mongo resources and their acceptance tests must not rely on the
-// server's default image: a bare-default mariadb or mongo instance will
-// 500 the moment anything calls saveExternalPort (or presumably .deploy)
-// against it.
+// synchronously attempts a redeploy. A real .deploy call was subsequently
+// probed too (wave-2 task 10, live, v0.29.13, 2026-07-27, against fresh
+// scratch records left on their bare default image): mariadb.deploy and
+// mongo.deploy both return the identical HTTP 500 "Error on deploy
+// ...Error: Error response from daemon: manifest for mariadb:6 (or
+// mongo:15) not found: manifest unknown: manifest unknown" as
+// saveExternalPort. Tasks building the mariadb/mongo resources and their
+// acceptance tests must not rely on the server's default image: a
+// bare-default mariadb or mongo instance will 500 the moment anything
+// calls saveExternalPort OR .deploy against it.
 package client

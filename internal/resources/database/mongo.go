@@ -66,6 +66,11 @@ func MongoKind(c *client.Client) Kind {
 		// same casing trap flagged for MySQL/MariaDB/Redis's ShortName.
 		ShortName:          "MongoDB",
 		ExampleDockerImage: "mongo:7",
+		// doc.go: mongo's server-side default image is mongo:15, which
+		// does not exist on Docker Hub. deploy_on_change defaults to true,
+		// so a first apply that leaves docker_image unset creates the
+		// record and then fails the deploy with a manifest-unknown error.
+		DockerImageCaveat: " The server's own default (`mongo:15`) does not exist on Docker Hub; a first apply that leaves this unset creates the record and then fails the deploy (`deploy_on_change` defaults to `true`). Set an explicit, real tag such as `mongo:7`.",
 		CredentialAttrs: []CredentialAttr{
 			{
 				TFName:          "database_user",

@@ -37,6 +37,17 @@ type Kind struct {
 	// postgres.md against a single-HumanName-template rendering.
 	ShortName          string // "Postgres"
 	ExampleDockerImage string // "postgres:16-alpine"
+	// DockerImageCaveat is appended to the docker_image attribute's
+	// description when non-empty. Only mariadb and mongo set it: doc.go
+	// records that their server-side default images (mariadb:6, mongo:15)
+	// do not exist on Docker Hub, and Create's Deploy call (resource.go,
+	// gated on deploy_on_change, which defaults to true) means a first
+	// apply with docker_image omitted creates the record and then fails
+	// the deploy with a manifest-unknown error — a trap the registry
+	// page's own description should name, not leave to the README/
+	// CHANGELOG/examples alone. postgres/mysql/redis's real default images
+	// pull fine, so they leave this empty.
+	DockerImageCaveat string
 	// CredentialAttrs are the engine-specific attributes between the
 	// uniform set and database_password (postgres: database_name +
 	// database_user, both Required + RequiresReplace). Task 2's doc.go
@@ -245,7 +256,7 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 		"docker_image": schema.StringAttribute{
 			Optional:      true,
 			Computed:      true,
-			Description:   k.ShortName + " docker image, e.g. `" + k.ExampleDockerImage + "`. Server default when omitted.",
+			Description:   k.ShortName + " docker image, e.g. `" + k.ExampleDockerImage + "`. Server default when omitted." + k.DockerImageCaveat,
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
 		"description": schema.StringAttribute{Optional: true, Description: "Free-form description."},

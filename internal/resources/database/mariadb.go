@@ -37,6 +37,11 @@ func MariadbKind(c *client.Client) Kind {
 		// same casing trap flagged for MySQL/Redis's ShortName.
 		ShortName:          "MariaDB",
 		ExampleDockerImage: "mariadb:11.4",
+		// doc.go: mariadb's server-side default image is mariadb:6, which
+		// does not exist on Docker Hub. deploy_on_change defaults to true,
+		// so a first apply that leaves docker_image unset creates the
+		// record and then fails the deploy with a manifest-unknown error.
+		DockerImageCaveat: " The server's own default (`mariadb:6`) does not exist on Docker Hub; a first apply that leaves this unset creates the record and then fails the deploy (`deploy_on_change` defaults to `true`). Set an explicit, real tag such as `mariadb:11.4`.",
 		CredentialAttrs: []CredentialAttr{
 			{
 				TFName:          "database_name",
