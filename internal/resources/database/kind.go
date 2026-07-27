@@ -15,10 +15,13 @@ package database
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
@@ -97,10 +100,25 @@ type CredentialAttr struct {
 // per-engine credential fields (databaseName, databaseUser,
 // databaseRootPassword) are strings.
 func (ca CredentialAttr) schemaAttribute() schema.Attribute {
+	// The struct comment on Computed above says "a Computed credential attr
+	// is never RequiresReplace", but nothing enforced that until now — a
+	// future Kind could set both, and this function would silently apply
+	// RequiresReplace() and UseStateForUnknown() together without warning
+	// (that combination is legal in general - app_name in schemaAttributes
+	// below does exactly that - it just was never meant to be for a
+	// CredentialAttr). Panicking here makes the doc comment's claim true by
+	// construction: any Kind that violates it fails immediately at schema
+	// build (every acceptance and unit test run), never silently
+	// (wave-2 task 9 carry item C10).
+	if ca.Computed && ca.RequiresReplace {
+		panic(fmt.Sprintf("database.CredentialAttr %q: Computed and RequiresReplace are both set; "+
+			"a Computed credential attribute is meant to be updatable in place (see the Computed field's doc comment), never replaced", ca.TFName))
+	}
 	var mods []planmodifier.String
 	if ca.RequiresReplace {
 		mods = append(mods, stringplanmodifier.RequiresReplace())
 	}
+	var validators []validator.String
 	if ca.Computed {
 		// Mirrors docker_image/app_name below: a server-computed value that
 		// only ever changes through Terraform's own Update call, so
@@ -109,6 +127,17 @@ func (ca CredentialAttr) schemaAttribute() schema.Attribute {
 		// control — see the comment on that attribute in resource.go/
 		// kind.go's schemaAttributes).
 		mods = append(mods, stringplanmodifier.UseStateForUnknown())
+		// An explicit "" at create is wire-indistinguishable from never
+		// having set the attribute at all: CreateMysqlRequest/
+		// CreateMariadbRequest tag this field `omitempty`, so "" vanishes
+		// from the request body exactly like an unset value, the server
+		// generates a real password, and Terraform sees the applied value
+		// diverge from the "" the plan promised — "Provider produced
+		// inconsistent result after apply", a confusing core-level failure
+		// that does not point at this attribute. Rejecting "" at validate
+		// time turns that into a clear, attribute-scoped error instead
+		// (wave-2 task 9 carry item C3).
+		validators = append(validators, stringvalidator.LengthAtLeast(1))
 	}
 	return schema.StringAttribute{
 		Required:      ca.Required,
@@ -117,6 +146,7 @@ func (ca CredentialAttr) schemaAttribute() schema.Attribute {
 		Sensitive:     ca.Sensitive,
 		Description:   ca.Description,
 		PlanModifiers: mods,
+		Validators:    validators,
 	}
 }
 
