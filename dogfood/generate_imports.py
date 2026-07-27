@@ -62,6 +62,14 @@ def main():
                     emit("dokploy_domain", label(pname, dom["host"], dom["domainId"]), dom["domainId"])
             for pg in full.get("postgres") or []:
                 emit("dokploy_postgres", label(pname, pg["name"], pg["postgresId"]), pg["postgresId"])
+            for db in full.get("mysql") or []:
+                emit("dokploy_mysql", label(pname, db["name"], db["mysqlId"]), db["mysqlId"])
+            for db in full.get("mariadb") or []:
+                emit("dokploy_mariadb", label(pname, db["name"], db["mariadbId"]), db["mariadbId"])
+            for db in full.get("mongo") or []:
+                emit("dokploy_mongo", label(pname, db["name"], db["mongoId"]), db["mongoId"])
+            for db in full.get("redis") or []:
+                emit("dokploy_redis", label(pname, db["name"], db["redisId"]), db["redisId"])
 
 
 if __name__ == "__main__":

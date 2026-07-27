@@ -31,7 +31,13 @@ python3 "$REPO_ROOT/dogfood/introspect.py" | tee "$SCRATCH/introspection.txt"
 
 echo "==> writing import blocks"
 python3 "$REPO_ROOT/dogfood/generate_imports.py" > "$SCRATCH/imports.tf"
-grep -c '^import' "$SCRATCH/imports.tf" | xargs echo "    import blocks:"
+import_count="$(grep -c '^import' "$SCRATCH/imports.tf" || true)"
+echo "    import blocks: $import_count"
+if [ "$import_count" -eq 0 ]; then
+  echo
+  echo "FAIL: nothing to import (empty stack or generator bug)"
+  exit 1
+fi
 
 cat > "$SCRATCH/provider.tf" <<EOF
 terraform {
@@ -78,6 +84,12 @@ terraform -chdir="$SCRATCH" plan -generate-config-out=generated.tf -input=false
 # imported." It writes only to the local scratch state, using the resource
 # blocks generate-config-out already produced above.
 echo "==> importing into local state (terraform import, not apply -- read-only against the server)"
+# Disarm the cleanup trap for the duration of the loop: a failed import here
+# (e.g. a stale ID from debris that no longer exists server-side) should leave
+# $SCRATCH behind for inspection, the same way the plan-diff failure path
+# below already preserves it, instead of deleting the only evidence of what
+# went wrong.
+trap - EXIT
 while IFS=$'\t' read -r addr id; do
   echo "    $addr"
   terraform -chdir="$SCRATCH" import -input=false "$addr" "$id" > /dev/null
@@ -85,6 +97,7 @@ done < <(awk -F'"' '
   /^ *to = /{addr=$0; sub(/^ *to = /, "", addr)}
   /^ *id = /{print addr "\t" $2}
 ' "$SCRATCH/imports.tf")
+trap cleanup EXIT
 
 echo "==> re-planning; this must report no changes"
 set +e
