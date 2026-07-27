@@ -95,6 +95,26 @@ func PostgresKind(c *client.Client) Kind {
 			Delete: func(ctx context.Context, id string) error {
 				return c.DeletePostgres(ctx, id)
 			},
+			// ListByEnvironment keeps the exact mechanism the postgres data
+			// source used before Task 4 folded it into the generic engine:
+			// one client.EnvironmentServices call (which itself is one
+			// environment.one request — no per-service fetch), then map its
+			// Postgres []client.ServiceRef into partial Objects carrying
+			// only ID and Name. The generic data-source engine's Read
+			// always finishes with a Get(ctx, id) for the full object (see
+			// internal/datasources/database), so nothing else needs to be
+			// populated here.
+			ListByEnvironment: func(ctx context.Context, environmentID string) ([]Object, error) {
+				services, err := c.EnvironmentServices(ctx, environmentID)
+				if err != nil {
+					return nil, err
+				}
+				objs := make([]Object, len(services.Postgres))
+				for i, ref := range services.Postgres {
+					objs[i] = Object{ID: ref.ID, Name: ref.Name}
+				}
+				return objs, nil
+			},
 		},
 	}
 }

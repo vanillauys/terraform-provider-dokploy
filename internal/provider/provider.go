@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	dsapplication "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/application"
+	dsdatabase "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/database"
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
-	dspostgres "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/postgres"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
@@ -158,7 +158,16 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 	return []func() datasource.DataSource{
 		dsproject.NewDataSource,
 		dsapplication.NewDataSource,
-		dspostgres.NewDataSource,
+		// database.PostgresKind(p.client) is deliberately re-evaluated inside
+		// this closure rather than hoisted out, for the exact same reason as
+		// the resource registration below: DataSources() itself is cached by
+		// the framework from its first GetProviderSchema call (before
+		// Configure), but the `func() datasource.DataSource` element of this
+		// slice is re-invoked fresh for every real Read call, by which time
+		// p.client is the real, configured client. See Resources()'s comment
+		// on the resource-side registration and dsdatabase.genericDataSource's
+		// doc comment for why this data source has no Configure() of its own.
+		func() datasource.DataSource { return dsdatabase.NewDataSource(database.PostgresKind(p.client))() },
 		dsenvironment.NewDataSource,
 	}
 }

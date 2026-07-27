@@ -153,6 +153,21 @@ type KindClient struct {
 	SaveExternalPort func(ctx context.Context, id string, port *int64) error
 	Deploy           func(ctx context.Context, id string) error
 	Delete           func(ctx context.Context, id string) error
+	// ListByEnvironment lists this engine's services in one environment, for
+	// the data source's by-name lookup (Task 4). It is added to KindClient
+	// rather than left as a bespoke per-package call because the generic
+	// data-source engine (internal/datasources/database) is Kind-agnostic
+	// the same way the generic resource engine above it is: it cannot call
+	// client.EnvironmentServices + client.FindServiceByName directly (those
+	// operate on client.ServiceRef, a client-package type the data-source
+	// engine has no business knowing about), so each Kind adapts its own
+	// engine's slice of client.EnvironmentServices into the engine-neutral
+	// Object shape here. Only Object.ID and Object.Name are populated by
+	// this call — it exists solely to resolve a name to an id; the
+	// subsequent Get(ctx, id) is what fills in the rest, exactly like the
+	// postgres data source did before this task (see doc comment on
+	// PostgresKind's ListByEnvironment below).
+	ListByEnvironment func(ctx context.Context, environmentID string) ([]Object, error)
 }
 
 // schemaAttributes builds the full attribute map for one Kind: the uniform
