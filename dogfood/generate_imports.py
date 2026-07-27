@@ -13,7 +13,8 @@ provider ever runs. Since this script already holds a read-only API key and
 already knows how to map a Terraform resource address back to a live `.one`
 record, it is the natural place to backfill those `null # sensitive` values
 with what the live, read-only API already returns in plaintext (see
-dogfood/README.md's "Known limitation" section for the full analysis of why
+dogfood/README.md's "Database engines: the Required+Sensitive gap in
+-generate-config-out, and its fix" section for the full analysis of why
 this is safe and not a new secrets-exposure surface).
 """
 
@@ -42,6 +43,18 @@ ONE = {
     "dokploy_mongo": ("mongo.one", "mongoId"),
     "dokploy_redis": ("redis.one", "redisId"),
 }
+
+# (environment.one's collection key, resource type, id field). Drives the
+# per-engine loop in main() below: every database engine only differs in
+# these three strings, so a sixth engine is a one-line addition here rather
+# than another copy-pasted loop body (wave-2 task 9 carry item C16).
+DATABASE_ENGINES = [
+    ("postgres", "dokploy_postgres", "postgresId"),
+    ("mysql", "dokploy_mysql", "mysqlId"),
+    ("mariadb", "dokploy_mariadb", "mariadbId"),
+    ("mongo", "dokploy_mongo", "mongoId"),
+    ("redis", "dokploy_redis", "redisId"),
+]
 
 
 def get(path, **params):
@@ -189,20 +202,18 @@ def main():
                 emit("dokploy_application", label(pname, app["name"], aid), aid)
                 for dom in get("domain.byApplicationId", applicationId=aid) or []:
                     emit("dokploy_domain", label(pname, dom["host"], dom["domainId"]), dom["domainId"])
-            for pg in full.get("postgres") or []:
-                emit("dokploy_postgres", label(pname, pg["name"], pg["postgresId"]), pg["postgresId"])
-            for db in full.get("mysql") or []:
-                emit("dokploy_mysql", label(pname, db["name"], db["mysqlId"]), db["mysqlId"])
-            for db in full.get("mariadb") or []:
-                emit("dokploy_mariadb", label(pname, db["name"], db["mariadbId"]), db["mariadbId"])
-            for db in full.get("mongo") or []:
-                emit("dokploy_mongo", label(pname, db["name"], db["mongoId"]), db["mongoId"])
-            for db in full.get("redis") or []:
-                emit("dokploy_redis", label(pname, db["name"], db["redisId"]), db["redisId"])
+            for collection_key, resource_type, id_key in DATABASE_ENGINES:
+                for db in full.get(collection_key) or []:
+                    emit(resource_type, label(pname, db["name"], db[id_key]), db[id_key])
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--patch-sensitive":
+        # Not reachable via dry-run.sh's own (fixed) invocation; guarded so a
+        # manual or future call gets a clear usage error instead of an
+        # unhandled IndexError (wave-2 task 9 carry item C18).
+        if len(sys.argv) != 4:
+            sys.exit("usage: generate_imports.py --patch-sensitive <imports.tf> <generated.tf>")
         patch_sensitive(sys.argv[2], sys.argv[3])
     else:
         main()

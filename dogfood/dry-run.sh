@@ -5,8 +5,9 @@
 # resources into a throwaway state, has Terraform generate the config from
 # them, and then requires a second plan to report no changes.
 #
-# It NEVER runs `terraform apply`. The scratch directory is deleted at the end,
-# so nothing is adopted and no state is kept.
+# It NEVER runs `terraform apply`, so nothing is adopted. The scratch
+# directory is deleted only when the round-trip actually passes; any
+# failure leaves it behind at dogfood/scratch for inspection.
 set -euo pipefail
 
 : "${DOKPLOY_DOGFOOD:?refusing to touch a live server unless DOKPLOY_DOGFOOD=1 is set}"
@@ -17,8 +18,17 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRATCH="$REPO_ROOT/dogfood/scratch"
 BIN="$SCRATCH/plugins/registry.terraform.io/vanillauys/dokploy/0.0.0-dev/$(go env GOOS)_$(go env GOARCH)"
 
+# Deliberately NOT a `trap cleanup EXIT`: wave-2 task 9 carry item C4 found
+# that design's disarm window covering only the import loop and the final
+# plan-diff check, while the failure that actually fires in practice (the
+# -generate-config-out / patch-sensitive steps below) sat OUTSIDE it -- so
+# the one evidence trail worth keeping was deleted before anyone could look
+# at it. Inverting is simpler and cannot reintroduce that gap: nothing here
+# ever deletes $SCRATCH except this one explicit call, made only at the
+# single PASS exit far below. Every other exit -- `set -e` firing on any
+# command's failure, or one of this script's own explicit `exit 1`/`exit
+# "$status"` -- now preserves $SCRATCH by simply doing nothing to it.
 cleanup() { rm -rf "$SCRATCH"; }
-trap cleanup EXIT
 
 rm -rf "$SCRATCH"
 mkdir -p "$BIN"
@@ -93,8 +103,9 @@ if [ "$generate_status" -ne 0 ]; then
   echo "    (plan -generate-config-out exited $generate_status, generated.tf was still written -- patching Required+Sensitive attributes below before continuing)"
 fi
 
-# See dogfood/README.md's "Known limitation" section for the full analysis
-# of why the failure above happens and why patching real values back in
+# See dogfood/README.md's "Database engines: the Required+Sensitive gap in
+# -generate-config-out, and its fix" section for the full analysis of why
+# the failure above happens and why patching real values back in
 # (rather than exempting the attribute from this gate) is the fix. This
 # patches every `<attr> = null # sensitive` line back in from the same
 # read-only API this whole harness already uses, generically (by pattern,
@@ -114,12 +125,9 @@ python3 "$REPO_ROOT/dogfood/generate_imports.py" --patch-sensitive "$SCRATCH/imp
 # imported." It writes only to the local scratch state, using the resource
 # blocks generate-config-out already produced above.
 echo "==> importing into local state (terraform import, not apply -- read-only against the server)"
-# Disarm the cleanup trap for the duration of the loop: a failed import here
-# (e.g. a stale ID from debris that no longer exists server-side) should leave
-# $SCRATCH behind for inspection, the same way the plan-diff failure path
-# below already preserves it, instead of deleting the only evidence of what
-# went wrong.
-trap - EXIT
+# A failed import here (e.g. a stale ID from debris that no longer exists
+# server-side) leaves $SCRATCH behind for inspection, same as every other
+# failure in this script -- see the cleanup() comment above.
 while IFS=$'\t' read -r addr id; do
   echo "    $addr"
   terraform -chdir="$SCRATCH" import -input=false "$addr" "$id" > /dev/null
@@ -127,7 +135,6 @@ done < <(awk -F'"' '
   /^ *to = /{addr=$0; sub(/^ *to = /, "", addr)}
   /^ *id = /{print addr "\t" $2}
 ' "$SCRATCH/imports.tf")
-trap cleanup EXIT
 
 echo "==> re-planning; this must report no changes"
 set +e
@@ -138,17 +145,14 @@ set -e
 if [ "$status" -eq 0 ]; then
   echo
   echo "PASS: the live stack round-trips with an empty plan."
+  cleanup
   exit 0
 fi
 if [ "$status" -eq 2 ]; then
   echo
   echo "FAIL: the second plan is not empty — the provider cannot round-trip"
-  echo "      the live stack. The generated config is at $SCRATCH/generated.tf;"
-  echo "      copy it out before this script's cleanup removes it."
-  # Keep the evidence for inspection.
-  trap - EXIT
+  echo "      the live stack. The generated config is at $SCRATCH/generated.tf."
   exit 1
 fi
 echo "FAIL: terraform plan errored (exit $status)"
-trap - EXIT
 exit "$status"
