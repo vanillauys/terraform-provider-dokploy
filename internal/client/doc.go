@@ -1,15 +1,36 @@
 // Package client is a hand-written Dokploy API client.
 //
-// It is hand-written on purpose. Dokploy publishes an OpenAPI document in
-// which every 200-response schema is an empty object
-// ({"type":"object","properties":{},"additionalProperties":false}), and the
-// running server does not serve that document at all — every
-// /api/openapi.json-style route 404s even with a valid key. So response
-// models cannot be generated, and the behaviours that actually cost
-// debugging time (the write dialects below, fields present on create but
-// absent on read, records whose names look unique but are not) are not
-// expressible in a schema anyway. The acceptance suite is the arbiter of
-// record: if a live response disagrees with a struct here, fix the struct.
+// It is hand-written on purpose, but for a narrower reason than this
+// comment used to claim.
+//
+// The server DOES serve an OpenAPI document. It is not at any
+// /api/openapi.json-style route — those 404 even with a valid key, which is
+// what the earlier claim ("the running server does not serve that document
+// at all") was generalising from. It is served at
+//
+//	GET /api/trpc/settings.getOpenApiDocument
+//
+// wrapped in {"result":{"data":{"json": ... }}}. Verified against v0.29.13
+// on both the acceptance rig and a production instance, 2026-07-28.
+//
+// What that document is and is not good for:
+//
+//   - RESPONSE schemas are useless. Every 200 response is an empty object
+//     ({"type":"object","properties":{},"additionalProperties":false}), so
+//     response models cannot be generated from it. Hence the hand-written
+//     structs in this package.
+//   - REQUEST schemas are complete and accurate: per endpoint, the full
+//     accepted field list plus which fields are required. census_test.go
+//     consumes exactly that, distilled into testdata/endpoint-fields.json,
+//     to catch request fields this client fails to model at all — a class
+//     of bug that is invisible when reading this package's source, because
+//     the evidence of a missing field is the absence of code.
+//
+// The behaviours that actually cost debugging time (the write dialects
+// below, fields present on create but absent on read, records whose names
+// look unique but are not) are still not expressible in a schema, and the
+// acceptance suite remains the arbiter of record: if a live response
+// disagrees with a struct here, fix the struct.
 //
 // # Write dialects
 //

@@ -1,0 +1,4423 @@
+{
+ "admin.setupMonitoring": {
+  "fields": [
+   "metricsConfig"
+  ],
+  "required": [
+   "metricsConfig"
+  ]
+ },
+ "ai.analyzeLogs": {
+  "fields": [
+   "aiId",
+   "context",
+   "logs"
+  ],
+  "required": [
+   "aiId",
+   "context",
+   "logs"
+  ]
+ },
+ "ai.create": {
+  "fields": [
+   "apiKey",
+   "apiUrl",
+   "isEnabled",
+   "model",
+   "name"
+  ],
+  "required": [
+   "apiKey",
+   "apiUrl",
+   "isEnabled",
+   "model",
+   "name"
+  ]
+ },
+ "ai.delete": {
+  "fields": [
+   "aiId"
+  ],
+  "required": [
+   "aiId"
+  ]
+ },
+ "ai.deploy": {
+  "fields": [
+   "configFiles",
+   "description",
+   "dockerCompose",
+   "domains",
+   "envVariables",
+   "environmentId",
+   "id",
+   "name",
+   "serverId"
+  ],
+  "required": [
+   "description",
+   "dockerCompose",
+   "envVariables",
+   "environmentId",
+   "id",
+   "name"
+  ]
+ },
+ "ai.saveCustomProviders": {
+  "fields": [
+   "providers"
+  ],
+  "required": [
+   "providers"
+  ]
+ },
+ "ai.suggest": {
+  "fields": [
+   "aiId",
+   "input",
+   "serverId"
+  ],
+  "required": [
+   "aiId",
+   "input"
+  ]
+ },
+ "ai.testConnection": {
+  "fields": [
+   "apiKey",
+   "apiUrl",
+   "model"
+  ],
+  "required": [
+   "apiKey",
+   "apiUrl",
+   "model"
+  ]
+ },
+ "ai.update": {
+  "fields": [
+   "aiId",
+   "apiKey",
+   "apiUrl",
+   "createdAt",
+   "isEnabled",
+   "model",
+   "name"
+  ],
+  "required": [
+   "aiId"
+  ]
+ },
+ "application.cancelDeployment": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.cleanQueues": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.clearDeployments": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.create": {
+  "fields": [
+   "appName",
+   "description",
+   "environmentId",
+   "name",
+   "serverId"
+  ],
+  "required": [
+   "environmentId",
+   "name"
+  ]
+ },
+ "application.delete": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.deploy": {
+  "fields": [
+   "applicationId",
+   "description",
+   "title"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.disconnectGitProvider": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.killBuild": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.markRunning": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.move": {
+  "fields": [
+   "applicationId",
+   "targetEnvironmentId"
+  ],
+  "required": [
+   "applicationId",
+   "targetEnvironmentId"
+  ]
+ },
+ "application.redeploy": {
+  "fields": [
+   "applicationId",
+   "description",
+   "title"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.refreshToken": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.reload": {
+  "fields": [
+   "appName",
+   "applicationId"
+  ],
+  "required": [
+   "appName",
+   "applicationId"
+  ]
+ },
+ "application.saveBitbucketProvider": {
+  "fields": [
+   "applicationId",
+   "bitbucketBranch",
+   "bitbucketBuildPath",
+   "bitbucketId",
+   "bitbucketOwner",
+   "bitbucketRepository",
+   "bitbucketRepositorySlug",
+   "enableSubmodules",
+   "watchPaths"
+  ],
+  "required": [
+   "applicationId",
+   "bitbucketBranch",
+   "bitbucketBuildPath",
+   "bitbucketId",
+   "bitbucketOwner",
+   "bitbucketRepository",
+   "bitbucketRepositorySlug"
+  ]
+ },
+ "application.saveBuildType": {
+  "fields": [
+   "applicationId",
+   "buildType",
+   "dockerBuildStage",
+   "dockerContextPath",
+   "dockerfile",
+   "herokuVersion",
+   "isStaticSpa",
+   "publishDirectory",
+   "railpackVersion"
+  ],
+  "required": [
+   "applicationId",
+   "buildType",
+   "dockerBuildStage",
+   "dockerContextPath",
+   "dockerfile",
+   "herokuVersion",
+   "railpackVersion"
+  ]
+ },
+ "application.saveDockerProvider": {
+  "fields": [
+   "applicationId",
+   "dockerImage",
+   "password",
+   "registryUrl",
+   "username"
+  ],
+  "required": [
+   "applicationId",
+   "dockerImage",
+   "password",
+   "registryUrl",
+   "username"
+  ]
+ },
+ "application.saveEnvironment": {
+  "fields": [
+   "applicationId",
+   "buildArgs",
+   "buildSecrets",
+   "createEnvFile",
+   "env"
+  ],
+  "required": [
+   "applicationId",
+   "buildArgs",
+   "buildSecrets",
+   "createEnvFile",
+   "env"
+  ]
+ },
+ "application.saveGitProvider": {
+  "fields": [
+   "applicationId",
+   "customGitBranch",
+   "customGitBuildPath",
+   "customGitSSHKeyId",
+   "customGitUrl",
+   "enableSubmodules",
+   "watchPaths"
+  ],
+  "required": [
+   "applicationId",
+   "customGitBranch",
+   "customGitBuildPath",
+   "customGitUrl",
+   "watchPaths"
+  ]
+ },
+ "application.saveGiteaProvider": {
+  "fields": [
+   "applicationId",
+   "enableSubmodules",
+   "giteaBranch",
+   "giteaBuildPath",
+   "giteaId",
+   "giteaOwner",
+   "giteaRepository",
+   "watchPaths"
+  ],
+  "required": [
+   "applicationId",
+   "giteaBranch",
+   "giteaBuildPath",
+   "giteaId",
+   "giteaOwner",
+   "giteaRepository"
+  ]
+ },
+ "application.saveGithubProvider": {
+  "fields": [
+   "applicationId",
+   "branch",
+   "buildPath",
+   "enableSubmodules",
+   "githubId",
+   "owner",
+   "repository",
+   "triggerType",
+   "watchPaths"
+  ],
+  "required": [
+   "applicationId",
+   "branch",
+   "buildPath",
+   "githubId",
+   "owner",
+   "repository",
+   "triggerType"
+  ]
+ },
+ "application.saveGitlabProvider": {
+  "fields": [
+   "applicationId",
+   "enableSubmodules",
+   "gitlabBranch",
+   "gitlabBuildPath",
+   "gitlabId",
+   "gitlabOwner",
+   "gitlabPathNamespace",
+   "gitlabProjectId",
+   "gitlabRepository",
+   "watchPaths"
+  ],
+  "required": [
+   "applicationId",
+   "gitlabBranch",
+   "gitlabBuildPath",
+   "gitlabId",
+   "gitlabOwner",
+   "gitlabPathNamespace",
+   "gitlabProjectId",
+   "gitlabRepository"
+  ]
+ },
+ "application.start": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.stop": {
+  "fields": [
+   "applicationId"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.update": {
+  "fields": [
+   "appName",
+   "applicationId",
+   "applicationStatus",
+   "args",
+   "autoDeploy",
+   "bitbucketBranch",
+   "bitbucketBuildPath",
+   "bitbucketId",
+   "bitbucketOwner",
+   "bitbucketRepository",
+   "bitbucketRepositorySlug",
+   "branch",
+   "buildArgs",
+   "buildPath",
+   "buildRegistryId",
+   "buildSecrets",
+   "buildServerId",
+   "buildType",
+   "cleanCache",
+   "command",
+   "cpuLimit",
+   "cpuReservation",
+   "createEnvFile",
+   "createdAt",
+   "customGitBranch",
+   "customGitBuildPath",
+   "customGitSSHKeyId",
+   "customGitUrl",
+   "description",
+   "dockerBuildStage",
+   "dockerContextPath",
+   "dockerImage",
+   "dockerfile",
+   "dropBuildPath",
+   "enableSubmodules",
+   "enabled",
+   "endpointSpecSwarm",
+   "env",
+   "environmentId",
+   "giteaBranch",
+   "giteaBuildPath",
+   "giteaId",
+   "giteaOwner",
+   "giteaRepository",
+   "githubId",
+   "gitlabBranch",
+   "gitlabBuildPath",
+   "gitlabId",
+   "gitlabOwner",
+   "gitlabPathNamespace",
+   "gitlabProjectId",
+   "gitlabRepository",
+   "healthCheckSwarm",
+   "herokuVersion",
+   "icon",
+   "isPreviewDeploymentsActive",
+   "isStaticSpa",
+   "labelsSwarm",
+   "memoryLimit",
+   "memoryReservation",
+   "modeSwarm",
+   "name",
+   "networkSwarm",
+   "owner",
+   "password",
+   "placementSwarm",
+   "previewBuildArgs",
+   "previewBuildSecrets",
+   "previewCertificateType",
+   "previewCustomCertResolver",
+   "previewEnv",
+   "previewHttps",
+   "previewLabels",
+   "previewLimit",
+   "previewPath",
+   "previewPort",
+   "previewRequireCollaboratorPermissions",
+   "previewWildcard",
+   "publishDirectory",
+   "railpackVersion",
+   "refreshToken",
+   "registryId",
+   "registryUrl",
+   "replicas",
+   "repository",
+   "restartPolicySwarm",
+   "rollbackActive",
+   "rollbackConfigSwarm",
+   "rollbackRegistryId",
+   "sourceType",
+   "stopGracePeriodSwarm",
+   "subtitle",
+   "title",
+   "triggerType",
+   "ulimitsSwarm",
+   "updateConfigSwarm",
+   "username",
+   "watchPaths"
+  ],
+  "required": [
+   "applicationId"
+  ]
+ },
+ "application.updateTraefikConfig": {
+  "fields": [
+   "applicationId",
+   "traefikConfig"
+  ],
+  "required": [
+   "applicationId",
+   "traefikConfig"
+  ]
+ },
+ "backup.create": {
+  "fields": [
+   "backupType",
+   "composeId",
+   "database",
+   "databaseType",
+   "destinationId",
+   "enabled",
+   "includeEncryptionKey",
+   "keepLatestCount",
+   "libsqlId",
+   "mariadbId",
+   "metadata",
+   "mongoId",
+   "mysqlId",
+   "postgresId",
+   "prefix",
+   "schedule",
+   "serviceName",
+   "userId"
+  ],
+  "required": [
+   "database",
+   "databaseType",
+   "destinationId",
+   "prefix",
+   "schedule"
+  ]
+ },
+ "backup.manualBackupCompose": {
+  "fields": [
+   "backupId"
+  ],
+  "required": [
+   "backupId"
+  ]
+ },
+ "backup.manualBackupLibsql": {
+  "fields": [
+   "backupId"
+  ],
+  "required": [
+   "backupId"
+  ]
+ },
+ "backup.manualBackupMariadb": {
+  "fields": [
+   "backupId"
+  ],
+  "required": [
+   "backupId"
+  ]
+ },
+ "backup.manualBackupMongo": {
+  "fields": [
+   "backupId"
+  ],
+  "required": [
+   "backupId"
+  ]
+ },
+ "backup.manualBackupMySql": {
+  "fields": [
+   "backupId"
+  ],
+  "required": [
+   "backupId"
+  ]
+ },
+ "backup.manualBackupPostgres": {
+  "fields": [
+   "backupId"
+  ],
+  "required": [
+   "backupId"
+  ]
+ },
+ "backup.manualBackupWebServer": {
+  "fields": [
+   "backupId"
+  ],
+  "required": [
+   "backupId"
+  ]
+ },
+ "backup.remove": {
+  "fields": [
+   "backupId"
+  ],
+  "required": [
+   "backupId"
+  ]
+ },
+ "backup.update": {
+  "fields": [
+   "backupId",
+   "database",
+   "databaseType",
+   "destinationId",
+   "enabled",
+   "includeEncryptionKey",
+   "keepLatestCount",
+   "metadata",
+   "prefix",
+   "schedule",
+   "serviceName"
+  ],
+  "required": [
+   "backupId",
+   "database",
+   "databaseType",
+   "destinationId",
+   "enabled",
+   "keepLatestCount",
+   "metadata",
+   "prefix",
+   "schedule",
+   "serviceName"
+  ]
+ },
+ "bitbucket.create": {
+  "fields": [
+   "apiToken",
+   "appPassword",
+   "authId",
+   "bitbucketEmail",
+   "bitbucketId",
+   "bitbucketUsername",
+   "bitbucketWorkspaceName",
+   "gitProviderId",
+   "name"
+  ],
+  "required": [
+   "authId",
+   "name"
+  ]
+ },
+ "bitbucket.testConnection": {
+  "fields": [
+   "apiToken",
+   "appPassword",
+   "bitbucketEmail",
+   "bitbucketId",
+   "bitbucketUsername",
+   "workspaceName"
+  ],
+  "required": [
+   "bitbucketId"
+  ]
+ },
+ "bitbucket.update": {
+  "fields": [
+   "apiToken",
+   "appPassword",
+   "bitbucketEmail",
+   "bitbucketId",
+   "bitbucketUsername",
+   "bitbucketWorkspaceName",
+   "gitProviderId",
+   "name",
+   "organizationId"
+  ],
+  "required": [
+   "bitbucketId",
+   "gitProviderId",
+   "name"
+  ]
+ },
+ "certificates.create": {
+  "fields": [
+   "autoRenew",
+   "certificateData",
+   "certificateId",
+   "certificatePath",
+   "name",
+   "organizationId",
+   "privateKey",
+   "serverId"
+  ],
+  "required": [
+   "certificateData",
+   "name",
+   "organizationId",
+   "privateKey"
+  ]
+ },
+ "certificates.remove": {
+  "fields": [
+   "certificateId"
+  ],
+  "required": [
+   "certificateId"
+  ]
+ },
+ "certificates.update": {
+  "fields": [
+   "certificateData",
+   "certificateId",
+   "name",
+   "privateKey"
+  ],
+  "required": [
+   "certificateId"
+  ]
+ },
+ "cluster.removeWorker": {
+  "fields": [
+   "nodeId",
+   "serverId"
+  ],
+  "required": [
+   "nodeId"
+  ]
+ },
+ "compose.cancelDeployment": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.cleanQueues": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.clearDeployments": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.create": {
+  "fields": [
+   "appName",
+   "composeFile",
+   "composeType",
+   "description",
+   "environmentId",
+   "name",
+   "serverId"
+  ],
+  "required": [
+   "environmentId",
+   "name"
+  ]
+ },
+ "compose.delete": {
+  "fields": [
+   "composeId",
+   "deleteVolumes"
+  ],
+  "required": [
+   "composeId",
+   "deleteVolumes"
+  ]
+ },
+ "compose.deploy": {
+  "fields": [
+   "composeId",
+   "description",
+   "title"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.deployTemplate": {
+  "fields": [
+   "baseUrl",
+   "environmentId",
+   "id",
+   "serverId"
+  ],
+  "required": [
+   "environmentId",
+   "id"
+  ]
+ },
+ "compose.disconnectGitProvider": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.fetchSourceType": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.import": {
+  "fields": [
+   "base64",
+   "composeId"
+  ],
+  "required": [
+   "base64",
+   "composeId"
+  ]
+ },
+ "compose.isolatedDeployment": {
+  "fields": [
+   "composeId",
+   "suffix"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.killBuild": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.move": {
+  "fields": [
+   "composeId",
+   "targetEnvironmentId"
+  ],
+  "required": [
+   "composeId",
+   "targetEnvironmentId"
+  ]
+ },
+ "compose.previewTemplate": {
+  "fields": [
+   "appName",
+   "base64",
+   "serverId"
+  ],
+  "required": [
+   "appName",
+   "base64"
+  ]
+ },
+ "compose.processTemplate": {
+  "fields": [
+   "base64",
+   "composeId"
+  ],
+  "required": [
+   "base64",
+   "composeId"
+  ]
+ },
+ "compose.randomizeCompose": {
+  "fields": [
+   "composeId",
+   "suffix"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.redeploy": {
+  "fields": [
+   "composeId",
+   "description",
+   "title"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.refreshToken": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.saveEnvironment": {
+  "fields": [
+   "composeId",
+   "env"
+  ],
+  "required": [
+   "composeId",
+   "env"
+  ]
+ },
+ "compose.start": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.stop": {
+  "fields": [
+   "composeId"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "compose.update": {
+  "fields": [
+   "appName",
+   "autoDeploy",
+   "bitbucketBranch",
+   "bitbucketId",
+   "bitbucketOwner",
+   "bitbucketRepository",
+   "bitbucketRepositorySlug",
+   "branch",
+   "command",
+   "composeFile",
+   "composeId",
+   "composePath",
+   "composeStatus",
+   "composeType",
+   "createdAt",
+   "customGitBranch",
+   "customGitSSHKeyId",
+   "customGitUrl",
+   "description",
+   "enableSubmodules",
+   "env",
+   "environmentId",
+   "giteaBranch",
+   "giteaId",
+   "giteaOwner",
+   "giteaRepository",
+   "githubId",
+   "gitlabBranch",
+   "gitlabId",
+   "gitlabOwner",
+   "gitlabPathNamespace",
+   "gitlabProjectId",
+   "gitlabRepository",
+   "isolatedDeployment",
+   "isolatedDeploymentsVolume",
+   "name",
+   "owner",
+   "randomize",
+   "refreshToken",
+   "repository",
+   "sourceType",
+   "suffix",
+   "triggerType",
+   "watchPaths"
+  ],
+  "required": [
+   "composeId"
+  ]
+ },
+ "customRole.create": {
+  "fields": [
+   "permissions",
+   "roleName"
+  ],
+  "required": [
+   "permissions",
+   "roleName"
+  ]
+ },
+ "customRole.remove": {
+  "fields": [
+   "roleName"
+  ],
+  "required": [
+   "roleName"
+  ]
+ },
+ "customRole.update": {
+  "fields": [
+   "newRoleName",
+   "permissions",
+   "roleName"
+  ],
+  "required": [
+   "permissions",
+   "roleName"
+  ]
+ },
+ "deployment.killProcess": {
+  "fields": [
+   "deploymentId"
+  ],
+  "required": [
+   "deploymentId"
+  ]
+ },
+ "deployment.removeDeployment": {
+  "fields": [
+   "deploymentId"
+  ],
+  "required": [
+   "deploymentId"
+  ]
+ },
+ "destination.create": {
+  "fields": [
+   "accessKey",
+   "additionalFlags",
+   "bucket",
+   "endpoint",
+   "name",
+   "provider",
+   "region",
+   "secretAccessKey",
+   "serverId"
+  ],
+  "required": [
+   "accessKey",
+   "additionalFlags",
+   "bucket",
+   "endpoint",
+   "name",
+   "provider",
+   "region",
+   "secretAccessKey"
+  ]
+ },
+ "destination.remove": {
+  "fields": [
+   "destinationId"
+  ],
+  "required": [
+   "destinationId"
+  ]
+ },
+ "destination.testConnection": {
+  "fields": [
+   "accessKey",
+   "additionalFlags",
+   "bucket",
+   "endpoint",
+   "name",
+   "provider",
+   "region",
+   "secretAccessKey",
+   "serverId"
+  ],
+  "required": [
+   "accessKey",
+   "additionalFlags",
+   "bucket",
+   "endpoint",
+   "name",
+   "provider",
+   "region",
+   "secretAccessKey"
+  ]
+ },
+ "destination.update": {
+  "fields": [
+   "accessKey",
+   "additionalFlags",
+   "bucket",
+   "destinationId",
+   "endpoint",
+   "name",
+   "provider",
+   "region",
+   "secretAccessKey",
+   "serverId"
+  ],
+  "required": [
+   "accessKey",
+   "additionalFlags",
+   "bucket",
+   "destinationId",
+   "endpoint",
+   "name",
+   "provider",
+   "region",
+   "secretAccessKey"
+  ]
+ },
+ "docker.killContainer": {
+  "fields": [
+   "containerId",
+   "serverId"
+  ],
+  "required": [
+   "containerId"
+  ]
+ },
+ "docker.removeContainer": {
+  "fields": [
+   "containerId",
+   "serverId"
+  ],
+  "required": [
+   "containerId"
+  ]
+ },
+ "docker.restartContainer": {
+  "fields": [
+   "containerId",
+   "serverId"
+  ],
+  "required": [
+   "containerId"
+  ]
+ },
+ "docker.startContainer": {
+  "fields": [
+   "containerId",
+   "serverId"
+  ],
+  "required": [
+   "containerId"
+  ]
+ },
+ "docker.stopContainer": {
+  "fields": [
+   "containerId",
+   "serverId"
+  ],
+  "required": [
+   "containerId"
+  ]
+ },
+ "domain.create": {
+  "fields": [
+   "applicationId",
+   "certificateType",
+   "composeId",
+   "customCertResolver",
+   "customEntrypoint",
+   "domainType",
+   "forwardAuthEnabled",
+   "host",
+   "https",
+   "internalPath",
+   "middlewares",
+   "path",
+   "port",
+   "previewDeploymentId",
+   "serviceName",
+   "stripPath"
+  ],
+  "required": [
+   "host"
+  ]
+ },
+ "domain.delete": {
+  "fields": [
+   "domainId"
+  ],
+  "required": [
+   "domainId"
+  ]
+ },
+ "domain.generateDomain": {
+  "fields": [
+   "appName",
+   "serverId"
+  ],
+  "required": [
+   "appName"
+  ]
+ },
+ "domain.update": {
+  "fields": [
+   "certificateType",
+   "customCertResolver",
+   "customEntrypoint",
+   "domainId",
+   "domainType",
+   "forwardAuthEnabled",
+   "host",
+   "https",
+   "internalPath",
+   "middlewares",
+   "path",
+   "port",
+   "serviceName",
+   "stripPath"
+  ],
+  "required": [
+   "domainId",
+   "host"
+  ]
+ },
+ "domain.validateDomain": {
+  "fields": [
+   "domain",
+   "serverIp"
+  ],
+  "required": [
+   "domain"
+  ]
+ },
+ "environment.create": {
+  "fields": [
+   "description",
+   "name",
+   "projectId"
+  ],
+  "required": [
+   "name",
+   "projectId"
+  ]
+ },
+ "environment.duplicate": {
+  "fields": [
+   "description",
+   "environmentId",
+   "name"
+  ],
+  "required": [
+   "environmentId",
+   "name"
+  ]
+ },
+ "environment.remove": {
+  "fields": [
+   "environmentId"
+  ],
+  "required": [
+   "environmentId"
+  ]
+ },
+ "environment.update": {
+  "fields": [
+   "description",
+   "env",
+   "environmentId",
+   "name",
+   "projectId"
+  ],
+  "required": [
+   "environmentId"
+  ]
+ },
+ "forwardAuth.deployOnServer": {
+  "fields": [
+   "providerId",
+   "serverId"
+  ],
+  "required": [
+   "providerId",
+   "serverId"
+  ]
+ },
+ "forwardAuth.disable": {
+  "fields": [
+   "domainId"
+  ],
+  "required": [
+   "domainId"
+  ]
+ },
+ "forwardAuth.enable": {
+  "fields": [
+   "domainId"
+  ],
+  "required": [
+   "domainId"
+  ]
+ },
+ "forwardAuth.removeAuthDomain": {
+  "fields": [
+   "serverId"
+  ],
+  "required": [
+   "serverId"
+  ]
+ },
+ "forwardAuth.removeOnServer": {
+  "fields": [
+   "serverId"
+  ],
+  "required": [
+   "serverId"
+  ]
+ },
+ "forwardAuth.setAuthDomain": {
+  "fields": [
+   "authDomain",
+   "certificateType",
+   "customCertResolver",
+   "https",
+   "serverId"
+  ],
+  "required": [
+   "authDomain",
+   "serverId"
+  ]
+ },
+ "gitProvider.remove": {
+  "fields": [
+   "gitProviderId"
+  ],
+  "required": [
+   "gitProviderId"
+  ]
+ },
+ "gitProvider.toggleShare": {
+  "fields": [
+   "gitProviderId",
+   "sharedWithOrganization"
+  ],
+  "required": [
+   "gitProviderId",
+   "sharedWithOrganization"
+  ]
+ },
+ "gitea.create": {
+  "fields": [
+   "accessToken",
+   "clientId",
+   "clientSecret",
+   "expiresAt",
+   "gitProviderId",
+   "giteaId",
+   "giteaInternalUrl",
+   "giteaUrl",
+   "giteaUsername",
+   "lastAuthenticatedAt",
+   "name",
+   "organizationName",
+   "redirectUri",
+   "refreshToken",
+   "scopes"
+  ],
+  "required": [
+   "giteaUrl",
+   "name"
+  ]
+ },
+ "gitea.testConnection": {
+  "fields": [
+   "giteaId",
+   "organizationName"
+  ],
+  "required": []
+ },
+ "gitea.update": {
+  "fields": [
+   "accessToken",
+   "clientId",
+   "clientSecret",
+   "expiresAt",
+   "gitProviderId",
+   "giteaId",
+   "giteaInternalUrl",
+   "giteaUrl",
+   "giteaUsername",
+   "lastAuthenticatedAt",
+   "name",
+   "organizationName",
+   "redirectUri",
+   "refreshToken",
+   "scopes"
+  ],
+  "required": [
+   "gitProviderId",
+   "giteaId",
+   "giteaUrl",
+   "name"
+  ]
+ },
+ "github.testConnection": {
+  "fields": [
+   "githubId"
+  ],
+  "required": [
+   "githubId"
+  ]
+ },
+ "github.update": {
+  "fields": [
+   "gitProviderId",
+   "githubAppName",
+   "githubId",
+   "name"
+  ],
+  "required": [
+   "gitProviderId",
+   "githubAppName",
+   "githubId",
+   "name"
+  ]
+ },
+ "gitlab.create": {
+  "fields": [
+   "applicationId",
+   "authId",
+   "gitProviderId",
+   "gitlabInternalUrl",
+   "gitlabUrl",
+   "groupName",
+   "name",
+   "redirectUri",
+   "secret"
+  ],
+  "required": [
+   "authId",
+   "gitlabUrl",
+   "name"
+  ]
+ },
+ "gitlab.testConnection": {
+  "fields": [
+   "gitlabId",
+   "groupName"
+  ],
+  "required": [
+   "gitlabId"
+  ]
+ },
+ "gitlab.update": {
+  "fields": [
+   "applicationId",
+   "gitProviderId",
+   "gitlabId",
+   "gitlabInternalUrl",
+   "gitlabUrl",
+   "groupName",
+   "name",
+   "redirectUri",
+   "secret"
+  ],
+  "required": [
+   "gitProviderId",
+   "gitlabId",
+   "gitlabUrl",
+   "name"
+  ]
+ },
+ "libsql.changeStatus": {
+  "fields": [
+   "applicationStatus",
+   "libsqlId"
+  ],
+  "required": [
+   "applicationStatus",
+   "libsqlId"
+  ]
+ },
+ "libsql.create": {
+  "fields": [
+   "appName",
+   "databasePassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "enableNamespaces",
+   "environmentId",
+   "name",
+   "serverId",
+   "sqldNode",
+   "sqldPrimaryUrl"
+  ],
+  "required": [
+   "appName",
+   "databasePassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "enableNamespaces",
+   "environmentId",
+   "name",
+   "serverId",
+   "sqldNode",
+   "sqldPrimaryUrl"
+  ]
+ },
+ "libsql.deploy": {
+  "fields": [
+   "libsqlId"
+  ],
+  "required": [
+   "libsqlId"
+  ]
+ },
+ "libsql.move": {
+  "fields": [
+   "libsqlId",
+   "targetEnvironmentId"
+  ],
+  "required": [
+   "libsqlId",
+   "targetEnvironmentId"
+  ]
+ },
+ "libsql.rebuild": {
+  "fields": [
+   "libsqlId"
+  ],
+  "required": [
+   "libsqlId"
+  ]
+ },
+ "libsql.reload": {
+  "fields": [
+   "appName",
+   "libsqlId"
+  ],
+  "required": [
+   "appName",
+   "libsqlId"
+  ]
+ },
+ "libsql.remove": {
+  "fields": [
+   "libsqlId"
+  ],
+  "required": [
+   "libsqlId"
+  ]
+ },
+ "libsql.saveEnvironment": {
+  "fields": [
+   "env",
+   "libsqlId"
+  ],
+  "required": [
+   "env",
+   "libsqlId"
+  ]
+ },
+ "libsql.saveExternalPorts": {
+  "fields": [
+   "externalAdminPort",
+   "externalGRPCPort",
+   "externalPort",
+   "libsqlId"
+  ],
+  "required": [
+   "libsqlId"
+  ]
+ },
+ "libsql.start": {
+  "fields": [
+   "libsqlId"
+  ],
+  "required": [
+   "libsqlId"
+  ]
+ },
+ "libsql.stop": {
+  "fields": [
+   "libsqlId"
+  ],
+  "required": [
+   "libsqlId"
+  ]
+ },
+ "libsql.update": {
+  "fields": [
+   "appName",
+   "applicationStatus",
+   "command",
+   "cpuLimit",
+   "cpuReservation",
+   "createdAt",
+   "databasePassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "enableNamespaces",
+   "endpointSpecSwarm",
+   "env",
+   "environmentId",
+   "externalAdminPort",
+   "externalGRPCPort",
+   "externalPort",
+   "healthCheckSwarm",
+   "labelsSwarm",
+   "libsqlId",
+   "memoryLimit",
+   "memoryReservation",
+   "modeSwarm",
+   "name",
+   "networkSwarm",
+   "placementSwarm",
+   "replicas",
+   "restartPolicySwarm",
+   "rollbackConfigSwarm",
+   "sqldNode",
+   "sqldPrimaryUrl",
+   "stopGracePeriodSwarm",
+   "updateConfigSwarm"
+  ],
+  "required": [
+   "libsqlId"
+  ]
+ },
+ "licenseKey.activate": {
+  "fields": [
+   "licenseKey"
+  ],
+  "required": [
+   "licenseKey"
+  ]
+ },
+ "licenseKey.updateEnterpriseSettings": {
+  "fields": [
+   "enableEnterpriseFeatures"
+  ],
+  "required": []
+ },
+ "mariadb.changePassword": {
+  "fields": [
+   "mariadbId",
+   "password",
+   "type"
+  ],
+  "required": [
+   "mariadbId",
+   "password"
+  ]
+ },
+ "mariadb.changeStatus": {
+  "fields": [
+   "applicationStatus",
+   "mariadbId"
+  ],
+  "required": [
+   "applicationStatus",
+   "mariadbId"
+  ]
+ },
+ "mariadb.create": {
+  "fields": [
+   "appName",
+   "databaseName",
+   "databasePassword",
+   "databaseRootPassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "environmentId",
+   "name",
+   "serverId"
+  ],
+  "required": [
+   "databaseName",
+   "databasePassword",
+   "databaseUser",
+   "environmentId",
+   "name"
+  ]
+ },
+ "mariadb.deploy": {
+  "fields": [
+   "mariadbId"
+  ],
+  "required": [
+   "mariadbId"
+  ]
+ },
+ "mariadb.move": {
+  "fields": [
+   "mariadbId",
+   "targetEnvironmentId"
+  ],
+  "required": [
+   "mariadbId",
+   "targetEnvironmentId"
+  ]
+ },
+ "mariadb.rebuild": {
+  "fields": [
+   "mariadbId"
+  ],
+  "required": [
+   "mariadbId"
+  ]
+ },
+ "mariadb.reload": {
+  "fields": [
+   "appName",
+   "mariadbId"
+  ],
+  "required": [
+   "appName",
+   "mariadbId"
+  ]
+ },
+ "mariadb.remove": {
+  "fields": [
+   "mariadbId"
+  ],
+  "required": [
+   "mariadbId"
+  ]
+ },
+ "mariadb.saveEnvironment": {
+  "fields": [
+   "env",
+   "mariadbId"
+  ],
+  "required": [
+   "env",
+   "mariadbId"
+  ]
+ },
+ "mariadb.saveExternalPort": {
+  "fields": [
+   "externalPort",
+   "mariadbId"
+  ],
+  "required": [
+   "externalPort",
+   "mariadbId"
+  ]
+ },
+ "mariadb.start": {
+  "fields": [
+   "mariadbId"
+  ],
+  "required": [
+   "mariadbId"
+  ]
+ },
+ "mariadb.stop": {
+  "fields": [
+   "mariadbId"
+  ],
+  "required": [
+   "mariadbId"
+  ]
+ },
+ "mariadb.update": {
+  "fields": [
+   "appName",
+   "applicationStatus",
+   "args",
+   "command",
+   "cpuLimit",
+   "cpuReservation",
+   "createdAt",
+   "databaseName",
+   "databasePassword",
+   "databaseRootPassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "endpointSpecSwarm",
+   "env",
+   "environmentId",
+   "externalPort",
+   "healthCheckSwarm",
+   "labelsSwarm",
+   "mariadbId",
+   "memoryLimit",
+   "memoryReservation",
+   "modeSwarm",
+   "name",
+   "networkSwarm",
+   "placementSwarm",
+   "replicas",
+   "restartPolicySwarm",
+   "rollbackConfigSwarm",
+   "stopGracePeriodSwarm",
+   "ulimitsSwarm",
+   "updateConfigSwarm"
+  ],
+  "required": [
+   "mariadbId"
+  ]
+ },
+ "mongo.changePassword": {
+  "fields": [
+   "mongoId",
+   "password"
+  ],
+  "required": [
+   "mongoId",
+   "password"
+  ]
+ },
+ "mongo.changeStatus": {
+  "fields": [
+   "applicationStatus",
+   "mongoId"
+  ],
+  "required": [
+   "applicationStatus",
+   "mongoId"
+  ]
+ },
+ "mongo.create": {
+  "fields": [
+   "appName",
+   "databasePassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "environmentId",
+   "name",
+   "replicaSets",
+   "serverId"
+  ],
+  "required": [
+   "databasePassword",
+   "databaseUser",
+   "environmentId",
+   "name"
+  ]
+ },
+ "mongo.deploy": {
+  "fields": [
+   "mongoId"
+  ],
+  "required": [
+   "mongoId"
+  ]
+ },
+ "mongo.move": {
+  "fields": [
+   "mongoId",
+   "targetEnvironmentId"
+  ],
+  "required": [
+   "mongoId",
+   "targetEnvironmentId"
+  ]
+ },
+ "mongo.rebuild": {
+  "fields": [
+   "mongoId"
+  ],
+  "required": [
+   "mongoId"
+  ]
+ },
+ "mongo.reload": {
+  "fields": [
+   "appName",
+   "mongoId"
+  ],
+  "required": [
+   "appName",
+   "mongoId"
+  ]
+ },
+ "mongo.remove": {
+  "fields": [
+   "mongoId"
+  ],
+  "required": [
+   "mongoId"
+  ]
+ },
+ "mongo.saveEnvironment": {
+  "fields": [
+   "env",
+   "mongoId"
+  ],
+  "required": [
+   "env",
+   "mongoId"
+  ]
+ },
+ "mongo.saveExternalPort": {
+  "fields": [
+   "externalPort",
+   "mongoId"
+  ],
+  "required": [
+   "externalPort",
+   "mongoId"
+  ]
+ },
+ "mongo.start": {
+  "fields": [
+   "mongoId"
+  ],
+  "required": [
+   "mongoId"
+  ]
+ },
+ "mongo.stop": {
+  "fields": [
+   "mongoId"
+  ],
+  "required": [
+   "mongoId"
+  ]
+ },
+ "mongo.update": {
+  "fields": [
+   "appName",
+   "applicationStatus",
+   "args",
+   "command",
+   "cpuLimit",
+   "cpuReservation",
+   "createdAt",
+   "databasePassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "endpointSpecSwarm",
+   "env",
+   "environmentId",
+   "externalPort",
+   "healthCheckSwarm",
+   "labelsSwarm",
+   "memoryLimit",
+   "memoryReservation",
+   "modeSwarm",
+   "mongoId",
+   "name",
+   "networkSwarm",
+   "placementSwarm",
+   "replicaSets",
+   "replicas",
+   "restartPolicySwarm",
+   "rollbackConfigSwarm",
+   "stopGracePeriodSwarm",
+   "ulimitsSwarm",
+   "updateConfigSwarm"
+  ],
+  "required": [
+   "mongoId"
+  ]
+ },
+ "mounts.create": {
+  "fields": [
+   "content",
+   "filePath",
+   "hostPath",
+   "mountPath",
+   "serviceId",
+   "serviceType",
+   "type",
+   "volumeName"
+  ],
+  "required": [
+   "mountPath",
+   "serviceId",
+   "type"
+  ]
+ },
+ "mounts.remove": {
+  "fields": [
+   "mountId"
+  ],
+  "required": [
+   "mountId"
+  ]
+ },
+ "mounts.update": {
+  "fields": [
+   "applicationId",
+   "composeId",
+   "content",
+   "filePath",
+   "hostPath",
+   "libsqlId",
+   "mariadbId",
+   "mongoId",
+   "mountId",
+   "mountPath",
+   "mysqlId",
+   "postgresId",
+   "redisId",
+   "serviceType",
+   "type",
+   "volumeName"
+  ],
+  "required": [
+   "mountId"
+  ]
+ },
+ "mysql.changePassword": {
+  "fields": [
+   "mysqlId",
+   "password",
+   "type"
+  ],
+  "required": [
+   "mysqlId",
+   "password"
+  ]
+ },
+ "mysql.changeStatus": {
+  "fields": [
+   "applicationStatus",
+   "mysqlId"
+  ],
+  "required": [
+   "applicationStatus",
+   "mysqlId"
+  ]
+ },
+ "mysql.create": {
+  "fields": [
+   "appName",
+   "databaseName",
+   "databasePassword",
+   "databaseRootPassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "environmentId",
+   "name",
+   "serverId"
+  ],
+  "required": [
+   "databaseName",
+   "databasePassword",
+   "databaseUser",
+   "environmentId",
+   "name"
+  ]
+ },
+ "mysql.deploy": {
+  "fields": [
+   "mysqlId"
+  ],
+  "required": [
+   "mysqlId"
+  ]
+ },
+ "mysql.move": {
+  "fields": [
+   "mysqlId",
+   "targetEnvironmentId"
+  ],
+  "required": [
+   "mysqlId",
+   "targetEnvironmentId"
+  ]
+ },
+ "mysql.rebuild": {
+  "fields": [
+   "mysqlId"
+  ],
+  "required": [
+   "mysqlId"
+  ]
+ },
+ "mysql.reload": {
+  "fields": [
+   "appName",
+   "mysqlId"
+  ],
+  "required": [
+   "appName",
+   "mysqlId"
+  ]
+ },
+ "mysql.remove": {
+  "fields": [
+   "mysqlId"
+  ],
+  "required": [
+   "mysqlId"
+  ]
+ },
+ "mysql.saveEnvironment": {
+  "fields": [
+   "env",
+   "mysqlId"
+  ],
+  "required": [
+   "env",
+   "mysqlId"
+  ]
+ },
+ "mysql.saveExternalPort": {
+  "fields": [
+   "externalPort",
+   "mysqlId"
+  ],
+  "required": [
+   "externalPort",
+   "mysqlId"
+  ]
+ },
+ "mysql.start": {
+  "fields": [
+   "mysqlId"
+  ],
+  "required": [
+   "mysqlId"
+  ]
+ },
+ "mysql.stop": {
+  "fields": [
+   "mysqlId"
+  ],
+  "required": [
+   "mysqlId"
+  ]
+ },
+ "mysql.update": {
+  "fields": [
+   "appName",
+   "applicationStatus",
+   "args",
+   "command",
+   "cpuLimit",
+   "cpuReservation",
+   "createdAt",
+   "databaseName",
+   "databasePassword",
+   "databaseRootPassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "endpointSpecSwarm",
+   "env",
+   "environmentId",
+   "externalPort",
+   "healthCheckSwarm",
+   "labelsSwarm",
+   "memoryLimit",
+   "memoryReservation",
+   "modeSwarm",
+   "mysqlId",
+   "name",
+   "networkSwarm",
+   "placementSwarm",
+   "replicas",
+   "restartPolicySwarm",
+   "rollbackConfigSwarm",
+   "stopGracePeriodSwarm",
+   "ulimitsSwarm",
+   "updateConfigSwarm"
+  ],
+  "required": [
+   "mysqlId"
+  ]
+ },
+ "notification.createCustom": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "endpoint",
+   "headers",
+   "name",
+   "serverThreshold",
+   "volumeBackup"
+  ],
+  "required": [
+   "endpoint",
+   "name"
+  ]
+ },
+ "notification.createDiscord": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "decoration",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "decoration",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ]
+ },
+ "notification.createEmail": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "fromAddress",
+   "name",
+   "password",
+   "serverThreshold",
+   "smtpPort",
+   "smtpServer",
+   "toAddresses",
+   "username",
+   "volumeBackup"
+  ],
+  "required": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "fromAddress",
+   "name",
+   "password",
+   "serverThreshold",
+   "smtpPort",
+   "smtpServer",
+   "toAddresses",
+   "username",
+   "volumeBackup"
+  ]
+ },
+ "notification.createGotify": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "appToken",
+   "databaseBackup",
+   "decoration",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "priority",
+   "serverUrl",
+   "volumeBackup"
+  ],
+  "required": [
+   "appBuildError",
+   "appDeploy",
+   "appToken",
+   "databaseBackup",
+   "decoration",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "priority",
+   "serverUrl",
+   "volumeBackup"
+  ]
+ },
+ "notification.createLark": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ]
+ },
+ "notification.createMattermost": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "channel",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "username",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ]
+ },
+ "notification.createNtfy": {
+  "fields": [
+   "accessToken",
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "priority",
+   "serverUrl",
+   "topic",
+   "volumeBackup"
+  ],
+  "required": [
+   "accessToken",
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "priority",
+   "serverUrl",
+   "topic",
+   "volumeBackup"
+  ]
+ },
+ "notification.createPushover": {
+  "fields": [
+   "apiToken",
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "expire",
+   "name",
+   "priority",
+   "retry",
+   "serverThreshold",
+   "userKey",
+   "volumeBackup"
+  ],
+  "required": [
+   "apiToken",
+   "name",
+   "userKey"
+  ]
+ },
+ "notification.createResend": {
+  "fields": [
+   "apiKey",
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "fromAddress",
+   "name",
+   "serverThreshold",
+   "toAddresses",
+   "volumeBackup"
+  ],
+  "required": [
+   "apiKey",
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "fromAddress",
+   "name",
+   "serverThreshold",
+   "toAddresses",
+   "volumeBackup"
+  ]
+ },
+ "notification.createSlack": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "channel",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "appBuildError",
+   "appDeploy",
+   "channel",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ]
+ },
+ "notification.createTeams": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ]
+ },
+ "notification.createTelegram": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "botToken",
+   "chatId",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "messageThreadId",
+   "name",
+   "serverThreshold",
+   "volumeBackup"
+  ],
+  "required": [
+   "appBuildError",
+   "appDeploy",
+   "botToken",
+   "chatId",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "messageThreadId",
+   "name",
+   "serverThreshold",
+   "volumeBackup"
+  ]
+ },
+ "notification.receiveNotification": {
+  "fields": [
+   "Message",
+   "ServerType",
+   "Threshold",
+   "Timestamp",
+   "Token",
+   "Type",
+   "Value"
+  ],
+  "required": [
+   "Message",
+   "Threshold",
+   "Timestamp",
+   "Token",
+   "Type",
+   "Value"
+  ]
+ },
+ "notification.remove": {
+  "fields": [
+   "notificationId"
+  ],
+  "required": [
+   "notificationId"
+  ]
+ },
+ "notification.testCustomConnection": {
+  "fields": [
+   "endpoint",
+   "headers"
+  ],
+  "required": [
+   "endpoint"
+  ]
+ },
+ "notification.testDiscordConnection": {
+  "fields": [
+   "decoration",
+   "webhookUrl"
+  ],
+  "required": [
+   "webhookUrl"
+  ]
+ },
+ "notification.testEmailConnection": {
+  "fields": [
+   "fromAddress",
+   "password",
+   "smtpPort",
+   "smtpServer",
+   "toAddresses",
+   "username"
+  ],
+  "required": [
+   "fromAddress",
+   "password",
+   "smtpPort",
+   "smtpServer",
+   "toAddresses",
+   "username"
+  ]
+ },
+ "notification.testGotifyConnection": {
+  "fields": [
+   "appToken",
+   "decoration",
+   "priority",
+   "serverUrl"
+  ],
+  "required": [
+   "appToken",
+   "priority",
+   "serverUrl"
+  ]
+ },
+ "notification.testLarkConnection": {
+  "fields": [
+   "webhookUrl"
+  ],
+  "required": [
+   "webhookUrl"
+  ]
+ },
+ "notification.testMattermostConnection": {
+  "fields": [
+   "channel",
+   "username",
+   "webhookUrl"
+  ],
+  "required": [
+   "webhookUrl"
+  ]
+ },
+ "notification.testNtfyConnection": {
+  "fields": [
+   "accessToken",
+   "priority",
+   "serverUrl",
+   "topic"
+  ],
+  "required": [
+   "accessToken",
+   "priority",
+   "serverUrl",
+   "topic"
+  ]
+ },
+ "notification.testPushoverConnection": {
+  "fields": [
+   "apiToken",
+   "expire",
+   "priority",
+   "retry",
+   "userKey"
+  ],
+  "required": [
+   "apiToken",
+   "priority",
+   "userKey"
+  ]
+ },
+ "notification.testResendConnection": {
+  "fields": [
+   "apiKey",
+   "fromAddress",
+   "toAddresses"
+  ],
+  "required": [
+   "apiKey",
+   "fromAddress",
+   "toAddresses"
+  ]
+ },
+ "notification.testSlackConnection": {
+  "fields": [
+   "channel",
+   "webhookUrl"
+  ],
+  "required": [
+   "channel",
+   "webhookUrl"
+  ]
+ },
+ "notification.testTeamsConnection": {
+  "fields": [
+   "webhookUrl"
+  ],
+  "required": [
+   "webhookUrl"
+  ]
+ },
+ "notification.testTelegramConnection": {
+  "fields": [
+   "botToken",
+   "chatId",
+   "messageThreadId"
+  ],
+  "required": [
+   "botToken",
+   "chatId",
+   "messageThreadId"
+  ]
+ },
+ "notification.updateCustom": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "customId",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "endpoint",
+   "headers",
+   "name",
+   "notificationId",
+   "organizationId",
+   "serverThreshold",
+   "volumeBackup"
+  ],
+  "required": [
+   "customId",
+   "notificationId"
+  ]
+ },
+ "notification.updateDiscord": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "decoration",
+   "discordId",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "notificationId",
+   "organizationId",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "discordId",
+   "notificationId"
+  ]
+ },
+ "notification.updateEmail": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "emailId",
+   "fromAddress",
+   "name",
+   "notificationId",
+   "organizationId",
+   "password",
+   "serverThreshold",
+   "smtpPort",
+   "smtpServer",
+   "toAddresses",
+   "username",
+   "volumeBackup"
+  ],
+  "required": [
+   "emailId",
+   "notificationId"
+  ]
+ },
+ "notification.updateGotify": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "appToken",
+   "databaseBackup",
+   "decoration",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "gotifyId",
+   "name",
+   "notificationId",
+   "organizationId",
+   "priority",
+   "serverUrl",
+   "volumeBackup"
+  ],
+  "required": [
+   "gotifyId",
+   "notificationId"
+  ]
+ },
+ "notification.updateLark": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "larkId",
+   "name",
+   "notificationId",
+   "organizationId",
+   "serverThreshold",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "larkId",
+   "notificationId"
+  ]
+ },
+ "notification.updateMattermost": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "channel",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "mattermostId",
+   "name",
+   "notificationId",
+   "organizationId",
+   "serverThreshold",
+   "username",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "mattermostId",
+   "notificationId"
+  ]
+ },
+ "notification.updateNtfy": {
+  "fields": [
+   "accessToken",
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "notificationId",
+   "ntfyId",
+   "organizationId",
+   "priority",
+   "serverUrl",
+   "topic",
+   "volumeBackup"
+  ],
+  "required": [
+   "notificationId",
+   "ntfyId"
+  ]
+ },
+ "notification.updatePushover": {
+  "fields": [
+   "apiToken",
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "expire",
+   "name",
+   "notificationId",
+   "organizationId",
+   "priority",
+   "pushoverId",
+   "retry",
+   "serverThreshold",
+   "userKey",
+   "volumeBackup"
+  ],
+  "required": [
+   "notificationId",
+   "pushoverId"
+  ]
+ },
+ "notification.updateResend": {
+  "fields": [
+   "apiKey",
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "fromAddress",
+   "name",
+   "notificationId",
+   "organizationId",
+   "resendId",
+   "serverThreshold",
+   "toAddresses",
+   "volumeBackup"
+  ],
+  "required": [
+   "notificationId",
+   "resendId"
+  ]
+ },
+ "notification.updateSlack": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "channel",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "notificationId",
+   "organizationId",
+   "serverThreshold",
+   "slackId",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "notificationId",
+   "slackId"
+  ]
+ },
+ "notification.updateTeams": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "name",
+   "notificationId",
+   "organizationId",
+   "serverThreshold",
+   "teamsId",
+   "volumeBackup",
+   "webhookUrl"
+  ],
+  "required": [
+   "notificationId",
+   "teamsId"
+  ]
+ },
+ "notification.updateTelegram": {
+  "fields": [
+   "appBuildError",
+   "appDeploy",
+   "botToken",
+   "chatId",
+   "databaseBackup",
+   "dockerCleanup",
+   "dokployBackup",
+   "dokployRestart",
+   "messageThreadId",
+   "name",
+   "notificationId",
+   "organizationId",
+   "serverThreshold",
+   "telegramId",
+   "volumeBackup"
+  ],
+  "required": [
+   "notificationId",
+   "telegramId"
+  ]
+ },
+ "organization.create": {
+  "fields": [
+   "logo",
+   "name"
+  ],
+  "required": [
+   "name"
+  ]
+ },
+ "organization.delete": {
+  "fields": [
+   "organizationId"
+  ],
+  "required": [
+   "organizationId"
+  ]
+ },
+ "organization.inviteMember": {
+  "fields": [
+   "email",
+   "role"
+  ],
+  "required": [
+   "email",
+   "role"
+  ]
+ },
+ "organization.removeInvitation": {
+  "fields": [
+   "invitationId"
+  ],
+  "required": [
+   "invitationId"
+  ]
+ },
+ "organization.setDefault": {
+  "fields": [
+   "organizationId"
+  ],
+  "required": [
+   "organizationId"
+  ]
+ },
+ "organization.update": {
+  "fields": [
+   "logo",
+   "name",
+   "organizationId"
+  ],
+  "required": [
+   "name",
+   "organizationId"
+  ]
+ },
+ "organization.updateMemberRole": {
+  "fields": [
+   "memberId",
+   "role"
+  ],
+  "required": [
+   "memberId",
+   "role"
+  ]
+ },
+ "patch.cleanPatchRepos": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "patch.create": {
+  "fields": [
+   "applicationId",
+   "composeId",
+   "content",
+   "enabled",
+   "filePath",
+   "type"
+  ],
+  "required": [
+   "content",
+   "filePath"
+  ]
+ },
+ "patch.delete": {
+  "fields": [
+   "patchId"
+  ],
+  "required": [
+   "patchId"
+  ]
+ },
+ "patch.ensureRepo": {
+  "fields": [
+   "id",
+   "type"
+  ],
+  "required": [
+   "id",
+   "type"
+  ]
+ },
+ "patch.markFileForDeletion": {
+  "fields": [
+   "filePath",
+   "id",
+   "type"
+  ],
+  "required": [
+   "filePath",
+   "id",
+   "type"
+  ]
+ },
+ "patch.saveFileAsPatch": {
+  "fields": [
+   "content",
+   "filePath",
+   "id",
+   "patchType",
+   "type"
+  ],
+  "required": [
+   "content",
+   "filePath",
+   "id",
+   "type"
+  ]
+ },
+ "patch.toggleEnabled": {
+  "fields": [
+   "enabled",
+   "patchId"
+  ],
+  "required": [
+   "enabled",
+   "patchId"
+  ]
+ },
+ "patch.update": {
+  "fields": [
+   "content",
+   "createdAt",
+   "enabled",
+   "filePath",
+   "patchId",
+   "type",
+   "updatedAt"
+  ],
+  "required": [
+   "patchId"
+  ]
+ },
+ "port.create": {
+  "fields": [
+   "applicationId",
+   "protocol",
+   "publishMode",
+   "publishedPort",
+   "targetPort"
+  ],
+  "required": [
+   "applicationId",
+   "protocol",
+   "publishMode",
+   "publishedPort",
+   "targetPort"
+  ]
+ },
+ "port.delete": {
+  "fields": [
+   "portId"
+  ],
+  "required": [
+   "portId"
+  ]
+ },
+ "port.update": {
+  "fields": [
+   "portId",
+   "protocol",
+   "publishMode",
+   "publishedPort",
+   "targetPort"
+  ],
+  "required": [
+   "portId",
+   "protocol",
+   "publishMode",
+   "publishedPort",
+   "targetPort"
+  ]
+ },
+ "postgres.changePassword": {
+  "fields": [
+   "password",
+   "postgresId"
+  ],
+  "required": [
+   "password",
+   "postgresId"
+  ]
+ },
+ "postgres.changeStatus": {
+  "fields": [
+   "applicationStatus",
+   "postgresId"
+  ],
+  "required": [
+   "applicationStatus",
+   "postgresId"
+  ]
+ },
+ "postgres.create": {
+  "fields": [
+   "appName",
+   "databaseName",
+   "databasePassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "environmentId",
+   "name",
+   "serverId"
+  ],
+  "required": [
+   "databaseName",
+   "databasePassword",
+   "databaseUser",
+   "environmentId",
+   "name"
+  ]
+ },
+ "postgres.deploy": {
+  "fields": [
+   "postgresId"
+  ],
+  "required": [
+   "postgresId"
+  ]
+ },
+ "postgres.move": {
+  "fields": [
+   "postgresId",
+   "targetEnvironmentId"
+  ],
+  "required": [
+   "postgresId",
+   "targetEnvironmentId"
+  ]
+ },
+ "postgres.rebuild": {
+  "fields": [
+   "postgresId"
+  ],
+  "required": [
+   "postgresId"
+  ]
+ },
+ "postgres.reload": {
+  "fields": [
+   "appName",
+   "postgresId"
+  ],
+  "required": [
+   "appName",
+   "postgresId"
+  ]
+ },
+ "postgres.remove": {
+  "fields": [
+   "postgresId"
+  ],
+  "required": [
+   "postgresId"
+  ]
+ },
+ "postgres.saveEnvironment": {
+  "fields": [
+   "env",
+   "postgresId"
+  ],
+  "required": [
+   "env",
+   "postgresId"
+  ]
+ },
+ "postgres.saveExternalPort": {
+  "fields": [
+   "externalPort",
+   "postgresId"
+  ],
+  "required": [
+   "externalPort",
+   "postgresId"
+  ]
+ },
+ "postgres.start": {
+  "fields": [
+   "postgresId"
+  ],
+  "required": [
+   "postgresId"
+  ]
+ },
+ "postgres.stop": {
+  "fields": [
+   "postgresId"
+  ],
+  "required": [
+   "postgresId"
+  ]
+ },
+ "postgres.update": {
+  "fields": [
+   "appName",
+   "applicationStatus",
+   "args",
+   "command",
+   "cpuLimit",
+   "cpuReservation",
+   "createdAt",
+   "databaseName",
+   "databasePassword",
+   "databaseUser",
+   "description",
+   "dockerImage",
+   "endpointSpecSwarm",
+   "env",
+   "environmentId",
+   "externalPort",
+   "healthCheckSwarm",
+   "labelsSwarm",
+   "memoryLimit",
+   "memoryReservation",
+   "modeSwarm",
+   "name",
+   "networkSwarm",
+   "placementSwarm",
+   "postgresId",
+   "replicas",
+   "restartPolicySwarm",
+   "rollbackConfigSwarm",
+   "stopGracePeriodSwarm",
+   "ulimitsSwarm",
+   "updateConfigSwarm"
+  ],
+  "required": [
+   "postgresId"
+  ]
+ },
+ "previewDeployment.delete": {
+  "fields": [
+   "previewDeploymentId"
+  ],
+  "required": [
+   "previewDeploymentId"
+  ]
+ },
+ "previewDeployment.redeploy": {
+  "fields": [
+   "description",
+   "previewDeploymentId",
+   "title"
+  ],
+  "required": [
+   "previewDeploymentId"
+  ]
+ },
+ "project.create": {
+  "fields": [
+   "description",
+   "env",
+   "name"
+  ],
+  "required": [
+   "name"
+  ]
+ },
+ "project.duplicate": {
+  "fields": [
+   "description",
+   "duplicateInSameProject",
+   "includeServices",
+   "name",
+   "selectedServices",
+   "sourceEnvironmentId"
+  ],
+  "required": [
+   "name",
+   "sourceEnvironmentId"
+  ]
+ },
+ "project.remove": {
+  "fields": [
+   "projectId"
+  ],
+  "required": [
+   "projectId"
+  ]
+ },
+ "project.update": {
+  "fields": [
+   "createdAt",
+   "description",
+   "env",
+   "name",
+   "organizationId",
+   "projectId"
+  ],
+  "required": [
+   "projectId"
+  ]
+ },
+ "redirects.create": {
+  "fields": [
+   "applicationId",
+   "permanent",
+   "regex",
+   "replacement"
+  ],
+  "required": [
+   "applicationId",
+   "permanent",
+   "regex",
+   "replacement"
+  ]
+ },
+ "redirects.delete": {
+  "fields": [
+   "redirectId"
+  ],
+  "required": [
+   "redirectId"
+  ]
+ },
+ "redirects.update": {
+  "fields": [
+   "permanent",
+   "redirectId",
+   "regex",
+   "replacement"
+  ],
+  "required": [
+   "permanent",
+   "redirectId",
+   "regex",
+   "replacement"
+  ]
+ },
+ "redis.changePassword": {
+  "fields": [
+   "password",
+   "redisId"
+  ],
+  "required": [
+   "password",
+   "redisId"
+  ]
+ },
+ "redis.changeStatus": {
+  "fields": [
+   "applicationStatus",
+   "redisId"
+  ],
+  "required": [
+   "applicationStatus",
+   "redisId"
+  ]
+ },
+ "redis.create": {
+  "fields": [
+   "appName",
+   "databasePassword",
+   "description",
+   "dockerImage",
+   "environmentId",
+   "name",
+   "serverId"
+  ],
+  "required": [
+   "databasePassword",
+   "environmentId",
+   "name"
+  ]
+ },
+ "redis.deploy": {
+  "fields": [
+   "redisId"
+  ],
+  "required": [
+   "redisId"
+  ]
+ },
+ "redis.move": {
+  "fields": [
+   "redisId",
+   "targetEnvironmentId"
+  ],
+  "required": [
+   "redisId",
+   "targetEnvironmentId"
+  ]
+ },
+ "redis.rebuild": {
+  "fields": [
+   "redisId"
+  ],
+  "required": [
+   "redisId"
+  ]
+ },
+ "redis.reload": {
+  "fields": [
+   "appName",
+   "redisId"
+  ],
+  "required": [
+   "appName",
+   "redisId"
+  ]
+ },
+ "redis.remove": {
+  "fields": [
+   "redisId"
+  ],
+  "required": [
+   "redisId"
+  ]
+ },
+ "redis.saveEnvironment": {
+  "fields": [
+   "env",
+   "redisId"
+  ],
+  "required": [
+   "env",
+   "redisId"
+  ]
+ },
+ "redis.saveExternalPort": {
+  "fields": [
+   "externalPort",
+   "redisId"
+  ],
+  "required": [
+   "externalPort",
+   "redisId"
+  ]
+ },
+ "redis.start": {
+  "fields": [
+   "redisId"
+  ],
+  "required": [
+   "redisId"
+  ]
+ },
+ "redis.stop": {
+  "fields": [
+   "redisId"
+  ],
+  "required": [
+   "redisId"
+  ]
+ },
+ "redis.update": {
+  "fields": [
+   "appName",
+   "applicationStatus",
+   "args",
+   "command",
+   "cpuLimit",
+   "cpuReservation",
+   "createdAt",
+   "databasePassword",
+   "description",
+   "dockerImage",
+   "endpointSpecSwarm",
+   "env",
+   "environmentId",
+   "externalPort",
+   "healthCheckSwarm",
+   "labelsSwarm",
+   "memoryLimit",
+   "memoryReservation",
+   "modeSwarm",
+   "name",
+   "networkSwarm",
+   "placementSwarm",
+   "redisId",
+   "replicas",
+   "restartPolicySwarm",
+   "rollbackConfigSwarm",
+   "stopGracePeriodSwarm",
+   "ulimitsSwarm",
+   "updateConfigSwarm"
+  ],
+  "required": [
+   "redisId"
+  ]
+ },
+ "registry.create": {
+  "fields": [
+   "imagePrefix",
+   "password",
+   "registryName",
+   "registryType",
+   "registryUrl",
+   "serverId",
+   "username"
+  ],
+  "required": [
+   "imagePrefix",
+   "password",
+   "registryName",
+   "registryType",
+   "registryUrl",
+   "username"
+  ]
+ },
+ "registry.remove": {
+  "fields": [
+   "registryId"
+  ],
+  "required": [
+   "registryId"
+  ]
+ },
+ "registry.testRegistry": {
+  "fields": [
+   "imagePrefix",
+   "password",
+   "registryName",
+   "registryType",
+   "registryUrl",
+   "serverId",
+   "username"
+  ],
+  "required": [
+   "password",
+   "registryType",
+   "registryUrl",
+   "username"
+  ]
+ },
+ "registry.testRegistryById": {
+  "fields": [
+   "registryId",
+   "serverId"
+  ],
+  "required": []
+ },
+ "registry.update": {
+  "fields": [
+   "createdAt",
+   "imagePrefix",
+   "organizationId",
+   "password",
+   "registryId",
+   "registryName",
+   "registryType",
+   "registryUrl",
+   "serverId",
+   "username"
+  ],
+  "required": [
+   "registryId"
+  ]
+ },
+ "rollback.delete": {
+  "fields": [
+   "rollbackId"
+  ],
+  "required": [
+   "rollbackId"
+  ]
+ },
+ "rollback.rollback": {
+  "fields": [
+   "rollbackId"
+  ],
+  "required": [
+   "rollbackId"
+  ]
+ },
+ "schedule.create": {
+  "fields": [
+   "appName",
+   "applicationId",
+   "command",
+   "composeId",
+   "createdAt",
+   "cronExpression",
+   "description",
+   "enabled",
+   "name",
+   "organizationId",
+   "scheduleId",
+   "scheduleType",
+   "script",
+   "serverId",
+   "serviceName",
+   "shellType",
+   "timezone"
+  ],
+  "required": [
+   "command",
+   "cronExpression",
+   "name"
+  ]
+ },
+ "schedule.delete": {
+  "fields": [
+   "scheduleId"
+  ],
+  "required": [
+   "scheduleId"
+  ]
+ },
+ "schedule.runManually": {
+  "fields": [
+   "scheduleId"
+  ],
+  "required": [
+   "scheduleId"
+  ]
+ },
+ "schedule.update": {
+  "fields": [
+   "appName",
+   "applicationId",
+   "command",
+   "composeId",
+   "createdAt",
+   "cronExpression",
+   "description",
+   "enabled",
+   "name",
+   "organizationId",
+   "scheduleId",
+   "scheduleType",
+   "script",
+   "serverId",
+   "serviceName",
+   "shellType",
+   "timezone"
+  ],
+  "required": [
+   "command",
+   "cronExpression",
+   "name",
+   "scheduleId"
+  ]
+ },
+ "scim.deleteProvider": {
+  "fields": [
+   "providerId"
+  ],
+  "required": [
+   "providerId"
+  ]
+ },
+ "scim.generateToken": {
+  "fields": [
+   "providerId"
+  ],
+  "required": [
+   "providerId"
+  ]
+ },
+ "security.create": {
+  "fields": [
+   "applicationId",
+   "password",
+   "username"
+  ],
+  "required": [
+   "applicationId",
+   "password",
+   "username"
+  ]
+ },
+ "security.delete": {
+  "fields": [
+   "securityId"
+  ],
+  "required": [
+   "securityId"
+  ]
+ },
+ "security.update": {
+  "fields": [
+   "password",
+   "securityId",
+   "username"
+  ],
+  "required": [
+   "password",
+   "securityId",
+   "username"
+  ]
+ },
+ "server.create": {
+  "fields": [
+   "description",
+   "enableDockerCleanup",
+   "ipAddress",
+   "name",
+   "port",
+   "serverType",
+   "sshKeyId",
+   "username"
+  ],
+  "required": [
+   "description",
+   "ipAddress",
+   "name",
+   "port",
+   "serverType",
+   "sshKeyId",
+   "username"
+  ]
+ },
+ "server.remove": {
+  "fields": [
+   "serverId"
+  ],
+  "required": [
+   "serverId"
+  ]
+ },
+ "server.setup": {
+  "fields": [
+   "serverId"
+  ],
+  "required": [
+   "serverId"
+  ]
+ },
+ "server.setupMonitoring": {
+  "fields": [
+   "metricsConfig",
+   "serverId"
+  ],
+  "required": [
+   "metricsConfig",
+   "serverId"
+  ]
+ },
+ "server.update": {
+  "fields": [
+   "command",
+   "description",
+   "enableDockerCleanup",
+   "ipAddress",
+   "name",
+   "port",
+   "serverId",
+   "serverType",
+   "sshKeyId",
+   "username"
+  ],
+  "required": [
+   "description",
+   "ipAddress",
+   "name",
+   "port",
+   "serverId",
+   "serverType",
+   "sshKeyId",
+   "username"
+  ]
+ },
+ "server.updateBuildsConcurrency": {
+  "fields": [
+   "buildsConcurrency",
+   "serverId"
+  ],
+  "required": [
+   "buildsConcurrency",
+   "serverId"
+  ]
+ },
+ "settings.assignDomainServer": {
+  "fields": [
+   "certificateType",
+   "host",
+   "https",
+   "letsEncryptEmail"
+  ],
+  "required": [
+   "certificateType",
+   "host"
+  ]
+ },
+ "settings.cleanAll": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.cleanDockerBuilder": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.cleanDockerPrune": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.cleanStoppedContainers": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.cleanUnusedImages": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.cleanUnusedVolumes": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.reloadTraefik": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.saveSSHPrivateKey": {
+  "fields": [
+   "sshPrivateKey"
+  ],
+  "required": [
+   "sshPrivateKey"
+  ]
+ },
+ "settings.setupGPU": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.toggleDashboard": {
+  "fields": [
+   "enableDashboard",
+   "serverId"
+  ],
+  "required": []
+ },
+ "settings.toggleRequests": {
+  "fields": [
+   "enable"
+  ],
+  "required": [
+   "enable"
+  ]
+ },
+ "settings.updateBuildsConcurrency": {
+  "fields": [
+   "buildsConcurrency"
+  ],
+  "required": [
+   "buildsConcurrency"
+  ]
+ },
+ "settings.updateDockerCleanup": {
+  "fields": [
+   "enableDockerCleanup",
+   "serverId"
+  ],
+  "required": [
+   "enableDockerCleanup"
+  ]
+ },
+ "settings.updateEnforceSSO": {
+  "fields": [
+   "enforceSSO"
+  ],
+  "required": [
+   "enforceSSO"
+  ]
+ },
+ "settings.updateLogCleanup": {
+  "fields": [
+   "cronExpression"
+  ],
+  "required": [
+   "cronExpression"
+  ]
+ },
+ "settings.updateMiddlewareTraefikConfig": {
+  "fields": [
+   "traefikConfig"
+  ],
+  "required": [
+   "traefikConfig"
+  ]
+ },
+ "settings.updateRemoteServersOnly": {
+  "fields": [
+   "remoteServersOnly"
+  ],
+  "required": [
+   "remoteServersOnly"
+  ]
+ },
+ "settings.updateServerIp": {
+  "fields": [
+   "serverIp"
+  ],
+  "required": [
+   "serverIp"
+  ]
+ },
+ "settings.updateTraefikConfig": {
+  "fields": [
+   "traefikConfig"
+  ],
+  "required": [
+   "traefikConfig"
+  ]
+ },
+ "settings.updateTraefikFile": {
+  "fields": [
+   "path",
+   "serverId",
+   "traefikConfig"
+  ],
+  "required": [
+   "path",
+   "traefikConfig"
+  ]
+ },
+ "settings.updateTraefikPorts": {
+  "fields": [
+   "additionalPorts",
+   "serverId"
+  ],
+  "required": [
+   "additionalPorts"
+  ]
+ },
+ "settings.updateWebServerTraefikConfig": {
+  "fields": [
+   "traefikConfig"
+  ],
+  "required": [
+   "traefikConfig"
+  ]
+ },
+ "settings.writeTraefikEnv": {
+  "fields": [
+   "env",
+   "serverId"
+  ],
+  "required": [
+   "env"
+  ]
+ },
+ "sshKey.create": {
+  "fields": [
+   "description",
+   "name",
+   "organizationId",
+   "privateKey",
+   "publicKey"
+  ],
+  "required": [
+   "name",
+   "organizationId",
+   "privateKey",
+   "publicKey"
+  ]
+ },
+ "sshKey.generate": {
+  "fields": [
+   "type"
+  ],
+  "required": []
+ },
+ "sshKey.remove": {
+  "fields": [
+   "sshKeyId"
+  ],
+  "required": [
+   "sshKeyId"
+  ]
+ },
+ "sshKey.update": {
+  "fields": [
+   "description",
+   "lastUsedAt",
+   "name",
+   "sshKeyId"
+  ],
+  "required": [
+   "sshKeyId"
+  ]
+ },
+ "sso.addTrustedOrigin": {
+  "fields": [
+   "origin"
+  ],
+  "required": [
+   "origin"
+  ]
+ },
+ "sso.deleteProvider": {
+  "fields": [
+   "providerId"
+  ],
+  "required": [
+   "providerId"
+  ]
+ },
+ "sso.register": {
+  "fields": [
+   "domains",
+   "issuer",
+   "oidcConfig",
+   "organizationId",
+   "overrideUserInfo",
+   "providerId",
+   "samlConfig"
+  ],
+  "required": [
+   "domains",
+   "issuer",
+   "providerId"
+  ]
+ },
+ "sso.removeTrustedOrigin": {
+  "fields": [
+   "origin"
+  ],
+  "required": [
+   "origin"
+  ]
+ },
+ "sso.update": {
+  "fields": [
+   "domains",
+   "issuer",
+   "oidcConfig",
+   "organizationId",
+   "overrideUserInfo",
+   "providerId",
+   "samlConfig"
+  ],
+  "required": [
+   "domains",
+   "issuer",
+   "providerId"
+  ]
+ },
+ "sso.updateTrustedOrigin": {
+  "fields": [
+   "newOrigin",
+   "oldOrigin"
+  ],
+  "required": [
+   "newOrigin",
+   "oldOrigin"
+  ]
+ },
+ "stripe.createCheckoutSession": {
+  "fields": [
+   "isAnnual",
+   "productId",
+   "serverQuantity",
+   "tier"
+  ],
+  "required": [
+   "isAnnual",
+   "productId",
+   "serverQuantity",
+   "tier"
+  ]
+ },
+ "stripe.updateInvoiceNotifications": {
+  "fields": [
+   "enabled"
+  ],
+  "required": [
+   "enabled"
+  ]
+ },
+ "stripe.upgradeSubscription": {
+  "fields": [
+   "isAnnual",
+   "serverQuantity",
+   "tier"
+  ],
+  "required": [
+   "isAnnual",
+   "serverQuantity",
+   "tier"
+  ]
+ },
+ "tag.assignToProject": {
+  "fields": [
+   "projectId",
+   "tagId"
+  ],
+  "required": [
+   "projectId",
+   "tagId"
+  ]
+ },
+ "tag.bulkAssign": {
+  "fields": [
+   "projectId",
+   "tagIds"
+  ],
+  "required": [
+   "projectId",
+   "tagIds"
+  ]
+ },
+ "tag.create": {
+  "fields": [
+   "color",
+   "name"
+  ],
+  "required": [
+   "name"
+  ]
+ },
+ "tag.remove": {
+  "fields": [
+   "tagId"
+  ],
+  "required": [
+   "tagId"
+  ]
+ },
+ "tag.removeFromProject": {
+  "fields": [
+   "projectId",
+   "tagId"
+  ],
+  "required": [
+   "projectId",
+   "tagId"
+  ]
+ },
+ "tag.update": {
+  "fields": [
+   "color",
+   "createdAt",
+   "name",
+   "organizationId",
+   "tagId"
+  ],
+  "required": [
+   "tagId"
+  ]
+ },
+ "user.assignPermissions": {
+  "fields": [
+   "accessedEnvironments",
+   "accessedGitProviders",
+   "accessedProjects",
+   "accessedServers",
+   "accessedServices",
+   "canAccessToAPI",
+   "canAccessToDocker",
+   "canAccessToGitProviders",
+   "canAccessToSSHKeys",
+   "canAccessToTraefikFiles",
+   "canCreateEnvironments",
+   "canCreateProjects",
+   "canCreateServices",
+   "canDeleteEnvironments",
+   "canDeleteProjects",
+   "canDeleteServices",
+   "id"
+  ],
+  "required": [
+   "accessedEnvironments",
+   "accessedGitProviders",
+   "accessedProjects",
+   "accessedServers",
+   "accessedServices",
+   "canAccessToAPI",
+   "canAccessToDocker",
+   "canAccessToGitProviders",
+   "canAccessToSSHKeys",
+   "canAccessToTraefikFiles",
+   "canCreateEnvironments",
+   "canCreateProjects",
+   "canCreateServices",
+   "canDeleteEnvironments",
+   "canDeleteProjects",
+   "canDeleteServices",
+   "id"
+  ]
+ },
+ "user.createApiKey": {
+  "fields": [
+   "expiresIn",
+   "metadata",
+   "name",
+   "prefix",
+   "rateLimitEnabled",
+   "rateLimitMax",
+   "rateLimitTimeWindow",
+   "refillAmount",
+   "refillInterval",
+   "remaining"
+  ],
+  "required": [
+   "metadata",
+   "name"
+  ]
+ },
+ "user.createUserWithCredentials": {
+  "fields": [
+   "email",
+   "password",
+   "role"
+  ],
+  "required": [
+   "email",
+   "password",
+   "role"
+  ]
+ },
+ "user.deleteApiKey": {
+  "fields": [
+   "apiKeyId"
+  ],
+  "required": [
+   "apiKeyId"
+  ]
+ },
+ "user.remove": {
+  "fields": [
+   "userId"
+  ],
+  "required": [
+   "userId"
+  ]
+ },
+ "user.sendInvitation": {
+  "fields": [
+   "invitationId",
+   "notificationId"
+  ],
+  "required": [
+   "invitationId",
+   "notificationId"
+  ]
+ },
+ "user.toggleTemplateBookmark": {
+  "fields": [
+   "templateId"
+  ],
+  "required": [
+   "templateId"
+  ]
+ },
+ "user.update": {
+  "fields": [
+   "allowImpersonation",
+   "banExpires",
+   "banReason",
+   "banned",
+   "createdAt",
+   "createdAt2",
+   "currentPassword",
+   "email",
+   "emailVerified",
+   "enableEnterpriseFeatures",
+   "enablePaidFeatures",
+   "expirationDate",
+   "firstName",
+   "id",
+   "image",
+   "isRegistered",
+   "lastName",
+   "licenseKey",
+   "password",
+   "sendInvoiceNotifications",
+   "serversQuantity",
+   "stripeCustomerId",
+   "stripeSubscriptionId",
+   "twoFactorEnabled",
+   "updatedAt"
+  ],
+  "required": []
+ },
+ "volumeBackups.create": {
+  "fields": [
+   "appName",
+   "applicationId",
+   "composeId",
+   "createdAt",
+   "cronExpression",
+   "destinationId",
+   "enabled",
+   "keepLatestCount",
+   "libsqlId",
+   "mariadbId",
+   "mongoId",
+   "mysqlId",
+   "name",
+   "postgresId",
+   "prefix",
+   "redisId",
+   "serviceName",
+   "serviceType",
+   "turnOff",
+   "volumeName"
+  ],
+  "required": [
+   "cronExpression",
+   "destinationId",
+   "name",
+   "prefix",
+   "volumeName"
+  ]
+ },
+ "volumeBackups.delete": {
+  "fields": [
+   "volumeBackupId"
+  ],
+  "required": [
+   "volumeBackupId"
+  ]
+ },
+ "volumeBackups.runManually": {
+  "fields": [
+   "volumeBackupId"
+  ],
+  "required": [
+   "volumeBackupId"
+  ]
+ },
+ "volumeBackups.update": {
+  "fields": [
+   "appName",
+   "applicationId",
+   "composeId",
+   "createdAt",
+   "cronExpression",
+   "destinationId",
+   "enabled",
+   "keepLatestCount",
+   "libsqlId",
+   "mariadbId",
+   "mongoId",
+   "mysqlId",
+   "name",
+   "postgresId",
+   "prefix",
+   "redisId",
+   "serviceName",
+   "serviceType",
+   "turnOff",
+   "volumeBackupId",
+   "volumeName"
+  ],
+  "required": [
+   "cronExpression",
+   "destinationId",
+   "name",
+   "prefix",
+   "volumeBackupId",
+   "volumeName"
+  ]
+ },
+ "whitelabeling.update": {
+  "fields": [
+   "whitelabelingConfig"
+  ],
+  "required": [
+   "whitelabelingConfig"
+  ]
+ }
+}

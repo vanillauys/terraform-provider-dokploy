@@ -66,11 +66,22 @@ func TestRequestStructsNeverOmitMustSendFields(t *testing.T) {
 func fieldByJSONName(t reflect.Type, name string) (reflect.StructField, bool) {
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		if strings.Split(f.Tag.Get("json"), ",")[0] == name {
+		if jsonName(f) == name {
 			return f, true
 		}
 	}
 	return reflect.StructField{}, false
+}
+
+// jsonName is the wire name a field marshals to: the json tag's first
+// comma-separated element. It is "" for an untagged field and for `json:"-"`,
+// both of which mean the field never reaches the server.
+func jsonName(f reflect.StructField) string {
+	name := strings.Split(f.Tag.Get("json"), ",")[0]
+	if name == "-" {
+		return ""
+	}
+	return name
 }
 
 func hasOmitempty(f reflect.StructField) bool {
