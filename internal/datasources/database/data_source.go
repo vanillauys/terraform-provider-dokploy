@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/vanillauys/terraform-provider-dokploy/internal/lookup"
 	resourcedb "github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 )
 
@@ -121,30 +122,20 @@ func (d *genericDataSource) Read(ctx context.Context, req datasource.ReadRequest
 }
 
 // findByName resolves an exact service name to its id within the objects
-// KindClient.ListByEnvironment returned. It mirrors
-// internal/client/environment.go's FindServiceByName exactly — same
-// nil-pointer found-sentinel, same error wording — retargeted to
-// resourcedb.Object: ListByEnvironment returns engine-neutral Objects, not
-// client.ServiceRef, so the two loops can't literally share one function
-// without a generics/interface refactor of an already-shipped, tested
-// client-package helper, which is out of scope for this task. Errors on
-// zero AND on multiple matches; never takes the first match — Dokploy does
-// not enforce unique service names within an environment.
+// KindClient.ListByEnvironment returned. It delegates to lookup.ByName,
+// which internal/client's FindServiceByName also delegates to — before
+// Task 4's review, this function reimplemented FindServiceByName's loop,
+// nil-pointer found-sentinel, and error strings character-for-character
+// (differing only in element type: resourcedb.Object here vs
+// client.ServiceRef there); lookup.ByName is the one shared
+// implementation now. Errors on zero AND on multiple matches; never takes
+// the first match — Dokploy does not enforce unique service names within
+// an environment.
 func findByName(objs []resourcedb.Object, name, kind string) (string, error) {
-	var found *string
-	for i := range objs {
-		if objs[i].Name != name {
-			continue
-		}
-		if found != nil {
-			return "", fmt.Errorf("multiple %s services named %q in this environment; look it up by id instead", kind, name)
-		}
-		found = &objs[i].ID
-	}
-	if found == nil {
-		return "", fmt.Errorf("no %s service named %q in this environment", kind, name)
-	}
-	return *found, nil
+	return lookup.ByName(objs, name, kind,
+		func(o resourcedb.Object) string { return o.ID },
+		func(o resourcedb.Object) string { return o.Name },
+	)
 }
 
 // schemaAttributes builds the full attribute map for one Kind's data

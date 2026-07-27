@@ -2,8 +2,9 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"net/url"
+
+	"github.com/vanillauys/terraform-provider-dokploy/internal/lookup"
 )
 
 // Environment is an environment inside a Dokploy project. Every project
@@ -143,30 +144,20 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 // multiple matches rather than picking one: Dokploy does not enforce unique
 // service names within an environment.
 //
-// The "have I found one yet" sentinel is a *string, not a string compared
-// against "": that comparison can't tell "nothing matched yet" apart from
-// "matched a ref whose ID happens to be empty". The old found != "" check
-// conflated the two, so a same-named ref with an empty ID would not be
-// counted as a first match, and a second same-named ref could silently win
-// instead of the lookup erroring. Nothing in the introspection for this
-// provider observed Dokploy actually returning an empty service ID — this
-// is a defensive correction for what the sentinel's own logic could not
-// distinguish, not a report of live server behavior. Mirrors
-// datasources/environment.FindByName, which uses the same nil-pointer
-// sentinel for the same reason.
+// The zero/multiple-match error behavior and its nil-pointer found-sentinel
+// (a *string, not a string compared against "", so "nothing matched yet"
+// can't be confused with "matched a ref whose ID happens to be empty") now
+// live in lookup.ByName — this and
+// internal/datasources/database's findByName were, before Task 4's review,
+// character-for-character duplicates of that same loop differing only in
+// element type ([]ServiceRef vs []resourcedb.Object). See lookup.ByName's
+// doc comment for the full rationale. Mirrors
+// datasources/environment.FindByName, which still carries its own copy of
+// the same sentinel (a pre-existing, out-of-scope third instance — see the
+// task-4 report).
 func FindServiceByName(refs []ServiceRef, name, kind string) (string, error) {
-	var found *string
-	for i := range refs {
-		if refs[i].Name != name {
-			continue
-		}
-		if found != nil {
-			return "", fmt.Errorf("multiple %s services named %q in this environment; look it up by id instead", kind, name)
-		}
-		found = &refs[i].ID
-	}
-	if found == nil {
-		return "", fmt.Errorf("no %s service named %q in this environment", kind, name)
-	}
-	return *found, nil
+	return lookup.ByName(refs, name, kind,
+		func(r ServiceRef) string { return r.ID },
+		func(r ServiceRef) string { return r.Name },
+	)
 }
