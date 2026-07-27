@@ -167,7 +167,7 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 		r.persistPartial(ctx, resp, plan, "reading the service back", err)
 		return
 	}
-	setComputed(current, &plan)
+	setComputed(r.kind, current, &plan)
 
 	if plan.DeployOnChange.ValueBool() {
 		if err := r.deployAndWait(ctx, &plan); err != nil {
@@ -176,7 +176,7 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 			return
 		}
 		if current, err = r.kind.Client.Get(ctx, plan.ID.ValueString()); err == nil {
-			setComputed(current, &plan)
+			setComputed(r.kind, current, &plan)
 		}
 	}
 	resp.Diagnostics.Append(setModel(ctx, &resp.State, plan)...)
@@ -268,7 +268,7 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 		resp.Diagnostics.AddError(fmt.Sprintf("Reading %s after update", r.kind.Name), err.Error())
 		return
 	}
-	setComputed(current, &plan)
+	setComputed(r.kind, current, &plan)
 
 	if plan.DeployOnChange.ValueBool() && deployNeeded(plan, state) {
 		if err := r.deployAndWait(ctx, &plan); err != nil {
@@ -277,7 +277,7 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 			return
 		}
 		if current, err = r.kind.Client.Get(ctx, id); err == nil {
-			setComputed(current, &plan)
+			setComputed(r.kind, current, &plan)
 		}
 	}
 	resp.Diagnostics.Append(setModel(ctx, &resp.State, plan)...)

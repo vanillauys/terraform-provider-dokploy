@@ -53,7 +53,7 @@ func TestSetComputed(t *testing.T) {
 		CreatedAt:         "2026-01-01T00:00:00Z",
 	}
 	var m genericModel
-	setComputed(obj, &m)
+	setComputed(Kind{}, obj, &m)
 
 	if got := m.ID.ValueString(); got != "pg-1" {
 		t.Errorf("ID = %q, want pg-1", got)
@@ -69,6 +69,91 @@ func TestSetComputed(t *testing.T) {
 	}
 	if got := m.CreatedAt.ValueString(); got != "2026-01-01T00:00:00Z" {
 		t.Errorf("CreatedAt = %q, want 2026-01-01T00:00:00Z", got)
+	}
+}
+
+// TestSetComputed_RefreshesComputedCredential guards the review finding on
+// this task: setComputed used to leave every CredentialAttr untouched, so a
+// Computed one (mysql/mariadb's server-generated databaseRootPassword, the
+// stated motivation for CredentialAttr.Computed) would carry its Create-time
+// Unknown plan value (Optional+Computed+UseStateForUnknown, no prior state to
+// fall back to) straight into committed state — which Terraform core rejects
+// with "Provider produced inconsistent result after apply." setComputed is
+// exactly what Create/Update call after fetching the server object
+// (resource.go), so this reproduces the Create/Update path's use of it
+// directly: start from the Unknown plan value, call setComputed with the
+// server's Object, and assert the result is neither Unknown nor null but the
+// server's actual value.
+func TestSetComputed_RefreshesComputedCredential(t *testing.T) {
+	k := Kind{
+		Name:      "mysql",
+		HumanName: "MySQL",
+		CredentialAttrs: []CredentialAttr{
+			{TFName: "database_root_password", Computed: true},
+		},
+	}
+	obj := &Object{
+		ID:                "mysql-1",
+		AppName:           "app-1",
+		DockerImage:       "mysql:8",
+		ApplicationStatus: "done",
+		CreatedAt:         "2026-01-01T00:00:00Z",
+		Credentials: map[string]string{
+			"database_root_password": "server-generated-secret",
+		},
+	}
+	m := genericModel{
+		Credentials: map[string]types.String{
+			// Simulates the plan value getModel would read on Create when the
+			// attribute is omitted from config: Optional+Computed with no
+			// prior state, so the framework marks it Unknown.
+			"database_root_password": types.StringUnknown(),
+		},
+	}
+	setComputed(k, obj, &m)
+
+	got := m.Credentials["database_root_password"]
+	if got.IsUnknown() {
+		t.Fatal("Computed credential attr left Unknown after setComputed: Terraform core will reject this apply with \"Provider produced inconsistent result after apply\"")
+	}
+	if got.IsNull() {
+		t.Fatal("Computed credential attr is null after setComputed, want the server-refreshed value")
+	}
+	if v := got.ValueString(); v != "server-generated-secret" {
+		t.Errorf("Credentials[database_root_password] = %q, want server-generated-secret", v)
+	}
+}
+
+// TestSetComputed_LeavesNonComputedCredentialAlone is the fix's other half:
+// a non-Computed CredentialAttr (postgres's database_name/database_user) is a
+// plain user-supplied config value, not a server-computed one. setComputed
+// must not clobber it with the server's value, or postgres's shipped state
+// handling (zero Computed CredentialAttrs today) would silently change.
+func TestSetComputed_LeavesNonComputedCredentialAlone(t *testing.T) {
+	k := PostgresKind(nil)
+	obj := &Object{
+		ID: "pg-1",
+		Credentials: map[string]string{
+			// Deliberately different from the plan values below: if
+			// setComputed touched non-Computed attrs, this test would catch
+			// it clobbering the user's config with these instead.
+			"database_name": "server-side-name",
+			"database_user": "server-side-user",
+		},
+	}
+	m := genericModel{
+		Credentials: map[string]types.String{
+			"database_name": types.StringValue("mydb"),
+			"database_user": types.StringValue("myuser"),
+		},
+	}
+	setComputed(k, obj, &m)
+
+	if got := m.Credentials["database_name"].ValueString(); got != "mydb" {
+		t.Errorf("non-Computed database_name was clobbered by setComputed: got %q, want mydb", got)
+	}
+	if got := m.Credentials["database_user"].ValueString(); got != "myuser" {
+		t.Errorf("non-Computed database_user was clobbered by setComputed: got %q, want myuser", got)
 	}
 }
 

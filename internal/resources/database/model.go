@@ -66,19 +66,41 @@ func deployNeeded(plan, state genericModel) bool {
 }
 
 // setComputed copies server-computed fields from the API object, keeping
-// planned values intact (Create/Update).
-func setComputed(obj *Object, m *genericModel) {
+// planned values intact (Create/Update). This includes every Computed
+// CredentialAttr (mysql/mariadb's server-generated databaseRootPassword is
+// the motivating case): on Create, a Computed credential attribute left
+// unset in config plans as Unknown (Optional+Computed+UseStateForUnknown,
+// but there is no prior state yet to fall back to), and committing that
+// Unknown straight to state is what Terraform core rejects with "Provider
+// produced inconsistent result after apply." Non-Computed CredentialAttrs
+// (postgres's database_name/database_user) are plain user-supplied config
+// values and are deliberately left untouched here — only flatten (Read)
+// refreshes those, from the server, wholesale.
+func setComputed(k Kind, obj *Object, m *genericModel) {
 	m.ID = types.StringValue(obj.ID)
 	m.AppName = types.StringValue(obj.AppName)
 	m.DockerImage = types.StringValue(obj.DockerImage)
 	m.Status = types.StringValue(obj.ApplicationStatus)
 	m.CreatedAt = types.StringValue(obj.CreatedAt)
+	if m.Credentials == nil {
+		m.Credentials = map[string]types.String{}
+	}
+	for _, ca := range k.CredentialAttrs {
+		if !ca.Computed {
+			continue
+		}
+		if v, ok := obj.Credentials[ca.TFName]; ok {
+			m.Credentials[ca.TFName] = types.StringValue(v)
+		} else {
+			m.Credentials[ca.TFName] = types.StringNull()
+		}
+	}
 }
 
 // flatten maps the full API object into the model (Read/refresh). The
 // deploy_* attributes are provider-side only and left untouched.
 func flatten(k Kind, obj *Object, m *genericModel) {
-	setComputed(obj, m)
+	setComputed(k, obj, m)
 	m.Name = types.StringValue(obj.Name)
 	m.EnvironmentID = types.StringValue(obj.EnvironmentID)
 	m.DatabasePassword = types.StringValue(obj.DatabasePassword)
