@@ -74,7 +74,7 @@ func (d *genericDataSource) Metadata(_ context.Context, req datasource.MetadataR
 
 func (d *genericDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: fmt.Sprintf("Look up a Dokploy %s service by id, or by name within an environment. The database password is intentionally not exposed.", d.kind.Name),
+		Description: fmt.Sprintf("Look up a Dokploy %s service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.", d.kind.Name),
 		Attributes:  schemaAttributes(d.kind),
 	}
 }
@@ -141,12 +141,31 @@ func findByName(objs []resourcedb.Object, name, kind string) (string, error) {
 // schemaAttributes builds the full attribute map for one Kind's data
 // source: id/name/environment_id (Optional+Computed, resolved by
 // ConfigValidators), the uniform read-only set every engine shares, and
-// that Kind's CredentialAttrs rendered as plain Computed strings. A data
-// source only ever reads, so CredentialAttr's Required/RequiresReplace/
-// Sensitive/Computed flags (which shape the resource-side schema) are
-// deliberately not consulted here — every credential attribute is
-// Computed-only, matching docs/data-sources/postgres.md's shipped
-// database_name/database_user (Computed, not Sensitive).
+// that Kind's CredentialAttrs rendered as Computed strings. A data source
+// only ever reads, so CredentialAttr's Required/RequiresReplace/Computed
+// flags (which shape the resource-side schema) are deliberately not
+// consulted here — every credential attribute is Computed-only, matching
+// docs/data-sources/postgres.md's shipped database_name/database_user
+// (Computed, not Sensitive).
+//
+// Sensitive IS propagated, though (review finding on task 5's mysql round):
+// this function used to hard-code every credential attribute as plain
+// Computed, discarding CredentialAttr.Sensitive entirely. That was
+// unnoticed drift, not a considered decision — postgres's two credential
+// attrs (database_name/database_user) are both non-secret, so dropping a
+// flag that was always false on every existing Kind was invisible. mysql's
+// database_root_password is Sensitive: true, and without propagating it,
+// this data source would render `(String)` on a real root-level database
+// credential (matching neither the resource schema's `(String, Sensitive)`
+// for the same field, nor this schema's own Description, which claims
+// secrets are "not exposed" while handing this one out unredacted in plan
+// output, `terraform show`, and any output referencing it). Sensitive does
+// not prevent access (Terraform still stores and can output the real
+// value) — it only suppresses default CLI/plan-diff rendering — so
+// exposing it, marked Sensitive, keeps the data source useful for a
+// consumer that only has an id/name (not the managing resource) and needs
+// the server-generated password, while still getting Terraform's redaction
+// by default.
 func schemaAttributes(k resourcedb.Kind) map[string]schema.Attribute {
 	attrs := map[string]schema.Attribute{
 		"id": schema.StringAttribute{
@@ -171,7 +190,11 @@ func schemaAttributes(k resourcedb.Kind) map[string]schema.Attribute {
 		"created_at":    schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
 	}
 	for _, ca := range k.CredentialAttrs {
-		attrs[ca.TFName] = schema.StringAttribute{Computed: true, Description: humanizeAttrName(ca.TFName)}
+		attrs[ca.TFName] = schema.StringAttribute{
+			Computed:    true,
+			Sensitive:   ca.Sensitive,
+			Description: humanizeAttrName(ca.TFName),
+		}
 	}
 	return attrs
 }

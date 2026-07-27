@@ -70,6 +70,35 @@ func TestSchemaAttributes_TwoCredentialAttrs(t *testing.T) {
 	}
 }
 
+// TestSchemaAttributes_SensitiveCredentialAttr is the review-round-1
+// regression test for Important 1: schemaAttributes used to hard-code
+// every credential attribute as plain Computed, discarding
+// CredentialAttr.Sensitive entirely — invisible while every existing
+// Kind's credential attrs were all non-secret (postgres's
+// database_name/database_user), but wrong the moment a Kind declares a
+// Sensitive one, as mysql's database_root_password now does.
+func TestSchemaAttributes_SensitiveCredentialAttr(t *testing.T) {
+	k := resourcedb.Kind{
+		Name:      "mysql",
+		HumanName: "MySQL",
+		ShortName: "MySQL",
+		CredentialAttrs: []resourcedb.CredentialAttr{
+			{TFName: "database_root_password", Sensitive: true, Computed: true},
+		},
+	}
+	attrs := schemaAttributes(k)
+	rootPW, ok := attrs["database_root_password"].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("database_root_password is not a schema.StringAttribute: %T", attrs["database_root_password"])
+	}
+	if !rootPW.Sensitive {
+		t.Error("database_root_password data-source attribute must be Sensitive, matching the resource-side schema and the doc-comment's promise that Sensitive credentials aren't rendered unredacted")
+	}
+	if !rootPW.Computed || rootPW.Optional || rootPW.Required {
+		t.Error("database_root_password should still be Computed-only")
+	}
+}
+
 // TestSchemaAttributes_ZeroCredentialAttrs mirrors the resource engine's
 // same-named test (internal/resources/database/model_test.go): a
 // redis-shaped Kind (per internal/client/doc.go, redis has "NO

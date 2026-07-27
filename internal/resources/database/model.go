@@ -114,6 +114,85 @@ func setComputed(k Kind, obj *Object, m *genericModel) {
 	}
 }
 
+// resolveCredentials builds the Credentials map sent to KindClient.Update:
+// plain plan.Credentials[name].ValueString() for most attrs, but for a
+// Computed credential attribute whose PLANNED value is Null or Unknown,
+// substitutes the value read back from the server (current) instead of
+// letting ValueString() collapse either case to "".
+//
+// This exists because a Computed credential attribute's planned value can
+// be a KNOWN NULL, not just Unknown, despite UseStateForUnknown
+// (kind.go's CredentialAttr.schemaAttribute): per that plan modifier's own
+// documentation, "Null is also a known value in Terraform and will be
+// copied to the planned value by this plan modifier" — so once PRIOR STATE
+// ever holds null for this attribute, the modifier copies that null
+// forward into the plan verbatim, it does not re-derive Unknown. See
+// resolveUnknownComputedCredentials below for how state can end up null in
+// the first place (a partial Create failure). ValueString() on either a
+// Null or an Unknown types.String returns "" with no way to tell the two
+// apart afterwards — and for a field whose Update wire dialect treats an
+// explicit "" as "clear the stored value" (mysql/mariadb's
+// databaseRootPassword, doc.go's dialect-C exception), that collapse would
+// silently wipe a real, live credential rather than leaving it alone or
+// erroring. Reading current server state before the Update call and
+// substituting it when the plan value isn't genuinely known closes that
+// gap for every Kind, not just mysql — RequiresReplace credential attrs
+// (postgres's database_name/database_user) never reach Update at all
+// (a change to either replaces the whole resource), so they are
+// structurally unaffected regardless of this function.
+func resolveCredentials(k Kind, plan genericModel, current *Object) map[string]string {
+	creds := make(map[string]string, len(k.CredentialAttrs))
+	for _, ca := range k.CredentialAttrs {
+		v := plan.Credentials[ca.TFName]
+		if ca.Computed && (v.IsNull() || v.IsUnknown()) {
+			creds[ca.TFName] = current.Credentials[ca.TFName]
+			continue
+		}
+		creds[ca.TFName] = v.ValueString()
+	}
+	return creds
+}
+
+// resolveUnknownComputedCredentials is persistPartial's matching defense
+// on the Create path: a Computed credential attribute (mysql's
+// database_root_password) can still be Unknown at the point Create gives
+// up — the initial Create call succeeded, but a later step (saving env,
+// saving the external port, or the final Get) failed before setComputed
+// ever ran to resolve it. Terraform core normalizes any value still
+// unknown in an errored Create's persisted state to null (a real,
+// documented core behavior for RPCs that return both an error and a
+// state), and a null Computed credential is exactly what resolveCredentials'
+// doc comment above identifies as dangerous on the very next Update. Best-
+// effort only: if this Get itself fails there is nothing better to do
+// here, and the diagnostic persistPartial adds regardless already tells
+// the operator the record needs attention on the next apply.
+func resolveUnknownComputedCredentials(ctx context.Context, k Kind, id string, m *genericModel) {
+	anyUnknown := false
+	for _, ca := range k.CredentialAttrs {
+		if ca.Computed && m.Credentials[ca.TFName].IsUnknown() {
+			anyUnknown = true
+			break
+		}
+	}
+	if !anyUnknown {
+		return
+	}
+	current, err := k.Client.Get(ctx, id)
+	if err != nil {
+		return
+	}
+	for _, ca := range k.CredentialAttrs {
+		if !ca.Computed {
+			continue
+		}
+		if v, ok := current.Credentials[ca.TFName]; ok {
+			m.Credentials[ca.TFName] = types.StringValue(v)
+		} else {
+			m.Credentials[ca.TFName] = types.StringNull()
+		}
+	}
+}
+
 // flatten maps the full API object into the model (Read/refresh). The
 // deploy_* attributes are provider-side only and left untouched.
 func flatten(k Kind, obj *Object, m *genericModel) {

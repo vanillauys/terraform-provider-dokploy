@@ -81,6 +81,7 @@ func (r *genericResource) persistPartial(ctx context.Context, resp *resource.Cre
 	}
 	m.Status = types.StringNull()
 	m.CreatedAt = types.StringNull()
+	resolveUnknownComputedCredentials(ctx, r.kind, m.ID.ValueString(), &m)
 	resp.Diagnostics.Append(setModel(ctx, &resp.State, m)...)
 	resp.Diagnostics.AddError(
 		fmt.Sprintf("%s created, but %s failed", r.kind.ShortName, step),
@@ -225,17 +226,27 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 	id := state.ID.ValueString()
 	plan.ID = state.ID
 
-	creds := make(map[string]string, len(r.kind.CredentialAttrs))
-	for _, ca := range r.kind.CredentialAttrs {
-		creds[ca.TFName] = plan.Credentials[ca.TFName].ValueString()
+	// Fetched BEFORE the update call so resolveCredentials can substitute
+	// the server's real current value for any Computed credential
+	// attribute whose planned value isn't genuinely known (see that
+	// function's doc comment in model.go for why the planned value can be
+	// a known null, not just Unknown). A second Get still happens below,
+	// after the update (and again after a deploy), to refresh the rest of
+	// computed state — this earlier read cannot stand in for that, since
+	// the Update call itself may be what changes some of those fields.
+	before, err := r.kind.Client.Get(ctx, id)
+	if err != nil {
+		resp.Diagnostics.AddError(fmt.Sprintf("Reading %s before update", r.kind.Name), err.Error())
+		return
 	}
-	err := r.kind.Client.Update(ctx, UpdateSpec{
+
+	err = r.kind.Client.Update(ctx, UpdateSpec{
 		ID:               id,
 		Name:             plan.Name.ValueString(),
 		Description:      plan.Description.ValueStringPointer(),
 		DockerImage:      plan.DockerImage.ValueString(),
 		DatabasePassword: plan.DatabasePassword.ValueString(),
-		Credentials:      creds,
+		Credentials:      resolveCredentials(r.kind, plan, before),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Updating %s", r.kind.Name), err.Error())

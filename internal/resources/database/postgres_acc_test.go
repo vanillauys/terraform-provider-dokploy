@@ -12,7 +12,6 @@ package database_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -24,34 +23,20 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
 
-func checkPostgresDestroy(s *terraform.State) error {
-	c, err := acctest.ClientFromEnv()
-	if err != nil {
-		return err
-	}
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "dokploy_postgres" {
-			continue
-		}
-		if _, err := c.GetPostgres(context.Background(), rs.Primary.ID); !errors.Is(err, client.ErrNotFound) {
-			return fmt.Errorf("postgres %s still exists (err = %v)", rs.Primary.ID, err)
-		}
-	}
-	return nil
-}
+// checkPostgresDestroy and getAccPostgres are one-line calls into the
+// shared checkDestroy/getAccObject helpers (acc_helpers_test.go) —
+// extracted there in review round 1 on wave-2 task 5's mysql round, once
+// mysql's own checkMysqlDestroy/getAccMysql made this a two-way (soon
+// five-way) character-for-character copy.
+var checkPostgresDestroy = checkDestroy("dokploy_postgres", func(c *client.Client, ctx context.Context, id string) error {
+	_, err := c.GetPostgres(ctx, id)
+	return err
+})
 
-// getAccPostgres re-reads the resource directly via the API (spec §7:
-// verify server-side truth, not just Terraform's view of state).
 func getAccPostgres(s *terraform.State) (*client.Postgres, error) {
-	rs, ok := s.RootModule().Resources["dokploy_postgres.test"]
-	if !ok {
-		return nil, fmt.Errorf("dokploy_postgres.test not found in state")
-	}
-	c, err := acctest.ClientFromEnv()
-	if err != nil {
-		return nil, err
-	}
-	return c.GetPostgres(context.Background(), rs.Primary.ID)
+	return getAccObject(s, "dokploy_postgres.test", func(c *client.Client, ctx context.Context, id string) (*client.Postgres, error) {
+		return c.GetPostgres(ctx, id)
+	})
 }
 
 func TestAccPostgres_lifecycle(t *testing.T) {

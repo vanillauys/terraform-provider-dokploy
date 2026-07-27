@@ -95,6 +95,9 @@ func TestCreateAndGetMysql(t *testing.T) {
 func TestCreateMysqlOmitsEmptyRootPassword(t *testing.T) {
 	var createBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/mysql.create" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &createBody)
 		_, _ = fmt.Fprint(w, mysqlJSON)
@@ -119,6 +122,9 @@ func TestCreateMysqlOmitsEmptyRootPassword(t *testing.T) {
 func TestCreateMysqlSendsExplicitRootPassword(t *testing.T) {
 	var createBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/mysql.create" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &createBody)
 		_, _ = fmt.Fprint(w, mysqlJSON)
@@ -144,7 +150,7 @@ func TestMysqlMutations(t *testing.T) {
 	var envBodies []map[string]any
 	var updateBodies []map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls = append(calls, r.URL.Path)
+		calls = append(calls, r.Method+" "+r.URL.Path)
 		var body map[string]any
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &body)
@@ -211,14 +217,14 @@ func TestMysqlMutations(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"/api/mysql.update",
-		"/api/mysql.update",
-		"/api/mysql.saveEnvironment",
-		"/api/mysql.saveEnvironment",
-		"/api/mysql.saveExternalPort",
-		"/api/mysql.saveExternalPort",
-		"/api/mysql.deploy",
-		"/api/mysql.remove",
+		"POST /api/mysql.update",
+		"POST /api/mysql.update",
+		"POST /api/mysql.saveEnvironment",
+		"POST /api/mysql.saveEnvironment",
+		"POST /api/mysql.saveExternalPort",
+		"POST /api/mysql.saveExternalPort",
+		"POST /api/mysql.deploy",
+		"POST /api/mysql.remove",
 	}
 	if len(calls) != len(want) {
 		t.Fatalf("calls = %v", calls)

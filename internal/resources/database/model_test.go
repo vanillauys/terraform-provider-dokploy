@@ -1,6 +1,8 @@
 package database
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -206,6 +208,226 @@ func TestSetComputed_LeavesNonComputedCredentialAlone(t *testing.T) {
 	}
 	if got := m.Credentials["database_user"].ValueString(); got != "myuser" {
 		t.Errorf("non-Computed database_user was clobbered by setComputed: got %q, want myuser", got)
+	}
+}
+
+// mysqlLikeKind is a Kind shaped like MysqlKind's credential attrs, without
+// depending on internal/client (kept here rather than reusing MysqlKind(nil)
+// so these tests document exactly which CredentialAttr fields the bug and
+// fix depend on: Computed, independent of DeployTrigger/RequiresReplace).
+func mysqlLikeKind() Kind {
+	return Kind{
+		Name:      "mysql",
+		HumanName: "MySQL",
+		CredentialAttrs: []CredentialAttr{
+			{TFName: "database_name", Required: true, RequiresReplace: true},
+			{TFName: "database_user", Required: true, RequiresReplace: true},
+			{TFName: "database_root_password", Computed: true},
+		},
+	}
+}
+
+// TestResolveCredentials_NullComputedCredentialUsesServerValue is the
+// review-round-1 regression test for the destructive bug: a Computed
+// credential attribute's PLANNED value can be a known null (not Unknown) —
+// terraform-plugin-framework's UseStateForUnknown plan modifier copies a
+// null prior state value forward as null verbatim ("Null is also a known
+// value in Terraform and will be copied to the planned value by this plan
+// modifier" — see resolveCredentials' doc comment for how state ends up
+// null in the first place). Before the fix, resolveCredentials did not
+// exist and Update built its request body with a bare
+// `plan.Credentials[ca.TFName].ValueString()`, which returns "" for a null
+// types.String exactly like it does for Unknown — and for
+// database_root_password, "" is not a no-op: doc.go's dialect-C exception
+// means the server CLEARS the stored root password on an explicit "".
+//
+// This test fails against that naive formula (asserted directly below via
+// t.Run, so the regression is pinned in the same file rather than only in
+// this test's history) and passes against resolveCredentials, which must
+// substitute the server's current value instead.
+func TestResolveCredentials_NullComputedCredentialUsesServerValue(t *testing.T) {
+	k := mysqlLikeKind()
+	plan := genericModel{
+		Credentials: map[string]types.String{
+			"database_name":          types.StringValue("app"),
+			"database_user":          types.StringValue("app"),
+			"database_root_password": types.StringNull(),
+		},
+	}
+	current := &Object{
+		Credentials: map[string]string{
+			"database_root_password": "server-generated-secret",
+		},
+	}
+
+	t.Run("naive ValueString() formula is the bug", func(t *testing.T) {
+		got := plan.Credentials["database_root_password"].ValueString()
+		if got != "" {
+			t.Fatalf("test setup invalid: naive ValueString() = %q, want \"\" (the bug this test pins)", got)
+		}
+	})
+
+	got := resolveCredentials(k, plan, current)
+	if got["database_root_password"] != "server-generated-secret" {
+		t.Errorf(`resolveCredentials()["database_root_password"] = %q, want "server-generated-secret" (a null planned value must fall back to the server's current value, never send "" and clear it)`, got["database_root_password"])
+	}
+}
+
+// TestResolveCredentials_UnknownComputedCredentialUsesServerValue is the
+// same defense on the Unknown half (the Create-time case setComputed
+// already guarded — this test just confirms resolveCredentials treats it
+// identically to Null, since ValueString() collapses both the same way).
+func TestResolveCredentials_UnknownComputedCredentialUsesServerValue(t *testing.T) {
+	k := mysqlLikeKind()
+	plan := genericModel{
+		Credentials: map[string]types.String{
+			"database_name":          types.StringValue("app"),
+			"database_user":          types.StringValue("app"),
+			"database_root_password": types.StringUnknown(),
+		},
+	}
+	current := &Object{
+		Credentials: map[string]string{
+			"database_root_password": "server-generated-secret",
+		},
+	}
+	got := resolveCredentials(k, plan, current)
+	if got["database_root_password"] != "server-generated-secret" {
+		t.Errorf(`resolveCredentials()["database_root_password"] = %q, want "server-generated-secret"`, got["database_root_password"])
+	}
+}
+
+// TestResolveCredentials_KnownValueSentVerbatim is the fix's other half: a
+// genuinely known planned value (the user explicitly set
+// database_root_password, or state legitimately carried forward a real
+// value) must be sent as-is, not silently overridden by the server's
+// current value — otherwise a deliberate change or clear (explicit "")
+// could never reach the server at all.
+func TestResolveCredentials_KnownValueSentVerbatim(t *testing.T) {
+	k := mysqlLikeKind()
+	for name, plannedValue := range map[string]string{
+		"a new explicit value": "user-chosen-password",
+		"an explicit clear":    "",
+	} {
+		t.Run(name, func(t *testing.T) {
+			plan := genericModel{
+				Credentials: map[string]types.String{
+					"database_name":          types.StringValue("app"),
+					"database_user":          types.StringValue("app"),
+					"database_root_password": types.StringValue(plannedValue),
+				},
+			}
+			current := &Object{
+				Credentials: map[string]string{
+					"database_root_password": "server-generated-secret",
+				},
+			}
+			got := resolveCredentials(k, plan, current)
+			if got["database_root_password"] != plannedValue {
+				t.Errorf("resolveCredentials()[\"database_root_password\"] = %q, want %q (a known planned value must never be overridden)", got["database_root_password"], plannedValue)
+			}
+		})
+	}
+}
+
+// TestResolveCredentials_NonComputedSentVerbatim pins that non-Computed
+// (Required/RequiresReplace) credential attrs are never substituted —
+// postgres's database_name/database_user never reach Update at all in
+// practice (RequiresReplace), but resolveCredentials must not special-case
+// them regardless.
+func TestResolveCredentials_NonComputedSentVerbatim(t *testing.T) {
+	k := mysqlLikeKind()
+	plan := genericModel{
+		Credentials: map[string]types.String{
+			"database_name":          types.StringValue("mydb"),
+			"database_user":          types.StringValue("myuser"),
+			"database_root_password": types.StringValue("root1"),
+		},
+	}
+	current := &Object{Credentials: map[string]string{
+		"database_name":          "server-side-name",
+		"database_user":          "server-side-user",
+		"database_root_password": "server-generated-secret",
+	}}
+	got := resolveCredentials(k, plan, current)
+	if got["database_name"] != "mydb" || got["database_user"] != "myuser" {
+		t.Errorf("non-Computed credentials were substituted: %+v", got)
+	}
+}
+
+// TestResolveUnknownComputedCredentials_ResolvesViaGet pins
+// persistPartial's matching defense: an Unknown Computed credential must be
+// resolved from the server (via a best-effort Get) rather than committed
+// Unknown — Terraform core normalizes a remaining Unknown in an errored
+// Create's persisted state to null, which is exactly the shape
+// resolveCredentials' tests above prove is dangerous on the next Update.
+func TestResolveUnknownComputedCredentials_ResolvesViaGet(t *testing.T) {
+	k := mysqlLikeKind()
+	k.Client.Get = func(_ context.Context, id string) (*Object, error) {
+		if id != "mysql-1" {
+			t.Errorf("Get called with id %q, want mysql-1", id)
+		}
+		return &Object{Credentials: map[string]string{"database_root_password": "server-generated-secret"}}, nil
+	}
+	m := genericModel{
+		ID: types.StringValue("mysql-1"),
+		Credentials: map[string]types.String{
+			"database_name":          types.StringValue("app"),
+			"database_user":          types.StringValue("app"),
+			"database_root_password": types.StringUnknown(),
+		},
+	}
+	resolveUnknownComputedCredentials(context.Background(), k, "mysql-1", &m)
+	got := m.Credentials["database_root_password"]
+	if got.IsUnknown() {
+		t.Fatal("database_root_password left Unknown: Terraform core will normalize this to null in errored-apply state")
+	}
+	if got.ValueString() != "server-generated-secret" {
+		t.Errorf("database_root_password = %q, want server-generated-secret", got.ValueString())
+	}
+}
+
+// TestResolveUnknownComputedCredentials_NoOpWhenAlreadyKnown pins that this
+// is a targeted defense, not a blanket refresh: it must not call Get (and
+// must not touch Credentials) when no Computed credential is Unknown.
+func TestResolveUnknownComputedCredentials_NoOpWhenAlreadyKnown(t *testing.T) {
+	k := mysqlLikeKind()
+	called := false
+	k.Client.Get = func(_ context.Context, _ string) (*Object, error) {
+		called = true
+		return &Object{}, nil
+	}
+	m := genericModel{
+		Credentials: map[string]types.String{
+			"database_root_password": types.StringValue("already-known"),
+		},
+	}
+	resolveUnknownComputedCredentials(context.Background(), k, "mysql-1", &m)
+	if called {
+		t.Error("Get was called even though no Computed credential was Unknown")
+	}
+	if got := m.Credentials["database_root_password"].ValueString(); got != "already-known" {
+		t.Errorf("database_root_password = %q, want unchanged already-known", got)
+	}
+}
+
+// TestResolveUnknownComputedCredentials_BestEffortIgnoresGetError pins the
+// documented best-effort behavior: if the resolving Get itself fails, the
+// Unknown value is left as-is (there is nothing better to do — the caller,
+// persistPartial, already adds its own diagnostic regardless).
+func TestResolveUnknownComputedCredentials_BestEffortIgnoresGetError(t *testing.T) {
+	k := mysqlLikeKind()
+	k.Client.Get = func(_ context.Context, _ string) (*Object, error) {
+		return nil, fmt.Errorf("boom")
+	}
+	m := genericModel{
+		Credentials: map[string]types.String{
+			"database_root_password": types.StringUnknown(),
+		},
+	}
+	resolveUnknownComputedCredentials(context.Background(), k, "mysql-1", &m)
+	if !m.Credentials["database_root_password"].IsUnknown() {
+		t.Errorf("database_root_password = %v, want left Unknown when the resolving Get fails", m.Credentials["database_root_password"])
 	}
 }
 

@@ -3,12 +3,12 @@
 page_title: "dokploy_postgres Data Source - dokploy"
 subcategory: ""
 description: |-
-  Look up a Dokploy postgres service by id, or by name within an environment. The database password is intentionally not exposed.
+  Look up a Dokploy postgres service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
 ---
 
 # dokploy_postgres (Data Source)
 
-Look up a Dokploy postgres service by id, or by name within an environment. The database password is intentionally not exposed.
+Look up a Dokploy postgres service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
 
 ## Example Usage
 

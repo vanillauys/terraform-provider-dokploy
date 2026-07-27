@@ -3,12 +3,12 @@
 page_title: "dokploy_mysql Data Source - dokploy"
 subcategory: ""
 description: |-
-  Look up a Dokploy mysql service by id, or by name within an environment. The database password is intentionally not exposed.
+  Look up a Dokploy mysql service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
 ---
 
 # dokploy_mysql (Data Source)
 
-Look up a Dokploy mysql service by id, or by name within an environment. The database password is intentionally not exposed.
+Look up a Dokploy mysql service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
 
 ## Example Usage
 
@@ -38,7 +38,7 @@ data "dokploy_mysql" "by_name" {
 - `app_name` (String) Dokploy-internal app name.
 - `created_at` (String) Creation timestamp.
 - `database_name` (String) Database name.
-- `database_root_password` (String) Database root password.
+- `database_root_password` (String, Sensitive) Database root password.
 - `database_user` (String) Database user.
 - `docker_image` (String) Docker image.
 - `external_port` (Number) Exposed host port, if any.
