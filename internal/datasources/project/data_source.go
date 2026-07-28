@@ -124,7 +124,7 @@ func (d *projectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	config.ID = types.StringValue(p.ProjectID)
 	config.Name = types.StringValue(p.Name)
-	config.Description = types.StringPointerValue(p.Description)
+	config.Description = tfutil.StringOrNull(p.Description)
 	config.CreatedAt = types.StringValue(p.CreatedAt)
 	list, diags := resproject.BuildEnvironments(p.Environments)
 	resp.Diagnostics.Append(diags...)

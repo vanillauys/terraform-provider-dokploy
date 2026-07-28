@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 type resourceModel struct {
@@ -18,7 +19,8 @@ type resourceModel struct {
 	Content     types.String `tfsdk:"content"`
 }
 
-func strOrNull(s *string) types.String { return types.StringPointerValue(s) }
+// strOrNull treats null and "" alike as unset -- see tfutil.StringOrNull.
+func strOrNull(s *string) types.String { return tfutil.StringOrNull(s) }
 
 // flatten maps the API object onto the model.
 //

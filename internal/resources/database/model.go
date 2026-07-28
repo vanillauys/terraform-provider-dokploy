@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 // genericModel is the engine-neutral flat state model: the uniform
@@ -233,10 +234,10 @@ func flatten(k Kind, obj *Object, m *genericModel) {
 	m.Name = types.StringValue(obj.Name)
 	m.EnvironmentID = types.StringValue(obj.EnvironmentID)
 	m.DatabasePassword = types.StringValue(obj.DatabasePassword)
-	m.Description = types.StringPointerValue(obj.Description)
-	m.Env = types.StringPointerValue(obj.Env)
+	m.Description = tfutil.StringOrNull(obj.Description)
+	m.Env = tfutil.StringOrNull(obj.Env)
 	m.ExternalPort = types.Int64PointerValue(obj.ExternalPort)
-	m.ServerID = types.StringPointerValue(obj.ServerID)
+	m.ServerID = tfutil.StringOrNull(obj.ServerID)
 	if m.Credentials == nil {
 		m.Credentials = map[string]types.String{}
 	}

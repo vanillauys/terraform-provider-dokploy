@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 type resourceModel struct {
@@ -57,9 +58,9 @@ func flatten(ctx context.Context, d *client.Domain, m *resourceModel) diag.Diagn
 	m.HTTPS = types.BoolValue(d.HTTPS)
 	m.StripPath = types.BoolValue(d.StripPath)
 	m.CertificateType = types.StringValue(d.CertificateType)
-	m.CustomCertResolver = types.StringPointerValue(d.CustomCertResolver)
-	m.CustomEntrypoint = types.StringPointerValue(d.CustomEntrypoint)
-	m.ServiceName = types.StringPointerValue(d.ServiceName)
+	m.CustomCertResolver = tfutil.StringOrNull(d.CustomCertResolver)
+	m.CustomEntrypoint = tfutil.StringOrNull(d.CustomEntrypoint)
+	m.ServiceName = tfutil.StringOrNull(d.ServiceName)
 	m.ForwardAuthEnabled = types.BoolValue(d.ForwardAuthEnabled)
 	m.DomainType = types.StringValue(d.DomainType)
 	m.UniqueConfigKey = types.Int64Value(d.UniqueConfigKey)

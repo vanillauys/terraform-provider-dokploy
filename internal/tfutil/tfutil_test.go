@@ -111,3 +111,30 @@ func TestClientFromProviderData(t *testing.T) {
 		t.Error("a wrongly-typed ProviderData must produce an error diagnostic")
 	}
 }
+
+// TestStringOrNull pins the rule that broke wave 3's first production
+// round-trip: Dokploy stores "" for an optional string cleared through its
+// UI, and null for one never set. Both must present as null, or Read
+// disagrees with config forever.
+func TestStringOrNull(t *testing.T) {
+	empty, value := "", "set"
+	for name, tc := range map[string]struct {
+		in       *string
+		wantNull bool
+		want     string
+	}{
+		"nil pointer":  {nil, true, ""},
+		"empty string": {&empty, true, ""},
+		"real value":   {&value, false, "set"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := StringOrNull(tc.in)
+			if got.IsNull() != tc.wantNull {
+				t.Errorf("IsNull() = %v, want %v", got.IsNull(), tc.wantNull)
+			}
+			if !tc.wantNull && got.ValueString() != tc.want {
+				t.Errorf("ValueString() = %q, want %q", got.ValueString(), tc.want)
+			}
+		})
+	}
+}

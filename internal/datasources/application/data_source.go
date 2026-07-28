@@ -128,11 +128,11 @@ func (d *applicationDataSource) Read(ctx context.Context, req datasource.ReadReq
 	config.ID = types.StringValue(app.ApplicationID)
 	config.Name = types.StringValue(app.Name)
 	config.AppName = types.StringValue(app.AppName)
-	config.Description = types.StringPointerValue(app.Description)
+	config.Description = tfutil.StringOrNull(app.Description)
 	config.EnvironmentID = types.StringValue(app.EnvironmentID)
 	config.SourceType = types.StringValue(app.SourceType)
 	config.Status = types.StringValue(app.ApplicationStatus)
 	config.CreatedAt = types.StringValue(app.CreatedAt)
-	config.Env = types.StringPointerValue(app.Env)
+	config.Env = tfutil.StringOrNull(app.Env)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

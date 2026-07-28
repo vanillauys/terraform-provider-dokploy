@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 var objectAsOptions = basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true}
@@ -155,7 +156,11 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.DeploymentTimeout.Equal(state.DeploymentTimeout)
 }
 
-func strOrNull(s *string) types.String { return types.StringPointerValue(s) }
+// strOrNull treats null and "" alike as unset. See tfutil.StringOrNull for
+// why the empty string has to collapse: Dokploy stores "" for a field cleared
+// through its UI, and a Read that reported "" would diff against config's null
+// forever.
+func strOrNull(s *string) types.String { return tfutil.StringOrNull(s) }
 
 // watchPathsValue maps the server's watchPaths onto the `watch_paths`
 // attribute. Dokploy reads it back as JSON null when unset, which decodes to

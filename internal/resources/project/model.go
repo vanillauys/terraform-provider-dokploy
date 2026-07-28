@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 type resourceModel struct {
@@ -52,7 +53,7 @@ func BuildEnvironments(envs []client.Environment) (types.List, diag.Diagnostics)
 func flatten(_ context.Context, p *client.Project, m *resourceModel) diag.Diagnostics {
 	m.ID = types.StringValue(p.ProjectID)
 	m.Name = types.StringValue(p.Name)
-	m.Description = types.StringPointerValue(p.Description)
+	m.Description = tfutil.StringOrNull(p.Description)
 	m.CreatedAt = types.StringValue(p.CreatedAt)
 	list, diags := BuildEnvironments(p.Environments)
 	m.Environments = list

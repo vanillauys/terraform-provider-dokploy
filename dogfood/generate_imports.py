@@ -178,7 +178,8 @@ def patch_sensitive(imports_path, generated_path):
     another, so simple line-order tracking is sufficient here). A resource
     type this script doesn't recognize, or a live value that is itself null
     or missing, is left untouched rather than guessed at -- the next
-    `terraform plan` surfaces that plainly if it still matters.
+    `terraform plan` surfaces that plainly if it still matters. An EMPTY live
+    value is likewise left alone: see the comment at the check below.
     """
     addr_to_id = parse_imports(imports_path)
 
@@ -211,7 +212,22 @@ def patch_sensitive(imports_path, generated_path):
                         one_cache[current_addr] = {}
                 rec = one_cache[current_addr]
                 key = snake_to_camel(attr)
-                if isinstance(rec, dict) and rec.get(key) is not None:
+                # An EMPTY live value must be left as null, not written as "".
+                #
+                # The provider maps both JSON null and "" to a null Terraform
+                # value on read (tfutil.StringOrNull), because Dokploy uses
+                # them interchangeably for "unset". Writing `attr = ""` into
+                # the config therefore produces a permanent `null -> ""` diff
+                # that no apply can settle. Only Optional sensitive
+                # attributes can reach here with an empty value -- a Required
+                # one is never legitimately blank -- and for those, null IS
+                # the correct encoding of unset, which is already what
+                # Terraform wrote.
+                #
+                # Found by wave 3's first production round-trip:
+                # build_secrets is empty on both live applications, and
+                # patching it to "" left two resources permanently diffing.
+                if isinstance(rec, dict) and rec.get(key) not in (None, ""):
                     line = (f"{indent}{attr}{eq}{hcl_string(rec[key])} "
                             f"# patched from live read (was unset/sensitive)\n")
                     patched += 1

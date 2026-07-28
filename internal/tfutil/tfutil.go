@@ -94,6 +94,35 @@ func ImportDeployDefaults(ctx context.Context, state *tfsdk.State) diag.Diagnost
 // copy of this. Lives in tfutil rather than a resource package so it can be
 // shared without an import cycle (tfutil imports client; the resource and
 // data-source packages import tfutil, never the reverse).
+// StringOrNull maps a server-side optional string onto a Terraform value,
+// treating BOTH JSON null and the empty string as "unset".
+//
+// Dokploy represents an unset optional string inconsistently even within one
+// record: a field that was never set reads back as JSON null, while a field
+// that was set and then cleared reads back as a literal "". Terraform config
+// that omits the attribute holds null in either case, so a Read that
+// reported "" produces a permanent `"" -> null` diff and the resource never
+// converges.
+//
+// This is not hypothetical. internal/resources/environment established the
+// rule for `env` in wave 2, but the siblings kept using
+// types.StringPointerValue, which preserves "". The gap was invisible on the
+// acceptance rig -- records created through the API get null, never "" --
+// and only surfaced when wave 3 ran the round-trip against a production
+// instance whose project and applications had been created through the
+// Dokploy UI, which stores "". It produced a four-resource diff that could
+// not be applied away.
+//
+// Use this for every OPTIONAL string on a read path. Do not use it for a
+// field where "" is a meaningful value distinct from unset; none of the
+// current resources has one.
+func StringOrNull(s *string) types.String {
+	if s == nil || *s == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(*s)
+}
+
 func ClientFromProviderData(providerData any) (*client.Client, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if providerData == nil {

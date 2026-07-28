@@ -113,6 +113,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `TestSaveRequestsReadEveryFieldFromTheModel` builds each request from a
   fully-populated model and fails if any field comes out unset.
 
+### Fixed
+
+- **Optional strings that Dokploy stores as `""` no longer diff forever.**
+  Dokploy represents an unset optional string two ways in the same record: a
+  field never set reads back as JSON null, a field set and then cleared
+  through the UI reads back as a literal `""`. The provider preserved the
+  `""`, while Terraform configuration that omits the attribute holds null —
+  so `description`, `env`, `build_args`, `build.build_stage`, `server_id`,
+  and the `dokploy_domain` custom-resolver fields could each produce a
+  `"" -> null` diff that no apply could settle.
+
+  `internal/resources/environment` had the rule right for `env` since wave 2;
+  the siblings did not. It is now `tfutil.StringOrNull`, used by every
+  resource and data source on every optional-string read path.
+
+  Invisible on the acceptance rig, which creates every record through the API
+  and therefore only ever sees null. It surfaced the first time wave 3 ran
+  the round-trip against a production instance whose project and
+  applications had been created through the Dokploy UI: a four-resource diff
+  that could not be applied away.
+
+- `dogfood/dry-run.sh` no longer patches an EMPTY live value into generated
+  configuration. `--patch-sensitive` backfills sensitive attributes that
+  Terraform's config generation leaves as `null # sensitive`; writing `""`
+  for a live value that is empty produced a permanent `null -> ""` diff,
+  because the provider maps `""` to null on read. Only Optional sensitive
+  attributes can be legitimately empty, and for those null is already the
+  correct encoding. Found by the same production round-trip: `build_secrets`
+  is empty on both live applications.
+
 ### Changed
 
 - `port.one` reports a missing record as HTTP **400**, not 404 — the only
