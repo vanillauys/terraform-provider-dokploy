@@ -63,6 +63,8 @@ var endpointStructs = map[string]any{
 	"redirects.update":               UpdateRedirectRequest{},
 	"security.create":                CreateSecurityRequest{},
 	"security.update":                UpdateSecurityRequest{},
+	"destination.create":             CreateDestinationRequest{},
+	"destination.update":             UpdateDestinationRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -105,6 +107,13 @@ var censusExempt = map[string]map[string]string{
 		"redisId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
 		"libsqlId":      "parent is RequiresReplace; mounts.update corrupts on retarget",
 	},
+	// destination.create/update accept serverId, but destination.one and
+	// destination.all never return it (verified live, v0.29.13,
+	// 2026-07-28). A write-only field cannot round-trip: state would hold a
+	// value Read can never confirm, so either the attribute lies or every
+	// plan shows a diff. Exposing it needs a read path first.
+	"destination.create": {"serverId": "destination.one does not return it; a write-only field cannot round-trip"},
+	"destination.update": {"serverId": "destination.one does not return it; a write-only field cannot round-trip"},
 }
 
 type endpointFields struct {

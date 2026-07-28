@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dokploy_destination` resource: an S3-compatible bucket Dokploy writes
+  backups to (Cloudflare R2, AWS, DigitalOcean Spaces, MinIO, ...). The
+  attribute is `provider_name`, not `provider`, because `provider` is a
+  reserved meta-argument in Terraform configuration. `access_key` and
+  `secret_access_key` are marked sensitive, though Dokploy stores and
+  returns both in cleartext to anyone with API access.
+
+  `destination.create` also accepts a `server_id`, which this resource does
+  not expose: the read endpoints never return it, so a value written there
+  could not be confirmed on refresh and every plan would show a diff.
+  Exposing it needs a read path Dokploy does not currently offer.
+
 - `dokploy_port`, `dokploy_redirect` and `dokploy_security` resources, for an
   application's published ports, Traefik regex redirects, and HTTP basic-auth
   credentials. All three share one generic implementation parameterised by a
