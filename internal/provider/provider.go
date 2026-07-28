@@ -14,6 +14,7 @@ import (
 	dsapplication "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/application"
 	dsdatabase "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/database"
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
+	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
@@ -195,5 +196,6 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		// Same reasoning, mirrored for mongo (wave-2 task 7).
 		func() datasource.DataSource { return dsdatabase.NewDataSource(database.MongoKind(p.client))() },
 		dsenvironment.NewDataSource,
+		dsgitprovider.NewDataSource,
 	}
 }

@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dokploy_github_provider` **data source**, resolving a GitHub App's name to
+  the id `dokploy_application.github.github_id` expects — so that id stops
+  being an opaque literal pasted into configuration.
+
+  Two things it does not do, both deliberate. It is not a *resource*:
+  Dokploy's API has no `github.create` and installing a GitHub App is a
+  browser flow, so a resource would lie about being able to converge. And it
+  covers GitHub only, though Dokploy also has gitlab, bitbucket and gitea
+  providers — none of those has been observed live (the acceptance rig has
+  no provider of any type), and inferring three response shapes from this one
+  is the assumption the endpoint census exists to prevent.
+
+  Note `id` is the `githubId`, not the `gitProviderId`. Dokploy keeps both,
+  an application references the former, and passing the latter is accepted
+  by validation and then fails with an HTTP 500 because the foreign key is
+  only enforced at the database layer. The data source exposes the generic
+  record separately as `git_provider_id`.
+
 - `dokploy_destination` resource: an S3-compatible bucket Dokploy writes
   backups to (Cloudflare R2, AWS, DigitalOcean Spaces, MinIO, ...). The
   attribute is `provider_name`, not `provider`, because `provider` is a
