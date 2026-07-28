@@ -67,6 +67,8 @@ var endpointStructs = map[string]any{
 	"destination.update":             UpdateDestinationRequest{},
 	"schedule.create":                CreateScheduleRequest{},
 	"schedule.update":                UpdateScheduleRequest{},
+	"volumeBackups.create":           CreateVolumeBackupRequest{},
+	"volumeBackups.update":           UpdateVolumeBackupRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -132,6 +134,26 @@ var censusExempt = map[string]map[string]string{
 		"createdAt":      "server-generated; not user configuration",
 		"organizationId": "implied by the API key's organization",
 		"scheduleId":     "server-generated; the create endpoint assigns it",
+	},
+	// volumeBackups.update accepts serviceType and every parent column, and
+	// retargeting through it leaves the record with two parents -- verified
+	// live, see UpdateVolumeBackupRequest. RequiresReplace instead.
+	"volumeBackups.update": {
+		"serviceType":   "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"applicationId": "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"composeId":     "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"postgresId":    "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"mysqlId":       "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"mariadbId":     "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"mongoId":       "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"redisId":       "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"libsqlId":      "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
+		"appName":       "server-generated; not user configuration",
+		"createdAt":     "server-generated; not user configuration",
+	},
+	"volumeBackups.create": {
+		"appName":   "server-generated; not user configuration",
+		"createdAt": "server-generated; not user configuration",
 	},
 }
 

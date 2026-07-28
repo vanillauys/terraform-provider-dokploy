@@ -25,6 +25,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/mount"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/volumebackup"
 )
 
 var _ provider.Provider = (*DokployProvider)(nil)
@@ -169,6 +170,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		mount.NewResource,
 		destination.NewResource,
 		schedule.NewResource,
+		volumebackup.NewResource,
 		appchild.NewResource(appchild.PortKind()),
 		appchild.NewResource(appchild.RedirectKind()),
 		appchild.NewResource(appchild.SecurityKind()),

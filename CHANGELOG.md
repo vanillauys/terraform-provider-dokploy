@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dokploy_volume_backup`: a scheduled archive of a Docker volume to an
+  S3-compatible destination.
+
+  It accepts a **redis** parent, which `dokploy_backup` will not: a volume
+  snapshot copies the volume as-is and works for any service that has one,
+  while a logical dump needs engine support Dokploy does not have for Redis.
+  The two routers genuinely disagree about this, and the enum sets prove it.
+
+  `service_id` and `service_type` force replacement — `volumeBackups.update`
+  sets the parent column it is given without clearing the others, verified
+  live, so a retarget would leave the record owned by two services.
+
+  `enabled` defaults to `true` for the same reason as `dokploy_schedule`.
+  `turn_off` is passed through to Dokploy's `turnOff` field and always sent
+  concretely, because the server coerces both an absent key and an explicit
+  null to `false`.
+
 - `dokploy_schedule`: a cron job Dokploy runs against an application, a
   compose service, a remote server, or the Dokploy host itself.
 
