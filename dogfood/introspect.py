@@ -127,8 +127,13 @@ def show_children(rec, indent):
             elif key == "mounts":
                 # Databases auto-create their own data volume; that one is
                 # server-managed and is not something Terraform would declare.
-                auto = " (auto-created data volume)" if str(
-                    it.get("volumeName") or "").endswith("-data") else ""
+                # Matched exactly (volumeName == appName + "-data"), the same
+                # rule generate_imports.py skips on, rather than by a bare
+                # "-data" suffix that a user volume could also carry.
+                auto = " (auto-created data volume, not user configuration)" if (
+                    it.get("type") == "volume"
+                    and it.get("volumeName") == f"{rec.get('appName')}-data"
+                ) else ""
                 print(f"{pad}  type={it.get('type')} "
                       f"mountPath={it.get('mountPath')} "
                       f"volumeName={it.get('volumeName')} "
@@ -215,6 +220,19 @@ def main():
                         totals[k] += len(rec.get(k) or [])
                     show_children(rec, 6)
 
+    dests = get("destination.all")
+    print("\n" + "=" * 72)
+    if isinstance(dests, list):
+        print(f"DESTINATIONS  {len(dests)}")
+        for d in dests:
+            print(f"  name={d.get('name')} provider={d.get('provider')} "
+                  f"bucket={d.get('bucket')} region={d.get('region')}")
+            print(f"    endpoint={d.get('endpoint')}")
+            print(f"    accessKey={secret(d.get('accessKey'))} "
+                  f"secretAccessKey={secret(d.get('secretAccessKey'))}")
+    else:
+        print(f"DESTINATIONS  !! destination.all failed: {dests}")
+
     certs = get("certificates.all")
     print("\n" + "=" * 72)
     if isinstance(certs, list):
@@ -230,8 +248,9 @@ def main():
     for k, v in sorted(kind_counts.items()):
         print(f"  {k:14s} {v}")
 
-    print("\nWAVE-1 IMPLICATION")
-    have = {"applications", "postgres"}          # shipped in v0.1.0
+    print("\nCOVERAGE")
+    # Everything with a dokploy_* resource as of v0.4.0.
+    have = {"applications", "postgres", "mysql", "mariadb", "mongo", "redis"}
     need = []
     if totals["environments"] > totals["projects"]:
         need.append("dokploy_environment (non-default environments in use)")

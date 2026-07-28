@@ -42,6 +42,11 @@ ONE = {
     "dokploy_mariadb": ("mariadb.one", "mariadbId"),
     "dokploy_mongo": ("mongo.one", "mongoId"),
     "dokploy_redis": ("redis.one", "redisId"),
+    "dokploy_mount": ("mounts.one", "mountId"),
+    "dokploy_port": ("port.one", "portId"),
+    "dokploy_redirect": ("redirects.one", "redirectId"),
+    "dokploy_security": ("security.one", "securityId"),
+    "dokploy_destination": ("destination.one", "destinationId"),
 }
 
 # (environment.one's collection key, resource type, id field). Drives the
@@ -55,6 +60,46 @@ DATABASE_ENGINES = [
     ("mongo", "dokploy_mongo", "mongoId"),
     ("redis", "dokploy_redis", "redisId"),
 ]
+
+
+def is_server_created_data_mount(service, mount):
+    """A database engine's own data volume, which nothing asked for.
+
+    Creating a dokploy_postgres (or mysql/mariadb/mongo/redis) makes Dokploy
+    attach a volume mount for the container's data directory immediately --
+    verified live on the rig, v0.29.13, 2026-07-28: a freshly created
+    postgres already owns volumeName "<appName>-data" at
+    /var/lib/postgresql/18/docker.
+
+    It is an ordinary, removable mount, but it belongs to the server, not to
+    anyone's configuration. Importing it would put a Terraform resource in
+    charge of a volume the engine resource itself recreates, and destroying
+    that resource would delete the database's data directory. So the
+    generator skips it -- loudly, with a comment in imports.tf, never
+    silently.
+
+    The rule is checked, not guessed: type is volume AND volumeName is
+    exactly the service's appName plus "-data".
+    """
+    return (
+        mount.get("type") == "volume"
+        and mount.get("volumeName") == f"{service.get('appName')}-data"
+    )
+
+
+def emit_mounts(prefix, service, mounts, *, skip_data_mount):
+    """Emit import blocks for a service's mounts."""
+    for mount in mounts or []:
+        mid = mount["mountId"]
+        if skip_data_mount and is_server_created_data_mount(service, mount):
+            print(
+                f"# skipped {mid}: Dokploy created this data volume "
+                f"({mount.get('volumeName')}) with the service itself. It is not "
+                f"user configuration, and a dokploy_mount managing it would delete "
+                f"the database's data directory on destroy."
+            )
+            continue
+        emit("dokploy_mount", label(prefix, mount.get("mountPath") or "mount", mid), mid)
 
 
 def get(path, **params):
@@ -202,9 +247,34 @@ def main():
                 emit("dokploy_application", label(pname, app["name"], aid), aid)
                 for dom in get("domain.byApplicationId", applicationId=aid) or []:
                     emit("dokploy_domain", label(pname, dom["host"], dom["domainId"]), dom["domainId"])
+
+                # The child collections are only reachable through the
+                # parent: there is no port.all / redirects.all / security.all,
+                # and redirects.create/security.create do not even return the
+                # records they make.
+                detail = get("application.one", applicationId=aid)
+                for port in detail.get("ports") or []:
+                    emit("dokploy_port", label(pname, app["name"], port["portId"]), port["portId"])
+                for red in detail.get("redirects") or []:
+                    emit("dokploy_redirect", label(pname, app["name"], red["redirectId"]), red["redirectId"])
+                for sec in detail.get("security") or []:
+                    emit("dokploy_security", label(pname, app["name"], sec["securityId"]), sec["securityId"])
+                # An application has no auto-created data mount, so nothing
+                # is skipped here.
+                emit_mounts(f"{pname}-{app['name']}", detail, detail.get("mounts"),
+                            skip_data_mount=False)
+
             for collection_key, resource_type, id_key in DATABASE_ENGINES:
                 for db in full.get(collection_key) or []:
                     emit(resource_type, label(pname, db["name"], db[id_key]), db[id_key])
+                    endpoint, param = ONE[resource_type]
+                    detail = get(endpoint, **{param: db[id_key]})
+                    emit_mounts(f"{pname}-{db['name']}", detail, detail.get("mounts"),
+                                skip_data_mount=True)
+
+    for dest in get("destination.all") or []:
+        did = dest["destinationId"]
+        emit("dokploy_destination", label(dest["name"], did), did)
 
 
 if __name__ == "__main__":

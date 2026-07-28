@@ -7,7 +7,7 @@ exposes every mutation as POST.
 | Script | Purpose |
 |---|---|
 | `introspect.py` | Enumerate a server: projects, environments, services, domains, and their child resources. Secrets are reported as a length, never printed. |
-| `generate_imports.py` | Emit Terraform `import` blocks for every live resource this provider supports. |
+| `generate_imports.py` | Emit Terraform `import` blocks for every live resource this provider supports, **except** database data volumes (see below). |
 | `dry-run.sh` | Build the provider, import the live stack into a throwaway state, have Terraform generate the config (patching in any live secret value Terraform itself refused to write), and require a second plan to be empty. |
 
 ## Running it
@@ -113,3 +113,45 @@ mechanism (all four engines this task added). It does not include a live
 against the resource-type table in `generate_imports.py`, which already
 covers `dokploy_postgres`, but that specific engine has not been re-run
 through this harness in this task.
+
+
+## Database engines own a mount nobody asked for
+
+Creating a `dokploy_postgres` — or mysql, mariadb, mongo, redis — makes
+Dokploy attach a volume mount for the container's data directory
+immediately. Verified live on the rig (v0.29.13, 2026-07-28): a
+freshly-created postgres already owns `volumeName`
+`"<appName>-data"` mounted at `/var/lib/postgresql/18/docker`, with nothing
+having requested it.
+
+It is an ordinary mount — `mounts.remove` deletes it — but it belongs to the
+server, not to anyone's configuration. Two things follow:
+
+- **`generate_imports.py` skips it**, and says so with a `# skipped <id>: ...`
+  comment in `imports.tf` rather than omitting it silently. Importing it
+  would put a `dokploy_mount` in charge of a volume the engine resource
+  recreates on its own, and `terraform destroy` on that resource would delete
+  the database's data directory.
+- The rule is **checked, not guessed**: `type == "volume"` *and* `volumeName
+  == appName + "-data"`. A user volume that merely ends in `-data` is still
+  imported. `introspect.py` labels the same mounts with the same rule.
+
+## Verified: `--patch-sensitive` covers Optional sensitive attributes too
+
+Wave 2 built `--patch-sensitive` for `database_password`, which is
+`Required` + `Sensitive`. Wave 3 added attributes in both shapes and re-ran
+the harness against a fixture containing all of them:
+
+| Attribute | Shape | `-generate-config-out` behaviour |
+|---|---|---|
+| `dokploy_security.password` | Required + Sensitive | `null # sensitive`, then Terraform Core rejects the config |
+| `dokploy_destination.access_key` / `secret_access_key` | Required + Sensitive | same |
+| `dokploy_application.build_secrets` | **Optional** + Sensitive | `null # sensitive`, accepted by Core, but the plan then diffs against the live value |
+
+The Optional case is the one wave 2 never exercised, and it fails
+differently: no error, just a plan that never converges. The patcher matches
+on the `<attr> = null # sensitive` pattern rather than on requiredness, so it
+handles both — confirmed by a full round-trip over a fixture with a live
+`build_secrets` value reaching `No changes` (12 sensitive attributes patched
+in that run). An unpatched `build_secrets` would have shown a diff there, so
+the empty plan is the proof, not the absence of an error.
