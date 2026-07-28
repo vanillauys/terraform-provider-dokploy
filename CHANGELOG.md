@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dokploy_mount` resource: volume, bind and file mounts attached to an
+  application, any database engine, a compose service or a libsql instance.
+  Two things about it are worth knowing before you use it:
+
+  - **`service_id` and `service_type` force replacement.** Dokploy's
+    `mounts.update` sets the parent column you name *without clearing the
+    others*, so retargeting through it leaves the record owned by two
+    services at once (verified live, v0.29.13, 2026-07-28). The client
+    cannot express a retarget at all.
+  - **Database services create their own data mount.** A fresh
+    `dokploy_postgres` already owns a volume mount for its data directory
+    the moment it is created. That mount belongs to the server — do not
+    import it or declare it here.
+
+  Per-`type` field rules (`host_path` for `bind`, `volume_name` for
+  `volume`, `content` + `file_path` for `file`) are enforced by the
+  provider at plan time. They are provider policy, not a server contract:
+  Dokploy accepts a `bind` mount with no host path and stores it broken.
+
 - `dokploy_application` gains eight attributes for fields it previously sent
   to the server without modelling them: top-level `watch_paths`,
   `build_secrets` (Sensitive), `create_env_file` and `enable_submodules`;

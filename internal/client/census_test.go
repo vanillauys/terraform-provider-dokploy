@@ -55,6 +55,8 @@ var endpointStructs = map[string]any{
 	"application.saveDockerProvider": SaveDockerProviderRequest{},
 	"application.saveBuildType":      SaveBuildTypeRequest{},
 	"application.saveEnvironment":    SaveApplicationEnvironmentRequest{},
+	"mounts.create":                  CreateMountRequest{},
+	"mounts.update":                  UpdateMountRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -73,11 +75,31 @@ func inEndpointStructs(typ reflect.Type) bool {
 // each with the reason. An entry here is a decision on the record rather
 // than a silent omission — which is the whole point of the census. Never add
 // one to quiet a failure you have not understood.
-// It is deliberately empty. Wave-3 task 1 recorded five blind fields here as
-// written-down debt; task 3 modelled all five, so every entry was removable.
-// Keep it empty if you can: an exemption is a field the server accepts and
-// this provider silently ignores.
-var censusExempt = map[string]map[string]string{}
+//
+// Keep this list as short as you can: an exemption is a field the server
+// accepts and this provider silently ignores. Wave-3 task 1 parked five
+// application fields here as written-down debt and task 3 modelled all five,
+// so the only entries left are ones where NOT sending the field is the
+// correct behaviour rather than a gap.
+var censusExempt = map[string]map[string]string{
+	// mounts.update accepts every parent column plus serviceType, and
+	// setting one does NOT clear the others: retargeting through this
+	// endpoint leaves the record with two parents (see UpdateMountRequest
+	// and doc.go for the live transcript). dokploy_mount marks its parent
+	// attributes RequiresReplace instead, so the client never needs to
+	// express a retarget and deliberately cannot.
+	"mounts.update": {
+		"serviceType":   "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"applicationId": "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"composeId":     "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"postgresId":    "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"mysqlId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"mariadbId":     "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"mongoId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"redisId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"libsqlId":      "parent is RequiresReplace; mounts.update corrupts on retarget",
+	},
+}
 
 type endpointFields struct {
 	Fields   []string `json:"fields"`

@@ -1,15 +1,15 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, environments, applications, databases, and domains with Terraform.
+  Manage Dokploy projects, environments, applications, databases, domains and mounts with Terraform.
 ---
 
 # Dokploy Provider
 
 Manage [Dokploy](https://dokploy.com) resources with Terraform: projects,
 environments, applications (github/git/docker sources), PostgreSQL, MySQL,
-MariaDB, MongoDB and Redis databases, and domains, with deploy-on-change
-semantics and full import support.
+MariaDB, MongoDB and Redis databases, domains, and service mounts, with
+deploy-on-change semantics and full import support.
 
 Works with Terraform >= 1.5 and OpenTofu. Developed and tested against
 **Dokploy v0.29.13**; newer releases are exercised by the acceptance suite as
@@ -45,10 +45,14 @@ provider "dokploy" {
   an unexpected 401 against a key that works for single requests, an API key
   with rate limiting disabled is likely required.
 - **`dokploy_application` owns the whole application.** Applying it rewrites the
-  application's source, build and environment configuration wholesale. Two
-  Dokploy settings the resource does not expose — watch paths and build secrets
-  — are reset to empty on every apply, so values set for them in the Dokploy UI
-  are lost. Manage an application either in Terraform or in the UI, not both.
+  application's source, build and environment configuration wholesale, so
+  anything changed in the Dokploy UI is replaced on the next apply. Manage an
+  application either in Terraform or in the UI, not both. As of v0.4.0 it no
+  longer writes any field it does not model.
+- **Database services create their own data mount.** A `dokploy_postgres` (or
+  mysql/mariadb/mongo/redis) owns a volume mount for its data directory from
+  the moment it is created. That mount belongs to the server: do not import it
+  or declare it as a `dokploy_mount`.
 - **`terraform import` cannot recover provider-only attributes.**
   `deploy_on_change` and `deployment_timeout` exist only in Terraform, so import
   seeds them with their schema defaults (`true` / `"15m"`). Importing a resource

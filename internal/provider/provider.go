@@ -19,6 +19,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/mount"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 )
 
@@ -161,6 +162,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		func() resource.Resource { return database.NewResource(database.MongoKind(p.client))() },
 		application.NewResource,
 		domain.NewResource,
+		mount.NewResource,
 	}
 }
 

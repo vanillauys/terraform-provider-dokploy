@@ -49,6 +49,8 @@ var mustAlwaysSend = []struct {
 		"publishDirectory", "herokuVersion", "railpackVersion", "isStaticSpa",
 	}},
 	{SaveApplicationEnvironmentRequest{}, []string{"env", "buildArgs", "buildSecrets", "createEnvFile"}},
+	{CreateMountRequest{}, []string{"hostPath", "volumeName", "filePath", "content"}},
+	{UpdateMountRequest{}, []string{"hostPath", "volumeName", "filePath", "content"}},
 }
 
 // inMustAlwaysSend reports whether a request struct is registered above. It
