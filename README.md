@@ -58,9 +58,13 @@ newer versions are exercised as they ship; older ones are untested.
   sets a non-default value plans one diff to reconcile it.
 - **Not everything Dokploy can do is covered yet.** Databases beyond
   PostgreSQL, MySQL, MariaDB, MongoDB and Redis (notably LibSQL), compose
-  services, backups and schedules, registries, SSH keys, certificates,
-  notifications and remote servers all still have to be managed in the
-  Dokploy UI.
+  services, registries, SSH keys, certificates, notifications and remote
+  servers all still have to be managed in the Dokploy UI.
+- **`dokploy_backup` cannot back up Redis**, because Dokploy has no logical
+  dump for it. Use `dokploy_volume_backup`, which snapshots the volume and
+  does accept a Redis parent. Backing up the Dokploy instance itself
+  (Dokploy's `web-server` backup type) is not exposed either: it has no
+  parent service and needs its own validation path.
 - **MySQL's and MariaDB's root password is server-generated when left
   unset**, and, like `database_password`, changing it only takes effect on
   the next deploy. `deploy_on_change` (default `true`) covers the common

@@ -1,7 +1,7 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, environments, applications, databases, domains, mounts, ports, redirects, basic auth and backup destinations with Terraform.
+  Manage Dokploy projects, environments, applications, databases, domains, mounts, ports, redirects, basic auth, backups and cron schedules with Terraform.
 ---
 
 # Dokploy Provider
@@ -13,7 +13,8 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 - **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB and Redis
 - **Routing**: domains, published ports, Traefik redirects, HTTP basic auth
 - **Storage**: bind, volume and file mounts on any service
-- **Backups**: S3-compatible destinations
+- **Backups**: S3-compatible destinations, scheduled database dumps and Docker volume archives
+- **Scheduling**: cron jobs against a service, a remote server, or the Dokploy host
 
 with deploy-on-change semantics and full import support throughout.
 
