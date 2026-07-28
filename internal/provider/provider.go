@@ -18,6 +18,7 @@ import (
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/backup"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/destination"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
@@ -171,6 +172,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		destination.NewResource,
 		schedule.NewResource,
 		volumebackup.NewResource,
+		backup.NewResource,
 		appchild.NewResource(appchild.PortKind()),
 		appchild.NewResource(appchild.RedirectKind()),
 		appchild.NewResource(appchild.SecurityKind()),

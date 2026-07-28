@@ -69,6 +69,8 @@ var endpointStructs = map[string]any{
 	"schedule.update":                UpdateScheduleRequest{},
 	"volumeBackups.create":           CreateVolumeBackupRequest{},
 	"volumeBackups.update":           UpdateVolumeBackupRequest{},
+	"backup.create":                  CreateBackupRequest{},
+	"backup.update":                  UpdateBackupRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -154,6 +156,14 @@ var censusExempt = map[string]map[string]string{
 	"volumeBackups.create": {
 		"appName":   "server-generated; not user configuration",
 		"createdAt": "server-generated; not user configuration",
+	},
+	// metadata's schema is `anyOf: [{}, null]` -- genuinely untyped -- and it
+	// has read back null on every record observed live. There is no shape to
+	// model and no value to preserve, so it is sent as an explicit null.
+	// Modelling it needs evidence this provider does not have.
+	"backup.create": {
+		"metadata": "schema is untyped (anyOf [{}, null]); reads back null on every observed record",
+		"userId":   "implied by the API key; the server assigns it",
 	},
 }
 

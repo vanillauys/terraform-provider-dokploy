@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dokploy_backup`: a scheduled logical dump of a database to an
+  S3-compatible destination.
+
+  It does **not** accept a `redis` parent, and rejects one at plan time with
+  a message pointing at `dokploy_volume_backup` — Dokploy has no logical
+  dump for Redis. Backing up the Dokploy instance itself (its `web-server`
+  backup type) is also not exposed: that has no parent service and needs its
+  own validation path.
+
+  `service_type` derives Dokploy's `databaseType` and `backupType`; neither
+  is exposed. Setting them independently is what allows a record whose type
+  and parent disagree — `backup.update` accepts `databaseType` while
+  carrying no parent field at all, so it can flip the discriminator while
+  leaving every id column untouched.
+
+  `include_encryption_key` defaults to `true` and is **always transmitted**.
+  Dokploy stores `true` for a newly created backup but `false` whenever an
+  update omits the key, so a request that left it out would silently turn
+  encryption-key inclusion off on a record created with it on.
+
 - `dokploy_volume_backup`: a scheduled archive of a Docker volume to an
   S3-compatible destination.
 

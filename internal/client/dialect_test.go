@@ -55,6 +55,8 @@ var mustAlwaysSend = []struct {
 	{UpdateScheduleRequest{}, []string{"description", "script", "enabled", "timezone", "serviceName"}},
 	{CreateVolumeBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
 	{UpdateVolumeBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
+	{CreateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
+	{UpdateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
 }
 
 // inMustAlwaysSend reports whether a request struct is registered above. It
