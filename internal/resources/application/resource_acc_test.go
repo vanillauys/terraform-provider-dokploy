@@ -452,3 +452,115 @@ resource "dokploy_application" "test" {
 		},
 	})
 }
+
+// TestAccApplication_operationalAttributes covers the application.update
+// (dialect B) attributes. Dialect B is the dangerous one: an absent key is
+// silently "keep the old value", so a clearing bug shows up not as an error
+// but as a plan that never converges. Every assertion therefore reads the
+// server directly as well as state.
+func TestAccApplication_operationalAttributes(t *testing.T) {
+	name := acctest.RandomName("app-ops")
+	base := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+`, name+"-proj")
+
+	withOps := base + fmt.Sprintf(`
+resource "dokploy_application" "test" {
+  name           = %q
+  environment_id = dokploy_project.test.environments[0].id
+  docker         = { image = "traefik/whoami:v1.10" }
+
+  auto_deploy        = false
+  replicas           = 2
+  cpu_limit          = "0.5"
+  memory_limit       = "512m"
+  cpu_reservation    = "0.25"
+  memory_reservation = "256m"
+  command            = "/bin/sh"
+  args               = ["-c", "sleep 1"]
+
+  deploy_on_change = false
+}`, name)
+
+	withoutOps := base + fmt.Sprintf(`
+resource "dokploy_application" "test" {
+  name           = %q
+  environment_id = dokploy_project.test.environments[0].id
+  docker         = { image = "traefik/whoami:v1.10" }
+
+  deploy_on_change = false
+}`, name)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkApplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withOps,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_application.test", "replicas", "2"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "auto_deploy", "false"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "memory_limit", "512m"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "args.#", "2"),
+					checkApplicationServer("dokploy_application.test", func(a *client.Application) error {
+						if a.Replicas != 2 {
+							return fmt.Errorf("server replicas = %d, want 2", a.Replicas)
+						}
+						if a.AutoDeploy {
+							return errors.New("server auto_deploy = true, want false")
+						}
+						if a.MemoryLimit == nil || *a.MemoryLimit != "512m" {
+							return fmt.Errorf("server memory_limit = %v, want 512m", a.MemoryLimit)
+						}
+						if len(a.Args) != 2 {
+							return fmt.Errorf("server args = %v, want 2 entries", a.Args)
+						}
+						return nil
+					}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// All removed. The plain-Optional attributes must revert to
+				// null server-side; replicas and auto_deploy are
+				// Optional+Computed and revert to their defaults instead.
+				Config: withoutOps,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_application.test", "replicas", "1"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "auto_deploy", "true"),
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "memory_limit"),
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "args"),
+					checkApplicationServer("dokploy_application.test", func(a *client.Application) error {
+						if a.Replicas != 1 {
+							return fmt.Errorf("server replicas = %d, want its default 1", a.Replicas)
+						}
+						if !a.AutoDeploy {
+							return errors.New("server auto_deploy = false, want its default true")
+						}
+						for name, v := range map[string]*string{
+							"cpu_limit": a.CPULimit, "memory_limit": a.MemoryLimit,
+							"cpu_reservation": a.CPUReservation, "memory_reservation": a.MemoryReservation,
+							"command": a.Command,
+						} {
+							if v != nil && *v != "" {
+								return fmt.Errorf("server %s = %q, want cleared", name, *v)
+							}
+						}
+						if len(a.Args) != 0 {
+							return fmt.Errorf("server args = %v, want cleared", a.Args)
+						}
+						return nil
+					}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}

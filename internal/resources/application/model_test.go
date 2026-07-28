@@ -198,6 +198,17 @@ func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
 		CreateEnvFile:     types.BoolValue(true),
 		EnableSubmodules:  types.BoolValue(true),
 		WatchPaths:        types.ListNull(types.StringType),
+		AutoDeploy:        types.BoolValue(true),
+		Replicas:          types.Int64Value(2),
+		CPULimit:          types.StringValue("0.5"),
+		MemoryLimit:       types.StringValue("512m"),
+		CPUReservation:    types.StringValue("0.25"),
+		MemoryReservation: types.StringValue("256m"),
+		Command:           types.StringValue("/bin/run"),
+		// Same zero-value trap as WatchPaths: a bare types.List is not equal
+		// to itself, so a hand-built fixture must state the element type.
+		Args:              types.ListNull(types.StringType),
+		RegistryID:        types.StringValue("reg1"),
 		Status:            types.StringValue("done"),
 		CreatedAt:         types.StringValue("2026-07-23T10:00:00.000Z"),
 		DeployOnChange:    types.BoolValue(true),
@@ -217,6 +228,8 @@ func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
 			target.Set(reflect.ValueOf(types.StringValue("mutated")))
 		case types.Bool:
 			target.Set(reflect.ValueOf(types.BoolValue(false)))
+		case types.Int64:
+			target.Set(reflect.ValueOf(types.Int64Value(99)))
 		case types.Object:
 			target.Set(reflect.ValueOf(otherDocker))
 		case types.List:

@@ -60,6 +60,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   provider at plan time. They are provider policy, not a server contract:
   Dokploy accepts a `bind` mount with no host path and stores it broken.
 
+- `dokploy_application` gains nine operational attributes on the
+  `application.update` path: `auto_deploy`, `replicas`, `cpu_limit`,
+  `memory_limit`, `cpu_reservation`, `memory_reservation`, `command`, `args`
+  and `registry_id`. The four resource limits are **strings** in Dokploy's
+  schema (Docker-style `"0.5"` / `"512m"`), not numbers. `replicas` and
+  `auto_deploy` are Optional+Computed with defaults of `1` and `true`;
+  Dokploy's schema has no null variant for `replicas`, so it always holds a
+  concrete value. `registry_id` takes a literal id — this provider has no
+  registry resource yet.
+
 - `dokploy_application` gains eight attributes for fields it previously sent
   to the server without modelling them: top-level `watch_paths`,
   `build_secrets` (Sensitive), `create_env_file` and `enable_submodules`;

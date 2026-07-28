@@ -30,6 +30,15 @@ type resourceModel struct {
 	CreateEnvFile     types.Bool   `tfsdk:"create_env_file"`
 	WatchPaths        types.List   `tfsdk:"watch_paths"`
 	EnableSubmodules  types.Bool   `tfsdk:"enable_submodules"`
+	AutoDeploy        types.Bool   `tfsdk:"auto_deploy"`
+	Replicas          types.Int64  `tfsdk:"replicas"`
+	CPULimit          types.String `tfsdk:"cpu_limit"`
+	MemoryLimit       types.String `tfsdk:"memory_limit"`
+	CPUReservation    types.String `tfsdk:"cpu_reservation"`
+	MemoryReservation types.String `tfsdk:"memory_reservation"`
+	Command           types.String `tfsdk:"command"`
+	Args              types.List   `tfsdk:"args"`
+	RegistryID        types.String `tfsdk:"registry_id"`
 	Status            types.String `tfsdk:"status"`
 	CreatedAt         types.String `tfsdk:"created_at"`
 	DeployOnChange    types.Bool   `tfsdk:"deploy_on_change"`
@@ -132,6 +141,15 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.CreateEnvFile.Equal(state.CreateEnvFile) &&
 		plan.WatchPaths.Equal(state.WatchPaths) &&
 		plan.EnableSubmodules.Equal(state.EnableSubmodules) &&
+		plan.AutoDeploy.Equal(state.AutoDeploy) &&
+		plan.Replicas.Equal(state.Replicas) &&
+		plan.CPULimit.Equal(state.CPULimit) &&
+		plan.MemoryLimit.Equal(state.MemoryLimit) &&
+		plan.CPUReservation.Equal(state.CPUReservation) &&
+		plan.MemoryReservation.Equal(state.MemoryReservation) &&
+		plan.Command.Equal(state.Command) &&
+		plan.Args.Equal(state.Args) &&
+		plan.RegistryID.Equal(state.RegistryID) &&
 		plan.CreatedAt.Equal(state.CreatedAt) &&
 		plan.DeployOnChange.Equal(state.DeployOnChange) &&
 		plan.DeploymentTimeout.Equal(state.DeploymentTimeout)
@@ -146,10 +164,18 @@ func strOrNull(s *string) types.String { return types.StringPointerValue(s) }
 // reverts to null, and flattening nil as [] would make Read disagree with
 // the plan forever.
 func watchPathsValue(ctx context.Context, paths []string, diags *diag.Diagnostics) types.List {
-	if paths == nil {
+	return stringListValue(ctx, paths, diags)
+}
+
+// stringListValue maps a server string array onto a list attribute. A nil
+// slice (JSON null) becomes a NULL list, not an empty one: these attributes
+// are Optional with no Default, so removing one from config reverts to null,
+// and flattening nil as [] would make Read disagree with the plan forever.
+func stringListValue(ctx context.Context, items []string, diags *diag.Diagnostics) types.List {
+	if items == nil {
 		return types.ListNull(types.StringType)
 	}
-	list, d := types.ListValueFrom(ctx, types.StringType, paths)
+	list, d := types.ListValueFrom(ctx, types.StringType, items)
 	diags.Append(d...)
 	return list
 }
@@ -228,6 +254,43 @@ func buildTypeRequest(ctx context.Context, id string, m resourceModel) (client.S
 	}, diags
 }
 
+// operationalChanged reports whether any application.update-only attribute
+// differs. Update calls the endpoint when this is true even if name and
+// description are untouched — otherwise changing, say, replicas alone would
+// write state and never reach the server.
+func operationalChanged(plan, state resourceModel) bool {
+	return !plan.AutoDeploy.Equal(state.AutoDeploy) ||
+		!plan.Replicas.Equal(state.Replicas) ||
+		!plan.CPULimit.Equal(state.CPULimit) ||
+		!plan.MemoryLimit.Equal(state.MemoryLimit) ||
+		!plan.CPUReservation.Equal(state.CPUReservation) ||
+		!plan.MemoryReservation.Equal(state.MemoryReservation) ||
+		!plan.Command.Equal(state.Command) ||
+		!plan.Args.Equal(state.Args) ||
+		!plan.RegistryID.Equal(state.RegistryID)
+}
+
+// updateRequest builds the application.update body. Dialect B: every key is
+// sent explicitly so a nil pointer clears the field rather than silently
+// preserving it.
+func updateRequest(ctx context.Context, id string, m resourceModel) (client.UpdateApplicationRequest, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	return client.UpdateApplicationRequest{
+		ApplicationID:     id,
+		Name:              m.Name.ValueString(),
+		Description:       m.Description.ValueStringPointer(),
+		AutoDeploy:        m.AutoDeploy.ValueBoolPointer(),
+		Replicas:          m.Replicas.ValueInt64(),
+		CPULimit:          m.CPULimit.ValueStringPointer(),
+		MemoryLimit:       m.MemoryLimit.ValueStringPointer(),
+		CPUReservation:    m.CPUReservation.ValueStringPointer(),
+		MemoryReservation: m.MemoryReservation.ValueStringPointer(),
+		Command:           m.Command.ValueStringPointer(),
+		Args:              stringListRequest(ctx, m.Args, &diags),
+		RegistryID:        m.RegistryID.ValueStringPointer(),
+	}, diags
+}
+
 // environmentRequest builds the application.saveEnvironment body from the
 // model. Every field comes from an attribute: this endpoint is dialect A, so
 // each key is written on every call, and a hardcoded value here is a value
@@ -247,12 +310,18 @@ func environmentRequest(id string, m resourceModel) client.SaveApplicationEnviro
 // paths", which application.saveGitProvider/saveGithubProvider expect as an
 // explicit JSON null, not an empty array.
 func watchPathsRequest(ctx context.Context, list types.List, diags *diag.Diagnostics) *[]string {
+	return stringListRequest(ctx, list, diags)
+}
+
+// stringListRequest is the inverse: a null or unknown list means "unset",
+// which these endpoints expect as an explicit JSON null, not an empty array.
+func stringListRequest(ctx context.Context, list types.List, diags *diag.Diagnostics) *[]string {
 	if list.IsNull() || list.IsUnknown() {
 		return nil
 	}
-	var paths []string
-	diags.Append(list.ElementsAs(ctx, &paths, false)...)
-	return &paths
+	var items []string
+	diags.Append(list.ElementsAs(ctx, &items, false)...)
+	return &items
 }
 
 // setComputed copies server-computed fields, keeping planned values.
@@ -300,6 +369,15 @@ func flatten(ctx context.Context, app *client.Application, m *resourceModel) dia
 	m.BuildSecrets = strOrNull(app.BuildSecrets)
 	m.CreateEnvFile = types.BoolValue(app.CreateEnvFile)
 	m.EnableSubmodules = types.BoolValue(app.EnableSubmodules)
+	m.AutoDeploy = types.BoolValue(app.AutoDeploy)
+	m.Replicas = types.Int64Value(app.Replicas)
+	m.CPULimit = strOrNull(app.CPULimit)
+	m.MemoryLimit = strOrNull(app.MemoryLimit)
+	m.CPUReservation = strOrNull(app.CPUReservation)
+	m.MemoryReservation = strOrNull(app.MemoryReservation)
+	m.Command = strOrNull(app.Command)
+	m.Args = stringListValue(ctx, app.Args, &diags)
+	m.RegistryID = strOrNull(app.RegistryID)
 	m.WatchPaths = watchPathsValue(ctx, app.WatchPaths, &diags)
 	m.Status = types.StringValue(app.ApplicationStatus)
 	m.CreatedAt = types.StringValue(app.CreatedAt)

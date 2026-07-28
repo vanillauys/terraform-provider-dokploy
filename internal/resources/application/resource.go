@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -190,6 +191,43 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			ElementType: types.StringType,
 			Description: "Glob paths that trigger an auto-deploy when changed. Applies to the `github` and `git` sources; ignored for `docker`. " +
 				"Omitting it clears any value set in the Dokploy UI.",
+		},
+		"auto_deploy": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(true),
+			Description: "Redeploy automatically when Dokploy receives a webhook for the configured branch or tag.",
+		},
+		"replicas": schema.Int64Attribute{
+			Optional: true, Computed: true, Default: int64default.StaticInt64(1),
+			Description: "Number of container replicas to run. Dokploy's schema has no null variant for this field, so it always has a concrete value.",
+		},
+		"cpu_limit": schema.StringAttribute{
+			Optional:    true,
+			Description: "Hard CPU limit, Docker-style (e.g. `\"0.5\"`). A string, not a number.",
+		},
+		"memory_limit": schema.StringAttribute{
+			Optional:    true,
+			Description: "Hard memory limit, Docker-style (e.g. `\"512m\"`).",
+		},
+		"cpu_reservation": schema.StringAttribute{
+			Optional:    true,
+			Description: "Reserved CPU, Docker-style (e.g. `\"0.25\"`).",
+		},
+		"memory_reservation": schema.StringAttribute{
+			Optional:    true,
+			Description: "Reserved memory, Docker-style (e.g. `\"256m\"`).",
+		},
+		"command": schema.StringAttribute{
+			Optional:    true,
+			Description: "Override the container entrypoint command.",
+		},
+		"args": schema.ListAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "Arguments passed to the container command.",
+		},
+		"registry_id": schema.StringAttribute{
+			Optional:    true,
+			Description: "Id of a Dokploy registry to push built images to. This provider has no registry resource yet; supply the id as a literal.",
 		},
 		"enable_submodules": schema.BoolAttribute{
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
@@ -444,6 +482,22 @@ func (r *applicationResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	plan.ID = types.StringValue(created.ApplicationID)
 
+	// application.create accepts only name/appName/description/environmentId/
+	// serverId, so every operational setting has to go through a follow-up
+	// application.update. Without this, replicas/auto_deploy/limits/command/
+	// args set in configuration are silently ignored on the FIRST apply and
+	// only take effect on a later one — caught by
+	// TestAccApplication_operationalAttributes step 1.
+	if req, d := updateRequest(ctx, created.ApplicationID, plan); !d.HasError() {
+		if err := r.client.UpdateApplication(ctx, req); err != nil {
+			r.persistPartial(ctx, resp, plan, "applying operational settings", err)
+			return
+		}
+	} else {
+		resp.Diagnostics.Append(d...)
+		return
+	}
+
 	if step, err := r.saveSource(ctx, created.ApplicationID, plan); err != nil {
 		r.persistPartial(ctx, resp, plan, step, err)
 		return
@@ -510,13 +564,18 @@ func (r *applicationResource) Update(ctx context.Context, req resource.UpdateReq
 	id := state.ID.ValueString()
 	plan.ID = state.ID
 
-	if !plan.Name.Equal(state.Name) || !plan.Description.Equal(state.Description) {
-		err := r.client.UpdateApplication(ctx, client.UpdateApplicationRequest{
-			ApplicationID: id,
-			Name:          plan.Name.ValueString(),
-			Description:   plan.Description.ValueStringPointer(),
-		})
-		if err != nil {
+	// application.update carries name, description and every operational
+	// setting. It is dialect B, so a field left out of the body keeps its
+	// stored value silently — updateRequest therefore sends all of them from
+	// the model on every call, and this guard only decides WHETHER to call.
+	if !plan.Name.Equal(state.Name) || !plan.Description.Equal(state.Description) ||
+		operationalChanged(plan, state) {
+		req, d := updateRequest(ctx, id, plan)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if err := r.client.UpdateApplication(ctx, req); err != nil {
 			resp.Diagnostics.AddError("Updating application", err.Error())
 			return
 		}

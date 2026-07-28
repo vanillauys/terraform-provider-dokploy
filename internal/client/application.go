@@ -50,6 +50,20 @@ type Application struct {
 	BuildSecrets  *string `json:"buildSecrets"`
 	CreateEnvFile bool    `json:"createEnvFile"`
 
+	// Operational settings, all on application.update (dialect B).
+	// The four resource limits are STRINGS in Dokploy's schema (Docker-style
+	// "0.5" / "512m"), not numbers. replicas is the one non-nullable field
+	// of the group.
+	AutoDeploy        bool     `json:"autoDeploy"`
+	Replicas          int64    `json:"replicas"`
+	CPULimit          *string  `json:"cpuLimit"`
+	MemoryLimit       *string  `json:"memoryLimit"`
+	CPUReservation    *string  `json:"cpuReservation"`
+	MemoryReservation *string  `json:"memoryReservation"`
+	Command           *string  `json:"command"`
+	Args              []string `json:"args"`
+	RegistryID        *string  `json:"registryId"`
+
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
 
@@ -87,6 +101,22 @@ type UpdateApplicationRequest struct {
 	ApplicationID string  `json:"applicationId"`
 	Name          string  `json:"name,omitempty"`
 	Description   *string `json:"description"`
+
+	// Operational settings. Dialect B means an absent key silently keeps the
+	// stored value, so every one of these is a pointer without omitempty and
+	// a nil marshals to an explicit null that clears the field. Replicas is
+	// the exception: its zod type is a bare number with no null variant, so
+	// sending null is a 400 and the resource always supplies a concrete
+	// value (Optional+Computed with a default of 1).
+	AutoDeploy        *bool     `json:"autoDeploy"`
+	Replicas          int64     `json:"replicas"`
+	CPULimit          *string   `json:"cpuLimit"`
+	MemoryLimit       *string   `json:"memoryLimit"`
+	CPUReservation    *string   `json:"cpuReservation"`
+	MemoryReservation *string   `json:"memoryReservation"`
+	Command           *string   `json:"command"`
+	Args              *[]string `json:"args"`
+	RegistryID        *string   `json:"registryId"`
 }
 
 // SaveGithubProviderRequest.
