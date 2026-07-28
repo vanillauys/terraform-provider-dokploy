@@ -41,14 +41,11 @@ var MountServiceTypes = []string{
 	"application", "postgres", "mysql", "mariadb", "mongo", "redis", "compose", "libsql",
 }
 
-// ServiceID returns the parent id for the record's serviceType, or "" when
-// the field for that type is unset. It reads the column named by
-// serviceType rather than "whichever one is non-nil", so a record carrying
-// two parent ids (which Dokploy can produce — see UpdateMountRequest)
-// resolves to the one the server considers authoritative instead of
-// whichever the struct happens to list first.
-func (m *Mount) ServiceID() string {
-	byType := map[string]*string{
+// MountServiceColumns is the per-type id column map for a mount record.
+// Shared by ParentRef resolution on read and request building on write, so
+// the two can never disagree about which column belongs to which type.
+func (m *Mount) MountServiceColumns() map[string]*string {
+	return map[string]*string{
 		"application": m.ApplicationID,
 		"postgres":    m.PostgresID,
 		"mysql":       m.MysqlID,
@@ -58,11 +55,18 @@ func (m *Mount) ServiceID() string {
 		"compose":     m.ComposeID,
 		"libsql":      m.LibsqlID,
 	}
-	if id := byType[m.ServiceType]; id != nil {
-		return *id
-	}
-	return ""
 }
+
+// ParentRef resolves the mount's parent: the column named by serviceType,
+// never "whichever is non-nil". See ParentRef's doc comment for why that
+// distinction is load-bearing — mounts.update can leave two parent columns
+// populated at once.
+func (m *Mount) ParentRef() ParentRef {
+	return ParentRefFrom(m.ServiceType, m.MountServiceColumns())
+}
+
+// ServiceID is ParentRef().ID.
+func (m *Mount) ServiceID() string { return m.ParentRef().ID }
 
 // CreateMountRequest. serviceId + serviceType name the parent here; note
 // that mounts.update takes per-type id columns instead (see
