@@ -1,15 +1,21 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, environments, applications, databases, domains and mounts with Terraform.
+  Manage Dokploy projects, environments, applications, databases, domains, mounts, ports, redirects, basic auth and backup destinations with Terraform.
 ---
 
 # Dokploy Provider
 
-Manage [Dokploy](https://dokploy.com) resources with Terraform: projects,
-environments, applications (github/git/docker sources), PostgreSQL, MySQL,
-MariaDB, MongoDB and Redis databases, domains, and service mounts, with
-deploy-on-change semantics and full import support.
+Manage [Dokploy](https://dokploy.com) resources with Terraform:
+
+- **Projects and environments**
+- **Applications** from GitHub App, plain git, or Docker image sources
+- **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB and Redis
+- **Routing**: domains, published ports, Traefik redirects, HTTP basic auth
+- **Storage**: bind, volume and file mounts on any service
+- **Backups**: S3-compatible destinations
+
+with deploy-on-change semantics and full import support throughout.
 
 Works with Terraform >= 1.5 and OpenTofu. Developed and tested against
 **Dokploy v0.29.13**; newer releases are exercised by the acceptance suite as

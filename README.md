@@ -56,11 +56,11 @@ newer versions are exercised as they ship; older ones are untested.
   and `deployment_timeout` exist only in Terraform, so import seeds them with
   their schema defaults (`true` / `"15m"`). Importing a resource whose config
   sets a non-default value plans one diff to reconcile it.
-- **Databases other than PostgreSQL, MySQL, MariaDB, MongoDB and Redis are
-  not covered**, nor are compose services or backups. Wave 0 covered
-  projects, applications and PostgreSQL; wave 1 added environments and
-  domains; wave 2 adds the remaining database engines (MySQL, Redis,
-  MariaDB and MongoDB).
+- **Not everything Dokploy can do is covered yet.** Databases beyond
+  PostgreSQL, MySQL, MariaDB, MongoDB and Redis (notably LibSQL), compose
+  services, backups and schedules, registries, SSH keys, certificates,
+  notifications and remote servers all still have to be managed in the
+  Dokploy UI.
 - **MySQL's and MariaDB's root password is server-generated when left
   unset**, and, like `database_password`, changing it only takes effect on
   the next deploy. `deploy_on_change` (default `true`) covers the common
