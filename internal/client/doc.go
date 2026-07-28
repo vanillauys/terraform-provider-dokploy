@@ -353,4 +353,90 @@
 // need schema attributes — an attribute the user cannot set is a real gap —
 // but only the first four are data loss, and the CHANGELOG should say so
 // precisely rather than claiming eight wipes.
+// # The backup plane: backup, volumeBackups, schedule
+//
+// Probed live against the rig (v0.29.13, 2026-07-28, wave-4 task 1).
+//
+// ## Dialects
+//
+//	backup.update         DIALECT A. A partial body 400s; every required key
+//	                      is transmitted on every call. An explicit null
+//	                      CLEARS serviceName, keepLatestCount and enabled.
+//	volumeBackups.update  same shape: full field set required.
+//	schedule.update       same shape: full field set required.
+//
+// ## backup.create returns NOTHING
+//
+// Not the record, not `true` — a literal JSON null with HTTP 200. The
+// created id exists only inside the parent's embedded `backups` array
+// (postgres.one, mysql.one, ...). There is no backup.all. So creating one
+// requires the same locate-by-diff dance as redirects/security (see
+// appchild.go's createAndLocate), keyed on the DATABASE parent rather than
+// an application.
+//
+// schedule.create and volumeBackups.create DO return their records; only
+// backup needs it.
+//
+// ## backup.update cannot retarget, but will happily corrupt
+//
+// backup.update accepts databaseType and carries NO parent field at all.
+// Verified: sending {databaseType:"mysql", mysqlId:<id>} against a backup
+// created on a postgres returned 200 and left databaseType="mysql",
+// mysqlId=null, postgresId STILL SET — a record claiming to be a MySQL
+// backup while pointing at a Postgres. Nothing rejects it and nothing
+// repairs it.
+//
+// Hence dokploy_backup derives databaseType from its parent instead of
+// exposing it, and marks both RequiresReplace. Same conclusion as
+// mounts.update, reached by a different route.
+//
+// ## includeEncryptionKey: create says true, update says false
+//
+// The nastiest of the three. On backup.create the field defaults to TRUE.
+// On backup.update, omitting the key OR sending an explicit null both store
+// FALSE. So any update that does not send it silently turns encryption-key
+// inclusion off, on a record that was created with it on.
+//
+// This is the wave-3 blind-field shape exactly, and the census
+// (census_test.go) is what keeps it caught: the field must be modelled and
+// always transmitted, never omitted.
+//
+// ## enabled is optional at create and REQUIRED at update
+//
+//	create without enabled  -> 200, stored null
+//	create enabled=true     -> 200, stored true
+//	create enabled=false    -> 200, stored false
+//	update without enabled  -> 400 "expected nonoptional, received undefined"
+//
+// So a backup created through the API alone sits at null, which is neither
+// on nor off, and the very next update is forced to pick one. The provider
+// gives `enabled` a default of true and always sends it: a backup declared
+// in configuration that silently never runs is a worse failure than one that
+// runs when you did not ask.
+//
+// ## Enums, recovered from zod errors
+//
+//	backup.databaseType         postgres|mariadb|mysql|mongo|web-server|libsql
+//	                            NOTE: no redis. Dokploy has no logical dump
+//	                            for it.
+//	volumeBackups.serviceType   application|postgres|mysql|mariadb|mongo|
+//	                            redis|compose|libsql
+//	                            NOTE: redis IS here. Volume snapshots work
+//	                            where logical dumps do not.
+//	schedule.scheduleType       application|compose|server|dokploy-server
+//	schedule.shellType          bash|sh
+//
+// ## Listing needs a parent; there is no global list
+//
+//	schedule.list       requires id + scheduleType
+//	volumeBackups.list  requires id + volumeBackupType
+//	backup              has no list endpoint at all
+//
+// Discovery therefore goes through the parent record's embedded array, the
+// same way ports/redirects/security already do.
+//
+// ## Not-found status
+//
+// backup.one, schedule.one and volumeBackups.one all return a proper 404
+// for a missing id. No repeat of port.one's 400 (see above).
 package client
