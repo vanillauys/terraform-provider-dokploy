@@ -52,6 +52,15 @@ type Application struct {
 
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
+
+	// Embedded child collections. redirects.create and security.create
+	// return `true` rather than the record, so these arrays are the only
+	// way to discover a newly created id (see createAndLocate); there is no
+	// redirects.all or security.all.
+	Ports     []Port     `json:"ports"`
+	Redirects []Redirect `json:"redirects"`
+	Security  []Security `json:"security"`
+	Mounts    []Mount    `json:"mounts"`
 }
 
 // CreateApplicationRequest carries the ONLY fields application.create

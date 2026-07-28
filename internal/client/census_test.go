@@ -57,6 +57,12 @@ var endpointStructs = map[string]any{
 	"application.saveEnvironment":    SaveApplicationEnvironmentRequest{},
 	"mounts.create":                  CreateMountRequest{},
 	"mounts.update":                  UpdateMountRequest{},
+	"port.create":                    CreatePortRequest{},
+	"port.update":                    UpdatePortRequest{},
+	"redirects.create":               CreateRedirectRequest{},
+	"redirects.update":               UpdateRedirectRequest{},
+	"security.create":                CreateSecurityRequest{},
+	"security.update":                UpdateSecurityRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.

@@ -284,6 +284,26 @@
 // security.password is returned in CLEARTEXT by both security.one and
 // application.one. Mark it Sensitive in the schema and never log it.
 //
+// ## port.one reports "not found" as HTTP 400, alone in this API
+//
+// Probed live (v0.29.13, 2026-07-28) with a nonexistent id:
+//
+//	port.one          400  "Port not found"      <- the odd one out
+//	redirects.one     404  "Redirect not found"
+//	security.one      404  "Security not found"
+//	mounts.one        404  "Mount not found"
+//	application.one   404  "Application not found"
+//	domain.one        404  "Domain not found"
+//
+// This matters beyond tidiness: a resource Read only removes itself from
+// state on ErrNotFound, which the transport derives from a 404. Unmapped, a
+// port deleted through the Dokploy UI would fail the next apply outright
+// instead of being reconciled as drift. GetPort translates that single
+// endpoint's 400-with-"not found"; the generic transport still treats 400 as
+// a real error everywhere else, and GetPort keeps non-not-found 400s (zod
+// validation failures) as errors so a bad request can never masquerade as a
+// deleted record.
+//
 // # application.saveGithubProvider: triggerType, and a 500 that is really a 404
 //
 // Probed live, wave-3 task 2. saveGithubProvider VALIDATES a bogus githubId

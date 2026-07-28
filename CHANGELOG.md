@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dokploy_port`, `dokploy_redirect` and `dokploy_security` resources, for an
+  application's published ports, Traefik regex redirects, and HTTP basic-auth
+  credentials. All three share one generic implementation parameterised by a
+  `Kind` descriptor: probed live, they agree on everything the resource layer
+  touches (a single `applicationId` parent, flat records, a dialect A update
+  requiring the full field set, and the `.delete` verb). They diverge only in
+  their response envelopes, which stays in the client where it is visible.
+
+  Two consequences worth knowing:
+
+  - `redirects.create` and `security.create` return the literal `true`
+    rather than the record, and Dokploy has no endpoint to look either up by
+    its fields, so the provider identifies a newly created record by diffing
+    the application's child list around the call. Creates are serialised per
+    application to keep that exact; if something outside the apply creates a
+    sibling at the same moment, the provider errors rather than binding to a
+    record it cannot prove is its own.
+  - `dokploy_security.password` is stored and returned by Dokploy in
+    cleartext. The attribute is marked sensitive, but anyone with API access
+    to the instance can read it.
+
 - `dokploy_mount` resource: volume, bind and file mounts attached to an
   application, any database engine, a compose service or a libsql instance.
   Two things about it are worth knowing before you use it:
@@ -72,6 +93,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `port.one` reports a missing record as HTTP **400**, not 404 — the only
+  read endpoint of six probed that does. It is now mapped to the provider's
+  not-found error, so a port deleted outside Terraform is reconciled as
+  drift instead of failing the next apply. Non-not-found 400s from that
+  endpoint stay errors.
 - `internal/client/doc.go` corrected: Dokploy *does* serve an OpenAPI
   document, at `GET /api/trpc/settings.getOpenApiDocument`. The old claim
   that it "does not serve that document at all" generalised from the

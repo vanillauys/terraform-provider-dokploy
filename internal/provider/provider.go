@@ -15,6 +15,7 @@ import (
 	dsdatabase "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/database"
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
@@ -163,6 +164,9 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		application.NewResource,
 		domain.NewResource,
 		mount.NewResource,
+		appchild.NewResource(appchild.PortKind()),
+		appchild.NewResource(appchild.RedirectKind()),
+		appchild.NewResource(appchild.SecurityKind()),
 	}
 }
 
