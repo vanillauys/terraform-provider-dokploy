@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `dokploy_schedule`: a cron job Dokploy runs against an application, a
+  compose service, a remote server, or the Dokploy host itself.
+
+  `schedule_type = "dokploy-server"` takes no `service_id` — it runs against
+  the Dokploy host and has no parent service. Every other type requires one.
+  Both halves are enforced at apply time, since the rule depends on another
+  attribute's value and the stock config validators cannot express that.
+
+  `enabled` defaults to `true`. Dokploy leaves it null when a schedule is
+  created through the API alone, which is neither on nor off; a schedule
+  declared in configuration that silently never fires is the worse failure.
+
+  `schedule_type` and `service_id` force replacement. Dokploy's update
+  endpoint sets the parent column it is given without clearing the others,
+  so a retarget would leave the record owned by two parents at once — the
+  same defect `dokploy_mount` documents.
+
 ## [0.4.0] - 2026-07-28
 
 ### Added

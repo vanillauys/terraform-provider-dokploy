@@ -51,6 +51,8 @@ var mustAlwaysSend = []struct {
 	{SaveApplicationEnvironmentRequest{}, []string{"env", "buildArgs", "buildSecrets", "createEnvFile"}},
 	{CreateMountRequest{}, []string{"hostPath", "volumeName", "filePath", "content"}},
 	{UpdateMountRequest{}, []string{"hostPath", "volumeName", "filePath", "content"}},
+	{CreateScheduleRequest{}, []string{"description", "script", "enabled", "timezone", "serviceName"}},
+	{UpdateScheduleRequest{}, []string{"description", "script", "enabled", "timezone", "serviceName"}},
 }
 
 // inMustAlwaysSend reports whether a request struct is registered above. It

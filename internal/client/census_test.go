@@ -65,6 +65,8 @@ var endpointStructs = map[string]any{
 	"security.update":                UpdateSecurityRequest{},
 	"destination.create":             CreateDestinationRequest{},
 	"destination.update":             UpdateDestinationRequest{},
+	"schedule.create":                CreateScheduleRequest{},
+	"schedule.update":                UpdateScheduleRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -114,6 +116,23 @@ var censusExempt = map[string]map[string]string{
 	// plan shows a diff. Exposing it needs a read path first.
 	"destination.create": {"serverId": "destination.one does not return it; a write-only field cannot round-trip"},
 	"destination.update": {"serverId": "destination.one does not return it; a write-only field cannot round-trip"},
+	// schedule.update accepts the parent columns but sets one without
+	// clearing the others, so a retarget leaves two parents on the record.
+	// schedule_type and service_id are RequiresReplace instead.
+	"schedule.update": {
+		"applicationId":  "parent is RequiresReplace; schedule.update corrupts on retarget",
+		"composeId":      "parent is RequiresReplace; schedule.update corrupts on retarget",
+		"serverId":       "parent is RequiresReplace; schedule.update corrupts on retarget",
+		"appName":        "server-generated; not user configuration",
+		"createdAt":      "server-generated; not user configuration",
+		"organizationId": "implied by the API key's organization",
+	},
+	"schedule.create": {
+		"appName":        "server-generated; not user configuration",
+		"createdAt":      "server-generated; not user configuration",
+		"organizationId": "implied by the API key's organization",
+		"scheduleId":     "server-generated; the create endpoint assigns it",
+	},
 }
 
 type endpointFields struct {

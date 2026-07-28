@@ -20,19 +20,24 @@ import (
 // and after, which is exact — provided nothing else creates a sibling in
 // between.
 //
-// That proviso is the reason for appChildCreateLocks. Terraform applies
+// That proviso is the reason for createLocateLocks. Terraform applies
 // resources concurrently (default parallelism 10), so two dokploy_redirect
 // resources on the SAME application really can be created at the same time
 // in one apply, and two interleaved before/after diffs would each see both
-// new ids and could pick the other's. Serialising per application id makes
-// the sequence atomic within this provider process. It does not protect
-// against someone clicking around the Dokploy UI mid-apply; that case falls
-// through to the ambiguity error below rather than silently binding the
-// wrong id.
-var appChildCreateLocks sync.Map // applicationId -> *sync.Mutex
+// new ids and could pick the other's. Serialising per parent id makes the
+// sequence atomic within this provider process. It does not protect against
+// someone clicking around the Dokploy UI mid-apply; that case falls through
+// to the ambiguity error below rather than silently binding the wrong id.
+//
+// The key is the PARENT id, whatever its type — an application for
+// redirects and security, a database service for backups. backup.create is
+// worse than the other two: it returns a literal JSON null rather than
+// `true`, and backup has no list endpoint at all, so the parent's embedded
+// array is the only place a new id ever appears.
+var createLocateLocks sync.Map // parent id -> *sync.Mutex
 
-func lockApplication(applicationID string) func() {
-	v, _ := appChildCreateLocks.LoadOrStore(applicationID, &sync.Mutex{})
+func lockParent(parentID string) func() {
+	v, _ := createLocateLocks.LoadOrStore(parentID, &sync.Mutex{})
 	mu := v.(*sync.Mutex)
 	mu.Lock()
 	return mu.Unlock
@@ -40,15 +45,16 @@ func lockApplication(applicationID string) func() {
 
 // createAndLocate runs create and returns the id that appeared as a result.
 //
-// list must return the current ids of the relevant child collection for the
-// application; create must perform the POST.
+// list must return the current ids of the relevant child collection on the
+// parent; create must perform the POST. parentID is the serialisation key,
+// and only that — it is never sent anywhere.
 func createAndLocate(
 	ctx context.Context,
-	applicationID, kind string,
+	parentID, kind string,
 	list func(context.Context) ([]string, error),
 	create func(context.Context) error,
 ) (string, error) {
-	unlock := lockApplication(applicationID)
+	unlock := lockParent(parentID)
 	defer unlock()
 
 	before, err := list(ctx)
@@ -80,13 +86,13 @@ func createAndLocate(
 	case 0:
 		return "", fmt.Errorf(
 			"%s.create reported success but no new %s appeared on application %s",
-			kind, kind, applicationID)
+			kind, kind, parentID)
 	default:
 		return "", fmt.Errorf(
 			"%d new %s records appeared on application %s while creating one, so the "+
 				"created id cannot be identified. %s.create does not return the record "+
 				"it made, and Dokploy has no endpoint to look one up by its fields. "+
 				"Something outside this apply is modifying the application concurrently",
-			len(fresh), kind, applicationID, kind)
+			len(fresh), kind, parentID, kind)
 	}
 }
