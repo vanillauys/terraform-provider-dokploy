@@ -47,6 +47,9 @@ ONE = {
     "dokploy_redirect": ("redirects.one", "redirectId"),
     "dokploy_security": ("security.one", "securityId"),
     "dokploy_destination": ("destination.one", "destinationId"),
+    "dokploy_backup": ("backup.one", "backupId"),
+    "dokploy_schedule": ("schedule.one", "scheduleId"),
+    "dokploy_volume_backup": ("volumeBackups.one", "volumeBackupId"),
 }
 
 # (environment.one's collection key, resource type, id field). Drives the
@@ -100,6 +103,54 @@ def emit_mounts(prefix, service, mounts, *, skip_data_mount):
             )
             continue
         emit("dokploy_mount", label(prefix, mount.get("mountPath") or "mount", mid), mid)
+
+
+# Recovered from each endpoint's own zod error (v0.29.13, 2026-07-28). They
+# are deliberately different: a schedule runs a command somewhere, a volume
+# backup archives a volume, and databases have volumes but do not run
+# commands.
+SCHEDULE_TYPES = {"application", "compose", "server", "dokploy-server"}
+VOLUME_BACKUP_TYPES = {
+    "application", "postgres", "mysql", "mariadb", "mongo", "redis", "compose", "libsql",
+}
+
+
+def emit_backup_plane(prefix, service_type, service_id, detail):
+    """Emit import blocks for a service's backups, schedules and volume backups.
+
+    Three resources, three DIFFERENT discovery paths, because Dokploy is not
+    consistent here (verified live, v0.29.13, 2026-07-28):
+
+      backups        embedded in the parent's own record. There is no
+                     backup.all and backup.create returns nothing, so this
+                     array is the ONLY place a backup id is enumerated.
+      schedules      NOT embedded -- the parent's `schedules` key is null even
+                     when schedules exist. Needs schedule.list, which requires
+                     id AND scheduleType.
+      volumeBackups  NOT embedded either. Needs volumeBackups.list, which
+                     requires id AND volumeBackupType.
+
+    Reading only the parent record would silently miss two of the three.
+    """
+    for b in detail.get("backups") or []:
+        bid = b["backupId"]
+        emit("dokploy_backup", label(prefix, b.get("database") or "backup", bid), bid)
+
+    # The two list endpoints validate their type against DIFFERENT enums, and
+    # querying one with a type it does not accept is an HTTP 400, not an
+    # empty list. Schedules attach only to applications, compose services and
+    # servers -- never to a database -- while volume backups attach to any
+    # service with a volume. Guard on each enum rather than discovering the
+    # difference as a crash.
+    if service_type in SCHEDULE_TYPES:
+        for sc in get("schedule.list", id=service_id, scheduleType=service_type) or []:
+            sid = sc["scheduleId"]
+            emit("dokploy_schedule", label(prefix, sc.get("name") or "schedule", sid), sid)
+
+    if service_type in VOLUME_BACKUP_TYPES:
+        for vb in get("volumeBackups.list", id=service_id, volumeBackupType=service_type) or []:
+            vid = vb["volumeBackupId"]
+            emit("dokploy_volume_backup", label(prefix, vb.get("name") or "volume", vid), vid)
 
 
 def get(path, **params):
@@ -279,6 +330,7 @@ def main():
                 # is skipped here.
                 emit_mounts(f"{pname}-{app['name']}", detail, detail.get("mounts"),
                             skip_data_mount=False)
+                emit_backup_plane(f"{pname}-{app['name']}", "application", aid, detail)
 
             for collection_key, resource_type, id_key in DATABASE_ENGINES:
                 for db in full.get(collection_key) or []:
@@ -287,6 +339,8 @@ def main():
                     detail = get(endpoint, **{param: db[id_key]})
                     emit_mounts(f"{pname}-{db['name']}", detail, detail.get("mounts"),
                                 skip_data_mount=True)
+                    emit_backup_plane(f"{pname}-{db['name']}", collection_key,
+                                      db[id_key], detail)
 
     for dest in get("destination.all") or []:
         did = dest["destinationId"]

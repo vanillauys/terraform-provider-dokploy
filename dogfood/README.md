@@ -155,3 +155,22 @@ handles both — confirmed by a full round-trip over a fixture with a live
 `build_secrets` value reaching `No changes` (12 sensitive attributes patched
 in that run). An unpatched `build_secrets` would have shown a diff there, so
 the empty plan is the proof, not the absence of an error.
+
+
+## The backup plane has three different discovery paths
+
+Verified live (v0.29.13, 2026-07-28). `generate_imports.py` needs all three,
+and reading only the parent record would silently miss two:
+
+| Resource | How it is found |
+|---|---|
+| `dokploy_backup` | The parent's own embedded `backups` array. There is no `backup.all`, and `backup.create` returns a literal null, so this array is the only place a backup id is ever enumerated. |
+| `dokploy_schedule` | `schedule.list`, which requires `id` **and** `scheduleType`. The parent's `schedules` key reads null even when schedules exist. |
+| `dokploy_volume_backup` | `volumeBackups.list`, which requires `id` **and** `volumeBackupType`. Its `volumeBackups` key likewise reads null on the parent. |
+
+The two list endpoints validate their type against **different enums**, and
+querying one with a type it does not accept is an HTTP 400 rather than an
+empty list. Schedules attach to `application`, `compose`, `server` and
+`dokploy-server` only — never to a database — while volume backups attach to
+any service with a volume, including `redis`. The generator guards on each
+enum; discovering the difference as a crash is how this was found.
