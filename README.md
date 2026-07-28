@@ -41,13 +41,17 @@ newer versions are exercised as they ship; older ones are untested.
   unexpected 401 against a key that works for single requests, a key with rate
   limiting disabled is likely required. Whether keys minted through the Dokploy
   UI carry the same limit has not been verified.
-- **`dokploy_application` owns the whole application.** Applying it rewrites the
-  application's source, build and environment configuration wholesale. Two
-  Dokploy settings the resource does not expose — **watch paths** and **build
-  secrets** — are reset to empty on every apply, so values set for them in the
-  Dokploy UI are lost. The builder version for the `heroku_buildpacks` and
-  `railpack` build types is likewise always reset to the server default. Manage
-  an application either in Terraform or in the UI, not both.
+- **`dokploy_application` owns the whole application.** Applying it rewrites
+  the application's source, build and environment configuration wholesale, so
+  anything changed in the Dokploy UI is replaced on the next apply. Manage an
+  application either in Terraform or in the UI, not both. As of v0.4.0 the
+  resource no longer writes any field it does not model: `watch_paths`,
+  `build_secrets`, `create_env_file`, `enable_submodules`, `is_static_spa`,
+  `trigger_type`, `heroku_version` and `railpack_version` are all schema
+  attributes, and a pair of reflection tests
+  (`TestDialectARequestsCarryNoBlindFields`,
+  `TestSaveRequestsReadEveryFieldFromTheModel`) fail the build if a future
+  field is added to one of these endpoints without one.
 - **`terraform import` cannot recover provider-only attributes.** `deploy_on_change`
   and `deployment_timeout` exist only in Terraform, so import seeds them with
   their schema defaults (`true` / `"15m"`). Importing a resource whose config

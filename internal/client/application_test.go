@@ -109,7 +109,9 @@ func TestApplicationOrchestrationCalls(t *testing.T) {
 		t.Fatal(err)
 	}
 	env := "A=1"
-	if err := c.SaveApplicationEnvironment(ctx, "app1", &env, nil); err != nil {
+	if err := c.SaveApplicationEnvironment(ctx, SaveApplicationEnvironmentRequest{
+		ApplicationID: "app1", Env: &env,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.DeployApplication(ctx, "app1"); err != nil {
@@ -204,10 +206,68 @@ func TestApplicationOrchestrationCalls(t *testing.T) {
 	if bodies[envBody]["buildArgs"] != nil {
 		t.Errorf("env body buildArgs = %v, want explicit null", bodies[envBody]["buildArgs"])
 	}
+	// buildSecrets and createEnvFile are asserted as explicit nulls here
+	// because THIS CALL LEFT THEM UNSET, not because the client pins them.
+	// Until wave 3 it did pin them (nil and true, hardcoded in an inline
+	// map), and this test asserted those literals — it was pinning the bug.
+	// What matters now is that the caller's value survives, which the two
+	// sub-tests below check in both directions.
 	if bodies[envBody]["buildSecrets"] != nil {
-		t.Errorf("env body buildSecrets = %v, want explicit null (no resource attribute exposes it)", bodies[envBody]["buildSecrets"])
+		t.Errorf("env body buildSecrets = %v, want explicit null (the caller left it unset)", bodies[envBody]["buildSecrets"])
 	}
-	if bodies[envBody]["createEnvFile"] != true {
-		t.Errorf("env body createEnvFile = %v, want true (matches application.create's own default)", bodies[envBody]["createEnvFile"])
+	if bodies[envBody]["createEnvFile"] != nil {
+		t.Errorf("env body createEnvFile = %v, want explicit null (the caller left it unset)", bodies[envBody]["createEnvFile"])
+	}
+}
+
+// TestSaveApplicationEnvironmentSendsCallerValues is the regression test for
+// the wave-3 wipe: buildSecrets and createEnvFile must be whatever the caller
+// passed, never a literal baked into the client. A hardcoded value here is
+// silently written over the user's Dokploy UI setting on every apply, because
+// application.saveEnvironment is dialect A and transmits every key.
+func TestSaveApplicationEnvironmentSendsCallerValues(t *testing.T) {
+	secret := "S=secret"
+	no, yes := false, true
+	for _, tc := range []struct {
+		name          string
+		secrets       *string
+		createEnvFile *bool
+		wantSecrets   any
+		wantCreate    any
+	}{
+		{"values set", &secret, &no, "S=secret", false},
+		{"values cleared", nil, &yes, nil, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var body map[string]any
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost || r.URL.Path != "/api/application.saveEnvironment" {
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+				}
+				raw, _ := io.ReadAll(r.Body)
+				_ = json.Unmarshal(raw, &body)
+				_, _ = fmt.Fprint(w, `true`)
+			}))
+			defer srv.Close()
+
+			if err := testClient(t, srv).SaveApplicationEnvironment(context.Background(), SaveApplicationEnvironmentRequest{
+				ApplicationID: "app1",
+				BuildSecrets:  tc.secrets,
+				CreateEnvFile: tc.createEnvFile,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			for _, k := range []string{"buildSecrets", "createEnvFile"} {
+				if _, ok := body[k]; !ok {
+					t.Errorf("%s key absent: dialect A requires every key on every call", k)
+				}
+			}
+			if body["buildSecrets"] != tc.wantSecrets {
+				t.Errorf("buildSecrets = %v, want %v", body["buildSecrets"], tc.wantSecrets)
+			}
+			if body["createEnvFile"] != tc.wantCreate {
+				t.Errorf("createEnvFile = %v, want %v", body["createEnvFile"], tc.wantCreate)
+			}
+		})
 	}
 }

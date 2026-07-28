@@ -4,6 +4,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `dokploy_application` gains eight attributes for fields it previously sent
+  to the server without modelling them: top-level `watch_paths`,
+  `build_secrets` (Sensitive), `create_env_file` and `enable_submodules`;
+  `trigger_type` (`push` or `tag`) inside the `github` block; and
+  `is_static_spa`, `heroku_version` and `railpack_version` inside `build`.
+
+### Fixed
+
+- **`dokploy_application` no longer overwrites four settings on every apply.**
+  Dokploy's `application.save*` endpoints transmit every key on every call
+  (dialect A in `internal/client/doc.go`), so any field the resource did not
+  model was written blind. Verified live against v0.29.13 on 2026-07-28, the
+  damage was:
+
+  - `watch_paths` — sent as an explicit JSON null on every apply, clearing
+    whatever was configured in the Dokploy UI.
+  - `build_secrets` — hardcoded `nil`, same effect.
+  - `create_env_file` — hardcoded `true`, so a value of `false` set in the UI
+    was silently flipped back on the next apply.
+  - `trigger_type` — never sent, but Dokploy applies *and writes* its schema
+    default, so omitting the key overwrote the stored value rather than
+    preserving it.
+
+  Two further fields, `enable_submodules` and `is_static_spa`, were never
+  wiped — Dokploy leaves them out of the endpoint's SQL `SET` list when the
+  request omits them — but were unmanageable. Both are now attributes.
+
+  The `heroku_buildpacks` / `railpack` builder version was likewise always
+  reset to the server default; `heroku_version` and `railpack_version` now
+  control it.
+
+- Internal, no user-visible effect: `application.saveEnvironment` was built
+  as an inline `map[string]any`, which is invisible to reflection and so hid
+  its two hardcoded literals from every guard in the client package. It is
+  now a struct, and three tests keep this class of bug from recurring:
+  `TestEndpointFieldCensus` diffs each write endpoint's request struct
+  against the server's own OpenAPI field list (distilled into
+  `internal/client/testdata/endpoint-fields.json`),
+  `TestDialectARequestsCarryNoBlindFields` requires every dialect A request
+  to be a fully-tagged struct registered in both guard tables, and
+  `TestSaveRequestsReadEveryFieldFromTheModel` builds each request from a
+  fully-populated model and fails if any field comes out unset.
+
+### Changed
+
+- `internal/client/doc.go` corrected: Dokploy *does* serve an OpenAPI
+  document, at `GET /api/trpc/settings.getOpenApiDocument`. The old claim
+  that it "does not serve that document at all" generalised from the
+  `/api/openapi.json` routes, which do 404. Its response schemas remain
+  empty objects — hence the hand-written client — but its request field
+  lists are complete, and the census above consumes them.
+
 ## [0.3.0] - 2026-07-27
 
 ### Added

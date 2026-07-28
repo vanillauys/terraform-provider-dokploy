@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -89,12 +90,17 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				"branch":     schema.StringAttribute{Required: true, Description: "Branch to deploy."},
 				"build_path": schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("/"), Description: "Path inside the repo to build from."},
 				"github_id":  schema.StringAttribute{Required: true, Description: "Id of the GitHub provider configured in Dokploy."},
+				"trigger_type": schema.StringAttribute{
+					Optional: true, Computed: true, Default: stringdefault.StaticString("push"),
+					Description: "What triggers an auto-deploy: `push` or `tag`. Dokploy writes this field on every source save whether or not the request carries it, " +
+						"so it always has a concrete value; it cannot be left unmanaged.",
+					Validators: []validator.String{stringvalidator.OneOf("push", "tag")},
+				},
 			},
 		},
 		"git": schema.SingleNestedAttribute{
-			Optional: true,
-			Description: "Custom git source (any reachable repo over https/ssh). " +
-				"Saving this also clears the application's **watch paths** in Dokploy, which this resource does not expose.",
+			Optional:    true,
+			Description: "Custom git source (any reachable repo over https/ssh). Exactly one of `github`, `git`, or `docker` must be set.",
 			Attributes: map[string]schema.Attribute{
 				"url":        schema.StringAttribute{Required: true, Description: "Clone URL."},
 				"branch":     schema.StringAttribute{Required: true, Description: "Branch to deploy."},
@@ -146,6 +152,18 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				"context_path":      schema.StringAttribute{Optional: true, Description: "Docker build context path."},
 				"build_stage":       schema.StringAttribute{Optional: true, Description: "Target stage for multi-stage builds."},
 				"publish_directory": schema.StringAttribute{Optional: true, Description: "Publish directory (build type `static`)."},
+				"is_static_spa": schema.BoolAttribute{
+					Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+					Description: "Serve the build output as a single-page application, rewriting unknown paths to the index document.",
+				},
+				"heroku_version": schema.StringAttribute{
+					Optional:    true,
+					Description: "Builder version for build type `heroku_buildpacks`. Omit to use the server's default.",
+				},
+				"railpack_version": schema.StringAttribute{
+					Optional:    true,
+					Description: "Builder version for build type `railpack`. Omit to use the server's default.",
+				},
 			},
 		},
 		"env": schema.StringAttribute{
@@ -156,6 +174,26 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		"build_args": schema.StringAttribute{
 			Optional:    true,
 			Description: "Build-time arguments in the same multiline format.",
+		},
+		"build_secrets": schema.StringAttribute{
+			Optional:  true,
+			Sensitive: true,
+			Description: "Build-time secrets in the same multiline `KEY=value` format, mounted during the build and not baked into the image. " +
+				"Omitting it clears any value set in the Dokploy UI; omission and `\"\"` are indistinguishable on read, so use omission to clear.",
+		},
+		"create_env_file": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(true),
+			Description: "Write the environment variables to a `.env` file in the build context. Defaults to `true`, matching Dokploy's own default for a new application.",
+		},
+		"watch_paths": schema.ListAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "Glob paths that trigger an auto-deploy when changed. Applies to the `github` and `git` sources; ignored for `docker`. " +
+				"Omitting it clears any value set in the Dokploy UI.",
+		},
+		"enable_submodules": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Check out git submodules when cloning. Applies to the `github` and `git` sources; ignored for `docker`.",
 		},
 		// status deliberately has NO UseStateForUnknown. It is genuinely
 		// server-mutable: a deploy moves it (idle -> running -> done), so
@@ -185,8 +223,8 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 	}
 	resp.Schema = schema.Schema{
 		Description: "An application service in a Dokploy environment: its source, build settings, and environment variables managed as a single resource.\n\n" +
-			"~> **Terraform owns the whole application.** Applying this resource rewrites the application's source, build and environment configuration wholesale. " +
-			"Two Dokploy settings that this resource does not expose — **watch paths** and **build secrets** — are reset to empty on every apply, so values set for them in the Dokploy UI will be lost. Manage such applications either in Terraform or in the UI, not both.",
+			"~> **Terraform owns the whole application.** Applying this resource rewrites the application's source, build and environment configuration wholesale, " +
+			"so any of those settings changed in the Dokploy UI is replaced on the next apply. Manage an application either in Terraform or in the UI, not both.",
 		Attributes: attrs,
 	}
 }
@@ -279,42 +317,23 @@ func diagsError(d diag.Diagnostics) error {
 func (r *applicationResource) saveSource(ctx context.Context, id string, m resourceModel) (string, error) {
 	switch {
 	case !m.Github.IsNull():
-		var gh githubModel
-		if d := m.Github.As(ctx, &gh, objectAsOptions); d.HasError() {
+		req, d := githubRequest(ctx, id, m)
+		if d.HasError() {
 			return "reading the github block", diagsError(d)
 		}
-		return "saving the github source", r.client.SaveGithubProvider(ctx, client.SaveGithubProviderRequest{
-			ApplicationID: id,
-			Owner:         gh.Owner.ValueString(),
-			Repository:    gh.Repository.ValueString(),
-			Branch:        gh.Branch.ValueString(),
-			BuildPath:     gh.BuildPath.ValueString(),
-			GithubID:      gh.GithubID.ValueString(),
-		})
+		return "saving the github source", r.client.SaveGithubProvider(ctx, req)
 	case !m.Git.IsNull():
-		var g gitModel
-		if d := m.Git.As(ctx, &g, objectAsOptions); d.HasError() {
+		req, d := gitRequest(ctx, id, m)
+		if d.HasError() {
 			return "reading the git block", diagsError(d)
 		}
-		return "saving the git source", r.client.SaveGitProvider(ctx, client.SaveGitProviderRequest{
-			ApplicationID:      id,
-			CustomGitURL:       g.URL.ValueString(),
-			CustomGitBranch:    g.Branch.ValueString(),
-			CustomGitBuildPath: g.BuildPath.ValueString(),
-			CustomGitSSHKeyID:  g.SSHKeyID.ValueStringPointer(),
-		})
+		return "saving the git source", r.client.SaveGitProvider(ctx, req)
 	case !m.Docker.IsNull():
-		var d dockerModel
-		if diags := m.Docker.As(ctx, &d, objectAsOptions); diags.HasError() {
-			return "reading the docker block", diagsError(diags)
+		req, d := dockerRequest(ctx, id, m)
+		if d.HasError() {
+			return "reading the docker block", diagsError(d)
 		}
-		return "saving the docker source", r.client.SaveDockerProvider(ctx, client.SaveDockerProviderRequest{
-			ApplicationID: id,
-			DockerImage:   d.Image.ValueString(),
-			Username:      d.Username.ValueStringPointer(),
-			Password:      d.Password.ValueStringPointer(),
-			RegistryURL:   d.RegistryURL.ValueStringPointer(),
-		})
+		return "saving the docker source", r.client.SaveDockerProvider(ctx, req)
 	}
 	return "", nil
 }
@@ -323,18 +342,11 @@ func (r *applicationResource) saveBuild(ctx context.Context, id string, m resour
 	if m.Build.IsNull() || m.Build.IsUnknown() {
 		return nil
 	}
-	var b buildModel
-	if d := m.Build.As(ctx, &b, objectAsOptions); d.HasError() {
+	req, d := buildTypeRequest(ctx, id, m)
+	if d.HasError() {
 		return diagsError(d)
 	}
-	return r.client.SaveBuildType(ctx, client.SaveBuildTypeRequest{
-		ApplicationID:     id,
-		BuildType:         b.Type.ValueString(),
-		Dockerfile:        b.Dockerfile.ValueStringPointer(),
-		DockerContextPath: b.ContextPath.ValueStringPointer(),
-		DockerBuildStage:  b.BuildStage.ValueStringPointer(),
-		PublishDirectory:  b.PublishDirectory.ValueStringPointer(),
-	})
+	return r.client.SaveBuildType(ctx, req)
 }
 
 // newestDeploymentID reports the id of the application's most recent
@@ -440,9 +452,8 @@ func (r *applicationResource) Create(ctx context.Context, req resource.CreateReq
 		r.persistPartial(ctx, resp, plan, "saving build settings", err)
 		return
 	}
-	if !plan.Env.IsNull() || !plan.BuildArgs.IsNull() {
-		err := r.client.SaveApplicationEnvironment(ctx, created.ApplicationID,
-			plan.Env.ValueStringPointer(), plan.BuildArgs.ValueStringPointer())
+	if !plan.Env.IsNull() || !plan.BuildArgs.IsNull() || !plan.BuildSecrets.IsNull() || !plan.CreateEnvFile.IsNull() {
+		err := r.client.SaveApplicationEnvironment(ctx, environmentRequest(created.ApplicationID, plan))
 		if err != nil {
 			r.persistPartial(ctx, resp, plan, "saving environment variables", err)
 			return
@@ -510,7 +521,18 @@ func (r *applicationResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 	}
-	sourceChanged := !plan.Github.Equal(state.Github) || !plan.Git.Equal(state.Git) || !plan.Docker.Equal(state.Docker)
+	// watch_paths and enable_submodules live on the application row, not
+	// inside a source block, but they are only writable through the source
+	// save* endpoints. Leaving them out of this guard makes a change to
+	// either one update Terraform state and never call the server — state
+	// then claims a value the server does not hold, and because Read
+	// faithfully reports the server's, the next refresh flips it back.
+	// Caught by TestAccApplication_previouslyBlindFields step 2.
+	sourceChanged := !plan.Github.Equal(state.Github) ||
+		!plan.Git.Equal(state.Git) ||
+		!plan.Docker.Equal(state.Docker) ||
+		!plan.WatchPaths.Equal(state.WatchPaths) ||
+		!plan.EnableSubmodules.Equal(state.EnableSubmodules)
 	if sourceChanged {
 		if step, err := r.saveSource(ctx, id, plan); err != nil {
 			resp.Diagnostics.AddError("Updating application source", fmt.Sprintf("%s: %s", step, err))
@@ -523,8 +545,9 @@ func (r *applicationResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 	}
-	if !plan.Env.Equal(state.Env) || !plan.BuildArgs.Equal(state.BuildArgs) {
-		err := r.client.SaveApplicationEnvironment(ctx, id, plan.Env.ValueStringPointer(), plan.BuildArgs.ValueStringPointer())
+	if !plan.Env.Equal(state.Env) || !plan.BuildArgs.Equal(state.BuildArgs) ||
+		!plan.BuildSecrets.Equal(state.BuildSecrets) || !plan.CreateEnvFile.Equal(state.CreateEnvFile) {
+		err := r.client.SaveApplicationEnvironment(ctx, environmentRequest(id, plan))
 		if err != nil {
 			resp.Diagnostics.AddError("Saving environment variables", err.Error())
 			return

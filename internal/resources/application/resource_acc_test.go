@@ -282,3 +282,173 @@ resource "dokploy_application" "test" {
 		},
 	})
 }
+
+// checkApplicationServer reads the application straight from the API and
+// runs an assertion against it. Terraform state agreeing with itself proves
+// nothing about a dialect A wipe: the wipe happens server-side, and a Read
+// that never looked would happily report the value the plan expected.
+func checkApplicationServer(resourceName string, assert func(*client.Application) error) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("%s not in state", resourceName)
+		}
+		c, err := acctest.ClientFromEnv()
+		if err != nil {
+			return err
+		}
+		app, err := c.GetApplication(context.Background(), rs.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("reading %s back from the server: %w", rs.Primary.ID, err)
+		}
+		return assert(app)
+	}
+}
+
+// TestAccApplication_previouslyBlindFields is the acceptance-level guard for
+// the wave-3 wipe. Each of these fields was transmitted on every apply
+// without being modelled, so the sequence that matters is: set it, then
+// apply again with it REMOVED from config, and check the server — not just
+// state — for the documented revert behaviour.
+//
+// The null-vs-default distinction is load-bearing and differs per field:
+//
+//	watch_paths      Optional            -> reverts to null
+//	build_secrets    Optional, Sensitive -> reverts to null
+//	create_env_file  Optional+Computed   -> reverts to its default, true
+//	enable_submodules Optional+Computed  -> reverts to its default, false
+//	is_static_spa    Optional+Computed   -> reverts to its default, false
+//	heroku_version   Optional            -> reverts to null
+//	railpack_version Optional            -> reverts to null
+func TestAccApplication_previouslyBlindFields(t *testing.T) {
+	name := acctest.RandomName("app-blind")
+	base := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+`, name+"-proj")
+
+	withFields := base + fmt.Sprintf(`
+resource "dokploy_application" "test" {
+  name           = %q
+  environment_id = dokploy_project.test.environments[0].id
+
+  git = {
+    url    = "https://github.com/dokploy/dokploy.git"
+    branch = "canary"
+  }
+
+  build = {
+    type             = "dockerfile"
+    dockerfile       = "Dockerfile"
+    is_static_spa    = true
+    heroku_version   = "22"
+    railpack_version = "1"
+  }
+
+  env               = "A=1"
+  build_secrets     = "SECRET=shh"
+  create_env_file   = false
+  enable_submodules = true
+  watch_paths       = ["src/**", "package.json"]
+
+  deploy_on_change = false
+}`, name)
+
+	withoutFields := base + fmt.Sprintf(`
+resource "dokploy_application" "test" {
+  name           = %q
+  environment_id = dokploy_project.test.environments[0].id
+
+  git = {
+    url    = "https://github.com/dokploy/dokploy.git"
+    branch = "canary"
+  }
+
+  build = {
+    type       = "dockerfile"
+    dockerfile = "Dockerfile"
+  }
+
+  env = "A=1"
+
+  deploy_on_change = false
+}`, name)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkApplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withFields,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_application.test", "build_secrets", "SECRET=shh"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "create_env_file", "false"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "enable_submodules", "true"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "watch_paths.#", "2"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "build.is_static_spa", "true"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "build.heroku_version", "22"),
+					checkApplicationServer("dokploy_application.test", func(a *client.Application) error {
+						if a.BuildSecrets == nil || *a.BuildSecrets != "SECRET=shh" {
+							return fmt.Errorf("server build_secrets = %v, want SECRET=shh", a.BuildSecrets)
+						}
+						if a.CreateEnvFile {
+							return errors.New("server create_env_file = true, want false")
+						}
+						if !a.EnableSubmodules {
+							return errors.New("server enable_submodules = false, want true")
+						}
+						if !a.IsStaticSpa {
+							return errors.New("server is_static_spa = false, want true")
+						}
+						if len(a.WatchPaths) != 2 {
+							return fmt.Errorf("server watch_paths = %v, want 2 entries", a.WatchPaths)
+						}
+						return nil
+					}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// Every field removed from config. This is the step that would
+				// have caught the original bug in reverse: with the fields
+				// unmodelled, the server was reset here regardless of config.
+				Config: withoutFields,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "build_secrets"),
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "watch_paths"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "create_env_file", "true"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "enable_submodules", "false"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "build.is_static_spa", "false"),
+					checkApplicationServer("dokploy_application.test", func(a *client.Application) error {
+						if a.BuildSecrets != nil && *a.BuildSecrets != "" {
+							return fmt.Errorf("server build_secrets = %v, want cleared", *a.BuildSecrets)
+						}
+						if !a.CreateEnvFile {
+							return errors.New("server create_env_file = false, want its default true")
+						}
+						if a.EnableSubmodules {
+							return errors.New("server enable_submodules = true, want its default false")
+						}
+						if a.IsStaticSpa {
+							return errors.New("server is_static_spa = true, want its default false")
+						}
+						if len(a.WatchPaths) != 0 {
+							return fmt.Errorf("server watch_paths = %v, want cleared", a.WatchPaths)
+						}
+						if a.HerokuVersion != nil && *a.HerokuVersion != "" {
+							return fmt.Errorf("server heroku_version = %v, want cleared", *a.HerokuVersion)
+						}
+						return nil
+					}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}

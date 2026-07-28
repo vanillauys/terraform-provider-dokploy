@@ -54,30 +54,30 @@ var endpointStructs = map[string]any{
 	"application.saveGitProvider":    SaveGitProviderRequest{},
 	"application.saveDockerProvider": SaveDockerProviderRequest{},
 	"application.saveBuildType":      SaveBuildTypeRequest{},
-	// application.saveEnvironment is deliberately absent: it has no request
-	// struct at all yet, only an inline map[string]any built in
-	// SaveApplicationEnvironment. That is precisely how its buildSecrets and
-	// createEnvFile literals hid from every reflection guard in this package.
-	// Wave-3 task 3 introduces the struct and registers it here.
+	"application.saveEnvironment":    SaveApplicationEnvironmentRequest{},
+}
+
+// inEndpointStructs reports whether a request struct is registered above.
+// blind_field_test.go uses it to require that every dialect A request is
+// censused against the server's own field list.
+func inEndpointStructs(typ reflect.Type) bool {
+	for _, v := range endpointStructs {
+		if reflect.TypeOf(v) == typ {
+			return true
+		}
+	}
+	return false
 }
 
 // censusExempt lists endpoint fields this client deliberately does not send,
 // each with the reason. An entry here is a decision on the record rather
 // than a silent omission — which is the whole point of the census. Never add
 // one to quiet a failure you have not understood.
-var censusExempt = map[string]map[string]string{
-	"application.saveGithubProvider": {
-		"watchPaths":       "wave-3 task 3 closes this",
-		"enableSubmodules": "wave-3 task 3 closes this",
-		"triggerType":      "wave-3 task 3 closes this",
-	},
-	"application.saveGitProvider": {
-		"enableSubmodules": "wave-3 task 3 closes this",
-	},
-	"application.saveBuildType": {
-		"isStaticSpa": "wave-3 task 3 closes this",
-	},
-}
+// It is deliberately empty. Wave-3 task 1 recorded five blind fields here as
+// written-down debt; task 3 modelled all five, so every entry was removable.
+// Keep it empty if you can: an exemption is a field the server accepts and
+// this provider silently ignores.
+var censusExempt = map[string]map[string]string{}
 
 type endpointFields struct {
 	Fields   []string `json:"fields"`

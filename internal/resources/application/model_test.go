@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
@@ -126,6 +127,12 @@ func TestDeployNeededApplication(t *testing.T) {
 			Git:    types.ObjectNull(gitAttrTypes),
 			Build:  types.ObjectNull(buildAttrTypes),
 			Env:    types.StringValue("A=1"),
+			// A zero-value types.List is NOT equal to itself: ListValue.Equal
+			// compares element types, and the zero value's is nil. The
+			// framework always hands us a typed null in real use, but a
+			// hand-built fixture has to say so explicitly or every comparison
+			// against it reports a spurious change.
+			WatchPaths: types.ListNull(types.StringType),
 		}
 	}
 	state, plan := base(), base()
@@ -173,18 +180,24 @@ func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
 	}
 	docker, otherDocker := dockerImage("nginx:1"), dockerImage("nginx:2")
 	base := resourceModel{
-		ID:                types.StringValue("app1"),
-		Name:              types.StringValue("web"),
-		Description:       types.StringValue("desc"),
-		EnvironmentID:     types.StringValue("e1"),
-		AppName:           types.StringValue("web-a1b2"),
-		ServerID:          types.StringValue("s1"),
-		Github:            types.ObjectNull(githubAttrTypes),
-		Git:               types.ObjectNull(gitAttrTypes),
-		Docker:            docker,
-		Build:             types.ObjectNull(buildAttrTypes),
-		Env:               types.StringValue("A=1"),
-		BuildArgs:         types.StringValue("B=2"),
+		ID:            types.StringValue("app1"),
+		Name:          types.StringValue("web"),
+		Description:   types.StringValue("desc"),
+		EnvironmentID: types.StringValue("e1"),
+		AppName:       types.StringValue("web-a1b2"),
+		ServerID:      types.StringValue("s1"),
+		Github:        types.ObjectNull(githubAttrTypes),
+		Git:           types.ObjectNull(gitAttrTypes),
+		Docker:        docker,
+		Build:         types.ObjectNull(buildAttrTypes),
+		Env:           types.StringValue("A=1"),
+		BuildArgs:     types.StringValue("B=2"),
+		BuildSecrets:  types.StringValue("S=3"),
+		// Both bools are true so the reflection sweep below, which mutates
+		// every types.Bool to false, produces a real change for them.
+		CreateEnvFile:     types.BoolValue(true),
+		EnableSubmodules:  types.BoolValue(true),
+		WatchPaths:        types.ListNull(types.StringType),
 		Status:            types.StringValue("done"),
 		CreatedAt:         types.StringValue("2026-07-23T10:00:00.000Z"),
 		DeployOnChange:    types.BoolValue(true),
@@ -206,6 +219,9 @@ func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
 			target.Set(reflect.ValueOf(types.BoolValue(false)))
 		case types.Object:
 			target.Set(reflect.ValueOf(otherDocker))
+		case types.List:
+			target.Set(reflect.ValueOf(types.ListValueMust(types.StringType,
+				[]attr.Value{types.StringValue("mutated")})))
 		default:
 			t.Fatalf("field %s has unhandled type %T: extend this test AND unchangedExceptStatus",
 				field.Name, target.Interface())

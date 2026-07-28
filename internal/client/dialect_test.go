@@ -38,6 +38,29 @@ var mustAlwaysSend = []struct {
 	}},
 	{UpdateEnvironmentRequest{}, []string{"name", "description", "env"}},
 	{CreateEnvironmentRequest{}, []string{"description"}},
+	// The dialect A application endpoints. Until wave 3 none of them was in
+	// this table at all: it held only dialect B Update* structs, so the
+	// endpoints where an absent key is a hard 400 were entirely unguarded.
+	{SaveGithubProviderRequest{}, []string{"triggerType", "watchPaths", "enableSubmodules"}},
+	{SaveGitProviderRequest{}, []string{"customGitSSHKeyId", "watchPaths", "enableSubmodules"}},
+	{SaveDockerProviderRequest{}, []string{"username", "password", "registryUrl"}},
+	{SaveBuildTypeRequest{}, []string{
+		"dockerfile", "dockerContextPath", "dockerBuildStage",
+		"publishDirectory", "herokuVersion", "railpackVersion", "isStaticSpa",
+	}},
+	{SaveApplicationEnvironmentRequest{}, []string{"env", "buildArgs", "buildSecrets", "createEnvFile"}},
+}
+
+// inMustAlwaysSend reports whether a request struct is registered above. It
+// is what stops a new dialect A endpoint from reaching the server with no
+// omitempty guard at all — the exact gap the five entries above just closed.
+func inMustAlwaysSend(typ reflect.Type) bool {
+	for _, tc := range mustAlwaysSend {
+		if reflect.TypeOf(tc.value) == typ {
+			return true
+		}
+	}
+	return false
 }
 
 func TestRequestStructsNeverOmitMustSendFields(t *testing.T) {
