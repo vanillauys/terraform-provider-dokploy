@@ -1,7 +1,7 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, environments, applications, databases, domains, mounts, ports, redirects, basic auth, backups and cron schedules with Terraform.
+  Manage Dokploy projects, environments, applications, compose stacks, databases, domains, mounts, ports, redirects, basic auth, backups and cron schedules with Terraform.
 ---
 
 # Dokploy Provider
