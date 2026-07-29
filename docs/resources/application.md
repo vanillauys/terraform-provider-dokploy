@@ -18,7 +18,7 @@ An application service in a Dokploy environment: its source, build settings, and
 ```terraform
 resource "dokploy_application" "example" {
   name           = "web"
-  environment_id = dokploy_project.example.environments[0].id
+  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
 
   docker = {
     image = "traefik/whoami:v1.10"
