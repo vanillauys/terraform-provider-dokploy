@@ -213,3 +213,81 @@ resource "dokploy_domain" "orphan" {
 		},
 	})
 }
+
+// TestAccDomain_attachedToCompose exercises the compose_id pathway.
+//
+// dokploy_domain has carried compose_id and service_name since wave 1 for a
+// resource that did not exist: dokploy_compose only landed in wave 5b, so
+// until now this half of the mutually exclusive attachment pair could not be
+// reached from inside the provider at all.
+//
+// The applicationId assertion is not incidental. It is the standing version
+// of the live evidence behind stringPointerValueExempt's m.ApplicationID
+// entry in internal/tfutil/stringornull_guard_test.go: the unset half of the
+// pair reads back as JSON null, never as "", which is what makes
+// types.StringPointerValue safe on that one read path. Wave 5a verified it by
+// hand in both directions; this keeps it verified.
+func TestAccDomain_attachedToCompose(t *testing.T) {
+	name := acctest.RandomName("dom-compose")
+	host := name + ".example.com"
+
+	config := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_compose" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.environments[0].id
+  deploy_on_change = false
+
+  raw = {
+    compose_file = "services:\n  web:\n    image: nginx:alpine\n"
+  }
+}
+
+resource "dokploy_domain" "test" {
+  host         = %q
+  compose_id   = dokploy_compose.test.id
+  service_name = "web"
+  port         = 80
+}
+`, name+"-proj", name, host)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkDomainDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+				Check: func(s *terraform.State) error {
+					d, err := fetchDomain(s, "dokploy_domain.test")
+					if err != nil {
+						return err
+					}
+					if d.DomainType != "compose" {
+						return fmt.Errorf("domainType = %q, want compose: the server defaults it to application no matter which id it receives, so a compose domain must state it explicitly", d.DomainType)
+					}
+					if d.ComposeID == nil || *d.ComposeID == "" {
+						return fmt.Errorf("composeId = %v, want the compose service's id", d.ComposeID)
+					}
+					if d.ServiceName == nil || *d.ServiceName != "web" {
+						return fmt.Errorf("serviceName = %v, want web", d.ServiceName)
+					}
+					// The exemption's evidence: the unset half of the pair is
+					// null, never "".
+					if d.ApplicationID != nil {
+						return fmt.Errorf("applicationId = %q, want JSON null - stringPointerValueExempt's m.ApplicationID entry depends on the server never returning \"\" for the unset half", *d.ApplicationID)
+					}
+					return nil
+				},
+			},
+		},
+	})
+}
