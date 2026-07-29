@@ -296,6 +296,44 @@
 //	                                                                                    tfutil's stringornull guard,
 //	                                                                                    in both directions.
 //
+// compose.update's dialect is B at the endpoint level, but the FIELDS split
+// three ways, and a single request struct has to honour all three. Probed
+// live field by field (v0.29.13, 2026-07-29) by setting every field away
+// from its default and then issuing an explicit null per field:
+//
+//	Group                        Fields                                    Struct shape
+//	Dialect C - "" clears, an     name, command, suffix, composeFile,       plain string, no omitempty.
+//	explicit null is a 400        composePath                              Caller maps a Terraform null
+//	                                                                       to "", and Read maps both ""
+//	                                                                       and null back to null.
+//	Closed enums - null is a      sourceType (git|github|gitlab|            plain string, no omitempty.
+//	400 naming the options        bitbucket|gitea|raw),                     Always send a valid option.
+//	                              composeType (docker-compose|stack)
+//	Nullable - an explicit null   description, env, repository, owner,      pointer, no omitempty. A nil
+//	is accepted and CLEARS        branch, githubId, customGitUrl,           marshals to explicit null.
+//	                              customGitBranch, customGitSSHKeyId,
+//	                              triggerType, autoDeploy, enableSubmodules,
+//	                              randomize, isolatedDeployment,
+//	                              isolatedDeploymentsVolume, watchPaths
+//
+// Two consequences worth stating outright:
+//
+//   - triggerType and autoDeploy are genuinely NULLABLE columns, not merely
+//     defaulted. A bare create gives "push" and true, but an explicit null
+//     stores null, and compose.one then reports null. Model them as
+//     pointers; a bare bool would read a null record back as false.
+//   - compose.update has NO write-through-on-absent trap. Verified by
+//     setting sourceType, composeType, composePath, triggerType, autoDeploy,
+//     randomize, isolatedDeployment, isolatedDeploymentsVolume,
+//     enableSubmodules, suffix, command, watchPaths and composeFile all away
+//     from their defaults, then issuing an update carrying only composeId
+//     and name: EVERY one survived unchanged. This is the opposite of
+//     application.saveGithubProvider, whose triggerType is written from its
+//     zod default whether or not the request carries it. Compose needs no
+//     equivalent always-send guard for that reason - though every field the
+//     resource MANAGES must still be sent on every call, or it can never be
+//     cleared.
+//
 // One more asymmetry, and it shapes the resource: compose.create accepts only
 // SEVEN fields (appName, composeFile, composeType, description, environmentId,
 // name, serverId) of which just name and environmentId are required, while
