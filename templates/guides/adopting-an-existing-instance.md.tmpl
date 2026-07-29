@@ -32,6 +32,27 @@ is added to one of these endpoints without one. So the rewrite is total but not
 lossy: what the resource writes is what the schema models, and nothing is
 silently blanked.
 
+## Database engines own their data mount
+
+A `dokploy_postgres` (or `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`,
+`dokploy_redis`) creates a volume mount for its data directory the moment it is
+created, and owns it from then on. That mount belongs to the engine resource,
+and Terraform must not be given a second claim on it:
+
+- **Do not import it** as a [`dokploy_mount`](../resources/mount).
+  `generate_imports.py` skips it for you, but a hand-written `import` block
+  would not.
+- **Do not declare one in fresh configuration either.** The same rule applies
+  to a stack you are writing from scratch, not just to one you are adopting: a
+  `dokploy_mount` pointing at a database's data directory hands Terraform a
+  volume the engine resource already recreates on its own, and
+  `terraform destroy` on that mount would delete the database's data
+  directory.
+
+`dokploy_mount` on a database engine is for *additional* volumes - config
+files, seed scripts, an extra data directory you manage yourself - never for
+the engine's own data directory.
+
 ## Enumerate what is on the server
 
 The repository ships a read-only harness under `dogfood/`. `introspect.py`

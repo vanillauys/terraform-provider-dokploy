@@ -55,14 +55,15 @@ MySQL's and MariaDB's root password is server-generated when left unset.
 MariaDB's and MongoDB's server-side default `docker_image` does not exist on
 Docker Hub: `mariadb:6` and `mongo:15` as of Dokploy v0.29.13.
 
-Leaving `docker_image` unset on `dokploy_mariadb` or `dokploy_mongo` and then
+Leaving `docker_image` unset on [`dokploy_mariadb`](../resources/mariadb) or
+[`dokploy_mongo`](../resources/mongo) and then
 triggering any deploy - an `external_port` change, or an explicit deploy -
 fails with a Docker manifest-unknown error. Set an explicit, real tag:
 
 ```hcl
 resource "dokploy_mariadb" "db" {
   name              = "app-db"
-  environment_id    = dokploy_project.example.environments[0].id
+  environment_id    = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
   database_name     = "app"
   database_user     = "app"
   database_password = var.db_password

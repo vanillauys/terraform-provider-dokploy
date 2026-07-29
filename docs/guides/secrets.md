@@ -15,7 +15,7 @@ this provider exposes it as a plain string:
 ```hcl
 resource "dokploy_application" "web" {
   name           = "web"
-  environment_id = dokploy_project.example.environments[0].id
+  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
 
   docker = {
     image = "traefik/whoami:v1.10"
@@ -44,7 +44,7 @@ variable "api_token" {
 
 resource "dokploy_application" "web" {
   name           = "web"
-  environment_id = dokploy_project.example.environments[0].id
+  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
 
   docker = {
     image = "traefik/whoami:v1.10"
@@ -62,12 +62,16 @@ value is redacted in plan output once a sensitive variable is interpolated
 into it.
 
 One behaviour worth knowing: setting `env` on `dokploy_application` also
-clears the application's **build secrets** in Dokploy. `build_secrets` is a
+clears the application's **build secrets** in Dokploy.
+[`build_secrets`](../resources/application#schema) is a
 separate schema attribute; set it explicitly if you need it.
 
 ## Database passwords
 
-`database_password` is `Required` and `Sensitive` on all five engines. The
+`database_password` is `Required` and `Sensitive` on all five engines - see
+[`dokploy_postgres`](../resources/postgres#schema) for the attribute in
+context; `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo` and
+`dokploy_redis` declare it identically. The
 server genuinely requires a caller-supplied password and never generates one.
 
 Two consequences:
@@ -89,7 +93,8 @@ MySQL's and MariaDB's `database_root_password` is also sensitive, but is
 `dokploy_destination` carries `access_key` and `secret_access_key`, because
 whoever creates the record has to supply them.
 
-The **data source** deliberately omits both. Dokploy's `destination.one`
+The [**data source**](../data-sources/destination) deliberately omits both.
+Dokploy's `destination.one`
 returns them in cleartext, but a data source exists to be referenced, and
 copying a shared backup target's credentials into every consumer's state
 widens their blast radius for no gain. Consumers need only the id:
@@ -109,7 +114,8 @@ resource "dokploy_backup" "db" {
 }
 ```
 
-All six of those `dokploy_backup` attributes are required, including `prefix`.
+All six of those [`dokploy_backup`](../resources/backup#schema) attributes are
+required, including `prefix`.
 
 ## State contains these values in cleartext
 

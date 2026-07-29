@@ -35,10 +35,10 @@ Full reference documentation is on the
 [Terraform Registry](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs).
 Start with the guides:
 
-- **[Getting started](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/getting-started)** - configure the provider and apply a first project, database, application and domain.
-- **[Adopting an existing Dokploy instance](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/adopting-an-existing-instance)** - import a running server without recreating anything.
-- **[Deploy semantics](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/deploy-semantics)** - `deploy_on_change`, timeouts, and how deploys fail.
-- **[Secrets and sensitive values](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/secrets)** - environment variables, database passwords, backup credentials.
+- **[Getting started](docs/guides/getting-started.md)** - configure the provider and apply a first project, database, application and domain.
+- **[Adopting an existing Dokploy instance](docs/guides/adopting-an-existing-instance.md)** - import a running server without recreating anything.
+- **[Deploy semantics](docs/guides/deploy-semantics.md)** - `deploy_on_change`, timeouts, and how deploys fail.
+- **[Secrets and sensitive values](docs/guides/secrets.md)** - environment variables, database passwords, backup credentials.
 
 ## Before you start
 
@@ -47,14 +47,14 @@ Three things bite hardest, in order:
 1. **API keys are rate-limited, and an exhausted budget returns `401`, not
    `429`.** A large apply can fail as an authentication error against a key
    that works fine for single requests. See
-   [Getting started](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/getting-started#before-your-first-apply-api-key-rate-limits).
+   [Getting started](docs/guides/getting-started.md#before-your-first-apply-api-key-rate-limits).
 2. **`dokploy_application` and `dokploy_compose` own their whole service.**
    Applying either replaces anything changed in the Dokploy UI. Manage a
    service in Terraform or in the UI, not both. See
-   [Adopting an existing Dokploy instance](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/adopting-an-existing-instance#decide-what-terraform-owns).
+   [Adopting an existing Dokploy instance](docs/guides/adopting-an-existing-instance.md#decide-what-terraform-owns).
 3. **MariaDB's and MongoDB's default `docker_image` does not exist on Docker
    Hub.** Set an explicit tag or every deploy fails. See
-   [Deploy semantics](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/deploy-semantics#two-engines-whose-default-image-does-not-exist).
+   [Deploy semantics](docs/guides/deploy-semantics.md#two-engines-whose-default-image-does-not-exist).
 
 This provider is pre-1.0: breaking changes land in minor releases until
 v1.0.0. Pin an exact version if you need stability.

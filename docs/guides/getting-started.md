@@ -72,7 +72,7 @@ resource "dokploy_project" "example" {
 
 resource "dokploy_postgres" "db" {
   name              = "app-db"
-  environment_id    = dokploy_project.example.environments[0].id
+  environment_id    = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
   database_name     = "app"
   database_user     = "app"
   database_password = var.db_password
@@ -81,7 +81,7 @@ resource "dokploy_postgres" "db" {
 
 resource "dokploy_application" "web" {
   name           = "web"
-  environment_id = dokploy_project.example.environments[0].id
+  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
 
   docker = {
     image = "traefik/whoami:v1.10"
@@ -100,6 +100,20 @@ resource "dokploy_domain" "web" {
   certificate_type = "letsencrypt"
 }
 ```
+
+Full schemas for the four resources used here:
+[`dokploy_project`](../resources/project),
+[`dokploy_postgres`](../resources/postgres),
+[`dokploy_application`](../resources/application) and
+[`dokploy_domain`](../resources/domain).
+
+**Select the environment by name, not by index.** `environments` is populated
+in the order Dokploy's API returns it, and the provider does not sort it, so
+`environments[0]` is not pinned to `production` - it happens to be right only
+while the project has exactly one environment, and silently starts resolving to
+something else once a second one exists. The
+`[for e in ... : e.id if e.name == "production"][0]` filter above is
+order-independent, and is the idiom used throughout these docs.
 
 `var.db_password` should be a sensitive variable. See
 [Secrets and sensitive values](secrets) for why this provider does not mark
