@@ -10,7 +10,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.1"
+      version = "~> 0.6"
     }
   }
 }
@@ -29,47 +29,49 @@ Developed and tested against **Dokploy v0.29.13**. The acceptance suite installs
 Dokploy with the upstream `install.sh`, which tracks the latest release, so
 newer versions are exercised as they ship; older ones are untested.
 
-## Known limitations
+## Documentation
 
-- **Dokploy rate-limits API keys.** Keys are rate-limited server-side by
-  Dokploy's api-key plugin. When the limit is hit the API answers `401
-  Unauthorized` rather than `429`, so it surfaces as an authentication failure
-  rather than an obvious throttle. Applying a large configuration — or one with
-  long-running deploys, which this provider polls while it waits — can exhaust
-  the budget. The acceptance rig works around this by minting a key with rate
-  limiting disabled (`acceptance/bootstrap.sh`). If applies fail with an
-  unexpected 401 against a key that works for single requests, a key with rate
-  limiting disabled is likely required. Whether keys minted through the Dokploy
-  UI carry the same limit has not been verified.
-- **`dokploy_application` owns the whole application.** Applying it rewrites
-  the application's source, build and environment configuration wholesale, so
-  anything changed in the Dokploy UI is replaced on the next apply. Manage an
-  application either in Terraform or in the UI, not both. As of v0.4.0 the
-  resource no longer writes any field it does not model: `watch_paths`,
-  `build_secrets`, `create_env_file`, `enable_submodules`, `is_static_spa`,
-  `trigger_type`, `heroku_version` and `railpack_version` are all schema
-  attributes, and a pair of reflection tests
-  (`TestDialectARequestsCarryNoBlindFields`,
-  `TestSaveRequestsReadEveryFieldFromTheModel`) fail the build if a future
-  field is added to one of these endpoints without one.
-- **`terraform import` cannot recover provider-only attributes.** `deploy_on_change`
-  and `deployment_timeout` exist only in Terraform, so import seeds them with
-  their schema defaults (`true` / `"15m"`). Importing a resource whose config
-  sets a non-default value plans one diff to reconcile it.
+Full reference documentation is on the
+[Terraform Registry](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs).
+Start with the guides:
+
+- **[Getting started](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/getting-started)** - configure the provider and apply a first project, database, application and domain.
+- **[Adopting an existing Dokploy instance](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/adopting-an-existing-instance)** - import a running server without recreating anything.
+- **[Deploy semantics](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/deploy-semantics)** - `deploy_on_change`, timeouts, and how deploys fail.
+- **[Secrets and sensitive values](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/secrets)** - environment variables, database passwords, backup credentials.
+
+## Before you start
+
+Three things bite hardest, in order:
+
+1. **API keys are rate-limited, and an exhausted budget returns `401`, not
+   `429`.** A large apply can fail as an authentication error against a key
+   that works fine for single requests. See
+   [Getting started](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/getting-started#before-your-first-apply-api-key-rate-limits).
+2. **`dokploy_application` and `dokploy_compose` own their whole service.**
+   Applying either replaces anything changed in the Dokploy UI. Manage a
+   service in Terraform or in the UI, not both. See
+   [Adopting an existing Dokploy instance](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/adopting-an-existing-instance#decide-what-terraform-owns).
+3. **MariaDB's and MongoDB's default `docker_image` does not exist on Docker
+   Hub.** Set an explicit tag or every deploy fails. See
+   [Deploy semantics](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/deploy-semantics#two-engines-whose-default-image-does-not-exist).
+
+This provider is pre-1.0: breaking changes land in minor releases until
+v1.0.0. Pin an exact version if you need stability.
+
+## Coverage gaps
+
+What the provider does not model yet, and why.
+
 - **Not everything Dokploy can do is covered yet.** Databases beyond
-  PostgreSQL, MySQL, MariaDB, MongoDB and Redis (notably LibSQL), compose
-  services, registries, SSH keys, certificates, notifications and remote
-  servers all still have to be managed in the Dokploy UI.
+  PostgreSQL, MySQL, MariaDB, MongoDB and Redis (notably LibSQL), registries,
+  SSH keys, certificates, notifications and remote servers all still have to
+  be managed in the Dokploy UI.
 - **`dokploy_backup` cannot back up Redis**, because Dokploy has no logical
   dump for it. Use `dokploy_volume_backup`, which snapshots the volume and
   does accept a Redis parent. Backing up the Dokploy instance itself
   (Dokploy's `web-server` backup type) is not exposed either: it has no
   parent service and needs its own validation path.
-- **MySQL's and MariaDB's root password is server-generated when left
-  unset**, and, like `database_password`, changing it only takes effect on
-  the next deploy. `deploy_on_change` (default `true`) covers the common
-  case; setting it to `false` means a `database_root_password` change is
-  stored but not applied until a manual deploy.
 - **`dokploy_redis` has no `database_name`, `database_user` or
   `database_root_password` attribute.** Unlike every other database engine
   this provider supports, Redis has no per-engine credential fields at all
@@ -82,16 +84,6 @@ newer versions are exercised as they ship; older ones are untested.
   option (standalone vs. replica-set topology) that this provider does not
   currently expose as a Terraform attribute; every `dokploy_mongo` instance
   is created in the server's default standalone mode.
-- **MariaDB's and MongoDB's server-side default `docker_image` does not
-  exist on Docker Hub** (`mariadb:6` / `mongo:15` as of Dokploy v0.29.13).
-  Leaving `docker_image` unset on `dokploy_mariadb`/`dokploy_mongo` and then
-  triggering any deploy (`external_port` changes, or an explicit deploy)
-  fails with a Docker manifest-unknown error. Set an explicit, real tag
-  (e.g. `mariadb:11.4`, `mongo:7`) instead of relying on the server default
-  for these two engines.
-- **The default `production` environment of a project cannot be deleted**
-  through the API, so `terraform destroy` on an imported one fails by design.
-  Remove it from state instead.
 - **Names are not unique in Dokploy.** Every data source that looks up by
   name (project, environment, application, destination, and all five database
   engines) errors when more than one record matches, rather than silently
@@ -103,19 +95,6 @@ newer versions are exercised as they ship; older ones are untested.
   for the same reason there is only a `dokploy_github_provider` data source: no
   instance has been available to observe their shapes against. The same gap
   applies to `dokploy_application`.
-- **`dokploy_compose.command` replaces the deploy invocation.** Dokploy runs it
-  instead of `docker compose up`, not in addition to it, so setting it to
-  anything that does not itself deploy the stack makes every deploy fail.
-- **`dokploy_compose` owns the whole service**, the same way
-  `dokploy_application` does: applying it rewrites the source and operational
-  configuration wholesale, so anything changed in the Dokploy UI is replaced on
-  the next apply.
-- **`dokploy_destination`'s data source does not expose credentials.**
-  `destination.one` returns `access_key` and `secret_access_key` in
-  cleartext, but the data source deliberately omits both: consumers need only
-  the id, and copying a shared backup target's credentials into every
-  consumer's state widens their blast radius for no gain. The resource still
-  carries them, since whoever creates the record has to supply them.
 
 ## Development
 
