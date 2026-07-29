@@ -33,9 +33,12 @@ var stringPointerValueExempt = map[string]map[string]string{
 	// applicationId and composeId are the mutually exclusive parent pointers
 	// on a domain, and they are foreign keys rather than free text, which is
 	// what takes them out of the "" hazard entirely. Probed live against
-	// Dokploy v0.29.13 on 2026-07-29, on a domain with an application parent:
+	// Dokploy v0.29.13 on 2026-07-29, in BOTH directions - a domain with an
+	// application parent (task 1) and a domain with a compose parent (task 6,
+	// the first time the compose half was observable):
 	//
-	//   domain.one            -> "composeId": null          (never "")
+	//   application parent -> domain.one gives "composeId": null
+	//   compose parent     -> domain.one gives "applicationId": null
 	//   domain.update {"composeId": ""}     -> stored value stays null
 	//   domain.update {"applicationId": ""} -> stored value keeps the old id
 	//
@@ -45,8 +48,8 @@ var stringPointerValueExempt = map[string]map[string]string{
 	// pointer form keeps this read path honest about a column whose only two
 	// states are "a real id" and null.
 	"internal/resources/domain/model.go": {
-		"m.ApplicationID": "FK column, not free text; domain.one returns null for the unset half and domain.update refuses to store \"\" (verified live v0.29.13, 2026-07-29)",
-		"m.ComposeID":     "same as ApplicationID; the mirror case (a domain with a compose parent) is probed in wave 5a task 6",
+		"m.ApplicationID": "FK column, not free text; domain.one returns null for the unset half and domain.update refuses to store \"\" (verified live both ways, v0.29.13, 2026-07-29)",
+		"m.ComposeID":     "same as ApplicationID, and verified on the compose-parent mirror case in wave 5a task 6",
 	},
 }
 

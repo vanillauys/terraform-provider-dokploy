@@ -257,6 +257,55 @@
 //	 "sqldPrimaryUrl":null,"serverId":null,"enableNamespaces":false,
 //	 "dockerImage":"ghcr.io/tursodatabase/libsql-server:latest"}
 //
+// # compose: the findings wave 5b is planned from
+//
+// Probed live against the rig (v0.29.13, 2026-07-29, wave-5a task 6). No
+// compose code exists yet: the wave-5 spec forbids writing the struct before
+// this table does, because waves 3 and 4 both found things at this stage
+// that would have forced a redesign afterwards.
+//
+//	#  Question                              Answer                                    Consequence
+//	1  Does compose.create return the        YES - the full record, flat, no            No createAndLocate. Unlike
+//	   record, or null like backup.create?   envelope.                                  libsql (returns `true`) and
+//	                                                                                    backup (returns null).
+//	2  composeType / sourceType enums?       composeType: docker-compose | stack.       Both are closed enums and
+//	                                         sourceType: git | github | gitlab |        belong in schema validators.
+//	                                         bitbucket | gitea | raw.
+//	3  What does compose.update require,     Only composeId. A partial body is          DIALECT B, same as
+//	   and does it 400 on a partial body?    accepted; an omitted key KEEPS the         application/project/domain
+//	                                         stored value, an explicit null clears.     .update. Every managed field
+//	                                         It returns the record.                     must be sent on every call.
+//	4  Does compose.one 404 or 400 on a      404, "Compose not found".                  Ordinary shape. NOT port.one's
+//	   missing id?                                                                      400 anomaly.
+//	5  How is composeFile stored for the     As a literal "" - never null, never        composeFile MUST read through
+//	   non-raw source types?                 absent. It holds the YAML only when        tfutil.StringOrNull. This is a
+//	                                         sourceType is raw.                         "" the server produces on a
+//	                                                                                    FRESH API-CREATED record, not
+//	                                                                                    only a UI-cleared one.
+//	6  Does compose carry application's      NO. There is no replicas, no               Compose is NOT application with
+//	   operational attributes?               memoryLimit/memoryReservation, no          a different source block. Do
+//	                                         cpuLimit/cpuReservation and no             not reuse application's
+//	                                         *Swarm block at all. Its own set is        operational attribute set by
+//	                                         autoDeploy, triggerType, watchPaths,       analogy.
+//	                                         enableSubmodules, isolatedDeployment,
+//	                                         isolatedDeploymentsVolume, randomize,
+//	                                         suffix, command, composePath,
+//	                                         composeStatus.
+//	7  Domain attached to a compose          null. Never "".                            Settles the ComposeID/
+//	   service: what is applicationId?                                                  ApplicationID exemption in
+//	                                                                                    tfutil's stringornull guard,
+//	                                                                                    in both directions.
+//
+// One more asymmetry, and it shapes the resource: compose.create accepts only
+// SEVEN fields (appName, composeFile, composeType, description, environmentId,
+// name, serverId) of which just name and environmentId are required, while
+// compose.update accepts FORTY-FIVE. Everything else - the whole source block,
+// autoDeploy, triggerType, watchPaths, composePath, the isolation flags - is
+// unreachable at create and must be set by a follow-up update, exactly as
+// dokploy_application already does. Server defaults on a bare create: sourceType
+// github, composeType docker-compose, composePath "./docker-compose.yml",
+// autoDeploy true, triggerType push, command "", suffix "", composeFile "".
+//
 // # Service child resources: mounts, port, redirects, security
 //
 // All probed live against the rig (v0.29.13, 2026-07-28, wave-3 task 2)
