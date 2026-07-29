@@ -57,6 +57,19 @@ var mustAlwaysSend = []struct {
 	{UpdateVolumeBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
 	{CreateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
 	{UpdateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
+	// compose.update is dialect B at the endpoint level, but its fields
+	// split three ways (doc.go). Every managed field is listed: the dialect
+	// C group and the two enums because they must reach the wire as "" to
+	// clear, the rest because a nil must marshal to an explicit null.
+	{UpdateComposeRequest{}, []string{
+		"name", "composePath", "command", "suffix", "composeFile",
+		"composeType", "sourceType",
+		"description", "repository", "owner", "branch", "githubId",
+		"customGitUrl", "customGitBranch", "customGitSSHKeyId",
+		"triggerType", "autoDeploy", "enableSubmodules", "randomize",
+		"isolatedDeployment", "isolatedDeploymentsVolume", "watchPaths",
+	}},
+	{SaveComposeEnvironmentRequest{}, []string{"env"}},
 }
 
 // inMustAlwaysSend reports whether a request struct is registered above. It

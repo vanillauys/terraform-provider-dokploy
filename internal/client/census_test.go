@@ -71,6 +71,9 @@ var endpointStructs = map[string]any{
 	"volumeBackups.update":           UpdateVolumeBackupRequest{},
 	"backup.create":                  CreateBackupRequest{},
 	"backup.update":                  UpdateBackupRequest{},
+	"compose.create":                 CreateComposeRequest{},
+	"compose.update":                 UpdateComposeRequest{},
+	"compose.saveEnvironment":        SaveComposeEnvironmentRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -164,6 +167,41 @@ var censusExempt = map[string]map[string]string{
 	"backup.create": {
 		"metadata": "schema is untyped (anyOf [{}, null]); reads back null on every observed record",
 		"userId":   "implied by the API key; the server assigns it",
+	},
+	// compose.update accepts the gitlab, bitbucket and gitea provider
+	// columns. None is modelled, for the same reason
+	// internal/datasources/gitprovider covers only GitHub: no instance
+	// available to develop against has one, so their shapes would be
+	// inferred rather than observed. dokploy_application has the identical
+	// gap. Note this endpoint is dialect B, not A, so an unmodelled field is
+	// merely unmanageable here - it is NOT reset on every apply, verified
+	// live (v0.29.13, 2026-07-29) by setting thirteen fields away from their
+	// defaults and issuing an update carrying only composeId and name.
+	"compose.update": {
+		"gitlabId":            "no gitlab provider observed live; shape would be inferred",
+		"gitlabProjectId":     "no gitlab provider observed live; shape would be inferred",
+		"gitlabRepository":    "no gitlab provider observed live; shape would be inferred",
+		"gitlabOwner":         "no gitlab provider observed live; shape would be inferred",
+		"gitlabBranch":        "no gitlab provider observed live; shape would be inferred",
+		"gitlabPathNamespace": "no gitlab provider observed live; shape would be inferred",
+
+		"bitbucketId":             "no bitbucket provider observed live; shape would be inferred",
+		"bitbucketRepository":     "no bitbucket provider observed live; shape would be inferred",
+		"bitbucketRepositorySlug": "no bitbucket provider observed live; shape would be inferred",
+		"bitbucketOwner":          "no bitbucket provider observed live; shape would be inferred",
+		"bitbucketBranch":         "no bitbucket provider observed live; shape would be inferred",
+
+		"giteaId":         "no gitea provider observed live; shape would be inferred",
+		"giteaRepository": "no gitea provider observed live; shape would be inferred",
+		"giteaOwner":      "no gitea provider observed live; shape would be inferred",
+		"giteaBranch":     "no gitea provider observed live; shape would be inferred",
+
+		"appName":       "server-generated; RequiresReplace on the resource, never updated",
+		"createdAt":     "server-generated; not user configuration",
+		"environmentId": "RequiresReplace on the resource; compose.move is the supported retarget and is not modelled",
+		"refreshToken":  "server-generated webhook token; rotating it is an imperative operation",
+		"composeStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
+		"env":           "set through compose.saveEnvironment, which is the endpoint the Dokploy UI uses",
 	},
 }
 
