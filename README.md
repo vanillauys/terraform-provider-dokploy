@@ -93,11 +93,17 @@ newer versions are exercised as they ship; older ones are untested.
   through the API, so `terraform destroy` on an imported one fails by design.
   Remove it from state instead.
 - **Names are not unique in Dokploy.** Every data source that looks up by
-  name (project, environment, application, and all five database engines)
-  errors when more than one record matches, rather than silently picking
-  one. Domain hosts are not unique either (the same host may be attached to
-  more than one domain); there is no `dokploy_domain` data source, so nothing
-  looks domains up by host.
+  name (project, environment, application, destination, and all five database
+  engines) errors when more than one record matches, rather than silently
+  picking one. Domain hosts are not unique either (the same host may be
+  attached to more than one domain); there is no `dokploy_domain` data
+  source, so nothing looks domains up by host.
+- **`dokploy_destination`'s data source does not expose credentials.**
+  `destination.one` returns `access_key` and `secret_access_key` in
+  cleartext, but the data source deliberately omits both: consumers need only
+  the id, and copying a shared backup target's credentials into every
+  consumer's state widens their blast radius for no gain. The resource still
+  carries them, since whoever creates the record has to supply them.
 
 ## Development
 

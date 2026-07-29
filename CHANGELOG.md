@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `dokploy_destination` **data source**: resolves an existing S3-compatible
+  backup destination by `name` or by `id`.
+
+  The use case is a shared backup target created once and referenced from
+  several projects, so `dokploy_backup.destination_id` and
+  `dokploy_volume_backup.destination_id` stop being hardcoded opaque ids.
+
+  `access_key` and `secret_access_key` are deliberately **not** exposed.
+  `destination.one` returns both in cleartext, but a data source exists to be
+  referenced, and copying a shared target's credentials into every consumer's
+  state widens their blast radius for no gain. The resource still carries
+  them.
+
+  Dokploy does not enforce name uniqueness on destinations, so an ambiguous
+  name is an error naming the match count, never `[0]`.
+
+### Changed
+
+- An unexempted `types.StringPointerValue` in `internal/resources` or
+  `internal/datasources` now fails the build. Dokploy returns a literal `""`
+  for an optional string cleared through its UI where a field never set
+  returns `null`, and `StringPointerValue` preserves the `""`, producing a
+  `"" -> null` diff no apply can settle. `acf76ab` fixed this as a manual
+  sweep in v0.4.0; nothing enforced it until now. No user-visible behaviour
+  change - `dokploy_schedule`, `dokploy_backup` and `dokploy_volume_backup`
+  were already correct, and now have tests saying so.
+
 ## [0.5.0] - 2026-07-28
 
 ### Added

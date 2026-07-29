@@ -14,6 +14,7 @@ import (
 	dsapplication "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/application"
 	dsdatabase "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/database"
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
+	dsdestination "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/destination"
 	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
@@ -203,5 +204,6 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		func() datasource.DataSource { return dsdatabase.NewDataSource(database.MongoKind(p.client))() },
 		dsenvironment.NewDataSource,
 		dsgitprovider.NewDataSource,
+		dsdestination.NewDataSource,
 	}
 }
