@@ -197,6 +197,66 @@
 // acceptance tests must not rely on the server's default image: a
 // bare-default mariadb or mongo instance will 500 the moment anything
 // calls saveExternalPort OR .deploy against it.
+//
+// # libsql: a sixth engine that does NOT fit the five-engine shape
+//
+// Probed live against the rig (v0.29.13, 2026-07-29, wave-5a task 3). LibSQL
+// is a Dokploy service type alongside the five engines above, and the mount /
+// backup / volumeBackups / schedule routers all already carry a libsqlId
+// parent column for it. It has databaseUser, databasePassword and
+// libsql.saveEnvironment, so it IS a database engine in Dokploy's sense - but
+// three findings put it outside the shared Kind abstraction in
+// internal/resources/database, and each of them was invisible from the five
+// engines above:
+//
+//	Finding                                       Consequence
+//	libsql.create returns literal `true`, not     createAndLocate is required, keyed on the
+//	the record (the five engines all return       environment's libsql slice. Same shape as
+//	the created record)                           backup.create, which returns literal null.
+//	THREE external ports, not one:                Kind models ONE external_port, and
+//	libsql.saveExternalPorts (PLURAL) carries     KindClient.SaveExternalPort takes a single
+//	externalPort, externalAdminPort and           *int64. Modelling only externalPort would
+//	externalGRPCPort                              leave two server-accepted fields silently
+//	                                              unmanaged.
+//	.create requires sqldNode (string),           Kind.CredentialAttrs is the only per-engine
+//	sqldPrimaryUrl (string|null) and              schema hook, and CredentialAttr.
+//	enableNamespaces (bool) on EVERY call         schemaAttribute() hardcodes
+//	(it is dialect A - see below)                 schema.StringAttribute, so a bool cannot be
+//	                                              expressed at all, and the two sqld fields
+//	                                              are not credentials.
+//
+// Dialects, which also differ from the five:
+//
+//   - libsql.create is DIALECT A. An empty body 400s naming all eleven
+//     fields: name, appName, environmentId, description, databaseUser,
+//     databasePassword, sqldNode, sqldPrimaryUrl, serverId, dockerImage,
+//     enableNamespaces. Every one must be transmitted on every create.
+//   - libsql.update is DIALECT B, like the other five: a partial body is
+//     accepted, an omitted key keeps the stored value, an explicit null
+//     clears. It also returns literal `true` rather than the record.
+//   - libsql.saveExternalPorts is DIALECT B, where every other engine's
+//     saveExternalPort is dialect A. An omitted port key KEEPS its stored
+//     value (verified: setting all three, then sending only externalPort,
+//     left externalAdminPort and externalGRPCPort untouched). An explicit
+//     null on one key clears that one.
+//   - libsql.saveExternalPorts additionally carries a CROSS-FIELD
+//     REFINEMENT: sending all three keys as explicit null 400s with
+//     "Either externalPort, externalGRPCPort or externalAdminPort must be
+//     provided." Clearing one port at a time works (including the last
+//     remaining one, since the other two are then absent rather than null),
+//     so a full clear needs three separate calls, not one.
+//
+// libsql.one reports not-found as HTTP 404 with "Libsql not found" - the
+// ordinary shape, NOT port.one's 400 anomaly.
+//
+// A working create body, for reference (dockerImage must be a tag that
+// actually pulls; the ghcr.io tag below was used for this probe):
+//
+//	{"name":"x","appName":"x-1","environmentId":"<env>","description":null,
+//	 "databaseUser":"libsql","databasePassword":"<pw>","sqldNode":"primary",
+//	 "sqldPrimaryUrl":null,"serverId":null,"enableNamespaces":false,
+//	 "dockerImage":"ghcr.io/tursodatabase/libsql-server:latest"}
+//
 // # Service child resources: mounts, port, redirects, security
 //
 // All probed live against the rig (v0.29.13, 2026-07-28, wave-3 task 2)
