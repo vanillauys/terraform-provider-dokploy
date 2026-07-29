@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dokploy_compose`: a Dokploy compose service - a `docker-compose` project or
+  a Docker Swarm `stack`.
+
+  Exactly one of the `github`, `git` or `raw` source blocks is required. `raw`
+  carries the compose file inline; the other two fetch it from a repository.
+  GitLab, Bitbucket and Gitea sources are **not** modelled, matching
+  `dokploy_application` and for the same reason: no instance has been available
+  to observe their shapes against.
+
+  A `dokploy_domain` can now be attached to a compose service through
+  `compose_id` and `service_name`. That pathway has existed since v0.1.0 for a
+  resource that did not exist yet.
+
+  Three server behaviours worth knowing, all found by acceptance tests going
+  red rather than by reading the API:
+
+  - `command` **replaces** the deploy invocation rather than adding to it.
+    Setting it to anything that does not itself deploy the stack makes every
+    deploy fail.
+  - `compose_path` cannot be cleared: the server rejects an empty string, so
+    the attribute is `Optional+Computed` and reverts to `./docker-compose.yml`
+    rather than to null.
+  - `auto_deploy` and `trigger_type` are genuinely nullable server-side, while
+    `enable_submodules`, `randomize`, `isolated_deployment` and
+    `isolated_deployments_volume` are not - the latter four accept a null and
+    silently store `false`, so they default to `false` instead.
+
+  `compose.deploy`, `compose.import`, `compose.randomizeCompose` and the rest
+  of the imperative family are deliberately not exposed, per the standing rule
+  that imperative operations are not Terraform resources.
+
 - `dokploy_destination` **data source**: resolves an existing S3-compatible
   backup destination by `name` or by `id`.
 

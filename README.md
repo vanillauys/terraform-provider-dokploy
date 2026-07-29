@@ -98,6 +98,18 @@ newer versions are exercised as they ship; older ones are untested.
   picking one. Domain hosts are not unique either (the same host may be
   attached to more than one domain); there is no `dokploy_domain` data
   source, so nothing looks domains up by host.
+- **`dokploy_compose` supports GitHub App, plain git and inline sources only.**
+  Dokploy also has GitLab, Bitbucket and Gitea sources, but none is modelled,
+  for the same reason there is only a `dokploy_github_provider` data source: no
+  instance has been available to observe their shapes against. The same gap
+  applies to `dokploy_application`.
+- **`dokploy_compose.command` replaces the deploy invocation.** Dokploy runs it
+  instead of `docker compose up`, not in addition to it, so setting it to
+  anything that does not itself deploy the stack makes every deploy fail.
+- **`dokploy_compose` owns the whole service**, the same way
+  `dokploy_application` does: applying it rewrites the source and operational
+  configuration wholesale, so anything changed in the Dokploy UI is replaced on
+  the next apply.
 - **`dokploy_destination`'s data source does not expose credentials.**
   `destination.one` returns `access_key` and `secret_access_key` in
   cleartext, but the data source deliberately omits both: consumers need only
