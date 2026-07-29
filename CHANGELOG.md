@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Four guides on the registry: getting started, adopting an existing Dokploy
+  instance, deploy semantics, and secrets and sensitive values. The
+  `-generate-config-out` limitation affecting all five database engines, and
+  the `dogfood/` harness that works around it, are now documented where a
+  provider user will find them rather than only in `dogfood/README.md`.
+
+### Changed
+
+- The README's known-limitations list is redistributed. Operational warnings
+  moved into the guide that covers them; schema and coverage gaps remain in
+  the README under **Coverage gaps**. Nothing was dropped.
+- The registry landing page (`templates/index.md.tmpl`) still carried the old
+  **Known limitations** section, in phrasings the README triage above had
+  already superseded, and it linked to none of the four new guides. Replaced
+  with a **Guides** list and the same **Before you start** set the README
+  gained. The one rule that existed nowhere else in user-facing form - that a
+  database engine owns its data mount - was carried into the adopting guide
+  first, and now states both halves explicitly: do not import that mount, and
+  do not declare one in fresh configuration either.
+- The README's guide links are relative repository paths rather than
+  `registry.terraform.io/.../latest/docs/guides/...` URLs. `latest` is
+  v0.6.0, which predates these guides, so every one of those links would have
+  404'd until a release ships.
+- `dokploy_project.example.environments[0].id` is replaced with the
+  order-independent `[for e in ... : e.id if e.name == "production"][0]`
+  filter across the guides and all 8 `examples/` files, and the reference
+  docs are regenerated to match. `BuildEnvironments` appends environments in
+  the API's response order with no sort, so `[0]` is not pinned to
+  `production` and silently misroutes once a project has a second
+  environment; the guides now name it as an anti-pattern, so the examples had
+  to stop demonstrating it.
+
 ## [0.6.0] - 2026-07-29
 
 ### Added

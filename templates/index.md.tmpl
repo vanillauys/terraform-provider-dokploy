@@ -23,31 +23,38 @@ Works with Terraform >= 1.5 and OpenTofu. Developed and tested against
 **Dokploy v0.29.13**; newer releases are exercised by the acceptance suite as
 they ship, older ones are untested.
 
+## Guides
+
+- [Getting started](guides/getting-started) - configure the provider and apply
+  a first project, database, application and domain.
+- [Adopting an existing Dokploy instance](guides/adopting-an-existing-instance) -
+  import a running server into state without recreating anything.
+- [Deploy semantics](guides/deploy-semantics) - `deploy_on_change`,
+  `deployment_timeout`, and how deploys fail.
+- [Secrets and sensitive values](guides/secrets) - environment variables,
+  database passwords, backup credentials.
+
+## Before you start
+
+Three things bite hardest, in order:
+
+1. **API keys are rate-limited, and an exhausted budget returns `401`, not
+   `429`.** A large apply can fail as an authentication error against a key
+   that works fine for single requests. See
+   [Getting started](guides/getting-started#before-your-first-apply-api-key-rate-limits).
+2. **`dokploy_application` and `dokploy_compose` own their whole service.**
+   Applying either replaces anything changed in the Dokploy UI. Manage a
+   service in Terraform or in the UI, not both. See
+   [Adopting an existing Dokploy instance](guides/adopting-an-existing-instance#decide-what-terraform-owns).
+3. **MariaDB's and MongoDB's default `docker_image` does not exist on Docker
+   Hub.** Set an explicit tag or every deploy fails. See
+   [Deploy semantics](guides/deploy-semantics#two-engines-whose-default-image-does-not-exist).
+
+This provider is pre-1.0: breaking changes land in minor releases until
+v1.0.0. Pin an exact version if you need stability.
+
 ## Example Usage
 
 {{ tffile "examples/provider/provider.tf" }}
 
 {{ .SchemaMarkdown }}
-
-## Known limitations
-
-- **Dokploy rate-limits API keys.** Keys are rate-limited server-side by
-  Dokploy's api-key plugin, and exceeding the limit is reported as `401
-  Unauthorized` rather than `429` — so it looks like an authentication failure.
-  Applying a large configuration, or one with long-running deploys (which this
-  provider polls while it waits), can exhaust the budget. If applies fail with
-  an unexpected 401 against a key that works for single requests, an API key
-  with rate limiting disabled is likely required.
-- **`dokploy_application` owns the whole application.** Applying it rewrites the
-  application's source, build and environment configuration wholesale, so
-  anything changed in the Dokploy UI is replaced on the next apply. Manage an
-  application either in Terraform or in the UI, not both. As of v0.4.0 it no
-  longer writes any field it does not model.
-- **Database services create their own data mount.** A `dokploy_postgres` (or
-  mysql/mariadb/mongo/redis) owns a volume mount for its data directory from
-  the moment it is created. That mount belongs to the server: do not import it
-  or declare it as a `dokploy_mount`.
-- **`terraform import` cannot recover provider-only attributes.**
-  `deploy_on_change` and `deployment_timeout` exist only in Terraform, so import
-  seeds them with their schema defaults (`true` / `"15m"`). Importing a resource
-  whose configuration sets a non-default value plans one diff to reconcile it.

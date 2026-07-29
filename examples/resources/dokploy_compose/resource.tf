@@ -5,7 +5,7 @@ resource "dokploy_project" "example" {
 # Inline compose file. Nothing is fetched: the YAML below is the source.
 resource "dokploy_compose" "inline" {
   name           = "inline-stack"
-  environment_id = dokploy_project.example.environments[0].id
+  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
   description    = "Defined entirely in Terraform"
 
   raw = {
@@ -27,7 +27,7 @@ data "dokploy_github_provider" "main" {
 
 resource "dokploy_compose" "from_github" {
   name           = "github-stack"
-  environment_id = dokploy_project.example.environments[0].id
+  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
 
   github = {
     repository = "my-stack"
@@ -45,7 +45,7 @@ resource "dokploy_compose" "from_github" {
 # From a plain git remote, run as a Docker Swarm stack.
 resource "dokploy_compose" "from_git" {
   name           = "git-stack"
-  environment_id = dokploy_project.example.environments[0].id
+  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
   compose_type   = "stack"
 
   git = {

@@ -54,7 +54,7 @@ data "dokploy_github_provider" "main" {
 
 resource "dokploy_application" "web" {
   name           = "web"
-  environment_id = dokploy_project.example.environments[0].id
+  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
 
   github = {
     owner      = "vanillauys"
