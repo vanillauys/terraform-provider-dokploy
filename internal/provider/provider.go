@@ -13,13 +13,14 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	dsapplication "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/application"
 	dsdatabase "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/database"
-	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dsdestination "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/destination"
+	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/backup"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/compose"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/destination"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
@@ -174,6 +175,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		schedule.NewResource,
 		volumebackup.NewResource,
 		backup.NewResource,
+		compose.NewResource,
 		appchild.NewResource(appchild.PortKind()),
 		appchild.NewResource(appchild.RedirectKind()),
 		appchild.NewResource(appchild.SecurityKind()),
