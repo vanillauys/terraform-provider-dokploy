@@ -302,10 +302,18 @@
 // from its default and then issuing an explicit null per field:
 //
 //	Group                        Fields                                    Struct shape
-//	Dialect C - "" clears, an     name, command, suffix, composeFile,       plain string, no omitempty.
-//	explicit null is a 400        composePath                              Caller maps a Terraform null
+//	Dialect C - "" clears, an     command, suffix, composeFile              plain string, no omitempty.
+//	explicit null is a 400                                                 Caller maps a Terraform null
 //	                                                                       to "", and Read maps both ""
 //	                                                                       and null back to null.
+//	Min-length 1 - NEITHER null   name, composePath                         plain string, no omitempty,
+//	nor "" is accepted; both                                               but the caller must never
+//	400 ("Too small: expected                                              produce "". name is Required
+//	string to have >=1                                                     on the resource; composePath
+//	characters")                                                           is Optional+Computed with a
+//	                                                                       default matching the server's
+//	                                                                       ./docker-compose.yml, because
+//	                                                                       it can never be cleared.
 //	Closed enums - null is a      sourceType (git|github|gitlab|            plain string, no omitempty.
 //	400 naming the options        bitbucket|gitea|raw),                     Always send a valid option.
 //	                              composeType (docker-compose|stack)
@@ -316,12 +324,32 @@
 //	                              randomize, isolatedDeployment,
 //	                              isolatedDeploymentsVolume, watchPaths
 //
+// `command` is a deploy-command SUBSTITUTE, not an addition. Dokploy runs it
+// in place of `docker compose up`, so a compose service that deploys cleanly
+// moves straight to composeStatus "error" the moment command is set to
+// anything that is not itself a working deploy command (verified live,
+// v0.29.13, 2026-07-29, with command="echo hi" on an otherwise-working
+// nginx:alpine stack). Acceptance fixtures that set it must not also deploy.
+//
+// The min-length group is the trap of the three: "" reads as the obvious way
+// to clear a dialect C string, and for command/suffix/composeFile it is - but
+// composePath and name reject it. A resource that treated all five alike 400s
+// on its very first apply, which is exactly how this row was found.
+//
 // Two consequences worth stating outright:
 //
-//   - triggerType and autoDeploy are genuinely NULLABLE columns, not merely
-//     defaulted. A bare create gives "push" and true, but an explicit null
-//     stores null, and compose.one then reports null. Model them as
-//     pointers; a bare bool would read a null record back as false.
+//   - triggerType, autoDeploy and watchPaths are genuinely NULLABLE columns,
+//     not merely defaulted. A bare create gives "push" and true, but an
+//     explicit null stores null, and compose.one then reports null. Model
+//     them as pointers; a bare bool would read a null record back as false.
+//   - enableSubmodules, randomize, isolatedDeployment and
+//     isolatedDeploymentsVolume are the opposite: their columns are NOT
+//     NULL, and an explicit null is ACCEPTED and then silently COERCED to
+//     false. Verified by setting all four true, sending null for each, and
+//     reading back false. The accepted-null makes them look nullable from
+//     the write side alone - only reading the record back distinguishes the
+//     two groups, and getting it wrong produces a `false -> null` diff that
+//     no apply can settle.
 //   - compose.update has NO write-through-on-absent trap. Verified by
 //     setting sourceType, composeType, composePath, triggerType, autoDeploy,
 //     randomize, isolatedDeployment, isolatedDeploymentsVolume,

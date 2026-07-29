@@ -11,18 +11,20 @@ import (
 
 func strPtr(s string) *string { return &s }
 
-// doc.go records that composeFile, composePath, command and suffix read back
-// as a literal "" rather than null - composeFile does so on a freshly
-// API-created record, which makes compose the one place in this provider
-// where the "" form is the SERVER's own default rather than a UI artefact.
-// Every one must collapse to a null attribute or the resource never
-// converges. The structural half is TestNoStringPointerValueOutsideExemptions
-// in internal/tfutil.
+// doc.go records that composeFile, command and suffix read back as a literal
+// "" rather than null - composeFile does so on a freshly API-created record,
+// which makes compose the one place in this provider where the "" form is the
+// SERVER's own default rather than a UI artefact. Each must collapse to a
+// null attribute or the resource never converges. The structural half is
+// TestNoStringPointerValueOutsideExemptions in internal/tfutil.
+//
+// compose_path is deliberately absent from this list; see
+// TestFlattenKeepsComposePathVerbatim.
 func TestFlattenEmptyStringsBecomeNull(t *testing.T) {
 	c := &client.Compose{
 		ComposeID: "c1", Name: "web", EnvironmentID: "env1",
 		SourceType: "github", ComposeType: "docker-compose",
-		ComposeFile: "", ComposePath: "", Command: "", Suffix: "",
+		ComposeFile: "", ComposePath: "./docker-compose.yml", Command: "", Suffix: "",
 		Description: strPtr(""), Env: strPtr(""), ServerID: strPtr(""),
 	}
 
@@ -32,16 +34,36 @@ func TestFlattenEmptyStringsBecomeNull(t *testing.T) {
 	}
 
 	for name, got := range map[string]types.String{
-		"compose_path": m.ComposePath,
-		"command":      m.Command,
-		"suffix":       m.Suffix,
-		"description":  m.Description,
-		"env":          m.Env,
-		"server_id":    m.ServerID,
+		"command":     m.Command,
+		"suffix":      m.Suffix,
+		"description": m.Description,
+		"env":         m.Env,
+		"server_id":   m.ServerID,
 	} {
 		if !got.IsNull() {
 			t.Errorf("%s = %q, want null: a \"\" from the server must collapse to null", name, got.ValueString())
 		}
+	}
+}
+
+// compose_path is the one string here that must NOT collapse. compose.update
+// gives it a minimum length of 1, so "" is a 400 and the server always holds
+// a real path - defaulting to ./docker-compose.yml. The attribute is
+// Optional+Computed with that same default, so collapsing a server value to
+// null would make the very common default-valued record diff forever against
+// its own default.
+func TestFlattenKeepsComposePathVerbatim(t *testing.T) {
+	c := &client.Compose{ComposeID: "c1", SourceType: "raw", ComposePath: "./docker-compose.yml"}
+
+	var m resourceModel
+	if diags := flatten(context.Background(), c, &m); diags.HasError() {
+		t.Fatalf("flatten: %v", diags)
+	}
+	if m.ComposePath.IsNull() {
+		t.Fatal("compose_path collapsed to null; it is Optional+Computed with a default and the server never stores \"\"")
+	}
+	if got := m.ComposePath.ValueString(); got != "./docker-compose.yml" {
+		t.Errorf("compose_path = %q", got)
 	}
 }
 
@@ -79,14 +101,30 @@ func TestFlattenNullableColumnsStayNull(t *testing.T) {
 	if !m.TriggerType.IsNull() {
 		t.Errorf("trigger_type = %v, want null", m.TriggerType)
 	}
+}
+
+// The other four booleans are NOT NULL server-side: an explicit null is
+// coerced to false on write. They must resolve to a concrete false rather
+// than stay null, or they diff forever against their own schema default.
+func TestFlattenResolvesNotNullBooleansToFalse(t *testing.T) {
+	c := &client.Compose{ComposeID: "c1", SourceType: "github"}
+
+	var m resourceModel
+	if diags := flatten(context.Background(), c, &m); diags.HasError() {
+		t.Fatalf("flatten: %v", diags)
+	}
+
 	for name, got := range map[string]types.Bool{
 		"enable_submodules":           m.EnableSubmodules,
 		"randomize":                   m.Randomize,
 		"isolated_deployment":         m.IsolatedDeployment,
 		"isolated_deployments_volume": m.IsolatedDeploymentsVolume,
 	} {
-		if !got.IsNull() {
-			t.Errorf("%s = %v, want null", name, got)
+		if got.IsNull() || got.IsUnknown() {
+			t.Errorf("%s = %v, want a concrete bool: the column is NOT NULL server-side", name, got)
+		}
+		if got.ValueBool() {
+			t.Errorf("%s = true, want false", name)
 		}
 	}
 }
@@ -187,7 +225,6 @@ func TestExpandUpdateMapsNullToEmptyStringOnDialectCFields(t *testing.T) {
 
 	for name, got := range map[string]string{
 		"name":        req.Name,
-		"composePath": req.ComposePath,
 		"command":     req.Command,
 		"suffix":      req.Suffix,
 		"composeFile": req.ComposeFile,

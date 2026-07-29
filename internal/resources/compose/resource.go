@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -135,13 +136,30 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 		},
 
+		// compose_path is Optional+Computed WITH a Default, not a plain
+		// Optional, because it is the one field in this resource that cannot
+		// be cleared: compose.update's zod schema gives it a minimum length
+		// of 1, so "" is a 400 ("Too small: expected string to have >=1
+		// characters") - verified live, v0.29.13, 2026-07-29. The server
+		// always holds a non-empty value, defaulting to ./docker-compose.yml,
+		// so removing the attribute from configuration reverts to that
+		// default rather than to null. name has the same constraint but is
+		// Required, so it can never reach the wire empty.
 		"compose_path": schema.StringAttribute{
 			Optional:    true,
-			Description: "Path to the compose file inside the repository. Server default is `./docker-compose.yml`. Ignored by the `raw` source.",
+			Computed:    true,
+			Default:     stringdefault.StaticString("./docker-compose.yml"),
+			Description: "Path to the compose file inside the repository. Defaults to `./docker-compose.yml`; it cannot be set to an empty string. Ignored by the `raw` source.",
 		},
+		// command REPLACES the deploy invocation; it is not appended to it.
+		// Verified live (v0.29.13, 2026-07-29): a compose service that
+		// deploys cleanly moves straight to composeStatus "error" once
+		// command is set to anything that is not a working deploy command.
 		"command": schema.StringAttribute{
-			Optional:    true,
-			Description: "Override the command Dokploy runs for this stack.",
+			Optional: true,
+			Description: "Replaces the command Dokploy runs to deploy this stack (normally `docker compose up`). " +
+				"It is a substitute, not an addition: setting it to anything that does not itself deploy the stack " +
+				"makes every deploy fail. Leave it unset unless you specifically need to override the invocation.",
 		},
 		"suffix": schema.StringAttribute{
 			Optional:    true,
@@ -173,21 +191,28 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			ElementType: types.StringType,
 			Description: "Only auto-deploy when a change touches one of these paths.",
 		},
+		// These four are Optional+Computed WITH a Default, unlike auto_deploy
+		// and trigger_type above, because their columns are NOT NULL
+		// server-side: an explicit null on any of them is accepted and then
+		// coerced to false (verified live, v0.29.13, 2026-07-29 - set all
+		// four true, send null for each, read back false). A plain Optional
+		// would therefore read back false against a null configuration and
+		// diff forever.
 		"enable_submodules": schema.BoolAttribute{
-			Optional:    true,
-			Description: "Clone git submodules alongside the repository.",
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Clone git submodules alongside the repository. Defaults to `false`.",
 		},
 		"randomize": schema.BoolAttribute{
-			Optional:    true,
-			Description: "Randomise generated resource names, using `suffix`.",
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Randomise generated resource names, using `suffix`. Defaults to `false`.",
 		},
 		"isolated_deployment": schema.BoolAttribute{
-			Optional:    true,
-			Description: "Run the stack in an isolated Docker network.",
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Run the stack in an isolated Docker network. Defaults to `false`.",
 		},
 		"isolated_deployments_volume": schema.BoolAttribute{
-			Optional:    true,
-			Description: "Give the isolated deployment its own volume namespace.",
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Give the isolated deployment its own volume namespace. Defaults to `false`.",
 		},
 
 		// status deliberately has NO UseStateForUnknown: a deploy moves it

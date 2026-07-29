@@ -79,7 +79,13 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 	m.ServerID = tfutil.StringOrNull(c.ServerID)
 	m.ComposeType = types.StringValue(c.ComposeType)
 
-	m.ComposePath = tfutil.StringOrNull(&c.ComposePath)
+	// compose_path is the exception to the collapse rule: compose.update
+	// rejects "" with a minimum-length error, so the server always holds a
+	// non-empty value and the attribute is Optional+Computed with a matching
+	// default. Collapsing it would make a record whose path equals the
+	// default read as null and diff forever against its own default.
+	m.ComposePath = types.StringValue(c.ComposePath)
+
 	m.Command = tfutil.StringOrNull(&c.Command)
 	m.Suffix = tfutil.StringOrNull(&c.Suffix)
 	m.Env = tfutil.StringOrNull(c.Env)
@@ -87,16 +93,20 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 	m.Status = types.StringValue(c.ComposeStatus)
 	m.CreatedAt = types.StringValue(c.CreatedAt)
 
-	// The nullable operational columns. A null on the wire is a real stored
-	// state - doc.go records that an explicit null on triggerType or
-	// autoDeploy is accepted and stored - so it maps to a null attribute
-	// rather than to false or "".
+	// autoDeploy and triggerType are genuinely nullable: a null on the wire
+	// is a real stored state, so it maps to a null attribute rather than to
+	// false or "".
 	m.AutoDeploy = types.BoolPointerValue(c.AutoDeploy)
 	m.TriggerType = tfutil.StringOrNull(c.TriggerType)
-	m.EnableSubmodules = types.BoolPointerValue(c.EnableSubmodules)
-	m.Randomize = types.BoolPointerValue(c.Randomize)
-	m.IsolatedDeployment = types.BoolPointerValue(c.IsolatedDeployment)
-	m.IsolatedDeploymentsVolume = types.BoolPointerValue(c.IsolatedDeploymentsVolume)
+
+	// The other four booleans are NOT NULL server-side - an explicit null is
+	// coerced to false on write (doc.go) - so they resolve to a concrete
+	// bool. Their attributes are Optional+Computed with a false default to
+	// match; leaving them null here would diff against that default forever.
+	m.EnableSubmodules = boolOrFalse(c.EnableSubmodules)
+	m.Randomize = boolOrFalse(c.Randomize)
+	m.IsolatedDeployment = boolOrFalse(c.IsolatedDeployment)
+	m.IsolatedDeploymentsVolume = boolOrFalse(c.IsolatedDeploymentsVolume)
 
 	paths, pathDiags := types.ListValueFrom(ctx, types.StringType, c.WatchPaths)
 	diags.Append(pathDiags...)
@@ -127,6 +137,14 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 	}
 	return diags
 }
+
+// boolOrFalse resolves a nullable wire bool to a concrete Terraform bool.
+//
+// It exists for the four compose columns that are NOT NULL server-side but
+// still arrive as *bool because the client models the wire faithfully. A nil
+// can only mean the field was absent from the response, and false is what the
+// server would hold in that case.
+func boolOrFalse(b *bool) types.Bool { return types.BoolValue(b != nil && *b) }
 
 // sourceTypeFor derives the wire sourceType from which block is set.
 //
