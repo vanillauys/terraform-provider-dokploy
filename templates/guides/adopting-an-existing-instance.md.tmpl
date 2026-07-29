@@ -34,9 +34,11 @@ silently blanked.
 
 ## Enumerate what is on the server
 
-The repository ships a read-only harness under `dogfood/`. All three scripts
-issue HTTP GET only, and Dokploy exposes every mutation as POST, so none of
-them can modify the server.
+The repository ships a read-only harness under `dogfood/`. `introspect.py`
+and `generate_imports.py` issue HTTP GET only, and Dokploy exposes every
+mutation as POST; `dry-run.sh` issues no HTTP itself - it drives `terraform`
+and shells out to those same two scripts - so none of the three can modify
+the server.
 
 ```bash
 export DOKPLOY_ENDPOINT=https://dokploy.example.com
@@ -49,7 +51,13 @@ export DOKPLOY_API_KEY=...
 child resources. Secrets are reported as a length, never printed.
 
 `generate_imports.py` then emits Terraform `import` blocks for every live
-resource this provider supports.
+resource this provider supports, with one deliberate exception: each database
+engine's auto-created data-volume mount (`type == "volume"` and `volumeName ==
+appName + "-data"`) is skipped, marked with a `# skipped <id>: ...` comment in
+`imports.tf` rather than silently omitted. Importing it as a `dokploy_mount`
+would hand Terraform a volume the engine resource already recreates on its
+own, and `terraform destroy` on that mount would delete the database's data
+directory.
 
 ## The `-generate-config-out` gap, and why the harness patches around it
 
