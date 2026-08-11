@@ -47,6 +47,15 @@ type Libsql struct {
 
 // CreateLibsqlRequest.
 //
+// ServerID is a dialect-A field like the other eight required ones: a
+// *string WITHOUT omitempty, so a nil marshals to explicit JSON null.
+// Verified live (v0.29.13, 2026-08-11): omitting the key 400s with
+// "serverId: Invalid input: expected nonoptional, received undefined",
+// naming serverId specifically, while an explicit null succeeds (200). An
+// earlier draft of this struct carried `omitempty` here, which would have
+// dropped the key on every create with no serverId configured - the exact
+// class of bug the mustAlwaysSend table exists to catch.
+//
 // DockerImage is a plain string with omitempty, NOT a *string. This is a
 // third dialect, distinct from both A and B: the key may be OMITTED (the
 // server then stores its own default,
@@ -64,7 +73,7 @@ type CreateLibsqlRequest struct {
 	DatabasePassword string  `json:"databasePassword"`
 	SqldNode         string  `json:"sqldNode"`
 	SqldPrimaryURL   *string `json:"sqldPrimaryUrl"`
-	ServerID         *string `json:"serverId,omitempty"`
+	ServerID         *string `json:"serverId"`
 	EnableNamespaces bool    `json:"enableNamespaces"`
 	DockerImage      string  `json:"dockerImage,omitempty"`
 }

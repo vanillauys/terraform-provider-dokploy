@@ -3,11 +3,130 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+// libsqlOneJSON is a minimal valid libsql.one response, used to satisfy
+// CreateLibsql's follow-up GetLibsql call.
+const libsqlOneJSON = `{
+	"libsqlId": "lib1",
+	"name": "x",
+	"appName": "x-1",
+	"description": null,
+	"databaseUser": "libsql",
+	"databasePassword": "pw",
+	"sqldNode": "primary",
+	"sqldPrimaryUrl": null,
+	"enableNamespaces": false,
+	"dockerImage": "ghcr.io/tursodatabase/libsql-server:v0.24.32",
+	"env": null,
+	"externalPort": null,
+	"externalAdminPort": null,
+	"externalGRPCPort": null,
+	"command": null,
+	"cpuLimit": null,
+	"cpuReservation": null,
+	"memoryLimit": null,
+	"memoryReservation": null,
+	"replicas": 1,
+	"applicationStatus": "idle",
+	"environmentId": "e1",
+	"serverId": null,
+	"createdAt": "2026-08-11T00:00:00.000Z"
+}`
+
+// TestCreateLibsqlRequestMarshalsExplicitNulls pins the wire shape of
+// CreateLibsqlRequest against the dialect libsql.create actually speaks
+// (probed live, v0.29.13, 2026-08-11): every dialect-A field - including
+// serverId - must reach the server, nil or not, as an explicit JSON null;
+// only dockerImage (a real omit-or-400-on-null third dialect) and appName
+// (server-generated when left blank) may be absent from the body.
+//
+// This test exists because ServerID originally carried `omitempty`, which
+// silently dropped the key instead of sending null - a bug no other test in
+// this file would have caught, since none of them inspect the create
+// request body's exact key set.
+func TestCreateLibsqlRequestMarshalsExplicitNulls(t *testing.T) {
+	var createBody map[string]any
+	var listCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/environment.one":
+			listCalls++
+			if listCalls == 1 {
+				_, _ = fmt.Fprint(w, `{"libsql":[]}`)
+			} else {
+				_, _ = fmt.Fprint(w, `{"libsql":[{"libsqlId":"lib1","name":"x"}]}`)
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/api/libsql.create":
+			raw, _ := io.ReadAll(r.Body)
+			if err := json.Unmarshal(raw, &createBody); err != nil {
+				t.Fatalf("unmarshal create body: %v", err)
+			}
+			_, _ = fmt.Fprint(w, `true`)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/libsql.one":
+			_, _ = fmt.Fprint(w, libsqlOneJSON)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	c, _ := New(srv.URL, "k", false, "test")
+	if _, err := c.CreateLibsql(context.Background(), CreateLibsqlRequest{
+		Name:             "x",
+		EnvironmentID:    "e1",
+		DatabaseUser:     "libsql",
+		DatabasePassword: "pw",
+		SqldNode:         "primary",
+		EnableNamespaces: false,
+		// AppName, Description, SqldPrimaryURL, ServerID, DockerImage all
+		// left at their Go zero values on purpose.
+	}); err != nil {
+		t.Fatalf("CreateLibsql: %v", err)
+	}
+
+	// description and sqldPrimaryUrl are dialect-A *string fields: present,
+	// explicit null.
+	for _, k := range []string{"description", "sqldPrimaryUrl"} {
+		v, present := createBody[k]
+		if !present || v != nil {
+			t.Errorf("%s = %v (present=%v), want an explicit null", k, v, present)
+		}
+	}
+
+	// serverId is the field the fix round targeted: dialect-A like the
+	// eight above, so it must be present as an explicit null too - never
+	// omitted, which is what `omitempty` on this pointer used to do.
+	v, present := createBody["serverId"]
+	if !present || v != nil {
+		t.Errorf("serverId = %v (present=%v), want an explicit null", v, present)
+	}
+
+	// dockerImage is the one dialect-A-adjacent field allowed to be absent:
+	// omitting it lets the server apply its own default image.
+	if _, present := createBody["dockerImage"]; present {
+		t.Errorf("empty dockerImage must be omitted so the server applies its default: %v", createBody)
+	}
+
+	// appName is server-generated when blank; sending "" would collide with
+	// a caller who explicitly wants the empty string, which Dokploy never
+	// accepts for a name field anyway.
+	if _, present := createBody["appName"]; present {
+		t.Errorf("empty appName must be omitted: %v", createBody)
+	}
+
+	// Every required dialect-A field must still be present.
+	for _, k := range []string{"name", "environmentId", "databaseUser", "databasePassword", "sqldNode", "enableNamespaces"} {
+		if _, present := createBody[k]; !present {
+			t.Errorf("create body missing required field %q: %v", k, createBody)
+		}
+	}
+}
 
 // captureBodies records every request body sent to saveExternalPorts, so the
 // test can assert on the SEQUENCE of calls, not just the final state.
