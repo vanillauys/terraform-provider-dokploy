@@ -227,10 +227,15 @@
 //
 // Dialects, which also differ from the five:
 //
-//   - libsql.create is DIALECT A. An empty body 400s naming all eleven
-//     fields: name, appName, environmentId, description, databaseUser,
-//     databasePassword, sqldNode, sqldPrimaryUrl, serverId, dockerImage,
-//     enableNamespaces. Every one must be transmitted on every create.
+//   - libsql.create is DIALECT A for ten of its eleven fields: name, appName,
+//     environmentId, description, databaseUser, databasePassword, sqldNode,
+//     sqldPrimaryUrl, serverId, enableNamespaces. dockerImage is the
+//     exception, and is NOT dialect A - see CreateLibsqlRequest in libsql.go
+//     for the third dialect it needs: the key may be omitted (the server
+//     then applies its own default), but an explicit null 400s all the
+//     same. (Corrected wave 5c task 2; the wave-5a probe that first wrote
+//     this section had not yet isolated dockerImage's own behaviour from
+//     the other ten fields.)
 //   - libsql.update is DIALECT B, like the other five: a partial body is
 //     accepted, an omitted key keeps the stored value, an explicit null
 //     clears. It also returns literal `true` rather than the record.
@@ -242,9 +247,11 @@
 //   - libsql.saveExternalPorts additionally carries a CROSS-FIELD
 //     REFINEMENT: sending all three keys as explicit null 400s with
 //     "Either externalPort, externalGRPCPort or externalAdminPort must be
-//     provided." Clearing one port at a time works (including the last
-//     remaining one, since the other two are then absent rather than null),
-//     so a full clear needs three separate calls, not one.
+//     provided." Two explicit nulls in one request ARE accepted (corrected
+//     wave 5c task 2; the wave-5a probe had tried only one-null-at-a-time
+//     and three-nulls-together, and inferred a stricter rule than the
+//     server actually enforces). So a full clear needs TWO calls, not
+//     three: SaveLibsqlExternalPorts in libsql.go splits it two-then-one.
 //
 // libsql.one reports not-found as HTTP 404 with "Libsql not found" - the
 // ordinary shape, NOT port.one's 400 anomaly.
@@ -614,4 +621,52 @@
 //
 // backup.one, schedule.one and volumeBackups.one all return a proper 404
 // for a missing id. No repeat of port.one's 400 (see above).
+//
+// # libsql, wave 5c: sqldNode, the two-call port clear, and deploy timing
+//
+// internal/client/libsql.go is wave 5c task 2. It builds on the wave-5a
+// findings above, corrects the two of them that later probing overturned
+// (see the inline corrections in the "libsql: a sixth engine" section), and
+// adds the following, all probed live against the rig (v0.29.13, 2026-08-11):
+//
+//   - sqldNode is a closed enum: primary | replica. A value outside that set
+//     400s naming both options.
+//   - sqldPrimaryUrl is REQUIRED when sqldNode is "replica" - a replica
+//     created with sqldPrimaryUrl null 400s. A primary accepts null there,
+//     which is the normal case (a primary has no upstream to point at).
+//   - A replica rejects libsql.saveExternalPorts OUTRIGHT, regardless of
+//     payload - even a single-port, otherwise well-formed request 400s. Only
+//     a primary's ports are reachable through that endpoint. Task 5's schema
+//     must not offer external ports as configurable on a replica.
+//   - The three-null rejection on saveExternalPorts (see the correction
+//     above) is SYNTACTIC, not stateful: it fires from the request shape
+//     alone and does not consult whether the ports are already null. A
+//     libsql created bare (all three ports already unset) still 400s if
+//     asked to null all three in one call. SaveLibsqlExternalPorts in
+//     libsql.go handles this by splitting a full clear into two calls
+//     regardless of the ports' prior state, rather than trying to predict
+//     the rejection from what is already stored.
+//   - The server's working default image, confirmed by a bare create that
+//     omits dockerImage entirely: ghcr.io/tursodatabase/libsql-server:v0.24.32.
+//     This is the same tag pinned in the wave-5a working-create-body example
+//     above, now confirmed to be the actual server default rather than just
+//     a tag known to pull.
+//   - libsql.update was verified to genuinely mutate databaseUser,
+//     databasePassword, enableNamespaces and sqldNode, each checked with a
+//     value-set then a libsql.one read-back. This is unlike redis, whose
+//     databaseRootPassword libsql.update-style calls silently strip - libsql
+//     has no such trap on these four fields.
+//
+// ## libsql.deploy is synchronous, like postgres.deploy
+//
+// Task 5 needs fetchStatus to poll applicationStatus with no
+// deployment-history gate, the same pattern the five engines already use -
+// and that pattern is only safe if the POST does not return before the
+// deploy is actually done. Confirmed rather than assumed: against a scratch
+// libsql on its bare default image, a timed libsql.deploy call took 1.124s
+// wall-clock, and the very next libsql.one read reported
+// applicationStatus="done" - not "running", not "idle". No polling loop is
+// needed for libsql, matching postgres and unlike a hypothetical async
+// engine where fetchStatus would have to guard against reading a stale
+// terminal status. Verdict: DONE, the no-gate fetchStatus design holds.
 package client
