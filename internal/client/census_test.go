@@ -74,6 +74,8 @@ var endpointStructs = map[string]any{
 	"compose.create":                 CreateComposeRequest{},
 	"compose.update":                 UpdateComposeRequest{},
 	"compose.saveEnvironment":        SaveComposeEnvironmentRequest{},
+	"libsql.create":                  CreateLibsqlRequest{},
+	"libsql.update":                  UpdateLibsqlRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -202,6 +204,32 @@ var censusExempt = map[string]map[string]string{
 		"refreshToken":  "server-generated webhook token; rotating it is an imperative operation",
 		"composeStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
 		"env":           "set through compose.saveEnvironment, which is the endpoint the Dokploy UI uses",
+	},
+	// libsql.update is similar to compose.update: the endpoint accepts more
+	// fields than this client models. The Swarm fields are not exposed in
+	// Terraform (dokploy_application does not expose them either), and
+	// externalAdminPort, externalGRPCPort, externalPort are managed through a
+	// separate endpoint (libsql.saveExternalPorts, like compose.saveEnvironment
+	// handles env).
+	"libsql.update": {
+		"endpointSpecSwarm":   "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"healthCheckSwarm":    "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"labelsSwarm":         "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"modeSwarm":           "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"networkSwarm":        "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"placementSwarm":      "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"restartPolicySwarm":  "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"rollbackConfigSwarm": "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"updateConfigSwarm":   "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"stopGracePeriodSwarm": "Docker Swarm orchestration surface; dokploy_application does not expose it either",
+		"appName":        "server-generated; not user configuration",
+		"applicationStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
+		"createdAt":      "server-generated; not user configuration",
+		"env":            "set through libsql.saveEnvironment, which is the endpoint the Dokploy UI uses",
+		"environmentId":  "RequiresReplace on the resource; libsql.move is the supported retarget and is not modelled",
+		"externalAdminPort":  "managed through libsql.saveExternalPorts, not in the primary update endpoint",
+		"externalGRPCPort":   "managed through libsql.saveExternalPorts, not in the primary update endpoint",
+		"externalPort":       "managed through libsql.saveExternalPorts, not in the primary update endpoint",
 	},
 }
 
