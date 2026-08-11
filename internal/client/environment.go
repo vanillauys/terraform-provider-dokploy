@@ -108,9 +108,7 @@ type ServiceRef struct {
 // data-source lookup.
 //
 // environment.one embeds every service collection, so one call resolves a
-// name for any service kind. Only the kinds this provider ships resources
-// for are decoded; the rest (libsql, compose) are ignored until they have
-// resources too.
+// name for any service kind.
 //
 // Each engine's own Kind.Client.ListByEnvironment (internal/resources/
 // database/<engine>.go) decodes the matching field here: there is no other
@@ -123,6 +121,7 @@ type EnvironmentServices struct {
 	Redis        []ServiceRef
 	Mariadb      []ServiceRef
 	Mongo        []ServiceRef
+	Libsql       []ServiceRef
 }
 
 func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) (*EnvironmentServices, error) {
@@ -151,6 +150,10 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 			MongoID string `json:"mongoId"`
 			Name    string `json:"name"`
 		} `json:"mongo"`
+		Libsql []struct {
+			LibsqlID string `json:"libsqlId"`
+			Name     string `json:"name"`
+		} `json:"libsql"`
 	}
 	if err := c.Get(ctx, "/environment.one", url.Values{"environmentId": {environmentID}}, &raw); err != nil {
 		return nil, err
@@ -173,6 +176,9 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 	}
 	for _, m := range raw.Mongo {
 		out.Mongo = append(out.Mongo, ServiceRef{ID: m.MongoID, Name: m.Name})
+	}
+	for _, s := range raw.Libsql {
+		out.Libsql = append(out.Libsql, ServiceRef{ID: s.LibsqlID, Name: s.Name})
 	}
 	return out, nil
 }
