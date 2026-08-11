@@ -109,7 +109,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		},
 		"sqld_primary_url": schema.StringAttribute{
 			Optional:    true,
-			Description: "URL of the primary sqld node. Required when `sqld_node` is `replica`; rejected by the server for a `primary`.",
+			Description: "URL of the primary sqld node. Required when `sqld_node` is `replica`. A primary normally leaves this null.",
 		},
 		// enable_namespaces has a Default, not a plain Optional: the wire
 		// field (client.Libsql.EnableNamespaces) is a plain bool, never
@@ -453,6 +453,28 @@ func (r *libsqlResource) Update(ctx context.Context, req resource.UpdateRequest,
 	id := state.ID.ValueString()
 	plan.ID = state.ID
 
+	// Ordering rule: a transition INTO "replica" must clear any external
+	// ports BEFORE UpdateLibsql flips sqldNode, not after. A replica
+	// rejects every libsql.saveExternalPorts call outright, regardless of
+	// payload (internal/client/doc.go, "libsql, wave 5c": "A replica
+	// rejects libsql.saveExternalPorts OUTRIGHT, regardless of payload").
+	// So if the flip happens first, the follow-up syncPorts call that was
+	// meant to clear the old ports 400s instead, and the apply can never
+	// converge - the user is stuck destroying and recreating. Every other
+	// transition keeps the update-then-sync order below: replica -> primary
+	// adding ports back needs the flip to land first, since the server
+	// still treats the service as a replica - and rejects saveExternalPorts
+	// - until it does. A steady-state replica (replica -> replica) takes
+	// this same post-update path too; syncPorts's empty-body short-circuit
+	// (see its doc comment) means that costs nothing.
+	becomingReplica := plan.SqldNode.ValueString() == "replica" && state.SqldNode.ValueString() != "replica"
+	if becomingReplica {
+		if err := r.syncPorts(ctx, plan, state); err != nil {
+			resp.Diagnostics.AddError("Saving external ports", err.Error())
+			return
+		}
+	}
+
 	// libsql.update carries every mutable field, so expandUpdate sends all
 	// of them from the model on every call, unconditionally - the same
 	// dialect-B reasoning as compose.update.
@@ -468,12 +490,14 @@ func (r *libsqlResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 	}
 
-	// syncPorts does its own per-port change detection (see its doc
-	// comment), so it is always safe to call unconditionally: when nothing
-	// changed it builds an empty body and issues no request.
-	if err := r.syncPorts(ctx, plan, state); err != nil {
-		resp.Diagnostics.AddError("Saving external ports", err.Error())
-		return
+	if !becomingReplica {
+		// syncPorts does its own per-port change detection (see its doc
+		// comment), so it is always safe to call unconditionally: when
+		// nothing changed it builds an empty body and issues no request.
+		if err := r.syncPorts(ctx, plan, state); err != nil {
+			resp.Diagnostics.AddError("Saving external ports", err.Error())
+			return
+		}
 	}
 
 	current, err := r.client.GetLibsql(ctx, id)
