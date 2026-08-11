@@ -25,6 +25,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/destination"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
+	libsqlresource "github.com/vanillauys/terraform-provider-dokploy/internal/resources/libsql"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/mount"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
@@ -176,6 +177,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		volumebackup.NewResource,
 		backup.NewResource,
 		compose.NewResource,
+		libsqlresource.NewResource,
 		appchild.NewResource(appchild.PortKind()),
 		appchild.NewResource(appchild.RedirectKind()),
 		appchild.NewResource(appchild.SecurityKind()),
