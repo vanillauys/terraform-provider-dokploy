@@ -4,7 +4,8 @@
 // It is modelled on internal/resources/compose, its nearest neighbour in
 // structure: NewResource, Metadata, Schema, Configure, setComputed,
 // deployAndWait, persistPartial, Create, Read, Update, Delete and
-// ImportState all mirror that package. Two things diverge, both forced by
+// ImportState all mirror that package, including compose's Create ->
+// follow-up Update sequencing (below). One thing diverges, forced by
 // Task 2's live probe (v0.29.13, 2026-07-29):
 //
 //   - fetchStatus follows internal/resources/database/resource.go instead of
@@ -16,15 +17,14 @@
 //     "libsql" with a 400. libsql.deploy is also synchronous (~1.1s, status
 //     already "done" on return), so the database-style no-gate fetchStatus
 //     is safe here for the same reason it is safe for postgres.
-//   - Create has no follow-up UpdateLibsql call. Compose's Create calls
-//     UpdateCompose right after CreateCompose because compose.create only
-//     accepts seven fields. libsql.create's request shape (CreateLibsqlRequest)
-//     simply has no JSON keys for command/cpu_limit/cpu_reservation/
-//     memory_limit/memory_reservation/replicas at all - they exist only on
-//     UpdateLibsqlRequest. So a first apply that sets any of those leaves a
-//     diff that the next apply's Update converges, the same "next apply
-//     converges" contract persistPartial already documents for a failed
-//     step.
+//
+// Create calls UpdateLibsql right after CreateLibsql, mirroring compose's
+// Create -> UpdateCompose sequencing exactly: libsql.create's request shape
+// (CreateLibsqlRequest) has no JSON keys at all for command/cpu_limit/
+// cpu_reservation/memory_limit/memory_reservation/replicas - they exist
+// only on UpdateLibsqlRequest - so without the follow-up call those fields
+// are silently ignored on the FIRST apply and only take effect on a later
+// one, the same bug compose's Create is written to avoid.
 package libsql
 
 import (
@@ -373,6 +373,18 @@ func (r *libsqlResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	plan.ID = types.StringValue(created.LibsqlID)
+
+	// libsql.create's request shape (CreateLibsqlRequest) has no JSON keys
+	// at all for command/cpu_limit/cpu_reservation/memory_limit/
+	// memory_reservation/replicas - they exist only on UpdateLibsqlRequest.
+	// Without this follow-up call they are silently ignored on the FIRST
+	// apply and only take effect on a later one - the same bug compose's
+	// Create is written to avoid, since compose.create also only accepts a
+	// subset of the fields compose.update does.
+	if err := r.client.UpdateLibsql(ctx, expandUpdate(&plan)); err != nil {
+		r.persistPartial(ctx, resp, plan, "applying the operational settings", err)
+		return
+	}
 
 	if !plan.Env.IsNull() {
 		// Nothing to clear on a fresh service; only save when set.
