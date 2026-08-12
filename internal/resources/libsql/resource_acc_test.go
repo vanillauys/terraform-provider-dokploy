@@ -110,6 +110,51 @@ resource "dokploy_libsql" "r" {
 	})
 }
 
+// TestAccLibsql_primaryRejectsPrimaryURL is the mirror of
+// TestAccLibsqlReplicaRequiresPrimaryURL above: a non-replica must not
+// carry sqld_primary_url at all - probed live (v0.29.13, 2026-08-12; see
+// internal/client/doc.go's "libsql, wave 5c" section: a non-null
+// sqldPrimaryUrl 400s with "sqldPrimaryUrl should not be provided when
+// sqldNode is not 'replica'"). Neither step makes a real server call:
+// ValidateConfig runs at plan time, before any create is attempted.
+//
+//  1. sqld_node OMITTED entirely - the subtle case this check exists for.
+//     req.Config carries sqld_node as NULL here, not "primary": the schema
+//     Default only applies during planning, so ValidateConfig must treat a
+//     null sqld_node the same as an explicit "primary", not skip it.
+//  2. sqld_node set to the literal string "primary".
+func TestAccLibsql_primaryRejectsPrimaryURL(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "dokploy_libsql" "r" {
+  name              = "primary-with-url-implicit"
+  environment_id    = "env-placeholder"
+  database_user     = "libsql"
+  database_password = "pw"
+  sqld_primary_url  = "http://primary:8080"
+}`,
+				ExpectError: regexp.MustCompile(`sqld_primary_url`),
+			},
+			{
+				Config: `
+resource "dokploy_libsql" "r" {
+  name              = "primary-with-url-explicit"
+  environment_id    = "env-placeholder"
+  database_user     = "libsql"
+  database_password = "pw"
+  sqld_node         = "primary"
+  sqld_primary_url  = "http://primary:8080"
+}`,
+				ExpectError: regexp.MustCompile(`sqld_primary_url`),
+			},
+		},
+	})
+}
+
 // TestAccLibsql_lifecycle is the full create/update/import/destroy pass,
 // asserted through client.GetLibsql rather than Terraform state (spec §7).
 // database_password is never printed: assertions on it use

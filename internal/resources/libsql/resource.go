@@ -109,7 +109,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		},
 		"sqld_primary_url": schema.StringAttribute{
 			Optional:    true,
-			Description: "URL of the primary sqld node. Required when `sqld_node` is `replica`. A primary normally leaves this null.",
+			Description: "URL of the primary sqld node. Required when `sqld_node` is `replica`; rejected by the server whenever `sqld_node` is not `replica`, including the default (`primary`).",
 		},
 		// enable_namespaces has a Default, not a plain Optional: the wire
 		// field (client.Libsql.EnableNamespaces) is a plain bool, never
@@ -226,7 +226,8 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	resp.Schema = schema.Schema{
 		Description: "A Dokploy libsql service: a distributed SQLite (`sqld`) database.\n\n" +
 			"~> A replica (`sqld_node = \"replica\"`) requires `sqld_primary_url`, and cannot set any external port. " +
-			"Dokploy rejects both violations at apply time; this provider catches them earlier, at plan time.",
+			"A non-replica (`sqld_node` unset or `\"primary\"`) must NOT set `sqld_primary_url`. " +
+			"Dokploy rejects all three violations at apply time; this provider catches them earlier, at plan time.",
 		Attributes: attrs,
 	}
 }
@@ -239,16 +240,47 @@ func (r *libsqlResource) Configure(_ context.Context, req resource.ConfigureRequ
 	}
 }
 
-// ValidateConfig enforces two cross-field rules a stock validator cannot
-// express, because both are conditional on sqld_node's value: a replica
-// requires sqld_primary_url, and a replica cannot have any external port.
+// ValidateConfig enforces three cross-field rules a stock validator cannot
+// express, all conditional on sqld_node's value: a replica requires
+// sqld_primary_url, a non-replica must NOT carry one, and a replica cannot
+// have any external port.
 func (r *libsqlResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var m resourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &m)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if m.SqldNode.IsUnknown() || m.SqldNode.ValueString() != "replica" {
+	if m.SqldNode.IsUnknown() {
+		return
+	}
+	// sqld_node carries a schema Default of "primary"
+	// (stringdefault.StaticString), but that Default only applies during
+	// planning - req.Config here is the raw, un-defaulted value, so a
+	// config that leaves sqld_node unset reads as NULL, not "primary".
+	// ValueString() on a null String also returns "", the same as on an
+	// unknown one, so isReplica below checks IsNull() explicitly rather
+	// than trusting ValueString() alone: a null sqld_node must take the
+	// SAME branch as an explicit "primary" below, because both become
+	// "primary" the moment the Default applies.
+	isReplica := !m.SqldNode.IsNull() && m.SqldNode.ValueString() == "replica"
+	if !isReplica {
+		// Verified live (v0.29.13, 2026-08-12): libsql.create rejects a
+		// non-null sqldPrimaryUrl whenever sqldNode is not "replica" -
+		// "sqldPrimaryUrl should not be provided when sqldNode is not
+		// 'replica'." This is the mirror of the replica-requires-it check
+		// below, and it must catch null-or-non-replica sqld_node, not just
+		// the literal string "primary": a config that leaves sqld_node
+		// unset still becomes "primary" once the schema Default applies,
+		// and the server rejects that combination exactly the same way.
+		if !m.SqldPrimaryURL.IsNull() && !m.SqldPrimaryURL.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("sqld_primary_url"),
+				"sqld_primary_url is not allowed unless sqld_node is \"replica\"",
+				"Dokploy rejects a libsql service with a non-null sqld_primary_url while sqld_node "+
+					"is not \"replica\" - including the default, \"primary\", when sqld_node is left "+
+					"unset. Remove sqld_primary_url or set sqld_node = \"replica\".",
+			)
+		}
 		return
 	}
 	// Verified live (v0.29.13, 2026-07-29): libsql.create rejects a replica

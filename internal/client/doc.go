@@ -640,7 +640,11 @@
 //     sqldNode that is not "replica" 400s too, with "sqldPrimaryUrl should
 //     not be provided when sqldNode is not 'replica'". So the field is
 //     genuinely tied to sqldNode in both directions, not just the
-//     required-for-replica direction.
+//     required-for-replica direction. dokploy_libsql's ValidateConfig
+//     (resource.go) catches both directions at plan time now, mirroring
+//     each other: a null sqld_node counts as the non-replica branch here,
+//     since the schema Default turns it into "primary" before Create ever
+//     runs.
 //   - A replica rejects libsql.saveExternalPorts OUTRIGHT, regardless of
 //     payload - even a single-port, otherwise well-formed request 400s. Only
 //     a primary's ports are reachable through that endpoint. Task 5's schema
