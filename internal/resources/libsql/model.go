@@ -80,8 +80,17 @@ func strPtr(v types.String) *string {
 
 func expandCreate(m *resourceModel) client.CreateLibsqlRequest {
 	return client.CreateLibsqlRequest{
-		Name:             m.Name.ValueString(),
-		AppName:          m.AppName.ValueString(),
+		Name: m.Name.ValueString(),
+		// AppName always carries a name-derived value, never m.AppName: the
+		// server rejects both an absent and an empty appName key (verified
+		// live, v0.29.13, 2026-08-12 - see internal/client/libsql.go's
+		// CreateLibsqlRequest doc comment), and it appends a random suffix to
+		// whatever value it receives, even a caller-supplied one. So the
+		// resource never lets the config set app_name at all - it is
+		// Computed-only in resource.go's schema - and this seed value is only
+		// ever a starting point for the server's own uniqueness suffix, never
+		// the value that ends up stored.
+		AppName:          m.Name.ValueString(),
 		EnvironmentID:    m.EnvironmentID.ValueString(),
 		Description:      strPtr(m.Description),
 		DatabaseUser:     m.DatabaseUser.ValueString(),

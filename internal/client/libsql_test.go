@@ -41,15 +41,20 @@ const libsqlOneJSON = `{
 
 // TestCreateLibsqlRequestMarshalsExplicitNulls pins the wire shape of
 // CreateLibsqlRequest against the dialect libsql.create actually speaks
-// (probed live, v0.29.13, 2026-08-11): every dialect-A field - including
-// serverId - must reach the server, nil or not, as an explicit JSON null;
-// only dockerImage (a real omit-or-400-on-null third dialect) and appName
-// (server-generated when left blank) may be absent from the body.
+// (probed live, v0.29.13, 2026-08-12): every dialect-A field - including
+// serverId and appName - must reach the server, nil or not, as an explicit
+// JSON null or a real value; only dockerImage (a real omit-or-400-on-null
+// third dialect) may be absent from the body.
 //
 // This test exists because ServerID originally carried `omitempty`, which
 // silently dropped the key instead of sending null - a bug no other test in
 // this file would have caught, since none of them inspect the create
-// request body's exact key set.
+// request body's exact key set. Wave 5c task 6 found the same bug on
+// AppName, live rather than in a unit test: nothing here had asserted the
+// key's presence, so an incorrect `omitempty` (the belief that the server
+// always generated app_name from nothing) shipped and 400'd every
+// acceptance test's first create. See CreateLibsqlRequest's doc comment in
+// libsql.go for the live probe transcript.
 func TestCreateLibsqlRequestMarshalsExplicitNulls(t *testing.T) {
 	var createBody map[string]any
 	var listCalls int
@@ -79,13 +84,17 @@ func TestCreateLibsqlRequestMarshalsExplicitNulls(t *testing.T) {
 	c, _ := New(srv.URL, "k", false, "test")
 	if _, err := c.CreateLibsql(context.Background(), CreateLibsqlRequest{
 		Name:             "x",
+		AppName:          "x-app",
 		EnvironmentID:    "e1",
 		DatabaseUser:     "libsql",
 		DatabasePassword: "pw",
 		SqldNode:         "primary",
 		EnableNamespaces: false,
-		// AppName, Description, SqldPrimaryURL, ServerID, DockerImage all
-		// left at their Go zero values on purpose.
+		// Description, SqldPrimaryURL, ServerID, DockerImage all left at
+		// their Go zero values on purpose. AppName is set to a real value,
+		// unlike the rest: the server 400s on both an absent and an empty
+		// appName key, so a genuine caller (expandCreate in
+		// internal/resources/libsql/model.go) never leaves it blank.
 	}); err != nil {
 		t.Fatalf("CreateLibsql: %v", err)
 	}
@@ -113,15 +122,17 @@ func TestCreateLibsqlRequestMarshalsExplicitNulls(t *testing.T) {
 		t.Errorf("empty dockerImage must be omitted so the server applies its default: %v", createBody)
 	}
 
-	// appName is server-generated when blank; sending "" would collide with
-	// a caller who explicitly wants the empty string, which Dokploy never
-	// accepts for a name field anyway.
-	if _, present := createBody["appName"]; present {
-		t.Errorf("empty appName must be omitted: %v", createBody)
+	// appName must reach the server as the real value the caller supplied -
+	// the opposite of the old assertion here. The server 400s on an absent
+	// appName key just as it does on serverId's, so `omitempty` on this
+	// field is exactly the bug ServerID's comment above already names.
+	av, present := createBody["appName"]
+	if !present || av != "x-app" {
+		t.Errorf("appName = %v (present=%v), want the literal string \"x-app\"", av, present)
 	}
 
 	// Every required dialect-A field must still be present.
-	for _, k := range []string{"name", "environmentId", "databaseUser", "databasePassword", "sqldNode", "enableNamespaces"} {
+	for _, k := range []string{"name", "appName", "environmentId", "databaseUser", "databasePassword", "sqldNode", "enableNamespaces"} {
 		if _, present := createBody[k]; !present {
 			t.Errorf("create body missing required field %q: %v", k, createBody)
 		}

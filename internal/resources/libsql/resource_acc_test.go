@@ -444,13 +444,21 @@ resource "dokploy_libsql" "test" {
 // recreating. This test is that ordering, live, not just read from the
 // comment.
 //
-// deploy_on_change is false for both steps: a replica cannot actually
+// deploy_on_change is false for every step: a replica cannot actually
 // deploy without a genuine, reachable primary sqld instance, which this
 // test does not stand up (per this task's brief: "if the deploy step fails
 // for that reason, set deploy_on_change = false"). The property under test
 // is the clear-before-flip ordering, provable entirely through direct API
 // reads and an empty post-apply plan, with no live replication topology
 // required.
+//
+// A third step, added for task 6's open review finding, then drops
+// sqld_node and sqld_primary_url entirely - not by setting sqld_node back
+// to "primary" explicitly, which would never exercise the schema's Default
+// plan modifier at all. Dropping it is what proves the Default
+// (stringdefault.StaticString("primary"), resource.go) actually resets a
+// prior NON-default value, closing the one gap task 6's report flagged: no
+// test had set sqld_node away from its default and then dropped it.
 func TestAccLibsql_replicaTransitionClearsPorts(t *testing.T) {
 	name := acctest.RandomName("libsqlrepl")
 
@@ -533,6 +541,51 @@ resource "dokploy_libsql" "test" {
 					},
 				),
 			},
+			{
+				// Drop sqld_node and sqld_primary_url entirely. This closes
+				// the review finding from task 6's report: no earlier test
+				// set sqld_node away from its default and then dropped it, so
+				// nothing proved the Default plan modifier
+				// (stringdefault.StaticString("primary"), resource.go) really
+				// resets a NON-default prior value, as opposed to sqld_node
+				// simply having never been changed. deploy_on_change stays
+				// false throughout this test: a replica reverting to a bare
+				// primary would attempt a real deploy otherwise, which is not
+				// the property under test here.
+				Config: fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_libsql" "test" {
+  name              = %q
+  environment_id    = dokploy_project.test.environments[0].id
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  docker_image      = %q
+  deploy_on_change  = false
+}`, name+"-proj", name, libsqlImage),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "sqld_node", "primary"),
+					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "sqld_primary_url"),
+					func(s *terraform.State) error {
+						ls, err := getLibsql(s, "dokploy_libsql.test")
+						if err != nil {
+							return err
+						}
+						if ls.SqldNode != "primary" {
+							return fmt.Errorf("sqldNode = %q, want primary; the Default plan modifier did not reset it", ls.SqldNode)
+						}
+						if ls.SqldPrimaryURL != nil {
+							return fmt.Errorf("sqldPrimaryUrl = %v, want cleared", *ls.SqldPrimaryURL)
+						}
+						return nil
+					},
+				),
+			},
 		},
 	})
 }
@@ -540,24 +593,44 @@ resource "dokploy_libsql" "test" {
 // TestAccLibsql_optionalAttributesRevert drops every optional attribute
 // from config in one step and asserts plancheck.ExpectEmptyPlan(): a plain
 // Optional reverts to null, and an Optional+Computed attribute
-// (docker_image, sqld_node, enable_namespaces, replicas, app_name) reverts
-// to a non-null value, never null.
+// (docker_image, sqld_node, enable_namespaces, replicas) reverts to a
+// non-null value, never null. app_name is checked here too, but as a
+// stability proof, not a revert - see below for why.
 //
-// docker_image and app_name are the two exceptions worth flagging: unlike
-// sqld_node/enable_namespaces/replicas, neither carries a schema Default -
-// only UseStateForUnknown (internal/resources/libsql/resource.go). A
-// Default is re-applied on every plan where config is null, regardless of
-// prior state, so sqld_node/enable_namespaces/replicas truly reset to their
-// canonical default (primary/false/1) even if a previous step configured
-// something else. UseStateForUnknown alone does not: it just keeps
-// whatever value is already in state. So docker_image and app_name "revert"
-// only in the weaker sense of "never go null, and the plan stays empty" -
-// dropping docker_image here does NOT reset it to the server's bare
-// ghcr.io default if a prior step set something else; it stays at that
-// something else. This is a real behavioral difference the brief's single
-// phrase "revert to its default" does not distinguish, and this test's
-// docker_image assertion is written for the actual (state-carried) contract
-// rather than the shorthand phrase.
+// docker_image is one exception worth flagging: unlike sqld_node/
+// enable_namespaces/replicas, it carries no schema Default - only
+// UseStateForUnknown (internal/resources/libsql/resource.go). A Default is
+// re-applied on every plan where config is null, regardless of prior state,
+// so sqld_node/enable_namespaces/replicas truly reset to their canonical
+// default (primary/false/1) even if a previous step configured something
+// else. UseStateForUnknown alone does not: it just keeps whatever value is
+// already in state. So docker_image "reverts" only in the weaker sense of
+// "never goes null, and the plan stays empty" - dropping it here does NOT
+// reset it to the server's bare ghcr.io default if a prior step set
+// something else; it stays at that something else. This is a real
+// behavioral difference the brief's single phrase "revert to its default"
+// does not distinguish, and this test's docker_image assertion is written
+// for the actual (state-carried) contract rather than the shorthand phrase.
+//
+// app_name is a different kind of exception: after the appName blocker fix
+// (task-6-report.md, "appName blocker fix"), it is Computed-only, not
+// Optional+Computed - libsql.create requires a real, non-empty appName on
+// every call, and the server always appends its own random suffix to
+// whatever it receives, so a config-supplied literal could never converge.
+// This test never sets it in config - it cannot be set at all now - and
+// only checks that the value already in state survives the revert step
+// unchanged, which UseStateForUnknown guarantees.
+//
+// sqld_primary_url is deliberately absent from the set of plain-Optional
+// attributes this test sets and reverts: verified live (v0.29.13,
+// 2026-08-12), libsql.create 400s with "sqldPrimaryUrl should not be
+// provided when sqldNode is not 'replica'" the moment a non-null
+// sqldPrimaryUrl reaches the server while sqldNode stays at its "primary"
+// default - which is exactly the config this step would otherwise write.
+// See internal/client/doc.go's "libsql, wave 5c" section for the probe.
+// sqld_primary_url's set-then-clear path is covered instead by
+// TestAccLibsql_replicaTransitionClearsPorts, on a real replica where the
+// server actually accepts it.
 //
 // deploy_on_change is false throughout: the claim under test is which
 // values persist or clear server-side, not deploy behavior, and the
@@ -574,8 +647,9 @@ func TestAccLibsql_optionalAttributesRevert(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				// Every optional attribute set to a non-default value.
-				// app_name is deliberately never set here, matching the
-				// house rule (internal/resources/database/
+				// app_name is never set here - it is Computed-only, so
+				// config cannot set it at all - matching the house rule
+				// (internal/resources/database/
 				// optional_computed_acc_test.go's package comment): no
 				// engine's acceptance test sets it in config, since the
 				// server is free to alter a caller-supplied value.
@@ -594,7 +668,6 @@ resource "dokploy_libsql" "test" {
   docker_image        = %q
   description         = "set"
   env                 = "KEY=value"
-  sqld_primary_url    = "http://unused-while-primary:8080"
   command             = "/bin/probe"
   cpu_limit           = "0.5"
   cpu_reservation     = "0.25"
@@ -640,7 +713,6 @@ resource "dokploy_libsql" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "description"),
 					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "env"),
-					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "sqld_primary_url"),
 					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "command"),
 					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "cpu_limit"),
 					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "cpu_reservation"),
@@ -672,9 +744,6 @@ resource "dokploy_libsql" "test" {
 						}
 						if ls.Env != nil && *ls.Env != "" {
 							return fmt.Errorf("env = %v, want cleared", *ls.Env)
-						}
-						if ls.SqldPrimaryURL != nil && *ls.SqldPrimaryURL != "" {
-							return fmt.Errorf("sqldPrimaryUrl = %v, want cleared", *ls.SqldPrimaryURL)
 						}
 						if ls.Command != nil {
 							return fmt.Errorf("command = %v, want cleared", *ls.Command)

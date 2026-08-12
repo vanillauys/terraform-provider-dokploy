@@ -633,7 +633,14 @@
 //     400s naming both options.
 //   - sqldPrimaryUrl is REQUIRED when sqldNode is "replica" - a replica
 //     created with sqldPrimaryUrl null 400s. A primary accepts null there,
-//     which is the normal case (a primary has no upstream to point at).
+//     which is the normal case (a primary has no upstream to point at). The
+//     reverse also holds, confirmed live only in wave 5c task 6 (v0.29.13,
+//     2026-08-12 - task 5's report had flagged this direction as an
+//     unverified claim, not yet probed): a NON-null sqldPrimaryUrl on a
+//     sqldNode that is not "replica" 400s too, with "sqldPrimaryUrl should
+//     not be provided when sqldNode is not 'replica'". So the field is
+//     genuinely tied to sqldNode in both directions, not just the
+//     required-for-replica direction.
 //   - A replica rejects libsql.saveExternalPorts OUTRIGHT, regardless of
 //     payload - even a single-port, otherwise well-formed request 400s. Only
 //     a primary's ports are reachable through that endpoint. Task 5's schema
@@ -656,6 +663,66 @@
 //     value-set then a libsql.one read-back. This is unlike redis, whose
 //     databaseRootPassword libsql.update-style calls silently strip - libsql
 //     has no such trap on these four fields.
+//   - libsql.update accepts sqldNode: "replica" even while external ports
+//     are still set server-side - it does not cross-validate the two. Task
+//     5's review round found this the hard way: an early Update called
+//     UpdateLibsql (the flip) before syncPorts, and the flip itself always
+//     SUCCEEDED; only the follow-up saveExternalPorts call - the one meant
+//     to clear the now-stale ports - 400'd, because a replica rejects that
+//     endpoint outright (the bullet above). Had libsql.update itself
+//     rejected the flip while ports remained set, the bug would have
+//     surfaced at that call instead, not at the port-clear call after it.
+//     This is why resource.go's Update clears ports BEFORE flipping
+//     sqldNode to "replica" (the becomingReplica branch), rather than
+//     relying on the server to refuse an inconsistent combination: nothing
+//     stops the server from storing sqldNode="replica" with a stale port
+//     still on the record if the provider does not clear it first.
+//
+// ## The appName blocker: required, and always server-suffixed
+//
+// Wave 5c task 6's acceptance run stopped at the first libsql.create for
+// every one of its five new tests, all with the same 400. Isolated and
+// probed live against the same rig (v0.29.13, 2026-08-12), against a
+// scratch project cleaned up immediately after:
+//
+//	POST /libsql.create   (appName key OMITTED entirely)
+//	-> 400 {"fieldErrors":{"appName":["Invalid input: expected nonoptional,
+//	        received undefined"]}}
+//
+//	POST /libsql.create   (appName: "")
+//	-> 400 {"fieldErrors":{"appName":["Too small: expected string to have
+//	        >=1 characters"]}}
+//
+//	POST /libsql.create   (appName: "probe6-fix")
+//	-> 200 true
+//	GET  /libsql.one?libsqlId=<id>
+//	-> {"appName":"probe6-fix-b8aed6", ...}
+//
+// So appName is genuinely dialect A - a required, non-empty string, exactly
+// as this section's opening list already classified it - and
+// CreateLibsqlRequest's `omitempty` on that field (internal/client/
+// libsql.go) was the bug: app_name is Optional+Computed with no Default, so
+// a config that omits it plans an unknown value, ValueString() on an
+// unknown value reads "", and omitempty then dropped the key the server
+// requires.
+//
+// The THIRD line above is the reason the fix is not simply "always send
+// app_name": the server appends its own random suffix to whatever appName
+// it receives, even a caller-supplied literal like "probe6-fix" above -
+// the same behavior already documented for postgres's app_name
+// (internal/resources/database/optional_computed_acc_test.go) and observed
+// again independently during task 6's own diagnosis
+// ("probe-libsql-app" stored back as "probe-libsql-app-jaaysi"). A second
+// create with the same literal appName was not probed - it did not need to
+// be, since the suffix behavior alone already rules out a config-supplied
+// value ever converging. A Terraform config that set app_name to a literal
+// would plan a value the server can never actually store, which fails
+// apply with "Provider produced inconsistent result after apply" instead
+// of the create-time 400 above - a different, equally fatal error. So
+// app_name is Computed-only in the schema (resource.go), never Optional:
+// expandCreate (model.go) seeds the wire value from name, and the server's
+// suffix is what makes the result unique; UseStateForUnknown then pins
+// whatever the server actually returns.
 //
 // ## libsql.deploy is synchronous, like postgres.deploy
 //

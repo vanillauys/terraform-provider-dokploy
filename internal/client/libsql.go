@@ -47,14 +47,39 @@ type Libsql struct {
 
 // CreateLibsqlRequest.
 //
-// ServerID is a dialect-A field like the other eight required ones: a
-// *string WITHOUT omitempty, so a nil marshals to explicit JSON null.
-// Verified live (v0.29.13, 2026-08-11): omitting the key 400s with
-// "serverId: Invalid input: expected nonoptional, received undefined",
-// naming serverId specifically, while an explicit null succeeds (200). An
-// earlier draft of this struct carried `omitempty` here, which would have
-// dropped the key on every create with no serverId configured - the exact
-// class of bug the mustAlwaysSend table exists to catch.
+// ServerID is a dialect-A field like the other required ones: a *string
+// WITHOUT omitempty, so a nil marshals to explicit JSON null. Verified live
+// (v0.29.13, 2026-08-11): omitting the key 400s with "serverId: Invalid
+// input: expected nonoptional, received undefined", naming serverId
+// specifically, while an explicit null succeeds (200). An earlier draft of
+// this struct carried `omitempty` here, which would have dropped the key on
+// every create with no serverId configured - the exact class of bug the
+// mustAlwaysSend table exists to catch.
+//
+// AppName is a required, non-empty string WITHOUT omitempty too - the same
+// dialect-A shape as ServerID. Verified live (v0.29.13, 2026-08-12): an
+// omitted key 400s with "appName: Invalid input: expected nonoptional,
+// received undefined", and an explicit "" 400s with "appName: Too small:
+// expected string to have >=1 characters". The caller must always send a
+// real, non-blank value.
+//
+// The server then appends a random suffix for uniqueness, on every create,
+// even when the caller supplies an explicit value: a probed create with
+// appName "probe6-fix" stored back as "probe6-fix-b8aed6" (v0.29.13,
+// 2026-08-12; see doc.go's "libsql, wave 5c" section for the full probe
+// transcript). So a caller-supplied literal can never match what the server
+// stores - internal/resources/libsql derives AppName from Name and treats
+// app_name as Computed-only in the schema for that reason (see model.go's
+// expandCreate and resource.go's app_name attribute).
+//
+// An earlier draft of this struct carried `omitempty` on AppName, on the
+// theory that the server would generate the whole value on its own when the
+// key was absent - the same shape DockerImage genuinely has. Wave 5c task
+// 6's acceptance run against the live rig proved that theory wrong: every
+// one of its five new tests 400'd at the first libsql.create, because an
+// unconfigured app_name planned as an unknown Terraform value, ValueString()
+// on an unknown value reads as "", and omitempty then dropped the key the
+// server requires.
 //
 // DockerImage is a plain string with omitempty, NOT a *string. This is a
 // third dialect, distinct from both A and B: the key may be OMITTED (the
@@ -66,7 +91,7 @@ type Libsql struct {
 // the server rejects. The plain string forecloses that.
 type CreateLibsqlRequest struct {
 	Name             string  `json:"name"`
-	AppName          string  `json:"appName,omitempty"`
+	AppName          string  `json:"appName"`
 	EnvironmentID    string  `json:"environmentId"`
 	Description      *string `json:"description"`
 	DatabaseUser     string  `json:"databaseUser"`

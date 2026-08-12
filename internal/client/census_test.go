@@ -222,7 +222,7 @@ var censusExempt = map[string]map[string]string{
 		"rollbackConfigSwarm":  "Docker Swarm orchestration surface; dokploy_application does not expose it either",
 		"updateConfigSwarm":    "Docker Swarm orchestration surface; dokploy_application does not expose it either",
 		"stopGracePeriodSwarm": "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"appName":              "server-generated; RequiresReplace on the resource, never updated",
+		"appName":              "server-generated (suffixed for uniqueness on every create); Computed-only on the resource, so no config path exists to change it and libsql.update never needs to send it",
 		"applicationStatus":    "server-mutable status; a deploy moves it, Terraform must not write it",
 		"createdAt":            "server-generated; not user configuration",
 		"env":                  "set through libsql.saveEnvironment, which is the endpoint the Dokploy UI uses",
