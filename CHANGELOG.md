@@ -8,6 +8,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `dokploy_libsql` resource and data source: a Dokploy LibSQL (`sqld`)
+  database service - a distributed SQLite database.
+
+  It sits outside the shared `database.Kind` abstraction the other five
+  engines use, even though Dokploy treats it as a database engine in every
+  other sense - it has `database_user`/`database_password` and its own
+  `saveEnvironment` endpoint. Three server behaviours break the shared
+  abstraction: `libsql.create` returns the literal `true` rather than the
+  created record, so the resource has to locate it itself the same way
+  `dokploy_backup` does; `libsql.saveExternalPorts` carries three ports
+  (`external_port`, `external_admin_port`, `external_grpc_port`) where
+  `Kind.SaveExternalPort` only models one; and `sqld_node`, `sqld_primary_url`
+  and `enable_namespaces` are fields none of the five engines have, one of
+  them a bool, which `Kind.CredentialAttrs` cannot express.
+
+  Clearing all three external ports at once takes two `saveExternalPorts`
+  calls, not one: the server 400s a single request that nulls all three
+  ports together ("Either externalPort, externalGRPCPort or
+  externalAdminPort must be provided"), so a full clear is split
+  two-then-one.
+
+  Three cross-field rules are enforced at plan time, not left for the server
+  to reject at apply: `sqld_node = "replica"` requires `sqld_primary_url`; a
+  non-replica - including the default, `"primary"` - must NOT set
+  `sqld_primary_url`; and a replica cannot set any of the three external
+  ports at all, since Dokploy rejects every `saveExternalPorts` call while
+  `sqld_node` is `replica`, regardless of which ports the request carries. A
+  transition from `primary` into `replica` clears the external ports before
+  flipping `sqld_node`, not after - `libsql.update` accepts the flip while
+  ports are still set server-side, and flipping first would leave those
+  ports permanently stuck, since a replica rejects the very call that would
+  clear them.
+
+  `app_name` is Computed-only, the only attribute in this provider that
+  works this way. `libsql.create` requires a non-empty `appName` on every
+  call and always appends a random, server-generated suffix to whatever it
+  receives, even a caller-supplied literal, so a configuration-supplied
+  value could never match what the server actually stores. The resource
+  seeds the create call from `name` and reads back the server's suffixed
+  value instead.
+
+  Replica mode is modelled and its cross-field rules are enforced, but it is
+  not functionally verified: no replica has been stood up against a real
+  primary to confirm it actually deploys and replicates.
+
 - Four guides on the registry: getting started, adopting an existing Dokploy
   instance, deploy semantics, and secrets and sensitive values. The
   `-generate-config-out` limitation affecting all five database engines, and

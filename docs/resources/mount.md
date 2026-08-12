@@ -55,7 +55,7 @@ resource "dokploy_mount" "config" {
 
 - `mount_path` (String) Path inside the container to mount at.
 - `service_id` (String) Id of the service this mount attaches to. Changing it forces replacement: Dokploy's update endpoint sets the new parent without clearing the old one, leaving the mount owned by two services at once.
-- `service_type` (String) Kind of service `service_id` refers to: one of `application`, `postgres`, `mysql`, `mariadb`, `mongo`, `redis`, `compose`, `libsql`. Changing it forces replacement, for the same reason as `service_id`. `libsql` is accepted by the server but has no corresponding resource in this provider yet.
+- `service_type` (String) Kind of service `service_id` refers to: one of `application`, `postgres`, `mysql`, `mariadb`, `mongo`, `redis`, `compose`, `libsql`. Changing it forces replacement, for the same reason as `service_id`.
 - `type` (String) Mount kind: `bind` (host path), `volume` (named Docker volume), or `file` (inline content written into the container).
 
 ### Optional

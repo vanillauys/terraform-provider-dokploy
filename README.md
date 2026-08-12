@@ -64,7 +64,7 @@ v1.0.0. Pin an exact version if you need stability.
 What the provider does not model yet, and why.
 
 - **Not everything Dokploy can do is covered yet.** Databases beyond
-  PostgreSQL, MySQL, MariaDB, MongoDB and Redis (notably LibSQL), registries,
+  PostgreSQL, MySQL, MariaDB, MongoDB, Redis and LibSQL, registries,
   SSH keys, certificates, notifications and remote servers all still have to
   be managed in the Dokploy UI.
 - **`dokploy_backup` cannot back up Redis**, because Dokploy has no logical
@@ -84,6 +84,13 @@ What the provider does not model yet, and why.
   option (standalone vs. replica-set topology) that this provider does not
   currently expose as a Terraform attribute; every `dokploy_mongo` instance
   is created in the server's default standalone mode.
+- **`dokploy_libsql`'s replica mode is accepted but never functionally
+  verified.** `sqld_node = "replica"` and `sqld_primary_url` are modelled, and
+  Dokploy's own validation rules for them are enforced at plan time, but no
+  replica has been stood up against a real primary to confirm it deploys and
+  replicates. A replica also cannot have any external port: Dokploy rejects
+  every `saveExternalPorts` call while `sqld_node` is `replica`, regardless of
+  which ports the request carries.
 - **Names are not unique in Dokploy.** Every data source that looks up by
   name (project, environment, application, destination, and all five database
   engines) errors when more than one record matches, rather than silently

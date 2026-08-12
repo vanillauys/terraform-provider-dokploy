@@ -11,7 +11,7 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 - **Projects and environments**
 - **Applications** from GitHub App, plain git, or Docker image sources
 - **Compose services**: `docker-compose` projects and Docker Swarm stacks, from GitHub App, plain git, or an inline compose file
-- **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB and Redis
+- **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB, Redis and LibSQL
 - **Routing**: domains, published ports, Traefik redirects, HTTP basic auth
 - **Storage**: bind, volume and file mounts on any service
 - **Backups**: S3-compatible destinations, scheduled database dumps and Docker volume archives

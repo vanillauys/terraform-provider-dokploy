@@ -42,6 +42,7 @@ ONE = {
     "dokploy_mariadb": ("mariadb.one", "mariadbId"),
     "dokploy_mongo": ("mongo.one", "mongoId"),
     "dokploy_redis": ("redis.one", "redisId"),
+    "dokploy_libsql": ("libsql.one", "libsqlId"),
     "dokploy_mount": ("mounts.one", "mountId"),
     "dokploy_port": ("port.one", "portId"),
     "dokploy_redirect": ("redirects.one", "redirectId"),
@@ -62,17 +63,19 @@ DATABASE_ENGINES = [
     ("mariadb", "dokploy_mariadb", "mariadbId"),
     ("mongo", "dokploy_mongo", "mongoId"),
     ("redis", "dokploy_redis", "redisId"),
+    ("libsql", "dokploy_libsql", "libsqlId"),
 ]
 
 
 def is_server_created_data_mount(service, mount):
     """A database engine's own data volume, which nothing asked for.
 
-    Creating a dokploy_postgres (or mysql/mariadb/mongo/redis) makes Dokploy
-    attach a volume mount for the container's data directory immediately --
-    verified live on the rig, v0.29.13, 2026-07-28: a freshly created
-    postgres already owns volumeName "<appName>-data" at
-    /var/lib/postgresql/18/docker.
+    Creating a dokploy_postgres (or mysql/mariadb/mongo/redis/libsql) makes
+    Dokploy attach a volume mount for the container's data directory
+    immediately -- verified live on the rig, v0.29.13, 2026-07-28: a freshly
+    created postgres already owns volumeName "<appName>-data" at
+    /var/lib/postgresql/18/docker. A fresh libsql was verified the same way
+    (v0.29.13, 2026-08-12): it owns a volumeName "<appName>-data" mount too.
 
     It is an ordinary, removable mount, but it belongs to the server, not to
     anyone's configuration. Importing it would put a Terraform resource in
