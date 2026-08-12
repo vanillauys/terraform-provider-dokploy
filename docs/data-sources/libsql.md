@@ -4,25 +4,12 @@ page_title: "dokploy_libsql Data Source - dokploy"
 subcategory: ""
 description: |-
   Looks up a Dokploy libsql service (a distributed SQLite / sqld database) already registered in Dokploy, by id or by name within an environment.
-  
-  data "dokploy_libsql" "main" {
-    environment_id = dokploy_project.app.environments[0].id
-    name           = "edge-cache"
-  }
-  
   ~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql service shares a name this data source fails rather than picking one; look the record up by id in that case.
 ---
 
 # dokploy_libsql (Data Source)
 
 Looks up a Dokploy libsql service (a distributed SQLite / `sqld` database) already registered in Dokploy, by id or by name within an environment.
-
-```terraform
-data "dokploy_libsql" "main" {
-  environment_id = dokploy_project.app.environments[0].id
-  name           = "edge-cache"
-}
-```
 
 ~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql service shares a name this data source fails rather than picking one; look the record up by `id` in that case.
 

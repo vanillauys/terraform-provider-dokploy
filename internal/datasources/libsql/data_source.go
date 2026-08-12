@@ -92,9 +92,6 @@ func (d *libsqlDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Description: "Looks up a Dokploy libsql service (a distributed SQLite / `sqld` database) already " +
 			"registered in Dokploy, by id or by name within an environment.\n\n" +
-			"```terraform\n" +
-			"data \"dokploy_libsql\" \"main\" {\n  environment_id = dokploy_project.app.environments[0].id\n  name           = \"edge-cache\"\n}\n" +
-			"```\n\n" +
 			"~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql " +
 			"service shares a name this data source fails rather than picking one; look the record up by " +
 			"`id` in that case.",
