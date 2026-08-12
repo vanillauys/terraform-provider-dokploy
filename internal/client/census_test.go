@@ -76,6 +76,8 @@ var endpointStructs = map[string]any{
 	"compose.saveEnvironment":        SaveComposeEnvironmentRequest{},
 	"libsql.create":                  CreateLibsqlRequest{},
 	"libsql.update":                  UpdateLibsqlRequest{},
+	"libsql.saveExternalPorts":       saveLibsqlExternalPortsShape{},
+	"libsql.saveEnvironment":         saveLibsqlEnvironmentShape{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.

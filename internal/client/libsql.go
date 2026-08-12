@@ -14,7 +14,7 @@ import (
 // bool (enableNamespaces) where CredentialAttr can only express strings, and
 // a create that returns literal `true` rather than the record.
 //
-// The nine *Swarm fields the endpoint also returns are deliberately not
+// The ten *Swarm fields the endpoint also returns are deliberately not
 // modelled here, matching dokploy_application, which exposes the same six
 // operational attributes and none of the Swarm ones. They are exempted in
 // census_test.go with that reason.
@@ -258,4 +258,26 @@ func (c *Client) SaveLibsqlExternalPorts(ctx context.Context, id string, port, a
 	}
 
 	return post(body)
+}
+
+// saveLibsqlExternalPortsShape exists for the endpoint census only. The
+// wire call builds a map because a port key must be omittable AND
+// nullable per call - see SaveLibsqlExternalPorts. The census still needs
+// a struct so a new server-side field on this endpoint fails
+// TestEndpointFieldCensus instead of rotting silently.
+type saveLibsqlExternalPortsShape struct {
+	LibsqlID          string `json:"libsqlId"`
+	ExternalPort      *int64 `json:"externalPort"`
+	ExternalAdminPort *int64 `json:"externalAdminPort"`
+	ExternalGRPCPort  *int64 `json:"externalGRPCPort"`
+}
+
+// saveLibsqlEnvironmentShape exists for the endpoint census only. The wire
+// call builds a map rather than sending a struct like
+// SaveComposeEnvironmentRequest - see SaveLibsqlEnvironment. The census
+// still needs a struct so a new server-side field on this endpoint fails
+// TestEndpointFieldCensus instead of rotting silently.
+type saveLibsqlEnvironmentShape struct {
+	LibsqlID string  `json:"libsqlId"`
+	Env      *string `json:"env"`
 }

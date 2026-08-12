@@ -296,7 +296,8 @@ func (r *libsqlResource) ValidateConfig(ctx context.Context, req resource.Valida
 	// Verified live: libsql.saveExternalPorts 400s for ANY payload while
 	// sqldNode is 'replica'. The server's message names externalGRPCPort,
 	// but the call fails even when the request carries only the other two
-	// ports. So a replica cannot have any external port at all.
+	// ports. So a replica cannot have any external port at all. An unknown
+	// port skips this plan-time check and the server enforces it at apply.
 	for _, p := range []struct {
 		name  string
 		value types.Int64
@@ -305,7 +306,7 @@ func (r *libsqlResource) ValidateConfig(ctx context.Context, req resource.Valida
 		{"external_admin_port", m.ExternalAdminPort},
 		{"external_grpc_port", m.ExternalGRPCPort},
 	} {
-		if !p.value.IsNull() {
+		if !p.value.IsNull() && !p.value.IsUnknown() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root(p.name),
 				"external ports are not supported on a replica",
