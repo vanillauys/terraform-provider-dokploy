@@ -38,6 +38,7 @@ func TestFlattenMapsNullPointersToNullValues(t *testing.T) {
 		CustomEntrypoint:   nil,
 		ServiceName:        nil,
 		ForwardAuthEnabled: false,
+		Enabled:            true,
 		Middlewares:        []string{},
 		DomainType:         "application",
 		UniqueConfigKey:    1,
@@ -62,5 +63,27 @@ func TestFlattenMapsNullPointersToNullValues(t *testing.T) {
 	}
 	if m.Port.ValueInt64() != 3000 {
 		t.Errorf("Port = %v, want 3000", m.Port)
+	}
+	if !m.Enabled.ValueBool() {
+		t.Errorf("Enabled = %v, want true", m.Enabled)
+	}
+}
+
+// enabled belongs only in flatten, not setComputed - it is user config, not
+// server-computed - so this pins the other half: expandUpdate must always
+// carry the plan value to the wire, matching Enabled's Replicas-pattern bare
+// bool with no omitempty on UpdateDomainRequest (dialect B: an omitted key
+// silently keeps the old value, which a config-driven field must never do).
+func TestExpandUpdateCarriesEnabled(t *testing.T) {
+	m := &resourceModel{Enabled: types.BoolValue(false)}
+	req := expandUpdate(m)
+	if req.Enabled {
+		t.Error("Enabled = true, want false")
+	}
+
+	m2 := &resourceModel{Enabled: types.BoolValue(true)}
+	req2 := expandUpdate(m2)
+	if !req2.Enabled {
+		t.Error("Enabled = false, want true")
 	}
 }

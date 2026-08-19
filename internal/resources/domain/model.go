@@ -25,6 +25,7 @@ type resourceModel struct {
 	CustomEntrypoint   types.String `tfsdk:"custom_entrypoint"`
 	ServiceName        types.String `tfsdk:"service_name"`
 	ForwardAuthEnabled types.Bool   `tfsdk:"forward_auth_enabled"`
+	Enabled            types.Bool   `tfsdk:"enabled"`
 	Middlewares        types.List   `tfsdk:"middlewares"`
 	DomainType         types.String `tfsdk:"domain_type"`
 	UniqueConfigKey    types.Int64  `tfsdk:"unique_config_key"`
@@ -62,6 +63,7 @@ func flatten(ctx context.Context, d *client.Domain, m *resourceModel) diag.Diagn
 	m.CustomEntrypoint = tfutil.StringOrNull(d.CustomEntrypoint)
 	m.ServiceName = tfutil.StringOrNull(d.ServiceName)
 	m.ForwardAuthEnabled = types.BoolValue(d.ForwardAuthEnabled)
+	m.Enabled = types.BoolValue(d.Enabled)
 	m.DomainType = types.StringValue(d.DomainType)
 	m.UniqueConfigKey = types.Int64Value(d.UniqueConfigKey)
 	m.ApplicationID = types.StringPointerValue(d.ApplicationID)
@@ -129,5 +131,6 @@ func expandUpdate(m *resourceModel) client.UpdateDomainRequest {
 		DomainType:         domainTypeFor(m),
 		ApplicationID:      m.ApplicationID.ValueStringPointer(),
 		ComposeID:          m.ComposeID.ValueStringPointer(),
+		Enabled:            m.Enabled.ValueBool(),
 	}
 }
