@@ -24,12 +24,12 @@ var mustAlwaysSend = []struct {
 	fields []string
 }{
 	{UpdateProjectRequest{}, []string{"description"}},
-	{UpdatePostgresRequest{}, []string{"description"}},
-	{UpdateMysqlRequest{}, []string{"description", "databaseRootPassword"}},
-	{UpdateMariadbRequest{}, []string{"description", "databaseRootPassword"}},
-	{UpdateRedisRequest{}, []string{"description"}},
-	{UpdateMongoRequest{}, []string{"description"}},
-	{UpdateApplicationRequest{}, []string{"description"}},
+	{UpdatePostgresRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
+	{UpdateMysqlRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork"}},
+	{UpdateMariadbRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork"}},
+	{UpdateRedisRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
+	{UpdateMongoRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
+	{UpdateApplicationRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
 	{UpdateDomainRequest{}, []string{
 		"host", "path", "internalPath", "port", "https", "stripPath",
 		"certificateType", "customCertResolver", "customEntrypoint",
@@ -70,6 +70,11 @@ var mustAlwaysSend = []struct {
 		"isolatedDeployment", "isolatedDeploymentsVolume", "watchPaths",
 	}},
 	{SaveComposeEnvironmentRequest{}, []string{"env"}},
+	// UpdateLibsqlRequest had no row here before v0.30.0 added networkIds
+	// and detachDokployNetwork. This row guards only those two new fields.
+	// See libsql.go's doc comments for the struct's older dialect-A/C
+	// fields.
+	{UpdateLibsqlRequest{}, []string{"networkIds", "detachDokployNetwork"}},
 }
 
 // inMustAlwaysSend reports whether a request struct is registered above. It

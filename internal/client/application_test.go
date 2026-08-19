@@ -220,6 +220,29 @@ func TestApplicationOrchestrationCalls(t *testing.T) {
 	}
 }
 
+// TestUpdateApplicationRequestCarriesNetworkFields guards the v0.30.0
+// network-attachment fields (doc.go). See UpdateApplicationRequest's doc
+// comment for the null-coerces-to-false finding this test encodes.
+func TestUpdateApplicationRequestCarriesNetworkFields(t *testing.T) {
+	req := UpdateApplicationRequest{ApplicationID: "a1", Replicas: 1}
+	raw, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	// Dialect B: a nil NetworkIDs must reach the wire as explicit null so it
+	// can clear, and detachDokployNetwork must always carry a concrete bool.
+	if string(m["networkIds"]) != "null" {
+		t.Errorf("networkIds = %s, want null", m["networkIds"])
+	}
+	if string(m["detachDokployNetwork"]) != "false" {
+		t.Errorf("detachDokployNetwork = %s, want false", m["detachDokployNetwork"])
+	}
+}
+
 // TestSaveApplicationEnvironmentSendsCallerValues is the regression test for
 // the wave-3 wipe: buildSecrets and createEnvFile must be whatever the caller
 // passed, never a literal baked into the client. A hardcoded value here is
