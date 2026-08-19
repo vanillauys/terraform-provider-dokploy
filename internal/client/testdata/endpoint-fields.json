@@ -139,7 +139,8 @@
    "description",
    "environmentId",
    "name",
-   "serverId"
+   "serverId",
+   "sourceType"
   ],
   "required": [
    "environmentId",
@@ -433,6 +434,7 @@
    "customGitSSHKeyId",
    "customGitUrl",
    "description",
+   "detachDokployNetwork",
    "dockerBuildStage",
    "dockerContextPath",
    "dockerImage",
@@ -466,6 +468,7 @@
    "memoryReservation",
    "modeSwarm",
    "name",
+   "networkIds",
    "networkSwarm",
    "owner",
    "password",
@@ -763,7 +766,8 @@
    "description",
    "environmentId",
    "name",
-   "serverId"
+   "serverId",
+   "sourceType"
   ],
   "required": [
    "environmentId",
@@ -906,6 +910,7 @@
  "compose.saveEnvironment": {
   "fields": [
    "composeId",
+   "createEnvFile",
    "env"
   ],
   "required": [
@@ -945,6 +950,7 @@
    "composePath",
    "composeStatus",
    "composeType",
+   "createEnvFile",
    "createdAt",
    "customGitBranch",
    "customGitSSHKeyId",
@@ -964,6 +970,7 @@
    "gitlabPathNamespace",
    "gitlabProjectId",
    "gitlabRepository",
+   "icon",
    "isolatedDeployment",
    "isolatedDeploymentsVolume",
    "name",
@@ -971,6 +978,7 @@
    "randomize",
    "refreshToken",
    "repository",
+   "serviceNetworks",
    "sourceType",
    "suffix",
    "triggerType",
@@ -1104,6 +1112,102 @@
    "secretAccessKey"
   ]
  },
+ "dnsProvider.create": {
+  "fields": [
+   "config",
+   "name"
+  ],
+  "required": [
+   "config",
+   "name"
+  ]
+ },
+ "dnsProvider.createRecord": {
+  "fields": [
+   "content",
+   "dnsProviderId",
+   "name",
+   "ttl",
+   "type",
+   "zoneId"
+  ],
+  "required": [
+   "content",
+   "dnsProviderId",
+   "name",
+   "type",
+   "zoneId"
+  ]
+ },
+ "dnsProvider.deleteRecord": {
+  "fields": [
+   "dnsProviderId",
+   "recordId",
+   "zoneId"
+  ],
+  "required": [
+   "dnsProviderId",
+   "recordId",
+   "zoneId"
+  ]
+ },
+ "dnsProvider.remove": {
+  "fields": [
+   "dnsProviderId"
+  ],
+  "required": [
+   "dnsProviderId"
+  ]
+ },
+ "dnsProvider.testConnection": {
+  "fields": [
+   "config",
+   "dnsProviderId"
+  ],
+  "required": []
+ },
+ "dnsProvider.update": {
+  "fields": [
+   "config",
+   "dnsProviderId",
+   "name"
+  ],
+  "required": [
+   "config",
+   "dnsProviderId",
+   "name"
+  ]
+ },
+ "dnsProvider.updateRecord": {
+  "fields": [
+   "content",
+   "dnsProviderId",
+   "name",
+   "recordId",
+   "ttl",
+   "type",
+   "zoneId"
+  ],
+  "required": [
+   "content",
+   "dnsProviderId",
+   "name",
+   "recordId",
+   "type",
+   "zoneId"
+  ]
+ },
+ "docker.deleteContainerFile": {
+  "fields": [
+   "containerId",
+   "path",
+   "serverId"
+  ],
+  "required": [
+   "containerId",
+   "path"
+  ]
+ },
  "docker.killContainer": {
   "fields": [
    "containerId",
@@ -1149,6 +1253,72 @@
    "containerId"
   ]
  },
+ "docker.writeContainerFile": {
+  "fields": [
+   "containerId",
+   "content",
+   "path",
+   "serverId"
+  ],
+  "required": [
+   "containerId",
+   "content",
+   "path"
+  ]
+ },
+ "dockerDiskUsage.pruneBuildCache": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "dockerImage.removeImage": {
+  "fields": [
+   "force",
+   "id",
+   "repository",
+   "serverId",
+   "tag"
+  ],
+  "required": [
+   "id",
+   "repository",
+   "tag"
+  ]
+ },
+ "dockerVolume.deleteVolumeFile": {
+  "fields": [
+   "path",
+   "serverId",
+   "volumeName"
+  ],
+  "required": [
+   "path",
+   "volumeName"
+  ]
+ },
+ "dockerVolume.removeVolume": {
+  "fields": [
+   "serverId",
+   "volumeName"
+  ],
+  "required": [
+   "volumeName"
+  ]
+ },
+ "dockerVolume.writeVolumeFile": {
+  "fields": [
+   "content",
+   "path",
+   "serverId",
+   "volumeName"
+  ],
+  "required": [
+   "content",
+   "path",
+   "volumeName"
+  ]
+ },
  "domain.create": {
   "fields": [
    "applicationId",
@@ -1189,6 +1359,14 @@
    "appName"
   ]
  },
+ "domain.toggleEnable": {
+  "fields": [
+   "domainId"
+  ],
+  "required": [
+   "domainId"
+  ]
+ },
  "domain.update": {
   "fields": [
    "certificateType",
@@ -1196,6 +1374,7 @@
    "customEntrypoint",
    "domainId",
    "domainType",
+   "enabled",
    "forwardAuthEnabled",
    "host",
    "https",
@@ -1588,6 +1767,7 @@
    "databasePassword",
    "databaseUser",
    "description",
+   "detachDokployNetwork",
    "dockerImage",
    "enableNamespaces",
    "endpointSpecSwarm",
@@ -1603,6 +1783,7 @@
    "memoryReservation",
    "modeSwarm",
    "name",
+   "networkIds",
    "networkSwarm",
    "placementSwarm",
    "replicas",
@@ -1767,6 +1948,7 @@
    "databaseRootPassword",
    "databaseUser",
    "description",
+   "detachDokployNetwork",
    "dockerImage",
    "endpointSpecSwarm",
    "env",
@@ -1779,6 +1961,7 @@
    "memoryReservation",
    "modeSwarm",
    "name",
+   "networkIds",
    "networkSwarm",
    "placementSwarm",
    "replicas",
@@ -1923,6 +2106,7 @@
    "databasePassword",
    "databaseUser",
    "description",
+   "detachDokployNetwork",
    "dockerImage",
    "endpointSpecSwarm",
    "env",
@@ -1935,6 +2119,7 @@
    "modeSwarm",
    "mongoId",
    "name",
+   "networkIds",
    "networkSwarm",
    "placementSwarm",
    "replicaSets",
@@ -2133,6 +2318,7 @@
    "databaseRootPassword",
    "databaseUser",
    "description",
+   "detachDokployNetwork",
    "dockerImage",
    "endpointSpecSwarm",
    "env",
@@ -2145,6 +2331,7 @@
    "modeSwarm",
    "mysqlId",
    "name",
+   "networkIds",
    "networkSwarm",
    "placementSwarm",
    "replicas",
@@ -2156,6 +2343,47 @@
   ],
   "required": [
    "mysqlId"
+  ]
+ },
+ "network.create": {
+  "fields": [
+   "attachable",
+   "driver",
+   "enableIPv4",
+   "enableIPv6",
+   "internal",
+   "ipam",
+   "mtu",
+   "name",
+   "serverId"
+  ],
+  "required": [
+   "name"
+  ]
+ },
+ "network.import": {
+  "fields": [
+   "names",
+   "serverId"
+  ],
+  "required": [
+   "names"
+  ]
+ },
+ "network.recreate": {
+  "fields": [
+   "networkId"
+  ],
+  "required": [
+   "networkId"
+  ]
+ },
+ "network.remove": {
+  "fields": [
+   "networkId"
+  ],
+  "required": [
+   "networkId"
   ]
  },
  "notification.createCustom": {
@@ -2975,6 +3203,7 @@
  },
  "organization.update": {
   "fields": [
+   "defaultRole",
    "logo",
    "name",
    "organizationId"
@@ -3256,6 +3485,7 @@
    "databasePassword",
    "databaseUser",
    "description",
+   "detachDokployNetwork",
    "dockerImage",
    "endpointSpecSwarm",
    "env",
@@ -3267,6 +3497,7 @@
    "memoryReservation",
    "modeSwarm",
    "name",
+   "networkIds",
    "networkSwarm",
    "placementSwarm",
    "postgresId",
@@ -3507,6 +3738,7 @@
    "createdAt",
    "databasePassword",
    "description",
+   "detachDokployNetwork",
    "dockerImage",
    "endpointSpecSwarm",
    "env",
@@ -3518,6 +3750,7 @@
    "memoryReservation",
    "modeSwarm",
    "name",
+   "networkIds",
    "networkSwarm",
    "placementSwarm",
    "redisId",
@@ -4284,6 +4517,14 @@
    "userId"
   ]
  },
+ "user.revokeSession": {
+  "fields": [
+   "sessionId"
+  ],
+  "required": [
+   "sessionId"
+  ]
+ },
  "user.sendInvitation": {
   "fields": [
    "invitationId",
@@ -4331,6 +4572,47 @@
    "updatedAt"
   ],
   "required": []
+ },
+ "vaultProvider.create": {
+  "fields": [
+   "assignments",
+   "config",
+   "name"
+  ],
+  "required": [
+   "assignments",
+   "config",
+   "name"
+  ]
+ },
+ "vaultProvider.remove": {
+  "fields": [
+   "vaultProviderId"
+  ],
+  "required": [
+   "vaultProviderId"
+  ]
+ },
+ "vaultProvider.testConnection": {
+  "fields": [
+   "config",
+   "vaultProviderId"
+  ],
+  "required": []
+ },
+ "vaultProvider.update": {
+  "fields": [
+   "assignments",
+   "config",
+   "name",
+   "vaultProviderId"
+  ],
+  "required": [
+   "assignments",
+   "config",
+   "name",
+   "vaultProviderId"
+  ]
  },
  "volumeBackups.create": {
   "fields": [

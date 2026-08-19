@@ -42,7 +42,7 @@ import (
 //	json.dump(dict(sorted(out.items())),sys.stdout,indent=1)
 //	' > internal/client/testdata/endpoint-fields.json
 //
-// Snapshot taken against Dokploy v0.29.13 on 2026-07-28.
+// Snapshot taken against Dokploy v0.30.2 on 2026-08-19.
 
 // endpointStructs maps a Dokploy write endpoint to the request struct this
 // package sends to it. Every endpoint whose absent keys are load-bearing —
@@ -206,6 +206,14 @@ var censusExempt = map[string]map[string]string{
 		"refreshToken":  "server-generated webhook token; rotating it is an imperative operation",
 		"composeStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
 		"env":           "set through compose.saveEnvironment, which is the endpoint the Dokploy UI uses",
+		"createEnvFile": "set through compose.saveEnvironment, which is the endpoint the Dokploy UI uses - same split as env",
+	},
+	// compose.create accepts sourceType since v0.30.0, but the resource sets
+	// the source through the follow-up compose.update it already issues on
+	// every create (Create's doc comment in resources/compose/resource.go).
+	// Sending it twice would add a second writer for the same column.
+	"compose.create": {
+		"sourceType": "source is set by the follow-up compose.update the resource always issues on create",
 	},
 	// libsql.update is similar to compose.update: the endpoint accepts more
 	// fields than this client models. The Swarm fields are not exposed in
