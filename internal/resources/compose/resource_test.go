@@ -102,14 +102,15 @@ func TestSourceBlocksRoundTripThroughState(t *testing.T) {
 	ctx := context.Background()
 
 	m := resourceModel{
-		ID:            types.StringValue("c1"),
-		Name:          types.StringValue("web"),
-		EnvironmentID: types.StringValue("env1"),
-		AppName:       types.StringValue("web-abc"),
-		ComposeType:   types.StringValue("docker-compose"),
-		Status:        types.StringValue("idle"),
-		CreatedAt:     types.StringValue("2026-07-29T00:00:00.000Z"),
-		WatchPaths:    types.ListNull(types.StringType),
+		ID:              types.StringValue("c1"),
+		Name:            types.StringValue("web"),
+		EnvironmentID:   types.StringValue("env1"),
+		AppName:         types.StringValue("web-abc"),
+		ComposeType:     types.StringValue("docker-compose"),
+		Status:          types.StringValue("idle"),
+		CreatedAt:       types.StringValue("2026-07-29T00:00:00.000Z"),
+		WatchPaths:      types.ListNull(types.StringType),
+		ServiceNetworks: types.SetNull(types.ObjectType{AttrTypes: serviceNetworkAttrTypes}),
 		Git: &gitSource{
 			URL:      types.StringValue("git@example.com:acme/site.git"),
 			Branch:   types.StringValue("main"),
