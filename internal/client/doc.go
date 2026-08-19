@@ -740,4 +740,164 @@
 // needed for libsql, matching postgres and unlike a hypothetical async
 // engine where fetchStatus would have to guard against reading a stale
 // terminal status. Verdict: DONE, the no-gate fetchStatus design holds.
+//
+// # v0.30.0 fields (probed 2026-08-19)
+//
+// Wave 6a task 1 probed the acceptance rig at v0.30.2, the installer's
+// current v0.30.x build. The probe used one scratch project, its default
+// environment, one application, one compose service, one postgres
+// instance, one network, and one domain. Task 1 created and deleted every
+// record through the API. The wave-6a task-1 report holds the full
+// transcripts.
+//
+// ## env stays plaintext
+//
+// application.saveEnvironment stored `env: "FOO=bar"`. application.one
+// then read back `env: "FOO=bar"`, the exact value, with no encryption
+// and no redaction. This result matches the read-only production check
+// on server.vnly.io (2026-08-19) and confirms spec §2.3's plaintext
+// assumption for v0.30.
+//
+// ## compose createEnvFile: a new field, and not dialect A
+//
+// createEnvFile now exists on three compose endpoints: compose.create,
+// compose.saveEnvironment, and compose.update. Application already has
+// createEnvFile on the same three endpoints, but compose follows a
+// different dialect:
+//
+//	compose.create             default on a bare create: true (matches
+//	                           application's default)
+//	compose.saveEnvironment    absent key: silent-keep (HTTP 200, the old
+//	                           value stays). Explicit null: HTTP 200,
+//	                           COERCES to false. The server never rejects
+//	                           it.
+//	compose.update             same rule as saveEnvironment: an absent key
+//	                           keeps the old value, and an explicit null
+//	                           coerces to false. Task 1 verified this from
+//	                           both a false-stored and a true-stored
+//	                           record, so the coercion is genuine, not an
+//	                           artifact of the starting value.
+//
+// application.saveEnvironment is dialect A for createEnvFile (see "Write
+// dialects" above): an absent key 400s. compose.saveEnvironment and
+// compose.update are not dialect A for this field. Both keep the old
+// value on an absent key instead. Model CreateEnvFile on the compose
+// request structs as a plain *bool with no omitempty. Give the resource a
+// Default of true, to match the server's fresh-create default. Never
+// send an unintended null: the server will not reject it, it will turn
+// the value off without a warning.
+//
+// ## networkIds and detachDokployNetwork: new on application and postgres
+//
+// application.create and postgres.create both now return `networkIds:
+// []` and `detachDokployNetwork: false` on a bare create, with neither
+// key in the request. This matches the read-only production probe on
+// server.vnly.io (2026-08-19). Compose has no top-level networkIds; it
+// groups network attachments per service instead (see serviceNetworks
+// below).
+//
+// application.update and postgres.update take the same two fields and
+// match each other exactly:
+//
+//	Request                                        Read-back
+//	networkIds:["NET"],                            networkIds ["NET"],
+//	  detachDokployNetwork:true                       detachDokployNetwork
+//	                                                   true
+//	networkIds:null,                               networkIds null (NOT
+//	  detachDokployNetwork:false                      []), detachDokployNetwork
+//	                                                   false
+//	update with only the id and name                networkIds and
+//	  (no networkIds or detach key at all)            detachDokployNetwork
+//	                                                   SURVIVE unchanged -
+//	                                                   dialect B
+//
+// Two results do not match the brief's prediction:
+//
+//   - The fresh-create default is `[]`. An explicit `null` clears the
+//     field to a literal JSON `null`, never back to `[]`. A Read that
+//     maps both shapes to the same Terraform value works. A Read that
+//     treats "empty" as always meaning `[]` will show a diff on every
+//     plan after the first explicit clear.
+//   - detachDokployNetwork:null does not 400. It returns HTTP 200 and
+//     coerces the stored value to false, even when the prior value was
+//     true. This result holds on both application.update and
+//     postgres.update. The brief predicted a bare-boolean 400 ("schema
+//     type is bare boolean"). The server instead treats a null boolean as
+//     false, the same coercion domain.update's `enabled` field and
+//     compose's `createEnvFile` field both show below. Model
+//     DetachDokployNetwork as *bool with no omitempty. Treat a null in a
+//     request as "the field becomes false," never as a rejected request.
+//
+// ## serviceNetworks and icon on compose.update
+//
+// Both fields are new, and neither exists on compose.create - a bare
+// create returns `serviceNetworks: []` and `icon: null`.
+//
+//	compose.update
+//	  {"serviceNetworks":[{"serviceName":"web","networkIds":["NET"],
+//	    "detachDokployNetwork":false}],"icon":"lucide:cloud"}
+//	  -> read-back: one entry with all three keys (the server reorders
+//	     them, networkIds first, but the data stays the same), and icon
+//	     "lucide:cloud" stored exactly as sent.
+//	compose.update {"serviceNetworks":null,"icon":null}
+//	  -> read-back: serviceNetworks null (NOT []), icon null.
+//
+// serviceNetworks follows the same null-vs-[] split as networkIds above.
+// `[]` is the fresh-create default; `null` is what an explicit clear
+// produces; the two shapes are not interchangeable on read. Model
+// ServiceNetworks as a pointer to a slice of a small struct (ServiceName,
+// NetworkIDs, DetachDokployNetwork), with no omitempty, so a nil pointer
+// clears the field to null.
+//
+// ## domain enabled
+//
+// A domain.create request naming no `enabled` key still stores `enabled:
+// true`, the server's own default - the same result the v0.29.13 finding
+// above recorded. v0.30.2 confirms it again.
+//
+//	domain.update {..., "enabled":false}            -> stores false
+//	domain.update, `enabled` omitted entirely        -> silent-keep: stays
+//	                                                    false (dialect B,
+//	                                                    like every other
+//	                                                    domain.update
+//	                                                    field)
+//	domain.update {..., "enabled":null}              -> HTTP 200, coerces
+//	                                                    to false. Task 1
+//	                                                    verified this from
+//	                                                    a true-stored
+//	                                                    record: true, then
+//	                                                    null, then false.
+//	                                                    The brief's
+//	                                                    predicted 400 does
+//	                                                    not happen.
+//
+// `enabled` shows the same null-coerces-to-false behavior as
+// detachDokployNetwork and createEnvFile above. It is not a fourth
+// dialect on its own. Model Enabled as *bool with no omitempty. Give the
+// resource an Optional attribute with a Default of true, to match
+// domain.create's server default.
+//
+// domain.toggleEnable exists and flips `enabled` in one call
+// ({"domainId":"..."} only). A live check confirmed it: a domain at
+// enabled:false flipped to enabled:true, and the response carried one
+// extra field, requiresRedeploy. toggleEnable is REDUNDANT with
+// `enabled` on domain.update. This provider deliberately does not model
+// it as a client method or a resource action. Spec §3.5 asked for a
+// censusExempt entry for toggleEnable, but census exemptions only cover
+// endpoints the census itself walks, and the domain endpoints are not
+// censused at all. This paragraph, not a censusExempt entry, is the
+// correct record of the decision.
+//
+// ## A pattern across three fields: a null boolean coerces, it never 400s
+//
+// Three unrelated fields on three unrelated endpoints showed the same
+// behavior: detachDokployNetwork (application.update, postgres.update),
+// createEnvFile (compose.saveEnvironment, compose.update), and enabled
+// (domain.update). None of the three rejects an explicit JSON null with
+// HTTP 400. All three accept the null (HTTP 200) and silently store
+// false, even when the prior stored value was true. No bare-boolean
+// field probed this wave produced dialect A's "expected nonoptional,
+// received undefined" 400. Treat every bare-boolean field this wave adds
+// as null-coerces-to-false by default. Confirm the opposite live before a
+// later task assumes a 400 exists anywhere on this surface.
 package client
