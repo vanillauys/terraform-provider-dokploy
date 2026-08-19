@@ -1,6 +1,9 @@
 package libsql
 
 import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
@@ -34,9 +37,21 @@ type resourceModel struct {
 	CreatedAt         types.String `tfsdk:"created_at"`
 	DeployOnChange    types.Bool   `tfsdk:"deploy_on_change"`
 	DeploymentTimeout types.String `tfsdk:"deployment_timeout"`
+
+	// NetworkIDs and DetachDokployNetwork are the v0.30.0 network attachment
+	// attributes (Task 2's client.Libsql.NetworkIDs/.DetachDokployNetwork and
+	// UpdateLibsqlRequest.NetworkIDs/.DetachDokployNetwork), the same pair
+	// every other engine gained in Tasks 5-6 (internal/resources/application,
+	// internal/resources/database).
+	NetworkIDs           types.Set  `tfsdk:"network_ids"`
+	DetachDokployNetwork types.Bool `tfsdk:"detach_dokploy_network"`
 }
 
-func flatten(c *client.Libsql, m *resourceModel) {
+// flatten maps the full API object into the model (Read/refresh). It takes
+// ctx and diags - unlike this package's other helpers - only because
+// tfutil.StringSetOrNull needs both to build the network_ids set; every
+// other field here is a plain scalar copy.
+func flatten(ctx context.Context, c *client.Libsql, m *resourceModel, diags *diag.Diagnostics) {
 	m.ID = types.StringValue(c.LibsqlID)
 	m.Name = types.StringValue(c.Name)
 	m.AppName = types.StringValue(c.AppName)
@@ -61,6 +76,8 @@ func flatten(c *client.Libsql, m *resourceModel) {
 	m.ServerID = tfutil.StringOrNull(c.ServerID)
 	m.Status = types.StringValue(c.ApplicationStatus)
 	m.CreatedAt = types.StringValue(c.CreatedAt)
+	m.NetworkIDs = tfutil.StringSetOrNull(ctx, c.NetworkIDs, diags)
+	m.DetachDokployNetwork = types.BoolValue(c.DetachDokployNetwork)
 }
 
 func int64OrNull(v *int64) types.Int64 {
@@ -106,24 +123,29 @@ func expandCreate(m *resourceModel) client.CreateLibsqlRequest {
 	}
 }
 
-func expandUpdate(m *resourceModel) client.UpdateLibsqlRequest {
+// expandUpdate builds the libsql.update request body. It takes ctx and diags
+// - unlike expandCreate - only because tfutil.StringSetRequest needs both to
+// read the network_ids set; every other field here is a plain scalar read.
+func expandUpdate(ctx context.Context, m *resourceModel, diags *diag.Diagnostics) client.UpdateLibsqlRequest {
 	enable := m.EnableNamespaces.ValueBool()
 	replicas := m.Replicas.ValueInt64()
 	return client.UpdateLibsqlRequest{
-		LibsqlID:          m.ID.ValueString(),
-		Name:              m.Name.ValueString(),
-		Description:       strPtr(m.Description),
-		DatabaseUser:      m.DatabaseUser.ValueString(),
-		DatabasePassword:  m.DatabasePassword.ValueString(),
-		SqldNode:          m.SqldNode.ValueString(),
-		SqldPrimaryURL:    strPtr(m.SqldPrimaryURL),
-		EnableNamespaces:  &enable,
-		DockerImage:       m.DockerImage.ValueString(),
-		Command:           strPtr(m.Command),
-		CPULimit:          strPtr(m.CPULimit),
-		CPUReservation:    strPtr(m.CPUReservation),
-		MemoryLimit:       strPtr(m.MemoryLimit),
-		MemoryReservation: strPtr(m.MemoryReservation),
-		Replicas:          &replicas,
+		LibsqlID:             m.ID.ValueString(),
+		Name:                 m.Name.ValueString(),
+		Description:          strPtr(m.Description),
+		DatabaseUser:         m.DatabaseUser.ValueString(),
+		DatabasePassword:     m.DatabasePassword.ValueString(),
+		SqldNode:             m.SqldNode.ValueString(),
+		SqldPrimaryURL:       strPtr(m.SqldPrimaryURL),
+		EnableNamespaces:     &enable,
+		DockerImage:          m.DockerImage.ValueString(),
+		Command:              strPtr(m.Command),
+		CPULimit:             strPtr(m.CPULimit),
+		CPUReservation:       strPtr(m.CPUReservation),
+		MemoryLimit:          strPtr(m.MemoryLimit),
+		MemoryReservation:    strPtr(m.MemoryReservation),
+		Replicas:             &replicas,
+		NetworkIDs:           tfutil.StringSetRequest(ctx, m.NetworkIDs, diags),
+		DetachDokployNetwork: m.DetachDokployNetwork.ValueBool(),
 	}
 }

@@ -16,9 +16,14 @@
 package libsql_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"regexp"
 	"testing"
 
@@ -912,6 +917,199 @@ resource "dokploy_libsql" "b" {
 						return nil
 					},
 				),
+			},
+		},
+	})
+}
+
+// rawCall, createNetwork and deleteNetwork are copied verbatim from
+// internal/resources/application/resource_acc_test.go's own network-attach
+// helpers (task 5's brief), the same way internal/resources/database/
+// acc_helpers_test.go's copy is (task 6's report). That file is package
+// application_test, this one is package libsql_test, and Go gives no way to
+// share unexported test helpers across two different external test
+// packages. Noted in this task's brief as a deliberate duplication, left for
+// a wave-6b cleanup rather than blocking this task.
+func rawCall(t *testing.T, method, path string, body any) []byte {
+	t.Helper()
+	endpoint := os.Getenv("DOKPLOY_ENDPOINT")
+	var reader io.Reader
+	if body != nil {
+		raw, err := json.Marshal(body)
+		if err != nil {
+			t.Fatalf("encoding %s body: %v", path, err)
+		}
+		reader = bytes.NewReader(raw)
+	}
+	req, err := http.NewRequest(method, endpoint+"/api"+path, reader)
+	if err != nil {
+		t.Fatalf("building %s request: %v", path, err)
+	}
+	req.Header.Set("x-api-key", os.Getenv("DOKPLOY_API_KEY"))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("calling %s: %v", path, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("reading %s response: %v", path, err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		t.Fatalf("%s: HTTP %d: %s", path, resp.StatusCode, raw)
+	}
+	return raw
+}
+
+// createNetwork posts to network.create then resolves the new network's id
+// with network.all, rather than trusting the create response's shape
+// directly - network.create returned the full record when Task 1 probed it
+// (2026-08-19), but several sibling `.create` endpoints in this API return a
+// bare `true` instead, so this helper stays defensive against that.
+func createNetwork(t *testing.T, name string) string {
+	t.Helper()
+	rawCall(t, http.MethodPost, "/network.create", map[string]string{"name": name})
+
+	var networks []struct {
+		NetworkID string `json:"networkId"`
+		Name      string `json:"name"`
+	}
+	if err := json.Unmarshal(rawCall(t, http.MethodGet, "/network.all", nil), &networks); err != nil {
+		t.Fatalf("decoding network.all response: %v", err)
+	}
+	for _, n := range networks {
+		if n.Name == name {
+			return n.NetworkID
+		}
+	}
+	t.Fatalf("network %q not found in network.all after creating it", name)
+	return ""
+}
+
+func deleteNetwork(t *testing.T, id string) {
+	t.Helper()
+	rawCall(t, http.MethodPost, "/network.remove", map[string]string{"networkId": id})
+}
+
+// TestAccLibsql_networkAttachment covers network_ids and
+// detach_dokploy_network, the v0.30.0 network attachment fields wired onto
+// dokploy_libsql by this task (model.go's flatten/expandUpdate,
+// resource.go's schema). Both fields must round-trip, and network_ids must
+// clear back to null rather than an empty set: an explicit clear reads back
+// as a literal JSON null, not `[]`, and flatten collapses both shapes to a
+// null set (tfutil.StringSetOrNull). Mirrors TestAccApplication_networkAttachment
+// (internal/resources/application/resource_acc_test.go) and
+// TestAccPostgres_networkAttachment (internal/resources/database/
+// postgres_acc_test.go) field for field.
+//
+// deploy_on_change is false throughout: the property under test is that the
+// fields persist server-side through libsql.update (which Create's own
+// follow-up call and every Update call already send unconditionally - see
+// resource.go's doc comments), not deploy behavior.
+func TestAccLibsql_networkAttachment(t *testing.T) {
+	// resource.Test below only checks TF_ACC once its Steps start, but this
+	// test calls createNetwork BEFORE that - a raw HTTP call of its own - so
+	// it needs the same gate up front. Skipping (not failing) matches every
+	// other acceptance test in this package and keeps `make test` green with
+	// TF_ACC unset.
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
+	}
+	acctest.PreCheck(t)
+	name := acctest.RandomName("libsql-net")
+	netName := acctest.RandomName("net")
+	networkID := createNetwork(t, netName)
+	t.Cleanup(func() { deleteNetwork(t, networkID) })
+
+	base := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+`, name+"-proj")
+
+	// Minimal required config, matching this file's other minimal tests
+	// (e.g. TestAccLibsql_createAndLocate): database_user/database_password
+	// are Required; sqld_node is left unset so its schema Default
+	// ("primary") applies.
+	withNetwork := base + fmt.Sprintf(`
+resource "dokploy_libsql" "test" {
+  name              = %q
+  environment_id    = dokploy_project.test.environments[0].id
+  database_user     = "acc"
+  database_password = "acc-password-1"
+
+  network_ids            = [%q]
+  detach_dokploy_network = true
+
+  deploy_on_change = false
+}`, name, networkID)
+
+	withoutNetwork := base + fmt.Sprintf(`
+resource "dokploy_libsql" "test" {
+  name              = %q
+  environment_id    = dokploy_project.test.environments[0].id
+  database_user     = "acc"
+  database_password = "acc-password-1"
+
+  deploy_on_change = false
+}`, name)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkLibsqlDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withNetwork,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "network_ids.#", "1"),
+					resource.TestCheckTypeSetElemAttr("dokploy_libsql.test", "network_ids.*", networkID),
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "detach_dokploy_network", "true"),
+					func(s *terraform.State) error {
+						ls, err := getLibsql(s, "dokploy_libsql.test")
+						if err != nil {
+							return err
+						}
+						if len(ls.NetworkIDs) != 1 || ls.NetworkIDs[0] != networkID {
+							return fmt.Errorf("server network_ids = %v, want [%s]", ls.NetworkIDs, networkID)
+						}
+						if !ls.DetachDokployNetwork {
+							return errors.New("server detach_dokploy_network = false, want true")
+						}
+						return nil
+					},
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// Removed from config. network_ids must converge to null (not
+				// an empty set) and detach_dokploy_network to its default,
+				// false - matching what the server actually stores after an
+				// explicit clear (doc.go: null, never []).
+				Config: withoutNetwork,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "network_ids"),
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "detach_dokploy_network", "false"),
+					func(s *terraform.State) error {
+						ls, err := getLibsql(s, "dokploy_libsql.test")
+						if err != nil {
+							return err
+						}
+						if len(ls.NetworkIDs) != 0 {
+							return fmt.Errorf("server network_ids = %v, want cleared", ls.NetworkIDs)
+						}
+						if ls.DetachDokployNetwork {
+							return errors.New("server detach_dokploy_network = true, want its default false")
+						}
+						return nil
+					},
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
 			},
 		},
 	})
