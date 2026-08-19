@@ -180,3 +180,29 @@ func TestListEnvironmentsBackfillsProjectID(t *testing.T) {
 		t.Errorf("ProjectID = %q, want p1 (must be backfilled from the argument)", got[0].ProjectID)
 	}
 }
+
+func TestEnvironmentServicesDecodesLibsql(t *testing.T) {
+	srv := testRoutes(t, route{
+		Method: http.MethodGet,
+		Path:   "/api/environment.one",
+		Status: http.StatusOK,
+		Body: `{"libsql":[{"libsqlId":"lib-1","name":"edge"},
+		                  {"libsqlId":"lib-2","name":"other"}]}`,
+	})
+	defer srv.Close()
+
+	c, err := New(srv.URL, "k", false, "test")
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	es, err := c.EnvironmentServices(context.Background(), "env-1")
+	if err != nil {
+		t.Fatalf("EnvironmentServices: %v", err)
+	}
+	if len(es.Libsql) != 2 {
+		t.Fatalf("Libsql len = %d, want 2", len(es.Libsql))
+	}
+	if es.Libsql[0].ID != "lib-1" || es.Libsql[0].Name != "edge" {
+		t.Errorf("Libsql[0] = %+v, want {lib-1 edge}", es.Libsql[0])
+	}
+}

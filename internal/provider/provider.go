@@ -16,6 +16,7 @@ import (
 	dsdestination "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/destination"
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
+	libsqldatasource "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/libsql"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
@@ -25,6 +26,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/destination"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
+	libsqlresource "github.com/vanillauys/terraform-provider-dokploy/internal/resources/libsql"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/mount"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
@@ -176,6 +178,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		volumebackup.NewResource,
 		backup.NewResource,
 		compose.NewResource,
+		libsqlresource.NewResource,
 		appchild.NewResource(appchild.PortKind()),
 		appchild.NewResource(appchild.RedirectKind()),
 		appchild.NewResource(appchild.SecurityKind()),
@@ -207,5 +210,6 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsenvironment.NewDataSource,
 		dsgitprovider.NewDataSource,
 		dsdestination.NewDataSource,
+		libsqldatasource.NewDataSource,
 	}
 }

@@ -83,8 +83,7 @@ func (r *mountResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"service_type": schema.StringAttribute{
 				Required: true,
 				Description: "Kind of service `service_id` refers to: one of `application`, `postgres`, `mysql`, `mariadb`, " +
-					"`mongo`, `redis`, `compose`, `libsql`. Changing it forces replacement, for the same reason as `service_id`. " +
-					"`libsql` is accepted by the server but has no corresponding resource in this provider yet.",
+					"`mongo`, `redis`, `compose`, `libsql`. Changing it forces replacement, for the same reason as `service_id`.",
 				PlanModifiers: requiresReplace,
 				Validators:    []validator.String{stringvalidator.OneOf(client.MountServiceTypes...)},
 			},
