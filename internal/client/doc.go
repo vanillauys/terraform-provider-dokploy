@@ -829,9 +829,13 @@
 //     predicted a bare-boolean 400 ("schema type is bare boolean"). The
 //     server instead treats a null boolean as false, the same coercion
 //     domain.update's `enabled` field and compose's `createEnvFile`
-//     field both show below. Model DetachDokployNetwork as *bool with no
-//     omitempty. Treat a null in a request as "the field becomes false,"
-//     never as a rejected request.
+//     field both show below. The shipped struct keeps
+//     DetachDokployNetwork as a plain bool, not *bool - the same
+//     Replicas pattern. A plain bool can never marshal a JSON null.
+//     The client can never trigger the server's silent-false coercion
+//     by accident. Do not change this field to *bool. A *bool can
+//     marshal a JSON null. A stray nil then turns off network
+//     detachment with no warning.
 //
 // ## serviceNetworks and icon on compose.update
 //
@@ -880,7 +884,10 @@
 //
 // `enabled` shows the same null-coerces-to-false behavior as
 // detachDokployNetwork and createEnvFile above. It is not a fourth
-// dialect on its own. Model Enabled as *bool with no omitempty. Give the
+// dialect on its own. The shipped struct keeps Enabled as a plain
+// bool, not *bool - the same Replicas-pattern decision as
+// DetachDokployNetwork above. A plain bool can never marshal a JSON
+// null. A stray nil can never silently disable a domain. Give the
 // resource an Optional attribute with a Default of true, to match
 // domain.create's server default.
 //

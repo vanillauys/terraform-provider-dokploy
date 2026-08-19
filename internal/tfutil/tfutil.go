@@ -124,11 +124,12 @@ func StringOrNull(s *string) types.String {
 }
 
 // StringSetOrNull maps a server string array onto a set attribute. Both nil
-// (JSON null) and [] collapse to a NULL set: the v0.30.0 network endpoints
-// normalize a cleared list to [], and the attributes are Optional with no
-// default, so an empty set in state would diff against config's null forever.
-// A schema validator (SizeAtLeast(1)) keeps config from expressing [], so
-// the collapse loses nothing.
+// (JSON null) and [] collapse to a NULL set. The v0.30.0 network endpoints
+// store a literal null on an explicit clear. `[]` is only the
+// fresh-create shape. A clear never produces it. The attributes are
+// Optional with no default, so an empty set in state would diff against
+// config's null forever. A schema validator (SizeAtLeast(1)) keeps
+// config from expressing [], so the collapse loses nothing.
 func StringSetOrNull(ctx context.Context, items []string, diags *diag.Diagnostics) types.Set {
 	if len(items) == 0 {
 		return types.SetNull(types.StringType)

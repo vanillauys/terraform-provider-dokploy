@@ -399,7 +399,7 @@ func TestAccCompose_v030Fields(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("dokploy_compose.test", "create_env_file", "true"),
 					resource.TestCheckNoResourceAttr("dokploy_compose.test", "icon"),
-					resource.TestCheckNoResourceAttr("dokploy_compose.test", "service_networks.#"),
+					resource.TestCheckNoResourceAttr("dokploy_compose.test", "service_networks"),
 					func(s *terraform.State) error {
 						c, err := getCompose(s, "dokploy_compose.test")
 						if err != nil {

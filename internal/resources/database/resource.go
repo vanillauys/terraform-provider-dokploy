@@ -233,11 +233,11 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 			ID:          plan.ID.ValueString(),
 			Name:        plan.Name.ValueString(),
 			Description: plan.Description.ValueStringPointer(),
-			// plan.DockerImage can still be Unknown here (Optional+Computed):
-			// ValueString() on Unknown yields "", and the request's
-			// `omitempty` then drops the key, so the server keeps its
-			// already-stored image. That is correct - this call exists only
-			// to apply the network fields, not to resend the image.
+			// setComputed above already resolved plan.DockerImage from the
+			// server read (current). It is never Unknown here. ValueString()
+			// returns the current image. The request resends that same value.
+			// The server keeps the same image either way. This call exists only
+			// to apply the network fields, not to change the image.
 			DockerImage:          plan.DockerImage.ValueString(),
 			DatabasePassword:     plan.DatabasePassword.ValueString(),
 			Credentials:          resolveCredentials(r.kind, plan, current),

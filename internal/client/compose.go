@@ -60,11 +60,13 @@ type Compose struct {
 
 	// v0.30.0. See doc.go's "compose createEnvFile" and "serviceNetworks
 	// and icon on compose.update" sections. CreateEnvFile is a bare bool
-	// (a fresh create defaults it to true). Icon and ServiceNetworks read
-	// back null after an explicit clear, [] / null being the fresh-create
-	// default and cleared shapes respectively - so ServiceNetworks stays
-	// a plain slice here on the read side; the request struct below is
-	// what carries the null-clears-to-null distinction.
+	// (a fresh create defaults it to true). Icon's fresh-create default is
+	// null; an explicit clear also reads back null. ServiceNetworks'
+	// fresh-create default is []; an explicit clear reads back null, not
+	// []. ServiceNetworks stays a plain slice here on the read side -
+	// both null and [] decode to a nil or empty Go slice, so the read
+	// path loses nothing. The request struct below is what carries the
+	// null-clears-to-null distinction.
 	CreateEnvFile   bool                    `json:"createEnvFile"`
 	Icon            *string                 `json:"icon"`
 	ServiceNetworks []ComposeServiceNetwork `json:"serviceNetworks"`
