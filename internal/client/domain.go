@@ -11,27 +11,27 @@ import (
 // Middlewares is a plain []string. domain.update accepts and stores it, but
 // the provider exposes it read-only until middleware resources exist.
 type Domain struct {
-	DomainID           string   `json:"domainId"`
-	Host               string   `json:"host"`
-	Path               string   `json:"path"`
-	InternalPath       string   `json:"internalPath"`
-	Port               int64    `json:"port"`
-	HTTPS              bool     `json:"https"`
-	StripPath          bool     `json:"stripPath"`
-	CertificateType    string   `json:"certificateType"`
-	CustomCertResolver *string  `json:"customCertResolver"`
-	CustomEntrypoint   *string  `json:"customEntrypoint"`
-	ServiceName        *string  `json:"serviceName"`
-	ForwardAuthEnabled bool     `json:"forwardAuthEnabled"`
-	Middlewares        []string `json:"middlewares"`
-	DomainType         string   `json:"domainType"`
-	UniqueConfigKey    int64    `json:"uniqueConfigKey"`
-	ApplicationID      *string  `json:"applicationId"`
-	ComposeID          *string  `json:"composeId"`
-	CreatedAt          string   `json:"createdAt"`
+	DomainID           string  `json:"domainId"`
+	Host               string  `json:"host"`
+	Path               string  `json:"path"`
+	InternalPath       string  `json:"internalPath"`
+	Port               int64   `json:"port"`
+	HTTPS              bool    `json:"https"`
+	StripPath          bool    `json:"stripPath"`
+	CertificateType    string  `json:"certificateType"`
+	CustomCertResolver *string `json:"customCertResolver"`
+	CustomEntrypoint   *string `json:"customEntrypoint"`
+	ServiceName        *string `json:"serviceName"`
+	ForwardAuthEnabled bool    `json:"forwardAuthEnabled"`
 	// v0.30.0. See doc.go's "domain enabled" section: domain.create's own
 	// default is true when the request names no enabled key.
-	Enabled bool `json:"enabled"`
+	Enabled         bool     `json:"enabled"`
+	Middlewares     []string `json:"middlewares"`
+	DomainType      string   `json:"domainType"`
+	UniqueConfigKey int64    `json:"uniqueConfigKey"`
+	ApplicationID   *string  `json:"applicationId"`
+	ComposeID       *string  `json:"composeId"`
+	CreatedAt       string   `json:"createdAt"`
 }
 
 // CreateDomainRequest sends every field explicitly, with no omitempty
