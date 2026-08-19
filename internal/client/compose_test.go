@@ -170,3 +170,42 @@ func TestUpdateComposeRequestMarshalsNullsAndEmptyStrings(t *testing.T) {
 		}
 	}
 }
+
+// icon and serviceNetworks are v0.30.0 additions to compose.update. Both are
+// nullable, so a bare UpdateComposeRequest must marshal them as explicit
+// null, never omit them - see doc.go's "serviceNetworks and icon on
+// compose.update" section.
+func TestUpdateComposeRequestCarriesV030Fields(t *testing.T) {
+	raw, err := json.Marshal(UpdateComposeRequest{ComposeID: "c1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	if string(m["icon"]) != "null" {
+		t.Errorf("icon = %s, want null", m["icon"])
+	}
+	if string(m["serviceNetworks"]) != "null" {
+		t.Errorf("serviceNetworks = %s, want null", m["serviceNetworks"])
+	}
+}
+
+// createEnvFile is a v0.30.0 addition to compose.saveEnvironment. doc.go
+// records that an absent key silently keeps the old value there, so the
+// field must always reach the wire - a bare request marshals it as explicit
+// null.
+func TestSaveComposeEnvironmentCarriesCreateEnvFile(t *testing.T) {
+	raw, err := json.Marshal(SaveComposeEnvironmentRequest{ComposeID: "c1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	if string(m["createEnvFile"]) != "null" {
+		t.Errorf("createEnvFile = %s, want null", m["createEnvFile"])
+	}
+}

@@ -29,6 +29,9 @@ type Domain struct {
 	ApplicationID      *string  `json:"applicationId"`
 	ComposeID          *string  `json:"composeId"`
 	CreatedAt          string   `json:"createdAt"`
+	// v0.30.0. See doc.go's "domain enabled" section: domain.create's own
+	// default is true when the request names no enabled key.
+	Enabled bool `json:"enabled"`
 }
 
 // CreateDomainRequest sends every field explicitly, with no omitempty
@@ -65,6 +68,12 @@ type CreateDomainRequest struct {
 //
 // Middlewares is deliberately absent — the provider does not manage it, and
 // under dialect B omitting it is exactly how you leave it alone.
+//
+// Enabled is v0.30.0, a bare bool with no omitempty (the Replicas pattern).
+// See doc.go's "domain enabled" section: an absent key silently keeps the
+// stored value, and an explicit null coerces to false rather than 400ing -
+// but a plain bool has no way to send an explicit null anyway, so the field
+// always carries the caller's true intent.
 type UpdateDomainRequest struct {
 	DomainID           string  `json:"domainId"`
 	Host               string  `json:"host"`
@@ -81,6 +90,7 @@ type UpdateDomainRequest struct {
 	DomainType         string  `json:"domainType"`
 	ApplicationID      *string `json:"applicationId"`
 	ComposeID          *string `json:"composeId"`
+	Enabled            bool    `json:"enabled"`
 }
 
 func (c *Client) CreateDomain(ctx context.Context, req CreateDomainRequest) (*Domain, error) {

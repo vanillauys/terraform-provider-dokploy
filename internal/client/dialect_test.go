@@ -34,7 +34,7 @@ var mustAlwaysSend = []struct {
 		"host", "path", "internalPath", "port", "https", "stripPath",
 		"certificateType", "customCertResolver", "customEntrypoint",
 		"serviceName", "forwardAuthEnabled", "domainType",
-		"applicationId", "composeId",
+		"applicationId", "composeId", "enabled",
 	}},
 	{UpdateEnvironmentRequest{}, []string{"name", "description", "env"}},
 	{CreateEnvironmentRequest{}, []string{"description"}},
@@ -68,8 +68,9 @@ var mustAlwaysSend = []struct {
 		"customGitUrl", "customGitBranch", "customGitSSHKeyId",
 		"triggerType", "autoDeploy", "enableSubmodules", "randomize",
 		"isolatedDeployment", "isolatedDeploymentsVolume", "watchPaths",
+		"icon", "serviceNetworks",
 	}},
-	{SaveComposeEnvironmentRequest{}, []string{"env"}},
+	{SaveComposeEnvironmentRequest{}, []string{"env", "createEnvFile"}},
 	// UpdateLibsqlRequest had no row here before v0.30.0 added networkIds
 	// and detachDokployNetwork. This row guards only those two new fields.
 	// See libsql.go's doc comments for the struct's older dialect-A/C

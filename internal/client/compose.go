@@ -58,9 +58,29 @@ type Compose struct {
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
 
+	// v0.30.0. See doc.go's "compose createEnvFile" and "serviceNetworks
+	// and icon on compose.update" sections. CreateEnvFile is a bare bool
+	// (a fresh create defaults it to true). Icon and ServiceNetworks read
+	// back null after an explicit clear, [] / null being the fresh-create
+	// default and cleared shapes respectively - so ServiceNetworks stays
+	// a plain slice here on the read side; the request struct below is
+	// what carries the null-clears-to-null distinction.
+	CreateEnvFile   bool                    `json:"createEnvFile"`
+	Icon            *string                 `json:"icon"`
+	ServiceNetworks []ComposeServiceNetwork `json:"serviceNetworks"`
+
 	// Embedded child collections, mirroring Application's.
 	Domains []Domain `json:"domains"`
 	Mounts  []Mount  `json:"mounts"`
+}
+
+// ComposeServiceNetwork is one per-service network attachment inside a
+// compose stack (v0.30.0). All three keys are required by the endpoint's
+// schema, so none is a pointer.
+type ComposeServiceNetwork struct {
+	ServiceName          string   `json:"serviceName"`
+	NetworkIDs           []string `json:"networkIds"`
+	DetachDokployNetwork bool     `json:"detachDokployNetwork"`
 }
 
 // CreateComposeRequest carries the ONLY seven fields compose.create accepts.
@@ -128,6 +148,14 @@ type UpdateComposeRequest struct {
 	IsolatedDeployment        *bool     `json:"isolatedDeployment"`
 	IsolatedDeploymentsVolume *bool     `json:"isolatedDeploymentsVolume"`
 	WatchPaths                *[]string `json:"watchPaths"`
+
+	// v0.30.0, nullable - null clears. See doc.go's "serviceNetworks and
+	// icon on compose.update" section: a fresh create returns
+	// serviceNetworks [] and icon null, but an explicit null on either
+	// field reads back as a literal null, never []. ServiceNetworks is a
+	// pointer to a slice so a nil marshals to an explicit null.
+	Icon            *string                  `json:"icon"`
+	ServiceNetworks *[]ComposeServiceNetwork `json:"serviceNetworks"`
 }
 
 // SaveComposeEnvironmentRequest. compose.saveEnvironment declares both keys
@@ -135,6 +163,11 @@ type UpdateComposeRequest struct {
 type SaveComposeEnvironmentRequest struct {
 	ComposeID string  `json:"composeId"`
 	Env       *string `json:"env"`
+	// v0.30.0, nullable - see doc.go's "compose createEnvFile" section.
+	// compose.saveEnvironment silently keeps the old value on an absent
+	// key, so this field must always reach the wire. An explicit null
+	// coerces to false; it never 400s.
+	CreateEnvFile *bool `json:"createEnvFile"`
 }
 
 // CreateCompose. Unlike libsql.create (literal `true`) and backup.create
