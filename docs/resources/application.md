@@ -53,6 +53,7 @@ resource "dokploy_application" "example" {
 - `deploy_on_change` (Boolean) Deploy after create and after changes to deploy-triggering attributes. Defaults to `true`.
 - `deployment_timeout` (String) How long to wait for a triggered deployment to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout the apply fails but the server-side deployment keeps running.
 - `description` (String) Free-form description.
+- `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this application. Defaults to `false`. Only meaningful together with `network_ids`; applied on the next deploy.
 - `docker` (Attributes) Docker image source. (see [below for nested schema](#nestedatt--docker))
 - `enable_submodules` (Boolean) Check out git submodules when cloning. Applies to the `github` and `git` sources; ignored for `docker`.
 - `env` (String) Environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. Setting this also clears the application's **build secrets** in Dokploy, which this resource does not expose.
@@ -60,6 +61,7 @@ resource "dokploy_application" "example" {
 - `github` (Attributes) GitHub App source. Exactly one of `github`, `git`, or `docker` must be set. The GitHub provider (`github_id`) is configured in Dokploy (Git > GitHub) — a documented manual prerequisite. (see [below for nested schema](#nestedatt--github))
 - `memory_limit` (String) Hard memory limit, Docker-style (e.g. `"512m"`).
 - `memory_reservation` (String) Reserved memory, Docker-style (e.g. `"256m"`).
+- `network_ids` (Set of String) Ids of Docker networks (Dokploy network records) to attach this application to. Applied on the next deploy. Omit to keep only the default `dokploy-network`. An empty set is not valid - omit the attribute instead.
 - `registry_id` (String) Id of a Dokploy registry to push built images to. This provider has no registry resource yet; supply the id as a literal.
 - `replicas` (Number) Number of container replicas to run. Dokploy's schema has no null variant for this field, so it always has a concrete value.
 - `server_id` (String) Remote server to run the application on. Defaults to the Dokploy host.

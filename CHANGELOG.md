@@ -4,6 +4,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-08-19
+
+### Added
+
+- Dokploy v0.30.0 support. The census pin for endpoint fields moves from
+  v0.29.13 to v0.30.0. Wave 6a probed the acceptance rig at v0.30.2, the
+  installer's current v0.30.x build at the time, and the census snapshot
+  reflects that probe. `docs/index.md` now states the v0.30.0 pin. Newer
+  releases stay untested until the acceptance suite exercises them.
+
+- `network_ids` and `detach_dokploy_network` on `dokploy_application`,
+  the five database engines (`dokploy_postgres`, `dokploy_mysql`,
+  `dokploy_mariadb`, `dokploy_mongo`, `dokploy_redis`), and
+  `dokploy_libsql`. These attributes attach a service to extra Docker
+  networks beyond the default `dokploy-network`, or detach that default
+  network. A network attachment change applies on the next deploy, not
+  on apply - the same rule `env` and `build_secrets` already follow.
+  `network_ids` rejects an empty set at plan time; omit the attribute
+  instead.
+
+  Verified live against v0.30.2, 2026-08-19: an explicit `null` request
+  clears the field to a stored `null`, never back to the fresh-create
+  default of `[]`. The read path maps both shapes to the same Terraform
+  value, or every plan after a clear would show a spurious diff.
+
+- `service_networks`, `create_env_file`, and `icon` on `dokploy_compose`.
+  `service_networks` is compose's per-service form of `network_ids`:
+  each entry names one compose service and the network ids to attach to
+  it, with its own `detach_dokploy_network` toggle, and it applies on
+  the next deploy too. `create_env_file` writes the environment
+  variables to a `.env` file for the compose project; it defaults to
+  `true`, the same as the server's fresh-create default. `icon` sets
+  the service icon shown in the Dokploy UI, as an icon name or a data
+  URI up to 2 MB.
+
+  `create_env_file` on compose does not follow dialect A:
+  `compose.saveEnvironment` and `compose.update` keep the stored value
+  when the request omits the key. `application.saveEnvironment` returns
+  an HTTP 400 on the same omission.
+
+- `enabled` on `dokploy_domain`. `false` removes the domain's route from
+  Traefik but keeps its configuration, so a later apply can re-enable
+  the domain without new certificates or paths. `enabled` defaults to
+  `true`, the server's own default on a bare create.
+
+  `domain.create` cannot express `enabled = false` in one call - the
+  field exists only on `domain.update`. The resource creates the domain
+  enabled first, then disables it in a second call when the
+  configuration sets `enabled = false`.
+
+### Deprecated
+
+- `isolated_deployment` and `isolated_deployments_volume` on
+  `dokploy_compose`. Dokploy deprecates Isolated Deployment upstream in
+  v0.30.0; use `service_networks` instead. Both attributes still work -
+  Dokploy still accepts and stores them - and this provider keeps them
+  until Dokploy removes them upstream.
+
+### Notes
+
+- Dokploy v0.30.0 introduces new `network`, `dnsProvider`, and
+  `vaultProvider` routers. These are not resources in this release.
+  They land as resources in v0.9.0 and v0.10.0 (waves 6b and 6c).
+
 ## [0.7.0] - 2026-08-12
 
 ### Added

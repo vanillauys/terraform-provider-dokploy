@@ -45,6 +45,7 @@ resource "dokploy_domain" "app_www" {
 - `compose_id` (String) Id of the compose service this domain serves. Exactly one of `application_id` or `compose_id` must be set. Changing it replaces the domain.
 - `custom_cert_resolver` (String) Traefik certificate resolver name, for `certificate_type = "custom"`.
 - `custom_entrypoint` (String) Traefik entrypoint to bind, instead of the default.
+- `enabled` (Boolean) Serve this domain. `false` removes the route from Traefik but keeps the configuration, so it can be re-enabled without re-entering certificates and paths. Defaults to `true`.
 - `forward_auth_enabled` (Boolean) Route this domain through the configured forward-auth middleware. Defaults to `false`.
 - `https` (Boolean) Serve over HTTPS. Defaults to `false`.
 - `internal_path` (String) Path forwarded to the container. Defaults to `"/"`.

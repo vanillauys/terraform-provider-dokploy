@@ -108,6 +108,7 @@ resource "dokploy_domain" "web" {
 - `command` (String) Replaces the command Dokploy runs to deploy this stack (normally `docker compose up`). It is a substitute, not an addition: setting it to anything that does not itself deploy the stack makes every deploy fail. Leave it unset unless you specifically need to override the invocation.
 - `compose_path` (String) Path to the compose file inside the repository. Defaults to `./docker-compose.yml`; it cannot be set to an empty string. Ignored by the `raw` source.
 - `compose_type` (String) Whether Dokploy runs this as a plain `docker-compose` project or a Docker Swarm `stack`.
+- `create_env_file` (Boolean) Write the environment variables to a `.env` file for the compose project. Defaults to the server's own default for a new service.
 - `deploy_on_change` (Boolean) Deploy after create and after changes to deploy-triggering attributes. Defaults to `true`.
 - `deployment_timeout` (String) How long to wait for a triggered deployment to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout the apply fails but the server-side deployment keeps running.
 - `description` (String) Free-form description.
@@ -115,11 +116,13 @@ resource "dokploy_domain" "web" {
 - `env` (String) Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. Omitting this attribute and setting it to "" are indistinguishable on read - both come back null. Use omission, not "", to clear it.
 - `git` (Attributes) Source the compose file from a plain git remote. (see [below for nested schema](#nestedatt--git))
 - `github` (Attributes) Source the compose file from a GitHub App repository. (see [below for nested schema](#nestedatt--github))
-- `isolated_deployment` (Boolean) Run the stack in an isolated Docker network. Defaults to `false`.
-- `isolated_deployments_volume` (Boolean) Give the isolated deployment its own volume namespace. Defaults to `false`.
+- `icon` (String) Service icon shown in the Dokploy UI (an icon name or data URI, up to 2 MB).
+- `isolated_deployment` (Boolean, Deprecated) Run the stack in an isolated Docker network. Defaults to `false`. **Deprecated upstream since Dokploy v0.30.0** - prefer `service_networks`.
+- `isolated_deployments_volume` (Boolean, Deprecated) Give the isolated deployment its own volume namespace. Defaults to `false`. **Deprecated upstream since Dokploy v0.30.0** - prefer `service_networks`.
 - `randomize` (Boolean) Randomise generated resource names, using `suffix`. Defaults to `false`.
 - `raw` (Attributes) Supply the compose file inline instead of fetching it from a repository. (see [below for nested schema](#nestedatt--raw))
 - `server_id` (String) Remote server to run the service on. Defaults to the Dokploy host.
+- `service_networks` (Attributes Set) Per-service Docker network attachments (Dokploy v0.30.0). Each entry names one compose service and the Dokploy network ids to attach. Applied on the next deploy. (see [below for nested schema](#nestedatt--service_networks))
 - `suffix` (String) Suffix appended to generated resource names when `randomize` is set.
 - `trigger_type` (String) Which git event triggers an auto-deploy.
 - `watch_paths` (List of String) Only auto-deploy when a change touches one of these paths.
@@ -160,6 +163,19 @@ Required:
 Required:
 
 - `compose_file` (String) The compose YAML, verbatim.
+
+
+<a id="nestedatt--service_networks"></a>
+### Nested Schema for `service_networks`
+
+Required:
+
+- `network_ids` (Set of String) Dokploy network ids to attach to this service.
+- `service_name` (String) Compose service name, as written in the compose file.
+
+Optional:
+
+- `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this service. Defaults to `false`.
 
 ## Import
 
