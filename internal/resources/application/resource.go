@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -232,6 +233,19 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		"enable_submodules": schema.BoolAttribute{
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
 			Description: "Check out git submodules when cloning. Applies to the `github` and `git` sources; ignored for `docker`.",
+		},
+		"network_ids": schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "Ids of Docker networks (Dokploy network records) to attach this application to. " +
+				"Applied on the next deploy. Omit to keep only the default `dokploy-network`. " +
+				"An empty set is not valid - omit the attribute instead.",
+			Validators: []validator.Set{setvalidator.SizeAtLeast(1)},
+		},
+		"detach_dokploy_network": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Detach the shared `dokploy-network` from this application. Defaults to `false`. " +
+				"Only meaningful together with `network_ids`; applied on the next deploy.",
 		},
 		// status deliberately has NO UseStateForUnknown. It is genuinely
 		// server-mutable: a deploy moves it (idle -> running -> done), so

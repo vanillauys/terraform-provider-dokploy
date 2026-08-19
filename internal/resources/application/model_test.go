@@ -131,8 +131,10 @@ func TestDeployNeededApplication(t *testing.T) {
 			// compares element types, and the zero value's is nil. The
 			// framework always hands us a typed null in real use, but a
 			// hand-built fixture has to say so explicitly or every comparison
-			// against it reports a spurious change.
+			// against it reports a spurious change. types.Set has the same
+			// trap.
 			WatchPaths: types.ListNull(types.StringType),
+			NetworkIDs: types.SetNull(types.StringType),
 		}
 	}
 	state, plan := base(), base()
@@ -213,6 +215,12 @@ func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
 		CreatedAt:         types.StringValue("2026-07-23T10:00:00.000Z"),
 		DeployOnChange:    types.BoolValue(true),
 		DeploymentTimeout: types.StringValue("10m"),
+		// A zero-value types.Set has the same self-inequality trap as
+		// WatchPaths/Args above, so it must be a typed null here too.
+		NetworkIDs: types.SetNull(types.StringType),
+		// True, like the other bools in this fixture, so the mutation sweep
+		// below (which sets every types.Bool to false) produces a real change.
+		DetachDokployNetwork: types.BoolValue(true),
 	}
 	if !unchangedExceptStatus(base, base) {
 		t.Fatal("identical models must compare equal")
@@ -234,6 +242,9 @@ func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
 			target.Set(reflect.ValueOf(otherDocker))
 		case types.List:
 			target.Set(reflect.ValueOf(types.ListValueMust(types.StringType,
+				[]attr.Value{types.StringValue("mutated")})))
+		case types.Set:
+			target.Set(reflect.ValueOf(types.SetValueMust(types.StringType,
 				[]attr.Value{types.StringValue("mutated")})))
 		default:
 			t.Fatalf("field %s has unhandled type %T: extend this test AND unchangedExceptStatus",
