@@ -746,9 +746,10 @@
 // Wave 6a task 1 probed the acceptance rig at v0.30.2, the installer's
 // current v0.30.x build. The probe used one scratch project, its default
 // environment, one application, one compose service, one postgres
-// instance, one network, and one domain. Task 1 created and deleted every
-// record through the API. The wave-6a task-1 report holds the full
-// transcripts.
+// instance, one network, and one domain, plus two throwaway
+// project+compose pairs and one throwaway project+postgres pair for
+// follow-up null-coercion checks. Task 1 created and deleted every record
+// through the API. The wave-6a task-1 report holds the full transcripts.
 //
 // ## env stays plaintext
 //
@@ -773,10 +774,11 @@
 //	                           it.
 //	compose.update             same rule as saveEnvironment: an absent key
 //	                           keeps the old value, and an explicit null
-//	                           coerces to false. Task 1 verified this from
-//	                           both a false-stored and a true-stored
-//	                           record, so the coercion is genuine, not an
-//	                           artifact of the starting value.
+//	                           coerces to false. Task 1 verified the
+//	                           coercion on a fresh compose whose stored
+//	                           value was true: true, then null, then
+//	                           false - so it is a genuine coercion, not an
+//	                           artifact of an already-false value.
 //
 // application.saveEnvironment is dialect A for createEnvFile (see "Write
 // dialects" above): an absent key 400s. compose.saveEnvironment and
@@ -820,13 +822,16 @@
 //     plan after the first explicit clear.
 //   - detachDokployNetwork:null does not 400. It returns HTTP 200 and
 //     coerces the stored value to false, even when the prior value was
-//     true. This result holds on both application.update and
-//     postgres.update. The brief predicted a bare-boolean 400 ("schema
-//     type is bare boolean"). The server instead treats a null boolean as
-//     false, the same coercion domain.update's `enabled` field and
-//     compose's `createEnvFile` field both show below. Model
-//     DetachDokployNetwork as *bool with no omitempty. Treat a null in a
-//     request as "the field becomes false," never as a rejected request.
+//     true. Task 1 verified this on application.update first, then
+//     repeated the same true-then-null sequence on postgres.update
+//     against a throwaway postgres record: HTTP 200, true, then null,
+//     then false. This result holds on both endpoints. The brief
+//     predicted a bare-boolean 400 ("schema type is bare boolean"). The
+//     server instead treats a null boolean as false, the same coercion
+//     domain.update's `enabled` field and compose's `createEnvFile`
+//     field both show below. Model DetachDokployNetwork as *bool with no
+//     omitempty. Treat a null in a request as "the field becomes false,"
+//     never as a rejected request.
 //
 // ## serviceNetworks and icon on compose.update
 //
@@ -852,8 +857,10 @@
 // ## domain enabled
 //
 // A domain.create request naming no `enabled` key still stores `enabled:
-// true`, the server's own default - the same result the v0.29.13 finding
-// above recorded. v0.30.2 confirms it again.
+// true`, the server's own default. Probed live against v0.30.2
+// (2026-08-19). `enabled` is not part of the domain.create request shape
+// the "domain.create: a fourth shape" section above already classified -
+// this is a new field, not a re-check of an earlier finding.
 //
 //	domain.update {..., "enabled":false}            -> stores false
 //	domain.update, `enabled` omitted entirely        -> silent-keep: stays
@@ -891,13 +898,16 @@
 // ## A pattern across three fields: a null boolean coerces, it never 400s
 //
 // Three unrelated fields on three unrelated endpoints showed the same
-// behavior: detachDokployNetwork (application.update, postgres.update),
-// createEnvFile (compose.saveEnvironment, compose.update), and enabled
+// behavior, each confirmed live from a true-stored record:
+// detachDokployNetwork (application.update, and separately
+// postgres.update against its own throwaway record), createEnvFile
+// (compose.saveEnvironment, and compose.update), and enabled
 // (domain.update). None of the three rejects an explicit JSON null with
 // HTTP 400. All three accept the null (HTTP 200) and silently store
 // false, even when the prior stored value was true. No bare-boolean
 // field probed this wave produced dialect A's "expected nonoptional,
-// received undefined" 400. Treat every bare-boolean field this wave adds
-// as null-coerces-to-false by default. Confirm the opposite live before a
-// later task assumes a 400 exists anywhere on this surface.
+// received undefined" 400. Treat every
+// bare-boolean field this wave adds as null-coerces-to-false by default.
+// Confirm the opposite live before a later task assumes a 400 exists
+// anywhere on this surface.
 package client
