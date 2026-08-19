@@ -17,9 +17,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
@@ -174,6 +178,13 @@ type Object struct {
 	// silently. See kind.go's package doc and the task-3 report.
 	DatabasePassword string
 	Credentials      map[string]string // keyed by CredentialAttr.TFName
+	// NetworkIDs and DetachDokployNetwork are the v0.30.0 network attachment
+	// fields, uniform across every engine and every Dokploy service type
+	// (see internal/resources/application/model.go for the same pair on
+	// application). NetworkIDs is nil when the service has no extra
+	// networks attached.
+	NetworkIDs           []string
+	DetachDokployNetwork bool
 }
 
 // CreateSpec is the engine-neutral input to KindClient.Create.
@@ -201,6 +212,12 @@ type UpdateSpec struct {
 	// (internal/client/doc.go): the caller maps a null config value to ""
 	// and the adapter decides how its engine's wire dialect treats that.
 	Credentials map[string]string
+	// NetworkIDs and DetachDokployNetwork are the v0.30.0 network attachment
+	// fields. NetworkIDs is a pointer so a null plan value (attribute
+	// omitted or explicitly cleared) can be told apart from an empty list -
+	// see tfutil.StringSetRequest, which produces this shape.
+	NetworkIDs           *[]string
+	DetachDokployNetwork bool
 }
 
 // KindClient adapts one engine's client methods to the CreateSpec/Object/
@@ -278,6 +295,19 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 			Optional:      true,
 			Description:   "Remote server to run the service on. Defaults to the Dokploy host.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+		},
+		"network_ids": schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "Ids of Docker networks (Dokploy network records) to attach this service to. " +
+				"Applied on the next deploy. Omit to keep only the default `dokploy-network`. " +
+				"An empty set is not valid - omit the attribute instead.",
+			Validators: []validator.Set{setvalidator.SizeAtLeast(1)},
+		},
+		"detach_dokploy_network": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Detach the shared `dokploy-network` from this service. Defaults to `false`. " +
+				"Only meaningful together with `network_ids`; applied on the next deploy.",
 		},
 		// status deliberately has NO UseStateForUnknown: it is genuinely
 		// server-mutable (a deploy moves it idle -> running -> done), so

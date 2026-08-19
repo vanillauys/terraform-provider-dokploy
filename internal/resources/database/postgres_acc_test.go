@@ -13,6 +13,7 @@ package database_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -169,6 +170,129 @@ resource "dokploy_postgres" "test" {
 				ResourceName:      "dokploy_postgres.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccPostgres_networkAttachment covers network_ids and
+// detach_dokploy_network, the v0.30.0 network attachment fields shared by
+// every database engine (kind.go's schemaAttributes, wired in
+// resource.go/model.go by this task). Postgres stands in for all five
+// engines here: the fields are engine-neutral (Object/UpdateSpec in kind.go),
+// and every adapter maps them identically (postgres.go/mysql.go/mariadb.go/
+// mongo.go/redis.go) - so this one acceptance run, plus the shared
+// TestKindCredentialDescriptors-style unit coverage, is what the brief calls
+// "engine symmetry... covered by the shared engine + adapters and the
+// census." Mirrors TestAccApplication_networkAttachment
+// (internal/resources/application/resource_acc_test.go) field for field:
+// both fields must round-trip, and network_ids must clear back to null
+// rather than an empty set - an explicit clear reads back as a literal JSON
+// null, not `[]`, and flatten collapses both shapes to a null set
+// (tfutil.StringSetOrNull).
+func TestAccPostgres_networkAttachment(t *testing.T) {
+	// resource.Test below only checks TF_ACC once its Steps start, but this
+	// test calls createNetwork BEFORE that - a raw HTTP call of its own - so
+	// it needs the same gate up front. Skipping (not failing) matches every
+	// other acceptance test in this package and keeps `make test` green with
+	// TF_ACC unset.
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
+	}
+	acctest.PreCheck(t)
+	name := acctest.RandomName("pg-net")
+	netName := acctest.RandomName("net")
+	networkID := createNetwork(t, netName)
+	t.Cleanup(func() { deleteNetwork(t, networkID) })
+
+	base := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+`, name+"-proj")
+
+	withNetwork := base + fmt.Sprintf(`
+resource "dokploy_postgres" "test" {
+  name              = %q
+  environment_id    = dokploy_project.test.environments[0].id
+  database_name     = "acc"
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  docker_image      = "postgres:16-alpine"
+
+  network_ids            = [%q]
+  detach_dokploy_network = true
+
+  deploy_on_change = false
+}`, name, networkID)
+
+	withoutNetwork := base + fmt.Sprintf(`
+resource "dokploy_postgres" "test" {
+  name              = %q
+  environment_id    = dokploy_project.test.environments[0].id
+  database_name     = "acc"
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  docker_image      = "postgres:16-alpine"
+
+  deploy_on_change = false
+}`, name)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkPostgresDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withNetwork,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "network_ids.#", "1"),
+					resource.TestCheckTypeSetElemAttr("dokploy_postgres.test", "network_ids.*", networkID),
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "detach_dokploy_network", "true"),
+					func(s *terraform.State) error {
+						pg, err := getAccPostgres(s)
+						if err != nil {
+							return err
+						}
+						if len(pg.NetworkIDs) != 1 || pg.NetworkIDs[0] != networkID {
+							return fmt.Errorf("server network_ids = %v, want [%s]", pg.NetworkIDs, networkID)
+						}
+						if !pg.DetachDokployNetwork {
+							return fmt.Errorf("server detach_dokploy_network = false, want true")
+						}
+						return nil
+					},
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// Removed from config. network_ids must converge to null (not
+				// an empty set) and detach_dokploy_network to its default,
+				// false - matching what the server actually stores after an
+				// explicit clear (doc.go: null, never []).
+				Config: withoutNetwork,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_postgres.test", "network_ids"),
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "detach_dokploy_network", "false"),
+					func(s *terraform.State) error {
+						pg, err := getAccPostgres(s)
+						if err != nil {
+							return err
+						}
+						if len(pg.NetworkIDs) != 0 {
+							return fmt.Errorf("server network_ids = %v, want cleared", pg.NetworkIDs)
+						}
+						if pg.DetachDokployNetwork {
+							return fmt.Errorf("server detach_dokploy_network = true, want its default false")
+						}
+						return nil
+					},
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
 			},
 		},
 	})

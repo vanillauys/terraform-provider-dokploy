@@ -96,6 +96,8 @@ func MysqlKind(c *client.Client) Kind {
 					DockerImage:          s.DockerImage,
 					DatabasePassword:     s.DatabasePassword,
 					DatabaseRootPassword: s.Credentials["database_root_password"],
+					NetworkIDs:           s.NetworkIDs,
+					DetachDokployNetwork: s.DetachDokployNetwork,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -133,18 +135,20 @@ func MysqlKind(c *client.Client) Kind {
 // mysqlObject maps a client.Mysql into the engine-neutral Object.
 func mysqlObject(my *client.Mysql) *Object {
 	return &Object{
-		ID:                my.MysqlID,
-		Name:              my.Name,
-		AppName:           my.AppName,
-		EnvironmentID:     my.EnvironmentID,
-		DockerImage:       my.DockerImage,
-		ApplicationStatus: my.ApplicationStatus,
-		CreatedAt:         my.CreatedAt,
-		Description:       my.Description,
-		Env:               my.Env,
-		ServerID:          my.ServerID,
-		ExternalPort:      my.ExternalPort,
-		DatabasePassword:  my.DatabasePassword,
+		ID:                   my.MysqlID,
+		Name:                 my.Name,
+		AppName:              my.AppName,
+		EnvironmentID:        my.EnvironmentID,
+		DockerImage:          my.DockerImage,
+		ApplicationStatus:    my.ApplicationStatus,
+		CreatedAt:            my.CreatedAt,
+		Description:          my.Description,
+		Env:                  my.Env,
+		ServerID:             my.ServerID,
+		ExternalPort:         my.ExternalPort,
+		DatabasePassword:     my.DatabasePassword,
+		NetworkIDs:           my.NetworkIDs,
+		DetachDokployNetwork: my.DetachDokployNetwork,
 		Credentials: map[string]string{
 			"database_name":          my.DatabaseName,
 			"database_user":          my.DatabaseUser,
