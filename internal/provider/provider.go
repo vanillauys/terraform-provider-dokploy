@@ -17,6 +17,7 @@ import (
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
 	libsqldatasource "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/libsql"
+	dsnetwork "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/network"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
@@ -213,5 +214,6 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsgitprovider.NewDataSource,
 		dsdestination.NewDataSource,
 		libsqldatasource.NewDataSource,
+		dsnetwork.NewDataSource,
 	}
 }
