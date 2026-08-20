@@ -24,17 +24,17 @@ var mustAlwaysSend = []struct {
 	fields []string
 }{
 	{UpdateProjectRequest{}, []string{"description"}},
-	{UpdatePostgresRequest{}, []string{"description"}},
-	{UpdateMysqlRequest{}, []string{"description", "databaseRootPassword"}},
-	{UpdateMariadbRequest{}, []string{"description", "databaseRootPassword"}},
-	{UpdateRedisRequest{}, []string{"description"}},
-	{UpdateMongoRequest{}, []string{"description"}},
-	{UpdateApplicationRequest{}, []string{"description"}},
+	{UpdatePostgresRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
+	{UpdateMysqlRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork"}},
+	{UpdateMariadbRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork"}},
+	{UpdateRedisRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
+	{UpdateMongoRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
+	{UpdateApplicationRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
 	{UpdateDomainRequest{}, []string{
 		"host", "path", "internalPath", "port", "https", "stripPath",
 		"certificateType", "customCertResolver", "customEntrypoint",
 		"serviceName", "forwardAuthEnabled", "domainType",
-		"applicationId", "composeId",
+		"applicationId", "composeId", "enabled",
 	}},
 	{UpdateEnvironmentRequest{}, []string{"name", "description", "env"}},
 	{CreateEnvironmentRequest{}, []string{"description"}},
@@ -68,8 +68,14 @@ var mustAlwaysSend = []struct {
 		"customGitUrl", "customGitBranch", "customGitSSHKeyId",
 		"triggerType", "autoDeploy", "enableSubmodules", "randomize",
 		"isolatedDeployment", "isolatedDeploymentsVolume", "watchPaths",
+		"icon", "serviceNetworks",
 	}},
-	{SaveComposeEnvironmentRequest{}, []string{"env"}},
+	{SaveComposeEnvironmentRequest{}, []string{"env", "createEnvFile"}},
+	// UpdateLibsqlRequest had no row here before v0.30.0 added networkIds
+	// and detachDokployNetwork. This row guards only those two new fields.
+	// See libsql.go's doc comments for the struct's older dialect-A/C
+	// fields.
+	{UpdateLibsqlRequest{}, []string{"networkIds", "detachDokployNetwork"}},
 }
 
 // inMustAlwaysSend reports whether a request struct is registered above. It

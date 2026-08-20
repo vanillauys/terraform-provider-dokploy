@@ -119,6 +119,10 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Default:     booldefault.StaticBool(false),
 				Description: "Route this domain through the configured forward-auth middleware. Defaults to `false`.",
 			},
+			"enabled": schema.BoolAttribute{
+				Optional: true, Computed: true, Default: booldefault.StaticBool(true),
+				Description: "Serve this domain. `false` removes the route from Traefik but keeps the configuration, so it can be re-enabled without re-entering certificates and paths. Defaults to `true`.",
+			},
 			"middlewares": schema.ListAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
@@ -177,6 +181,16 @@ func (r *domainResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	plan.ID = types.StringValue(created.DomainID)
+
+	// domain.create cannot express enabled=false (v0.30.0 put the field only
+	// on domain.update), so a domain configured disabled needs this follow-up.
+	if !plan.Enabled.ValueBool() {
+		if err := r.client.UpdateDomain(ctx, expandUpdate(&plan)); err != nil {
+			resp.Diagnostics.AddError("Disabling domain after create",
+				fmt.Sprintf("domain %s was created enabled; disabling it failed: %s. The next apply will converge.", created.DomainID, err))
+			// fall through: the read-back below still records real state
+		}
+	}
 
 	current, err := r.client.GetDomain(ctx, created.DomainID)
 	if err != nil {

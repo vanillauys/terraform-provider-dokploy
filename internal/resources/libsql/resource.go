@@ -32,7 +32,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -206,6 +208,23 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			Computed:    true,
 			Default:     int64default.StaticInt64(1),
 			Description: "Number of container replicas to run. Defaults to `1`.",
+		},
+		// network_ids and detach_dokploy_network are the v0.30.0 network
+		// attachment attributes, worded identically to every other engine
+		// (internal/resources/database/kind.go's schemaAttributes,
+		// internal/resources/application/resource.go).
+		"network_ids": schema.SetAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "Ids of Docker networks (Dokploy network records) to attach this service to. " +
+				"Applied on the next deploy. Omit to keep only the default `dokploy-network`. " +
+				"An empty set is not valid - omit the attribute instead.",
+			Validators: []validator.Set{setvalidator.SizeAtLeast(1)},
+		},
+		"detach_dokploy_network": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Detach the shared `dokploy-network` from this service. Defaults to `false`. " +
+				"Only meaningful together with `network_ids`; applied on the next deploy.",
 		},
 		// status deliberately has NO UseStateForUnknown: a deploy moves it
 		// out of Terraform's control, so pinning the prior value as a known
@@ -425,8 +444,14 @@ func (r *libsqlResource) Create(ctx context.Context, req resource.CreateRequest,
 	// Without this follow-up call they are silently ignored on the FIRST
 	// apply and only take effect on a later one - the same bug compose's
 	// Create is written to avoid, since compose.create also only accepts a
-	// subset of the fields compose.update does.
-	if err := r.client.UpdateLibsql(ctx, expandUpdate(&plan)); err != nil {
+	// subset of the fields compose.update does. The same is true of the
+	// v0.30.0 network_ids/detach_dokploy_network fields - CreateLibsqlRequest
+	// carries neither - so this one follow-up call is also what applies a
+	// first-apply network attachment; no separate call is needed for it.
+	var updateDiags diag.Diagnostics
+	updateReq := expandUpdate(ctx, &plan, &updateDiags)
+	resp.Diagnostics.Append(updateDiags...)
+	if err := r.client.UpdateLibsql(ctx, updateReq); err != nil {
 		r.persistPartial(ctx, resp, plan, "applying the operational settings", err)
 		return
 	}
@@ -484,7 +509,9 @@ func (r *libsqlResource) Read(ctx context.Context, req resource.ReadRequest, res
 		resp.Diagnostics.AddError("Reading libsql service", err.Error())
 		return
 	}
-	flatten(c, &state)
+	var flattenDiags diag.Diagnostics
+	flatten(ctx, c, &state, &flattenDiags)
+	resp.Diagnostics.Append(flattenDiags...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -522,8 +549,13 @@ func (r *libsqlResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	// libsql.update carries every mutable field, so expandUpdate sends all
 	// of them from the model on every call, unconditionally - the same
-	// dialect-B reasoning as compose.update.
-	if err := r.client.UpdateLibsql(ctx, expandUpdate(&plan)); err != nil {
+	// dialect-B reasoning as compose.update. That includes network_ids/
+	// detach_dokploy_network: there is no separate network-attachment call
+	// to gate here, unlike the database package's conditional follow-up.
+	var updateDiags diag.Diagnostics
+	updateReq := expandUpdate(ctx, &plan, &updateDiags)
+	resp.Diagnostics.Append(updateDiags...)
+	if err := r.client.UpdateLibsql(ctx, updateReq); err != nil {
 		resp.Diagnostics.AddError("Updating libsql service", err.Error())
 		return
 	}

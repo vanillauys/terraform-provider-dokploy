@@ -76,11 +76,13 @@ func PostgresKind(c *client.Client) Kind {
 			},
 			Update: func(ctx context.Context, s UpdateSpec) error {
 				return c.UpdatePostgres(ctx, client.UpdatePostgresRequest{
-					PostgresID:       s.ID,
-					Name:             s.Name,
-					Description:      s.Description,
-					DockerImage:      s.DockerImage,
-					DatabasePassword: s.DatabasePassword,
+					PostgresID:           s.ID,
+					Name:                 s.Name,
+					Description:          s.Description,
+					DockerImage:          s.DockerImage,
+					DatabasePassword:     s.DatabasePassword,
+					NetworkIDs:           s.NetworkIDs,
+					DetachDokployNetwork: s.DetachDokployNetwork,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -122,18 +124,20 @@ func PostgresKind(c *client.Client) Kind {
 // postgresObject maps a client.Postgres into the engine-neutral Object.
 func postgresObject(pg *client.Postgres) *Object {
 	return &Object{
-		ID:                pg.PostgresID,
-		Name:              pg.Name,
-		AppName:           pg.AppName,
-		EnvironmentID:     pg.EnvironmentID,
-		DockerImage:       pg.DockerImage,
-		ApplicationStatus: pg.ApplicationStatus,
-		CreatedAt:         pg.CreatedAt,
-		Description:       pg.Description,
-		Env:               pg.Env,
-		ServerID:          pg.ServerID,
-		ExternalPort:      pg.ExternalPort,
-		DatabasePassword:  pg.DatabasePassword,
+		ID:                   pg.PostgresID,
+		Name:                 pg.Name,
+		AppName:              pg.AppName,
+		EnvironmentID:        pg.EnvironmentID,
+		DockerImage:          pg.DockerImage,
+		ApplicationStatus:    pg.ApplicationStatus,
+		CreatedAt:            pg.CreatedAt,
+		Description:          pg.Description,
+		Env:                  pg.Env,
+		ServerID:             pg.ServerID,
+		ExternalPort:         pg.ExternalPort,
+		DatabasePassword:     pg.DatabasePassword,
+		NetworkIDs:           pg.NetworkIDs,
+		DetachDokployNetwork: pg.DetachDokployNetwork,
 		Credentials: map[string]string{
 			"database_name": pg.DatabaseName,
 			"database_user": pg.DatabaseUser,

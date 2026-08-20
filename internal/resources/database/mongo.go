@@ -105,11 +105,13 @@ func MongoKind(c *client.Client) Kind {
 			},
 			Update: func(ctx context.Context, s UpdateSpec) error {
 				return c.UpdateMongo(ctx, client.UpdateMongoRequest{
-					MongoID:          s.ID,
-					Name:             s.Name,
-					Description:      s.Description,
-					DockerImage:      s.DockerImage,
-					DatabasePassword: s.DatabasePassword,
+					MongoID:              s.ID,
+					Name:                 s.Name,
+					Description:          s.Description,
+					DockerImage:          s.DockerImage,
+					DatabasePassword:     s.DatabasePassword,
+					NetworkIDs:           s.NetworkIDs,
+					DetachDokployNetwork: s.DetachDokployNetwork,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -147,18 +149,20 @@ func MongoKind(c *client.Client) Kind {
 // mongoObject maps a client.Mongo into the engine-neutral Object.
 func mongoObject(mo *client.Mongo) *Object {
 	return &Object{
-		ID:                mo.MongoID,
-		Name:              mo.Name,
-		AppName:           mo.AppName,
-		EnvironmentID:     mo.EnvironmentID,
-		DockerImage:       mo.DockerImage,
-		ApplicationStatus: mo.ApplicationStatus,
-		CreatedAt:         mo.CreatedAt,
-		Description:       mo.Description,
-		Env:               mo.Env,
-		ServerID:          mo.ServerID,
-		ExternalPort:      mo.ExternalPort,
-		DatabasePassword:  mo.DatabasePassword,
+		ID:                   mo.MongoID,
+		Name:                 mo.Name,
+		AppName:              mo.AppName,
+		EnvironmentID:        mo.EnvironmentID,
+		DockerImage:          mo.DockerImage,
+		ApplicationStatus:    mo.ApplicationStatus,
+		CreatedAt:            mo.CreatedAt,
+		Description:          mo.Description,
+		Env:                  mo.Env,
+		ServerID:             mo.ServerID,
+		ExternalPort:         mo.ExternalPort,
+		DatabasePassword:     mo.DatabasePassword,
+		NetworkIDs:           mo.NetworkIDs,
+		DetachDokployNetwork: mo.DetachDokployNetwork,
 		Credentials: map[string]string{
 			"database_user": mo.DatabaseUser,
 		},

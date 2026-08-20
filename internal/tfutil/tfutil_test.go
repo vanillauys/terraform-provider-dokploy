@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -109,6 +110,44 @@ func TestClientFromProviderData(t *testing.T) {
 	}
 	if !diags.HasError() {
 		t.Error("a wrongly-typed ProviderData must produce an error diagnostic")
+	}
+}
+
+// TestStringSetOrNullCollapsesEmpty pins the v0.30.0 networkIds rule (see
+// internal/client/doc.go, v0.30.0 section): a fresh record reads networkIds
+// back as `[]`, and an explicit clear reads it back as a literal `null`. Both
+// must collapse to a null set, or Read disagrees with config's null forever.
+func TestStringSetOrNullCollapsesEmpty(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+	if got := StringSetOrNull(ctx, nil, &diags); !got.IsNull() {
+		t.Errorf("nil -> %v, want null set", got)
+	}
+	if got := StringSetOrNull(ctx, []string{}, &diags); !got.IsNull() {
+		t.Errorf("[] -> %v, want null set", got)
+	}
+	got := StringSetOrNull(ctx, []string{"a"}, &diags)
+	if got.IsNull() || len(got.Elements()) != 1 {
+		t.Errorf(`["a"] -> %v, want one-element set`, got)
+	}
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+}
+
+// TestStringSetRequestNullMeansNil pins the inverse: a null or unknown set
+// must marshal as an explicit JSON null, which the v0.30.0 update endpoints
+// read as "clear the field" (see internal/client/doc.go).
+func TestStringSetRequestNullMeansNil(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+	if got := StringSetRequest(ctx, types.SetNull(types.StringType), &diags); got != nil {
+		t.Errorf("null set -> %v, want nil", got)
+	}
+	set, _ := types.SetValueFrom(ctx, types.StringType, []string{"a"})
+	got := StringSetRequest(ctx, set, &diags)
+	if got == nil || len(*got) != 1 || (*got)[0] != "a" {
+		t.Errorf("set -> %v, want &[a]", got)
 	}
 }
 

@@ -9,4 +9,9 @@ resource "dokploy_application" "example" {
   env = <<-EOT
     PORT=80
   EOT
+
+  # Attach to extra Docker networks. Applied on the next deploy. A bare id
+  # would not apply for other users, so this stays commented out - replace
+  # it with a real network id from your own instance before you uncomment it.
+  # network_ids = ["<dokploy-network-id>"]
 }

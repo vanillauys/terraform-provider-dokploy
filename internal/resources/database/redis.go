@@ -81,11 +81,13 @@ func RedisKind(c *client.Client) Kind {
 			},
 			Update: func(ctx context.Context, s UpdateSpec) error {
 				return c.UpdateRedis(ctx, client.UpdateRedisRequest{
-					RedisID:          s.ID,
-					Name:             s.Name,
-					Description:      s.Description,
-					DockerImage:      s.DockerImage,
-					DatabasePassword: s.DatabasePassword,
+					RedisID:              s.ID,
+					Name:                 s.Name,
+					Description:          s.Description,
+					DockerImage:          s.DockerImage,
+					DatabasePassword:     s.DatabasePassword,
+					NetworkIDs:           s.NetworkIDs,
+					DetachDokployNetwork: s.DetachDokployNetwork,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -129,18 +131,20 @@ func RedisKind(c *client.Client) Kind {
 // is deliberate, not an oversight.
 func redisObject(rd *client.Redis) *Object {
 	return &Object{
-		ID:                rd.RedisID,
-		Name:              rd.Name,
-		AppName:           rd.AppName,
-		EnvironmentID:     rd.EnvironmentID,
-		DockerImage:       rd.DockerImage,
-		ApplicationStatus: rd.ApplicationStatus,
-		CreatedAt:         rd.CreatedAt,
-		Description:       rd.Description,
-		Env:               rd.Env,
-		ServerID:          rd.ServerID,
-		ExternalPort:      rd.ExternalPort,
-		DatabasePassword:  rd.DatabasePassword,
-		Credentials:       map[string]string{},
+		ID:                   rd.RedisID,
+		Name:                 rd.Name,
+		AppName:              rd.AppName,
+		EnvironmentID:        rd.EnvironmentID,
+		DockerImage:          rd.DockerImage,
+		ApplicationStatus:    rd.ApplicationStatus,
+		CreatedAt:            rd.CreatedAt,
+		Description:          rd.Description,
+		Env:                  rd.Env,
+		ServerID:             rd.ServerID,
+		ExternalPort:         rd.ExternalPort,
+		DatabasePassword:     rd.DatabasePassword,
+		NetworkIDs:           rd.NetworkIDs,
+		DetachDokployNetwork: rd.DetachDokployNetwork,
+		Credentials:          map[string]string{},
 	}
 }

@@ -93,6 +93,31 @@ func TestCreateAndGetPostgres(t *testing.T) {
 	}
 }
 
+// TestUpdatePostgresRequestCarriesNetworkFields guards the v0.30.0
+// network-attachment fields (doc.go). It mirrors
+// TestUpdateApplicationRequestCarriesNetworkFields. See
+// UpdatePostgresRequest's doc comment for the null-coerces-to-false
+// finding this test encodes.
+func TestUpdatePostgresRequestCarriesNetworkFields(t *testing.T) {
+	req := UpdatePostgresRequest{PostgresID: "pg1"}
+	raw, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	// Dialect B: a nil NetworkIDs must reach the wire as explicit null so it
+	// can clear, and detachDokployNetwork must always carry a concrete bool.
+	if string(m["networkIds"]) != "null" {
+		t.Errorf("networkIds = %s, want null", m["networkIds"])
+	}
+	if string(m["detachDokployNetwork"]) != "false" {
+		t.Errorf("detachDokployNetwork = %s, want false", m["detachDokployNetwork"])
+	}
+}
+
 func TestPostgresMutations(t *testing.T) {
 	var calls []string
 	var externalPortBodies []any

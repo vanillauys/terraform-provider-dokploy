@@ -41,8 +41,16 @@ type Libsql struct {
 	Replicas          int64   `json:"replicas"`
 	ApplicationStatus string  `json:"applicationStatus"`
 	EnvironmentID     string  `json:"environmentId"`
-	ServerID          *string `json:"serverId"`
-	CreatedAt         string  `json:"createdAt"`
+
+	// v0.30.0 network attachment (probed 2026-08-19, see doc.go). networkIds
+	// reads back as [] on a fresh record. After an explicit clear, it reads
+	// back as a literal null. Both shapes decode to a nil or empty Go
+	// slice. The resource layer collapses both to a null set.
+	NetworkIDs           []string `json:"networkIds"`
+	DetachDokployNetwork bool     `json:"detachDokployNetwork"`
+
+	ServerID  *string `json:"serverId"`
+	CreatedAt string  `json:"createdAt"`
 }
 
 // CreateLibsqlRequest.
@@ -123,6 +131,15 @@ type UpdateLibsqlRequest struct {
 	MemoryLimit       *string `json:"memoryLimit"`
 	MemoryReservation *string `json:"memoryReservation"`
 	Replicas          *int64  `json:"replicas,omitempty"`
+
+	// v0.30.0 network attachment. NetworkIDs is nullable on the wire; a null
+	// value clears it. DetachDokployNetwork is a bare boolean. The server
+	// null-coerces it to false (doc.go, v0.30.0 section), so the client
+	// always sends a concrete value - the Replicas pattern. Unlike this
+	// struct's other fields, neither one carries omitempty: both are
+	// dialect B fields this task adds, not the dialect-A/C exceptions above.
+	NetworkIDs           *[]string `json:"networkIds"`
+	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
 }
 
 // CreateLibsql. libsql.create returns literal `true`, not the record, so the

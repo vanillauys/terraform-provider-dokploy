@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -17,6 +18,12 @@ func TestDeployNeeded(t *testing.T) {
 			Env:              types.StringValue("A=1"),
 			ExternalPort:     types.Int64Value(5432),
 			Name:             types.StringValue("db"),
+			// A zero-value types.Set is NOT equal to itself: SetValue.Equal
+			// treats a nil elementType as an invalid state and always returns
+			// false, so a hand-built fixture must say so explicitly, or every
+			// comparison against it reports a spurious change.
+			NetworkIDs:           types.SetNull(types.StringType),
+			DetachDokployNetwork: types.BoolValue(false),
 		}
 	}
 
@@ -32,11 +39,18 @@ func TestDeployNeeded(t *testing.T) {
 		t.Error("name is not a deploy trigger")
 	}
 
+	networkSet := func(ids ...string) types.Set {
+		set, _ := types.SetValueFrom(context.Background(), types.StringType, ids)
+		return set
+	}
+
 	for name, mutate := range map[string]func(*genericModel){
-		"docker_image":      func(m *genericModel) { m.DockerImage = types.StringValue("postgres:17") },
-		"database_password": func(m *genericModel) { m.DatabasePassword = types.StringValue("changed") },
-		"env":               func(m *genericModel) { m.Env = types.StringValue("A=2") },
-		"external_port":     func(m *genericModel) { m.ExternalPort = types.Int64Value(5433) },
+		"docker_image":           func(m *genericModel) { m.DockerImage = types.StringValue("postgres:17") },
+		"database_password":      func(m *genericModel) { m.DatabasePassword = types.StringValue("changed") },
+		"env":                    func(m *genericModel) { m.Env = types.StringValue("A=2") },
+		"external_port":          func(m *genericModel) { m.ExternalPort = types.Int64Value(5433) },
+		"network_ids":            func(m *genericModel) { m.NetworkIDs = networkSet("net-1") },
+		"detach_dokploy_network": func(m *genericModel) { m.DetachDokployNetwork = types.BoolValue(true) },
 	} {
 		plan = base()
 		mutate(&plan)
@@ -66,6 +80,9 @@ func TestDeployNeeded_CredentialAttr(t *testing.T) {
 			DatabasePassword: types.StringValue("hunter2"),
 			Env:              types.StringValue("A=1"),
 			ExternalPort:     types.Int64Value(3306),
+			// Same zero-value trap as TestDeployNeeded's base() above.
+			NetworkIDs:           types.SetNull(types.StringType),
+			DetachDokployNetwork: types.BoolValue(false),
 			Credentials: map[string]types.String{
 				"database_root_password": types.StringValue("root1"),
 				"database_name":          types.StringValue("app"),
@@ -511,25 +528,31 @@ func TestFlatten_TwoCredentialAttrs(t *testing.T) {
 	port := int64(5432)
 	serverID := "srv-1"
 	obj := &Object{
-		ID:                "pg-1",
-		Name:              "mydb",
-		AppName:           "app-1",
-		EnvironmentID:     "env-1",
-		DockerImage:       "postgres:16-alpine",
-		ApplicationStatus: "done",
-		CreatedAt:         "2026-01-01T00:00:00Z",
-		Description:       &desc,
-		Env:               &env,
-		ServerID:          &serverID,
-		ExternalPort:      &port,
-		DatabasePassword:  "hunter2",
+		ID:                   "pg-1",
+		Name:                 "mydb",
+		AppName:              "app-1",
+		EnvironmentID:        "env-1",
+		DockerImage:          "postgres:16-alpine",
+		ApplicationStatus:    "done",
+		CreatedAt:            "2026-01-01T00:00:00Z",
+		Description:          &desc,
+		Env:                  &env,
+		ServerID:             &serverID,
+		ExternalPort:         &port,
+		DatabasePassword:     "hunter2",
+		NetworkIDs:           []string{"net-1"},
+		DetachDokployNetwork: true,
 		Credentials: map[string]string{
 			"database_name": "mydb",
 			"database_user": "myuser",
 		},
 	}
 	var m genericModel
-	flatten(k, obj, &m)
+	var diags diag.Diagnostics
+	flatten(context.Background(), k, obj, &m, &diags)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
 
 	if got := m.Name.ValueString(); got != "mydb" {
 		t.Errorf("Name = %q, want mydb", got)
@@ -552,6 +575,12 @@ func TestFlatten_TwoCredentialAttrs(t *testing.T) {
 	if got := m.ExternalPort.ValueInt64(); got != port {
 		t.Errorf("ExternalPort = %d, want %d", got, port)
 	}
+	if got := m.NetworkIDs.Elements(); len(got) != 1 {
+		t.Errorf("NetworkIDs = %v, want one element", got)
+	}
+	if got := m.DetachDokployNetwork.ValueBool(); !got {
+		t.Errorf("DetachDokployNetwork = %v, want true", got)
+	}
 	if got := m.Credentials["database_name"].ValueString(); got != "mydb" {
 		t.Errorf("Credentials[database_name] = %q, want mydb", got)
 	}
@@ -571,7 +600,14 @@ func TestFlatten_MissingCredentialGoesNull(t *testing.T) {
 		Credentials: map[string]string{},
 	}
 	var m genericModel
-	flatten(k, obj, &m)
+	var diags diag.Diagnostics
+	flatten(context.Background(), k, obj, &m, &diags)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	if !m.NetworkIDs.IsNull() {
+		t.Errorf("expected NetworkIDs null when Object.NetworkIDs is nil, got %v", m.NetworkIDs)
+	}
 	if !m.Credentials["database_name"].IsNull() {
 		t.Errorf("expected database_name null when absent from Object.Credentials, got %v", m.Credentials["database_name"])
 	}

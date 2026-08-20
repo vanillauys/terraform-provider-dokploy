@@ -43,6 +43,12 @@ type genericModel struct {
 	DeploymentTimeout types.String
 	Credentials       map[string]types.String // keyed by CredentialAttr.TFName
 
+	// NetworkIDs and DetachDokployNetwork are the v0.30.0 network attachment
+	// attributes, uniform across every database engine (see kind.go's
+	// schemaAttributes).
+	NetworkIDs           types.Set
+	DetachDokployNetwork types.Bool
+
 	// attrTypes is captured from the source Plan/State's actual object type
 	// (types.Object.AttributeTypes) so setModel can rebuild a types.Object
 	// without independently re-deriving (and risking drift from) the
@@ -69,7 +75,9 @@ func deployNeeded(k Kind, plan, state genericModel) bool {
 	if !plan.DockerImage.Equal(state.DockerImage) ||
 		!plan.DatabasePassword.Equal(state.DatabasePassword) ||
 		!plan.Env.Equal(state.Env) ||
-		!plan.ExternalPort.Equal(state.ExternalPort) {
+		!plan.ExternalPort.Equal(state.ExternalPort) ||
+		!plan.NetworkIDs.Equal(state.NetworkIDs) ||
+		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork) {
 		return true
 	}
 	for _, ca := range k.CredentialAttrs {
@@ -229,7 +237,7 @@ func resolveUnknownComputedCredentials(ctx context.Context, k Kind, id string, m
 
 // flatten maps the full API object into the model (Read/refresh). The
 // deploy_* attributes are provider-side only and left untouched.
-func flatten(k Kind, obj *Object, m *genericModel) {
+func flatten(ctx context.Context, k Kind, obj *Object, m *genericModel, diags *diag.Diagnostics) {
 	setComputed(k, obj, m)
 	m.Name = types.StringValue(obj.Name)
 	m.EnvironmentID = types.StringValue(obj.EnvironmentID)
@@ -238,6 +246,8 @@ func flatten(k Kind, obj *Object, m *genericModel) {
 	m.Env = tfutil.StringOrNull(obj.Env)
 	m.ExternalPort = types.Int64PointerValue(obj.ExternalPort)
 	m.ServerID = tfutil.StringOrNull(obj.ServerID)
+	m.NetworkIDs = tfutil.StringSetOrNull(ctx, obj.NetworkIDs, diags)
+	m.DetachDokployNetwork = types.BoolValue(obj.DetachDokployNetwork)
 	if m.Credentials == nil {
 		m.Credentials = map[string]types.String{}
 	}
@@ -285,6 +295,9 @@ func getModel(ctx context.Context, k Kind, src getter) (genericModel, diag.Diagn
 		DeploymentTimeout: a["deployment_timeout"].(types.String),
 		Credentials:       map[string]types.String{},
 		attrTypes:         obj.AttributeTypes(ctx),
+
+		NetworkIDs:           a["network_ids"].(types.Set),
+		DetachDokployNetwork: a["detach_dokploy_network"].(types.Bool),
 	}
 	for _, ca := range k.CredentialAttrs {
 		m.Credentials[ca.TFName] = a[ca.TFName].(types.String)
@@ -309,6 +322,9 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 		"created_at":         m.CreatedAt,
 		"deploy_on_change":   m.DeployOnChange,
 		"deployment_timeout": m.DeploymentTimeout,
+
+		"network_ids":            m.NetworkIDs,
+		"detach_dokploy_network": m.DetachDokployNetwork,
 	}
 	for name, v := range m.Credentials {
 		values[name] = v

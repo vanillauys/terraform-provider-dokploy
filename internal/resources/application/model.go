@@ -44,6 +44,9 @@ type resourceModel struct {
 	CreatedAt         types.String `tfsdk:"created_at"`
 	DeployOnChange    types.Bool   `tfsdk:"deploy_on_change"`
 	DeploymentTimeout types.String `tfsdk:"deployment_timeout"`
+
+	NetworkIDs           types.Set  `tfsdk:"network_ids"`
+	DetachDokployNetwork types.Bool `tfsdk:"detach_dokploy_network"`
 }
 
 type githubModel struct {
@@ -104,6 +107,9 @@ var buildAttrTypes = map[string]attr.Type{
 }
 
 // deployNeeded: sources, build settings, env and build args trigger deploys.
+// network_ids / detach_dokploy_network are here too: the v0.30.0 release
+// notes say a network attachment change only takes effect on the next
+// deploy.
 func deployNeeded(plan, state resourceModel) bool {
 	return !plan.Github.Equal(state.Github) ||
 		!plan.Git.Equal(state.Git) ||
@@ -114,7 +120,9 @@ func deployNeeded(plan, state resourceModel) bool {
 		!plan.BuildSecrets.Equal(state.BuildSecrets) ||
 		!plan.CreateEnvFile.Equal(state.CreateEnvFile) ||
 		!plan.WatchPaths.Equal(state.WatchPaths) ||
-		!plan.EnableSubmodules.Equal(state.EnableSubmodules)
+		!plan.EnableSubmodules.Equal(state.EnableSubmodules) ||
+		!plan.NetworkIDs.Equal(state.NetworkIDs) ||
+		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork)
 }
 
 // unchangedExceptStatus reports whether plan and state agree on every
@@ -153,7 +161,9 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.RegistryID.Equal(state.RegistryID) &&
 		plan.CreatedAt.Equal(state.CreatedAt) &&
 		plan.DeployOnChange.Equal(state.DeployOnChange) &&
-		plan.DeploymentTimeout.Equal(state.DeploymentTimeout)
+		plan.DeploymentTimeout.Equal(state.DeploymentTimeout) &&
+		plan.NetworkIDs.Equal(state.NetworkIDs) &&
+		plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork)
 }
 
 // strOrNull treats null and "" alike as unset. See tfutil.StringOrNull for
@@ -272,7 +282,9 @@ func operationalChanged(plan, state resourceModel) bool {
 		!plan.MemoryReservation.Equal(state.MemoryReservation) ||
 		!plan.Command.Equal(state.Command) ||
 		!plan.Args.Equal(state.Args) ||
-		!plan.RegistryID.Equal(state.RegistryID)
+		!plan.RegistryID.Equal(state.RegistryID) ||
+		!plan.NetworkIDs.Equal(state.NetworkIDs) ||
+		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork)
 }
 
 // updateRequest builds the application.update body. Dialect B: every key is
@@ -281,18 +293,20 @@ func operationalChanged(plan, state resourceModel) bool {
 func updateRequest(ctx context.Context, id string, m resourceModel) (client.UpdateApplicationRequest, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	return client.UpdateApplicationRequest{
-		ApplicationID:     id,
-		Name:              m.Name.ValueString(),
-		Description:       m.Description.ValueStringPointer(),
-		AutoDeploy:        m.AutoDeploy.ValueBoolPointer(),
-		Replicas:          m.Replicas.ValueInt64(),
-		CPULimit:          m.CPULimit.ValueStringPointer(),
-		MemoryLimit:       m.MemoryLimit.ValueStringPointer(),
-		CPUReservation:    m.CPUReservation.ValueStringPointer(),
-		MemoryReservation: m.MemoryReservation.ValueStringPointer(),
-		Command:           m.Command.ValueStringPointer(),
-		Args:              stringListRequest(ctx, m.Args, &diags),
-		RegistryID:        m.RegistryID.ValueStringPointer(),
+		ApplicationID:        id,
+		Name:                 m.Name.ValueString(),
+		Description:          m.Description.ValueStringPointer(),
+		AutoDeploy:           m.AutoDeploy.ValueBoolPointer(),
+		Replicas:             m.Replicas.ValueInt64(),
+		CPULimit:             m.CPULimit.ValueStringPointer(),
+		MemoryLimit:          m.MemoryLimit.ValueStringPointer(),
+		CPUReservation:       m.CPUReservation.ValueStringPointer(),
+		MemoryReservation:    m.MemoryReservation.ValueStringPointer(),
+		Command:              m.Command.ValueStringPointer(),
+		Args:                 stringListRequest(ctx, m.Args, &diags),
+		RegistryID:           m.RegistryID.ValueStringPointer(),
+		NetworkIDs:           tfutil.StringSetRequest(ctx, m.NetworkIDs, &diags),
+		DetachDokployNetwork: m.DetachDokployNetwork.ValueBool(),
 	}, diags
 }
 
@@ -386,6 +400,8 @@ func flatten(ctx context.Context, app *client.Application, m *resourceModel) dia
 	m.WatchPaths = watchPathsValue(ctx, app.WatchPaths, &diags)
 	m.Status = types.StringValue(app.ApplicationStatus)
 	m.CreatedAt = types.StringValue(app.CreatedAt)
+	m.NetworkIDs = tfutil.StringSetOrNull(ctx, app.NetworkIDs, &diags)
+	m.DetachDokployNetwork = types.BoolValue(app.DetachDokployNetwork)
 
 	m.Github = types.ObjectNull(githubAttrTypes)
 	m.Git = types.ObjectNull(gitAttrTypes)

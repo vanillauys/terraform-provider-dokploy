@@ -88,3 +88,22 @@ func TestUpdateDomainSendsExplicitNullsForClearedFields(t *testing.T) {
 		}
 	}
 }
+
+// enabled is a v0.30.0 addition to domain.update, modeled as a bare bool
+// (the Replicas pattern) - see doc.go's "domain enabled" section. A bare
+// UpdateDomainRequest must still carry the key, with its zero value false,
+// because domain.update is dialect B: an absent key would silently keep
+// the old value.
+func TestUpdateDomainRequestCarriesEnabled(t *testing.T) {
+	raw, err := json.Marshal(UpdateDomainRequest{DomainID: "d1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	if string(m["enabled"]) != "false" {
+		t.Errorf("enabled = %s, want false", m["enabled"])
+	}
+}

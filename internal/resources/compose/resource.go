@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -208,11 +209,44 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 		},
 		"isolated_deployment": schema.BoolAttribute{
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
-			Description: "Run the stack in an isolated Docker network. Defaults to `false`.",
+			DeprecationMessage: "Dokploy v0.30.0 deprecates Isolated Deployment in favor of per-service network attachments. Use service_networks instead.",
+			Description:        "Run the stack in an isolated Docker network. Defaults to `false`. **Deprecated upstream since Dokploy v0.30.0** - prefer `service_networks`.",
 		},
 		"isolated_deployments_volume": schema.BoolAttribute{
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
-			Description: "Give the isolated deployment its own volume namespace. Defaults to `false`.",
+			DeprecationMessage: "Dokploy v0.30.0 deprecates Isolated Deployment in favor of per-service network attachments. Use service_networks instead.",
+			Description:        "Give the isolated deployment its own volume namespace. Defaults to `false`. **Deprecated upstream since Dokploy v0.30.0** - prefer `service_networks`.",
+		},
+
+		// v0.30.0. See doc.go's "compose createEnvFile" and "serviceNetworks
+		// and icon on compose.update" sections.
+		"create_env_file": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(true),
+			Description: "Write the environment variables to a `.env` file for the compose project. Defaults to the server's own default for a new service.",
+		},
+		"icon": schema.StringAttribute{
+			Optional:    true,
+			Description: "Service icon shown in the Dokploy UI (an icon name or data URI, up to 2 MB).",
+		},
+		"service_networks": schema.SetNestedAttribute{
+			Optional:    true,
+			Description: "Per-service Docker network attachments (Dokploy v0.30.0). Each entry names one compose service and the Dokploy network ids to attach. Applied on the next deploy.",
+			Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"service_name": schema.StringAttribute{Required: true, Description: "Compose service name, as written in the compose file."},
+					"network_ids": schema.SetAttribute{
+						Required:    true,
+						ElementType: types.StringType,
+						Description: "Dokploy network ids to attach to this service.",
+						Validators:  []validator.Set{setvalidator.SizeAtLeast(1)},
+					},
+					"detach_dokploy_network": schema.BoolAttribute{
+						Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+						Description: "Detach the shared `dokploy-network` from this service. Defaults to `false`.",
+					},
+				},
+			},
 		},
 
 		// status deliberately has NO UseStateForUnknown: a deploy moves it
@@ -362,10 +396,14 @@ func (r *composeResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	if !plan.Env.IsNull() {
+	if !plan.Env.IsNull() || !plan.CreateEnvFile.ValueBool() {
+		// createEnvFile's default (true) matches the server's own default for
+		// a fresh service, so the call is skipped only when both env is unset
+		// and create_env_file holds the default.
 		err := r.client.SaveComposeEnvironment(ctx, client.SaveComposeEnvironmentRequest{
-			ComposeID: created.ComposeID,
-			Env:       plan.Env.ValueStringPointer(),
+			ComposeID:     created.ComposeID,
+			Env:           plan.Env.ValueStringPointer(),
+			CreateEnvFile: plan.CreateEnvFile.ValueBoolPointer(),
 		})
 		if err != nil {
 			r.persistPartial(ctx, resp, plan, "saving environment variables", err)
@@ -440,10 +478,11 @@ func (r *composeResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	if !plan.Env.Equal(state.Env) {
+	if !plan.Env.Equal(state.Env) || !plan.CreateEnvFile.Equal(state.CreateEnvFile) {
 		err := r.client.SaveComposeEnvironment(ctx, client.SaveComposeEnvironmentRequest{
-			ComposeID: id,
-			Env:       plan.Env.ValueStringPointer(),
+			ComposeID:     id,
+			Env:           plan.Env.ValueStringPointer(),
+			CreateEnvFile: plan.CreateEnvFile.ValueBoolPointer(),
 		})
 		if err != nil {
 			resp.Diagnostics.AddError("Saving environment variables", err.Error())

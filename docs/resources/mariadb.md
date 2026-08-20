@@ -45,9 +45,11 @@ resource "dokploy_mariadb" "example" {
 - `deploy_on_change` (Boolean) Deploy after create and after changes to deploy-triggering attributes. Defaults to `true`.
 - `deployment_timeout` (String) How long to wait for a triggered deployment to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout the apply fails but the server-side deployment keeps running.
 - `description` (String) Free-form description.
+- `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this service. Defaults to `false`. Only meaningful together with `network_ids`; applied on the next deploy.
 - `docker_image` (String) MariaDB docker image, e.g. `mariadb:11.4`. Server default when omitted. The server's own default (`mariadb:6`) does not exist on Docker Hub; a first apply that leaves this unset creates the record and then fails the deploy (`deploy_on_change` defaults to `true`). Set an explicit, real tag such as `mariadb:11.4`.
 - `env` (String) Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. Omitting this attribute and setting it to "" are indistinguishable on read — both come back null. Use omission, not "", to clear it.
 - `external_port` (Number) Host port to expose MariaDB on. Unset keeps the database internal-only.
+- `network_ids` (Set of String) Ids of Docker networks (Dokploy network records) to attach this service to. Applied on the next deploy. Omit to keep only the default `dokploy-network`. An empty set is not valid - omit the attribute instead.
 - `server_id` (String) Remote server to run the service on. Defaults to the Dokploy host.
 
 ### Read-Only

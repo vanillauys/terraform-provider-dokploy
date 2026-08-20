@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -221,6 +222,35 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 	setComputed(r.kind, current, &plan)
 
+	// The engine create endpoints accept no network fields (v0.30.0), so a
+	// first apply carrying them needs this follow-up update - otherwise they
+	// are silently ignored until the next apply. resolveCredentials gets
+	// `current` so a Computed credential (mysql/mariadb root password) is
+	// never collapsed to "".
+	if !plan.NetworkIDs.IsNull() || plan.DetachDokployNetwork.ValueBool() {
+		var d diag.Diagnostics
+		err := r.kind.Client.Update(ctx, UpdateSpec{
+			ID:          plan.ID.ValueString(),
+			Name:        plan.Name.ValueString(),
+			Description: plan.Description.ValueStringPointer(),
+			// setComputed above already resolved plan.DockerImage from the
+			// server read (current). It is never Unknown here. ValueString()
+			// returns the current image. The request resends that same value.
+			// The server keeps the same image either way. This call exists only
+			// to apply the network fields, not to change the image.
+			DockerImage:          plan.DockerImage.ValueString(),
+			DatabasePassword:     plan.DatabasePassword.ValueString(),
+			Credentials:          resolveCredentials(r.kind, plan, current),
+			NetworkIDs:           tfutil.StringSetRequest(ctx, plan.NetworkIDs, &d),
+			DetachDokployNetwork: plan.DetachDokployNetwork.ValueBool(),
+		})
+		resp.Diagnostics.Append(d...)
+		if err != nil {
+			r.persistPartial(ctx, resp, plan, "applying network attachments", err)
+			return
+		}
+	}
+
 	if plan.DeployOnChange.ValueBool() {
 		if err := r.deployAndWait(ctx, &plan); err != nil {
 			resp.Diagnostics.Append(setModel(ctx, &resp.State, plan)...)
@@ -262,7 +292,9 @@ func (r *genericResource) Read(ctx context.Context, req resource.ReadRequest, re
 		resp.Diagnostics.AddError(fmt.Sprintf("Reading %s", r.kind.Name), err.Error())
 		return
 	}
-	flatten(r.kind, obj, &state)
+	var flattenDiags diag.Diagnostics
+	flatten(ctx, r.kind, obj, &state, &flattenDiags)
+	resp.Diagnostics.Append(flattenDiags...)
 	resp.Diagnostics.Append(setModel(ctx, &resp.State, state)...)
 }
 
@@ -303,14 +335,18 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
+	var updateDiags diag.Diagnostics
 	err = r.kind.Client.Update(ctx, UpdateSpec{
-		ID:               id,
-		Name:             plan.Name.ValueString(),
-		Description:      plan.Description.ValueStringPointer(),
-		DockerImage:      plan.DockerImage.ValueString(),
-		DatabasePassword: plan.DatabasePassword.ValueString(),
-		Credentials:      resolveCredentials(r.kind, plan, before),
+		ID:                   id,
+		Name:                 plan.Name.ValueString(),
+		Description:          plan.Description.ValueStringPointer(),
+		DockerImage:          plan.DockerImage.ValueString(),
+		DatabasePassword:     plan.DatabasePassword.ValueString(),
+		Credentials:          resolveCredentials(r.kind, plan, before),
+		NetworkIDs:           tfutil.StringSetRequest(ctx, plan.NetworkIDs, &updateDiags),
+		DetachDokployNetwork: plan.DetachDokployNetwork.ValueBool(),
 	})
+	resp.Diagnostics.Append(updateDiags...)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Updating %s", r.kind.Name), err.Error())
 		return

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -307,6 +308,117 @@ resource "dokploy_compose" "test" {
 						}
 					}
 					return nil
+				},
+			},
+		},
+	})
+}
+
+// TestAccCompose_v030Fields covers create_env_file, icon and
+// service_networks, the three v0.30.0 additions from this task
+// (internal/client/doc.go's "compose createEnvFile" and "serviceNetworks
+// and icon on compose.update" sections). service_networks needs a real
+// network id, so this test calls createNetwork directly - the same reason
+// TestAccApplication_networkAttachment gates on TF_ACC before
+// resource.Test's Steps start.
+//
+// The compose file is raw-source with one service, "web": the rig never
+// deploys it (deploy_on_change = false), so the compose YAML only has to be
+// well-formed, and service_networks.service_name only has to name a real key
+// in it.
+func TestAccCompose_v030Fields(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
+	}
+	acctest.PreCheck(t)
+	projectName := acctest.RandomName("compose-proj")
+	name := acctest.RandomName("compose")
+	netName := acctest.RandomName("net")
+	networkID := createNetwork(t, netName)
+	t.Cleanup(func() { deleteNetwork(t, networkID) })
+
+	withFields := rawConfig(projectName, name, fmt.Sprintf(`
+  create_env_file = false
+  icon             = "lucide:cloud"
+
+  service_networks = [
+    {
+      service_name = "web"
+      network_ids  = [%q]
+    },
+  ]
+`, networkID))
+
+	withoutFields := rawConfig(projectName, name, ``)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkComposeDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: withFields,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_compose.test", "create_env_file", "false"),
+					resource.TestCheckResourceAttr("dokploy_compose.test", "icon", "lucide:cloud"),
+					resource.TestCheckResourceAttr("dokploy_compose.test", "service_networks.#", "1"),
+					func(s *terraform.State) error {
+						c, err := getCompose(s, "dokploy_compose.test")
+						if err != nil {
+							return err
+						}
+						if c.CreateEnvFile {
+							return errors.New("server createEnvFile = true, want false")
+						}
+						if c.Icon == nil || *c.Icon != "lucide:cloud" {
+							return fmt.Errorf("server icon = %v, want lucide:cloud", c.Icon)
+						}
+						if len(c.ServiceNetworks) != 1 {
+							return fmt.Errorf("server serviceNetworks = %v, want one entry", c.ServiceNetworks)
+						}
+						sn := c.ServiceNetworks[0]
+						if sn.ServiceName != "web" {
+							return fmt.Errorf("serviceName = %q, want web", sn.ServiceName)
+						}
+						if len(sn.NetworkIDs) != 1 || sn.NetworkIDs[0] != networkID {
+							return fmt.Errorf("networkIds = %v, want [%s]", sn.NetworkIDs, networkID)
+						}
+						return nil
+					},
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// Removed from config: create_env_file must revert to its
+				// schema default (true), and icon/service_networks must
+				// converge to null - matching doc.go's recorded shape for an
+				// explicit clear (null, never [] or "").
+				Config: withoutFields,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_compose.test", "create_env_file", "true"),
+					resource.TestCheckNoResourceAttr("dokploy_compose.test", "icon"),
+					resource.TestCheckNoResourceAttr("dokploy_compose.test", "service_networks"),
+					func(s *terraform.State) error {
+						c, err := getCompose(s, "dokploy_compose.test")
+						if err != nil {
+							return err
+						}
+						if !c.CreateEnvFile {
+							return errors.New("server createEnvFile = false, want true after reverting to the default")
+						}
+						if c.Icon != nil && *c.Icon != "" {
+							return fmt.Errorf("server icon = %v, want cleared", *c.Icon)
+						}
+						if len(c.ServiceNetworks) != 0 {
+							return fmt.Errorf("server serviceNetworks = %v, want cleared", c.ServiceNetworks)
+						}
+						return nil
+					},
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 			},
 		},

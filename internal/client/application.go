@@ -64,6 +64,13 @@ type Application struct {
 	Args              []string `json:"args"`
 	RegistryID        *string  `json:"registryId"`
 
+	// v0.30.0 network attachment (probed 2026-08-19, see doc.go). networkIds
+	// reads back as [] on a fresh record. After an explicit clear, it reads
+	// back as a literal null. Both shapes decode to a nil or empty Go
+	// slice. The resource layer collapses both to a null set.
+	NetworkIDs           []string `json:"networkIds"`
+	DetachDokployNetwork bool     `json:"detachDokployNetwork"`
+
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
 
@@ -117,6 +124,13 @@ type UpdateApplicationRequest struct {
 	Command           *string   `json:"command"`
 	Args              *[]string `json:"args"`
 	RegistryID        *string   `json:"registryId"`
+
+	// v0.30.0 network attachment. NetworkIDs is nullable on the wire; a null
+	// value clears it. DetachDokployNetwork is a bare boolean. The server
+	// null-coerces it to false (doc.go, v0.30.0 section), so the client
+	// always sends a concrete value - the Replicas pattern.
+	NetworkIDs           *[]string `json:"networkIds"`
+	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
 }
 
 // SaveGithubProviderRequest.

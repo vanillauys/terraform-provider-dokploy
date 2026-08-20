@@ -270,3 +270,167 @@ func TestExpandCreateCarriesTheRawComposeFile(t *testing.T) {
 		t.Errorf("composeFile = %q", got)
 	}
 }
+
+// v0.30.0: createEnvFile is a bare server bool - no null case to defend
+// against here, unlike the four booleans in
+// TestFlattenResolvesNotNullBooleansToFalse. icon follows the same
+// ""/null-collapse rule as the other optional strings.
+func TestFlattenCreateEnvFileAndIcon(t *testing.T) {
+	c := &client.Compose{
+		ComposeID: "c1", SourceType: "raw",
+		CreateEnvFile: true, Icon: strPtr("lucide:cloud"),
+	}
+
+	var m resourceModel
+	if diags := flatten(context.Background(), c, &m); diags.HasError() {
+		t.Fatalf("flatten: %v", diags)
+	}
+	if !m.CreateEnvFile.ValueBool() {
+		t.Error("create_env_file = false, want true")
+	}
+	if got := m.Icon.ValueString(); got != "lucide:cloud" {
+		t.Errorf("icon = %q, want lucide:cloud", got)
+	}
+}
+
+func TestFlattenIconEmptyStringBecomesNull(t *testing.T) {
+	c := &client.Compose{ComposeID: "c1", SourceType: "raw", Icon: strPtr("")}
+
+	var m resourceModel
+	if diags := flatten(context.Background(), c, &m); diags.HasError() {
+		t.Fatalf("flatten: %v", diags)
+	}
+	if !m.Icon.IsNull() {
+		t.Errorf("icon = %q, want null", m.Icon.ValueString())
+	}
+}
+
+// serviceNetworks follows the same null-vs-[] collapse as tfutil's
+// StringSetOrNull: doc.go records that a fresh create returns [] and an
+// explicit clear reads back a literal null - neither shape may survive as a
+// distinct Terraform value, or the two would diff against each other
+// forever.
+func TestFlattenServiceNetworksNilBecomesNullSet(t *testing.T) {
+	c := &client.Compose{ComposeID: "c1", SourceType: "raw", ServiceNetworks: nil}
+
+	var m resourceModel
+	if diags := flatten(context.Background(), c, &m); diags.HasError() {
+		t.Fatalf("flatten: %v", diags)
+	}
+	if !m.ServiceNetworks.IsNull() {
+		t.Errorf("service_networks = %v, want null", m.ServiceNetworks)
+	}
+}
+
+func TestFlattenServiceNetworksEmptyBecomesNullSet(t *testing.T) {
+	c := &client.Compose{ComposeID: "c1", SourceType: "raw", ServiceNetworks: []client.ComposeServiceNetwork{}}
+
+	var m resourceModel
+	if diags := flatten(context.Background(), c, &m); diags.HasError() {
+		t.Fatalf("flatten: %v", diags)
+	}
+	if !m.ServiceNetworks.IsNull() {
+		t.Errorf("service_networks = %v, want null", m.ServiceNetworks)
+	}
+}
+
+func TestFlattenServiceNetworksOneEntryRoundTrips(t *testing.T) {
+	c := &client.Compose{
+		ComposeID: "c1", SourceType: "raw",
+		ServiceNetworks: []client.ComposeServiceNetwork{
+			{ServiceName: "web", NetworkIDs: []string{"net1"}, DetachDokployNetwork: true},
+		},
+	}
+
+	var m resourceModel
+	if diags := flatten(context.Background(), c, &m); diags.HasError() {
+		t.Fatalf("flatten: %v", diags)
+	}
+	if m.ServiceNetworks.IsNull() {
+		t.Fatal("service_networks = null, want one entry")
+	}
+
+	var models []serviceNetworkModel
+	if diags := m.ServiceNetworks.ElementsAs(context.Background(), &models, false); diags.HasError() {
+		t.Fatalf("reading back service_networks: %v", diags)
+	}
+	if len(models) != 1 {
+		t.Fatalf("service_networks has %d entries, want 1", len(models))
+	}
+	if models[0].ServiceName.ValueString() != "web" {
+		t.Errorf("service_name = %q, want web", models[0].ServiceName.ValueString())
+	}
+	if models[0].DetachDokployNetwork.ValueBool() != true {
+		t.Error("detach_dokploy_network = false, want true")
+	}
+
+	var ids []string
+	if diags := models[0].NetworkIDs.ElementsAs(context.Background(), &ids, false); diags.HasError() {
+		t.Fatalf("reading back network_ids: %v", diags)
+	}
+	if len(ids) != 1 || ids[0] != "net1" {
+		t.Errorf("network_ids = %v, want [net1]", ids)
+	}
+}
+
+// expandUpdate's inverse: a null/unknown set means "no change intended by
+// this attribute", which maps to an explicit JSON null on the wire - dialect
+// B, matching icon and every other nullable field in this group.
+func TestExpandUpdateServiceNetworksAndIcon(t *testing.T) {
+	m := resourceModel{
+		ID:              types.StringValue("c1"),
+		Icon:            types.StringNull(),
+		ServiceNetworks: types.SetNull(types.ObjectType{AttrTypes: serviceNetworkAttrTypes}),
+	}
+
+	req, diags := expandUpdate(context.Background(), &m)
+	if diags.HasError() {
+		t.Fatalf("expandUpdate: %v", diags)
+	}
+	if req.Icon != nil {
+		t.Errorf("icon = %q, want nil", *req.Icon)
+	}
+	if req.ServiceNetworks != nil {
+		t.Errorf("serviceNetworks = %v, want nil (explicit null on the wire)", *req.ServiceNetworks)
+	}
+}
+
+func TestExpandUpdateServiceNetworksOneEntry(t *testing.T) {
+	ctx := context.Background()
+	idsSet, diags := types.SetValueFrom(ctx, types.StringType, []string{"net1"})
+	if diags.HasError() {
+		t.Fatalf("building network_ids set: %v", diags)
+	}
+	sn := serviceNetworkModel{
+		ServiceName:          types.StringValue("web"),
+		NetworkIDs:           idsSet,
+		DetachDokployNetwork: types.BoolValue(true),
+	}
+	set, diags := types.SetValueFrom(ctx, types.ObjectType{AttrTypes: serviceNetworkAttrTypes}, []serviceNetworkModel{sn})
+	if diags.HasError() {
+		t.Fatalf("building service_networks set: %v", diags)
+	}
+
+	m := resourceModel{ID: types.StringValue("c1"), ServiceNetworks: set}
+
+	req, expDiags := expandUpdate(ctx, &m)
+	if expDiags.HasError() {
+		t.Fatalf("expandUpdate: %v", expDiags)
+	}
+	if req.ServiceNetworks == nil {
+		t.Fatal("serviceNetworks = nil, want one entry")
+	}
+	got := *req.ServiceNetworks
+	if len(got) != 1 {
+		t.Fatalf("serviceNetworks has %d entries, want 1", len(got))
+	}
+	if got[0].ServiceName != "web" {
+		t.Errorf("serviceName = %q, want web", got[0].ServiceName)
+	}
+	if !got[0].DetachDokployNetwork {
+		t.Error("detachDokployNetwork = false, want true")
+	}
+	if len(got[0].NetworkIDs) != 1 || got[0].NetworkIDs[0] != "net1" {
+		t.Errorf("networkIds = %v, want [net1]", got[0].NetworkIDs)
+	}
+}

@@ -18,8 +18,16 @@ type Postgres struct {
 	Env               *string `json:"env"`
 	ApplicationStatus string  `json:"applicationStatus"`
 	EnvironmentID     string  `json:"environmentId"`
-	ServerID          *string `json:"serverId"`
-	CreatedAt         string  `json:"createdAt"`
+
+	// v0.30.0 network attachment (probed 2026-08-19, see doc.go). networkIds
+	// reads back as [] on a fresh record. After an explicit clear, it reads
+	// back as a literal null. Both shapes decode to a nil or empty Go
+	// slice. The resource layer collapses both to a null set.
+	NetworkIDs           []string `json:"networkIds"`
+	DetachDokployNetwork bool     `json:"detachDokployNetwork"`
+
+	ServerID  *string `json:"serverId"`
+	CreatedAt string  `json:"createdAt"`
 }
 
 type CreatePostgresRequest struct {
@@ -51,6 +59,13 @@ type UpdatePostgresRequest struct {
 	Description      *string `json:"description"`
 	DockerImage      string  `json:"dockerImage,omitempty"`
 	DatabasePassword string  `json:"databasePassword,omitempty"`
+
+	// v0.30.0 network attachment. NetworkIDs is nullable on the wire; a null
+	// value clears it. DetachDokployNetwork is a bare boolean. The server
+	// null-coerces it to false (doc.go, v0.30.0 section), so the client
+	// always sends a concrete value - the Replicas pattern.
+	NetworkIDs           *[]string `json:"networkIds"`
+	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
 }
 
 func (c *Client) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (*Postgres, error) {

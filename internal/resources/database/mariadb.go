@@ -101,6 +101,8 @@ func MariadbKind(c *client.Client) Kind {
 					DockerImage:          s.DockerImage,
 					DatabasePassword:     s.DatabasePassword,
 					DatabaseRootPassword: s.Credentials["database_root_password"],
+					NetworkIDs:           s.NetworkIDs,
+					DetachDokployNetwork: s.DetachDokployNetwork,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -138,18 +140,20 @@ func MariadbKind(c *client.Client) Kind {
 // mariadbObject maps a client.Mariadb into the engine-neutral Object.
 func mariadbObject(md *client.Mariadb) *Object {
 	return &Object{
-		ID:                md.MariadbID,
-		Name:              md.Name,
-		AppName:           md.AppName,
-		EnvironmentID:     md.EnvironmentID,
-		DockerImage:       md.DockerImage,
-		ApplicationStatus: md.ApplicationStatus,
-		CreatedAt:         md.CreatedAt,
-		Description:       md.Description,
-		Env:               md.Env,
-		ServerID:          md.ServerID,
-		ExternalPort:      md.ExternalPort,
-		DatabasePassword:  md.DatabasePassword,
+		ID:                   md.MariadbID,
+		Name:                 md.Name,
+		AppName:              md.AppName,
+		EnvironmentID:        md.EnvironmentID,
+		DockerImage:          md.DockerImage,
+		ApplicationStatus:    md.ApplicationStatus,
+		CreatedAt:            md.CreatedAt,
+		Description:          md.Description,
+		Env:                  md.Env,
+		ServerID:             md.ServerID,
+		ExternalPort:         md.ExternalPort,
+		DatabasePassword:     md.DatabasePassword,
+		NetworkIDs:           md.NetworkIDs,
+		DetachDokployNetwork: md.DetachDokployNetwork,
 		Credentials: map[string]string{
 			"database_name":          md.DatabaseName,
 			"database_user":          md.DatabaseUser,

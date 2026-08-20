@@ -47,6 +47,7 @@ resource "dokploy_libsql" "example" {
 - `deploy_on_change` (Boolean) Deploy after create and after changes to deploy-triggering attributes. Defaults to `true`.
 - `deployment_timeout` (String) How long to wait for a triggered deployment to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout the apply fails but the server-side deployment keeps running.
 - `description` (String) Free-form description.
+- `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this service. Defaults to `false`. Only meaningful together with `network_ids`; applied on the next deploy.
 - `docker_image` (String) LibSQL docker image, e.g. `ghcr.io/tursodatabase/libsql-server:v0.24.32`. That is also the server's own default when this is omitted, and it is a real, pullable tag.
 - `enable_namespaces` (Boolean) Enable sqld namespaces (multi-database mode). Defaults to `false`.
 - `env` (String) Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. Omitting this attribute and setting it to "" are indistinguishable on read - both come back null. Use omission, not "", to clear it.
@@ -55,6 +56,7 @@ resource "dokploy_libsql" "example" {
 - `external_port` (Number) Host port to expose the libsql HTTP interface on. Not permitted when `sqld_node` is `replica`.
 - `memory_limit` (String) Hard memory limit, Docker-style (e.g. `"512m"`).
 - `memory_reservation` (String) Reserved memory, Docker-style (e.g. `"256m"`).
+- `network_ids` (Set of String) Ids of Docker networks (Dokploy network records) to attach this service to. Applied on the next deploy. Omit to keep only the default `dokploy-network`. An empty set is not valid - omit the attribute instead.
 - `replicas` (Number) Number of container replicas to run. Defaults to `1`.
 - `server_id` (String) Remote server to run the service on. Defaults to the Dokploy host.
 - `sqld_node` (String) Topology role: `primary` or `replica`. A replica requires `sqld_primary_url`, and cannot have any external port.

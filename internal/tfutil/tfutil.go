@@ -123,6 +123,33 @@ func StringOrNull(s *string) types.String {
 	return types.StringValue(*s)
 }
 
+// StringSetOrNull maps a server string array onto a set attribute. Both nil
+// (JSON null) and [] collapse to a NULL set. The v0.30.0 network endpoints
+// store a literal null on an explicit clear. `[]` is only the
+// fresh-create shape. A clear never produces it. The attributes are
+// Optional with no default, so an empty set in state would diff against
+// config's null forever. A schema validator (SizeAtLeast(1)) keeps
+// config from expressing [], so the collapse loses nothing.
+func StringSetOrNull(ctx context.Context, items []string, diags *diag.Diagnostics) types.Set {
+	if len(items) == 0 {
+		return types.SetNull(types.StringType)
+	}
+	set, d := types.SetValueFrom(ctx, types.StringType, items)
+	diags.Append(d...)
+	return set
+}
+
+// StringSetRequest is the inverse: a null or unknown set means "unset",
+// which the dialect B update endpoints expect as an explicit JSON null.
+func StringSetRequest(ctx context.Context, set types.Set, diags *diag.Diagnostics) *[]string {
+	if set.IsNull() || set.IsUnknown() {
+		return nil
+	}
+	var items []string
+	diags.Append(set.ElementsAs(ctx, &items, false)...)
+	return &items
+}
+
 func ClientFromProviderData(providerData any) (*client.Client, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if providerData == nil {

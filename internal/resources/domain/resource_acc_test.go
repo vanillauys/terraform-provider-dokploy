@@ -214,6 +214,80 @@ resource "dokploy_domain" "orphan" {
 	})
 }
 
+// TestAccDomain_enabledToggle exercises the v0.30.0 enabled field, in
+// particular the create-time follow-up in Create: domain.create cannot
+// express enabled=false (see doc.go's "domain enabled" section), so a
+// domain planned disabled needs an UpdateDomain call right after create.
+// Step 1 starts disabled, which is the only way to reach that follow-up
+// path. Step 2 flips it back to true through a normal update. Step 3 drops
+// the attribute from config entirely and checks the schema default (true)
+// applies, matching the server's own domain.create default.
+func TestAccDomain_enabledToggle(t *testing.T) {
+	projectName := acctest.RandomName("proj")
+	appName := acctest.RandomName("app")
+	host := acctest.RandomName("acc") + ".example.com"
+
+	config := func(extra string) string {
+		return scaffold(projectName, appName) + fmt.Sprintf(`
+resource "dokploy_domain" "test" {
+  application_id = dokploy_application.test.id
+  host           = %q
+%s
+}`, host, extra)
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkDomainDestroy,
+		Steps: []resource.TestStep{
+			{
+				// Created disabled: exercises the Create-time follow-up,
+				// since domain.create itself cannot send enabled=false.
+				Config: config(`  enabled = false`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_domain.test", "enabled", "false"),
+					func(s *terraform.State) error {
+						d, err := fetchDomain(s, "dokploy_domain.test")
+						if err != nil {
+							return err
+						}
+						if d.Enabled {
+							return fmt.Errorf("server enabled = true, want false after the create-time disable follow-up")
+						}
+						return nil
+					},
+				),
+			},
+			{
+				Config: config(`  enabled = true`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_domain.test", "enabled", "true"),
+					func(s *terraform.State) error {
+						d, err := fetchDomain(s, "dokploy_domain.test")
+						if err != nil {
+							return err
+						}
+						if !d.Enabled {
+							return fmt.Errorf("server enabled = false, want true")
+						}
+						return nil
+					},
+				),
+			},
+			{
+				// Attribute omitted entirely: stays true through the schema
+				// default, not through dialect-B silent-keep.
+				Config: config(""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_domain.test", "enabled", "true"),
+			},
+		},
+	})
+}
+
 // TestAccDomain_attachedToCompose exercises the compose_id pathway.
 //
 // dokploy_domain has carried compose_id and service_name since wave 1 for a

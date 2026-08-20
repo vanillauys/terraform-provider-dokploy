@@ -3,12 +3,27 @@ package compose
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
+
+// serviceNetworkModel is one entry of the service_networks set (Dokploy
+// v0.30.0): one compose service's Docker network attachments.
+type serviceNetworkModel struct {
+	ServiceName          types.String `tfsdk:"service_name"`
+	NetworkIDs           types.Set    `tfsdk:"network_ids"`
+	DetachDokployNetwork types.Bool   `tfsdk:"detach_dokploy_network"`
+}
+
+var serviceNetworkAttrTypes = map[string]attr.Type{
+	"service_name":           types.StringType,
+	"network_ids":            types.SetType{ElemType: types.StringType},
+	"detach_dokploy_network": types.BoolType,
+}
 
 type githubSource struct {
 	Repository types.String `tfsdk:"repository"`
@@ -58,6 +73,12 @@ type resourceModel struct {
 
 	DeployOnChange    types.Bool   `tfsdk:"deploy_on_change"`
 	DeploymentTimeout types.String `tfsdk:"deployment_timeout"`
+
+	// v0.30.0. See doc.go's "compose createEnvFile" and "serviceNetworks and
+	// icon on compose.update" sections.
+	CreateEnvFile   types.Bool   `tfsdk:"create_env_file"`
+	Icon            types.String `tfsdk:"icon"`
+	ServiceNetworks types.Set    `tfsdk:"service_networks"`
 }
 
 // flatten maps a full API record into the model (used by Read and Import).
@@ -135,7 +156,36 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 	case "raw":
 		m.Raw = &rawSource{ComposeFile: tfutil.StringOrNull(&c.ComposeFile)}
 	}
+
+	// v0.30.0. CreateEnvFile is a bare server bool (doc.go: no null case to
+	// defend against here, unlike the other four booleans above). Icon and
+	// ServiceNetworks follow the same null-vs-[] split as networkIds.
+	m.CreateEnvFile = types.BoolValue(c.CreateEnvFile)
+	m.Icon = tfutil.StringOrNull(c.Icon)
+	m.ServiceNetworks = flattenServiceNetworks(ctx, c.ServiceNetworks, &diags)
+
 	return diags
+}
+
+// flattenServiceNetworks collapses both nil and [] to a null set, matching
+// tfutil.StringSetOrNull's reasoning: the server normalizes a cleared list
+// to [], and the attribute is Optional with no default.
+func flattenServiceNetworks(ctx context.Context, sns []client.ComposeServiceNetwork, diags *diag.Diagnostics) types.Set {
+	setType := types.ObjectType{AttrTypes: serviceNetworkAttrTypes}
+	if len(sns) == 0 {
+		return types.SetNull(setType)
+	}
+	models := make([]serviceNetworkModel, len(sns))
+	for i, sn := range sns {
+		models[i] = serviceNetworkModel{
+			ServiceName:          types.StringValue(sn.ServiceName),
+			NetworkIDs:           tfutil.StringSetOrNull(ctx, sn.NetworkIDs, diags),
+			DetachDokployNetwork: types.BoolValue(sn.DetachDokployNetwork),
+		}
+	}
+	set, d := types.SetValueFrom(ctx, setType, models)
+	diags.Append(d...)
+	return set
 }
 
 // boolOrFalse resolves a nullable wire bool to a concrete Terraform bool.
@@ -244,5 +294,35 @@ func expandUpdate(ctx context.Context, m *resourceModel) (client.UpdateComposeRe
 		diags.Append(m.WatchPaths.ElementsAs(ctx, &paths, false)...)
 		req.WatchPaths = &paths
 	}
+
+	// v0.30.0, nullable group: null clears (doc.go's "serviceNetworks and
+	// icon on compose.update" section).
+	req.Icon = m.Icon.ValueStringPointer()
+	req.ServiceNetworks = expandServiceNetworks(ctx, m.ServiceNetworks, &diags)
+
 	return req, diags
+}
+
+// expandServiceNetworks maps the set to the wire slice; null/unknown means
+// an explicit JSON null, which clears (dialect B).
+func expandServiceNetworks(ctx context.Context, set types.Set, diags *diag.Diagnostics) *[]client.ComposeServiceNetwork {
+	if set.IsNull() || set.IsUnknown() {
+		return nil
+	}
+	var models []serviceNetworkModel
+	diags.Append(set.ElementsAs(ctx, &models, false)...)
+	out := make([]client.ComposeServiceNetwork, len(models))
+	for i, sn := range models {
+		ids := tfutil.StringSetRequest(ctx, sn.NetworkIDs, diags)
+		var idSlice []string
+		if ids != nil {
+			idSlice = *ids
+		}
+		out[i] = client.ComposeServiceNetwork{
+			ServiceName:          sn.ServiceName.ValueString(),
+			NetworkIDs:           idSlice,
+			DetachDokployNetwork: sn.DetachDokployNetwork.ValueBool(),
+		}
+	}
+	return &out
 }
