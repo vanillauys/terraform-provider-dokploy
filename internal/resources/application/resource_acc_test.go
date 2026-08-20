@@ -12,13 +12,9 @@
 package application_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"testing"
 
@@ -569,74 +565,6 @@ resource "dokploy_application" "test" {
 	})
 }
 
-// rawCall is a minimal x-api-key HTTP client for the two network.* endpoints
-// this file needs (network.create, network.all, network.remove) - this
-// provider has no network resource yet (that lands in wave 6b, which
-// replaces this helper with real client methods). It mirrors
-// internal/client.Client's own conventions: base path "/api", the same
-// x-api-key header, GET for queries, POST for mutations.
-func rawCall(t *testing.T, method, path string, body any) []byte {
-	t.Helper()
-	endpoint := os.Getenv("DOKPLOY_ENDPOINT")
-	var reader io.Reader
-	if body != nil {
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("encoding %s body: %v", path, err)
-		}
-		reader = bytes.NewReader(raw)
-	}
-	req, err := http.NewRequest(method, endpoint+"/api"+path, reader)
-	if err != nil {
-		t.Fatalf("building %s request: %v", path, err)
-	}
-	req.Header.Set("x-api-key", os.Getenv("DOKPLOY_API_KEY"))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("calling %s: %v", path, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("reading %s response: %v", path, err)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		t.Fatalf("%s: HTTP %d: %s", path, resp.StatusCode, raw)
-	}
-	return raw
-}
-
-// createNetwork posts to network.create then resolves the new network's id
-// with network.all, rather than trusting the create response's shape
-// directly - network.create returned the full record when Task 1 probed it
-// (2026-08-19), but several sibling `.create` endpoints in this API return a
-// bare `true` instead, so this helper stays defensive against that.
-func createNetwork(t *testing.T, name string) string {
-	t.Helper()
-	rawCall(t, http.MethodPost, "/network.create", map[string]string{"name": name})
-
-	var networks []struct {
-		NetworkID string `json:"networkId"`
-		Name      string `json:"name"`
-	}
-	if err := json.Unmarshal(rawCall(t, http.MethodGet, "/network.all", nil), &networks); err != nil {
-		t.Fatalf("decoding network.all response: %v", err)
-	}
-	for _, n := range networks {
-		if n.Name == name {
-			return n.NetworkID
-		}
-	}
-	t.Fatalf("network %q not found in network.all after creating it", name)
-	return ""
-}
-
-func deleteNetwork(t *testing.T, id string) {
-	t.Helper()
-	rawCall(t, http.MethodPost, "/network.remove", map[string]string{"networkId": id})
-}
-
 // TestAccApplication_networkAttachment covers network_ids and
 // detach_dokploy_network, the v0.30.0 network attachment fields on
 // application.update (internal/client/doc.go, v0.30.0 section). Both fields
@@ -646,18 +574,18 @@ func deleteNetwork(t *testing.T, id string) {
 // (tfutil.StringSetOrNull).
 func TestAccApplication_networkAttachment(t *testing.T) {
 	// resource.Test below only checks TF_ACC once its Steps start, but this
-	// test calls createNetwork BEFORE that - a raw HTTP call of its own -
-	// so it needs the same gate up front. Skipping (not failing) matches
-	// every other acceptance test in this file and keeps `make test` green
-	// with TF_ACC unset.
+	// test calls acctest.CreateNetwork BEFORE that - a client call of its
+	// own - so it needs the same gate up front. Skipping (not failing)
+	// matches every other acceptance test in this file and keeps
+	// `make test` green with TF_ACC unset.
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
 	}
 	acctest.PreCheck(t)
 	name := acctest.RandomName("app-net")
 	netName := acctest.RandomName("net")
-	networkID := createNetwork(t, netName)
-	t.Cleanup(func() { deleteNetwork(t, networkID) })
+	networkID := acctest.CreateNetwork(t, netName)
+	t.Cleanup(func() { acctest.DeleteNetwork(t, networkID) })
 
 	base := fmt.Sprintf(`
 resource "dokploy_project" "test" {
