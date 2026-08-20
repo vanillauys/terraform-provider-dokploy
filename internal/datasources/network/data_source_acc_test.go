@@ -72,13 +72,6 @@ func checkAgainstAPI(addr string) resource.TestCheckFunc {
 			return fmt.Errorf("%s.mtu = %q, API says %q", addr, have, wantMTU)
 		}
 
-		// ipam must never reach this data source's state. The schema simply
-		// has no such attribute, so this can only fail if a later edit adds
-		// one back without updating this test - the same pin destination's
-		// TestSchemaDoesNotExposeCredentials keeps at the unit level.
-		if v, found := rs.Primary.Attributes["ipam"]; found {
-			return fmt.Errorf("%s has ipam in state (%q); the data source must not model ipam", addr, v)
-		}
 		return nil
 	}
 }

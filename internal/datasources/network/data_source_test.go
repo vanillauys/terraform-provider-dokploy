@@ -26,9 +26,22 @@ func TestFindByName(t *testing.T) {
 	if _, err := findByName(networks, "missing", nil); err == nil || !strings.Contains(err.Error(), "no network named") {
 		t.Errorf("missing: err = %v, want a no-match error", err)
 	}
-	// Never take [0] on a duplicate name.
-	if _, err := findByName(networks, "backend", nil); err == nil || !strings.Contains(err.Error(), "2 networks") {
-		t.Errorf("duplicate: err = %v, want a multi-match error", err)
+	// A serverID that matches nothing must name the filter, not just the
+	// name, or the caller cannot tell "no such name" from "no such name on
+	// this server".
+	if _, err := findByName(networks, "edge", strp("srv1")); err == nil ||
+		!strings.Contains(err.Error(), `no network named "edge" on server srv1`) {
+		t.Errorf("missing on server: err = %v, want a filtered no-match error", err)
+	}
+	// Never take [0] on a duplicate name. Both remedies belong in the
+	// message: on a multi-server install this is a normal outcome, not
+	// server drift, since Docker enforces uniqueness per daemon rather
+	// than per install.
+	if _, err := findByName(networks, "backend", nil); err == nil ||
+		!strings.Contains(err.Error(), "2 networks") ||
+		!strings.Contains(err.Error(), "narrow with server_id") ||
+		!strings.Contains(err.Error(), "look it up by id") {
+		t.Errorf("duplicate: err = %v, want a multi-match error naming both remedies", err)
 	}
 	// server_id narrows a duplicate to one.
 	if got, err := findByName(networks, "backend", strp("srv1")); err != nil || got.NetworkID != "n3" {

@@ -241,9 +241,9 @@ func flattenIPAM(ctx context.Context, ipam *client.NetworkIPAM, diags *diag.Diag
 	cfgs := make([]attr.Value, 0, len(ipam.Config))
 	for _, c := range ipam.Config {
 		cfgs = append(cfgs, types.ObjectValueMust(ipamConfigAttrTypes(), map[string]attr.Value{
-			"subnet":   tfutil.StringOrNull(strPtr(c.Subnet)),
-			"gateway":  tfutil.StringOrNull(strPtr(c.Gateway)),
-			"ip_range": tfutil.StringOrNull(strPtr(c.IPRange)),
+			"subnet":   tfutil.StringOrNull(&c.Subnet),
+			"gateway":  tfutil.StringOrNull(&c.Gateway),
+			"ip_range": tfutil.StringOrNull(&c.IPRange),
 		}))
 	}
 	configList := types.ListNull(types.ObjectType{AttrTypes: ipamConfigAttrTypes()})
@@ -251,20 +251,11 @@ func flattenIPAM(ctx context.Context, ipam *client.NetworkIPAM, diags *diag.Diag
 		configList = types.ListValueMust(types.ObjectType{AttrTypes: ipamConfigAttrTypes()}, cfgs)
 	}
 	obj, d := types.ObjectValue(ipamAttrTypes(), map[string]attr.Value{
-		"driver": tfutil.StringOrNull(strPtr(ipam.Driver)),
+		"driver": tfutil.StringOrNull(&ipam.Driver),
 		"config": configList,
 	})
 	diags.Append(d...)
 	return obj
-}
-
-// strPtr maps "" to nil so an inner ipam field the server echoes as an
-// empty string flattens to null, matching an omitted config value.
-func strPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }
 
 func flatten(ctx context.Context, n *client.Network, m *resourceModel, diags *diag.Diagnostics) {

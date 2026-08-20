@@ -45,6 +45,12 @@ type Network struct {
 // trio (mtu, ipam, serverId) is sent as an explicit JSON null when unset -
 // the schema declares all three nullable, verified live in the wave 6b
 // probes (doc.go).
+//
+// The zero value is NOT a valid request. A zero Driver marshals
+// `"driver":""`, and the server 400s on it rather than applying its own
+// default; a zero EnableIPv4 marshals `"enableIPv4":false`, flipping the
+// server's own default of true. Set Driver and EnableIPv4 explicitly, or
+// copy acctest.CreateNetwork's shape.
 type CreateNetworkRequest struct {
 	Name       string       `json:"name"`
 	Driver     string       `json:"driver"`

@@ -15,7 +15,7 @@ description: |-
   }
   
   ~> ipam is not exposed here. A consumer needs only the id to attach a service to the network; copying a shared network's address pools into every consumer's state widens their blast radius for no gain.
-  ~> Network names are unique server-wide in Dokploy, so a name lookup never needs server_id to disambiguate. server_id narrows the lookup by server anyway, and can only be set together with name, not id.
+  ~> Network names are unique per server, not install-wide: Docker enforces the name uniquely per daemon, and on a multi-server install each remote server runs its own daemon. On a single-server install a name lookup never needs server_id to disambiguate; on a multi-server install, set server_id to disambiguate a name found on more than one server. server_id can only be set together with name, not id.
 ---
 
 # dokploy_network (Data Source)
@@ -35,7 +35,7 @@ resource "dokploy_application" "app" {
 
 ~> **`ipam` is not exposed here.** A consumer needs only the id to attach a service to the network; copying a shared network's address pools into every consumer's state widens their blast radius for no gain.
 
-~> Network names are unique server-wide in Dokploy, so a name lookup never needs `server_id` to disambiguate. `server_id` narrows the lookup by server anyway, and can only be set together with `name`, not `id`.
+~> Network names are unique per server, not install-wide: Docker enforces the name uniquely per daemon, and on a multi-server install each remote server runs its own daemon. On a single-server install a name lookup never needs `server_id` to disambiguate; on a multi-server install, set `server_id` to disambiguate a name found on more than one server. `server_id` can only be set together with `name`, not `id`.
 
 ## Example Usage
 
@@ -52,7 +52,7 @@ data "dokploy_network" "shared" {
 ### Optional
 
 - `id` (String) Network id. Set this to look it up by id, or leave it unset and set `name`.
-- `name` (String) Network name, unique server-wide in Dokploy. Exactly one of `id` or `name` must be set.
+- `name` (String) Network name, unique per server in Dokploy. Exactly one of `id` or `name` must be set.
 - `server_id` (String) Id of the remote server to narrow the `name` lookup to. Only usable together with `name`; conflicts with `id`.
 
 ### Read-Only

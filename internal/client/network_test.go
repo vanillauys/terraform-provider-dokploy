@@ -67,8 +67,12 @@ func TestCreateGetAndListNetwork(t *testing.T) {
 }
 
 func TestDeleteNetwork(t *testing.T) {
+	// network.remove's live response is the full deleted record, not a
+	// bare true (verified live, wave 6b task 1). DeleteNetwork discards the
+	// response body regardless, but the stub should still match what the
+	// rig actually sends, per this file's exact-live-shapes convention.
 	srv := testRoutes(t,
-		route{Method: http.MethodPost, Path: "/api/network.remove", Status: 200, Body: `true`},
+		route{Method: http.MethodPost, Path: "/api/network.remove", Status: 200, Body: networkJSON},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)

@@ -73,9 +73,11 @@ func (d *networkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			"~> **`ipam` is not exposed here.** A consumer needs only the id to attach a service to the " +
 			"network; copying a shared network's address pools into every consumer's state widens their " +
 			"blast radius for no gain.\n\n" +
-			"~> Network names are unique server-wide in Dokploy, so a name lookup never needs `server_id` " +
-			"to disambiguate. `server_id` narrows the lookup by server anyway, and can only be set " +
-			"together with `name`, not `id`.",
+			"~> Network names are unique per server, not install-wide: Docker enforces the name " +
+			"uniquely per daemon, and on a multi-server install each remote server runs its own " +
+			"daemon. On a single-server install a name lookup never needs `server_id` to disambiguate; " +
+			"on a multi-server install, set `server_id` to disambiguate a name found on more than one " +
+			"server. `server_id` can only be set together with `name`, not `id`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:    true,
@@ -85,7 +87,7 @@ func (d *networkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			"name": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Network name, unique server-wide in Dokploy. Exactly one of `id` or `name` must be set.",
+				Description: "Network name, unique per server in Dokploy. Exactly one of `id` or `name` must be set.",
 			},
 			"server_id": schema.StringAttribute{
 				Optional: true,
@@ -136,13 +138,15 @@ func (d *networkDataSource) Configure(_ context.Context, req datasource.Configur
 // findByName resolves a network name (optionally narrowed by serverID) to
 // exactly one record.
 //
-// It never returns matches[0] on a multiple match. Dokploy rejects a
-// network.create that reuses an existing name with an HTTP 400 (verified
-// live, wave 6b task 1: names are unique server-wide) so the multi-match
-// branch below is unreachable in normal operation. It stays as defensive
-// code: if it is ever reached, the server state disagrees with what Dokploy
-// itself is supposed to guarantee, and silently picking the first match
-// would hide exactly that drift.
+// It never returns matches[0] on a multiple match. Dokploy relays Docker's
+// own uniqueness check: a network.create that reuses an existing name comes
+// back as Docker's 409 wrapped in an HTTP 400 (verified live, wave 6b task
+// 1, against the host daemon only). Docker enforces that uniqueness per
+// daemon, not per install, and on a multi-server install each remote server
+// runs its own daemon - so a name-only lookup can land on more than one
+// match in normal operation, not only as server drift. The multi-match
+// branch below reports both remedies (narrow with server_id, or look the
+// network up by id) rather than silently picking the first match.
 func findByName(networks []client.Network, name string, serverID *string) (*client.Network, error) {
 	var matches []client.Network
 	for _, n := range networks {
@@ -158,10 +162,13 @@ func findByName(networks []client.Network, name string, serverID *string) (*clie
 	case 1:
 		return &matches[0], nil
 	case 0:
+		if serverID != nil {
+			return nil, fmt.Errorf("no network named %q on server %s", name, *serverID)
+		}
 		return nil, fmt.Errorf("no network named %q", name)
 	default:
 		return nil, fmt.Errorf(
-			"%d networks are named %q; Dokploy rejects duplicate names, so this indicates server drift - look it up by id and report it",
+			"%d networks are named %q; names are unique per server, so this name exists on more than one server - narrow with server_id or look it up by id",
 			len(matches), name)
 	}
 }

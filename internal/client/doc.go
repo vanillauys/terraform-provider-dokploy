@@ -1021,6 +1021,15 @@
 // never-take-[0] guard is needed. A name collision at resource-create
 // time surfaces as a normal apply-time error from CreateNetwork.
 //
+// This probe ran against the host daemon only, on a single-server rig.
+// Docker enforces name uniqueness per daemon, not per install: a
+// multi-server install runs a separate daemon on each remote server, so
+// the same name can exist on two different servers even though this
+// single-daemon probe never observed a collision. The claim above ("no
+// never-take-[0] guard is needed") holds only within one server; Task 4's
+// data source keeps the guard anyway, and its multi-match error tells the
+// caller to narrow with server_id or look the network up by id.
+//
 // ## overlay is accepted (gate C)
 //
 // {"name":"probe-overlay","driver":"overlay"} returned HTTP 200 with a
