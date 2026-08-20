@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-08-20
+
+### Added
+
+- `dokploy_network` resource: create and destroy Docker networks (bridge or
+  overlay) with `internal`, `attachable`, `enable_ipv4`/`enable_ipv6`,
+  `mtu`, and `ipam` address pools. Networks are immutable - Dokploy has no
+  `network.update` endpoint - so every attribute is `RequiresReplace` and
+  changing any of them replaces the network. `network.remove` succeeds even
+  while a network is still attached to an application; the reference is
+  left dangling until that application is next updated or redeployed.
+
+- `dokploy_network` data source: look up a network by id or name, for
+  networks created or imported in the Dokploy UI. `ipam` is not exposed -
+  a consumer needs only the id to attach a service to the network.
+
+### Notes
+
+- `network.import`, `network.recreate`, and `network.networksToSync` stay
+  unmodeled. They are UI conveniences: `network.import` adopts a
+  Docker-level network into Dokploy's database, which a Terraform resource
+  cannot address until it has a Dokploy id, and Terraform already expresses
+  a rebuild through replace or taint without needing `network.recreate`.
+  Replace/taint and the `dokploy_network` data source cover both - see the
+  resource docs for the import workaround.
+- The `dnsProvider` endpoints stay unmodeled by decision: DNS belongs to
+  the official `cloudflare`/`aws` providers, not this one. `vaultProvider`
+  lands as `dokploy_vault_provider` in v0.10.0 (wave 6c).
+
 ## [0.8.0] - 2026-08-19
 
 ### Added
