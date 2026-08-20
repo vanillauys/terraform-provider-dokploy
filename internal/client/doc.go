@@ -917,4 +917,116 @@
 // bare-boolean field this wave adds as null-coerces-to-false by default.
 // Confirm the opposite live before a later task assumes a 400 exists
 // anywhere on this surface.
+//
+// ## Wave 6b network probes (probed 2026-08-20)
+//
+// Task 1 probed the acceptance rig at v0.30.2, the same installer build
+// wave 6a used. The probe used five scratch networks (probe-bare,
+// probe-full, probe-nulls, a rejected duplicate probe-bare, and
+// probe-overlay), one scratch project, and one scratch application. Every
+// record was created and deleted through the API; the wave-6b task-1
+// report holds the full transcripts.
+//
+// network.create returns the full record. network.one and network.all
+// return the identical shape: networkId, name, driver, internal,
+// attachable, enableIPv4, enableIPv6, mtu, ipam, createdAt,
+// organizationId, serverId. All three read paths agreed on every probe in
+// this wave - no create-only or read-only field turned up.
+//
+// A bare create ({"name":"probe-bare"}) stores driver "bridge", internal
+// false, attachable false, enableIPv4 true, enableIPv6 false, mtu null,
+// and serverId null. Every one of these matches the plan's predicted
+// defaults exactly - no surprises on the bool/driver group this wave.
+//
+// serverId is present on every read (gate A: yes). network.create,
+// network.one, and network.all all return "serverId":null on a bare
+// create that sends no serverId key. Task 2 keeps ServerID *string on
+// both Network and CreateNetworkRequest; no censusExempt entry is needed
+// for this field.
+//
+// mtu written as 1400 on a full create reads back as 1400 exactly, on
+// both the create response and a follow-up network.one. No coercion, no
+// rounding.
+//
+// ## ipam: an omitted key and an explicit null are not the same shape (gate D)
+//
+// A fully populated ipam
+// ({"driver":"default","config":[{"subnet":"172.28.0.0/16",
+// "gateway":"172.28.0.1","ipRange":"172.28.5.0/24"}]}) round-trips
+// verbatim: same driver string, same config array, all three inner
+// fields intact on both the create response and network.one. Only the
+// key order changes (config before driver on read, driver before config
+// on the request) - JSON object order, not a content difference. Gate D
+// passes the way the plan hoped: ipam is safe to model as Optional and
+// NOT Computed.
+//
+// The surprise is what "unset" looks like. An OMITTED ipam key on a bare
+// create reads back as an EMPTY OBJECT, {} - not null, and not a
+// materialized Docker default (no driver key, no config key at all
+// inside it). An EXPLICIT ipam:null on create reads back as a literal
+// null, the shape the plan expected. Task 1 confirmed both on separate
+// creates (probe-bare omitted the key; probe-nulls sent
+// {"mtu":null,"ipam":null,"serverId":null} explicitly, HTTP 200, and
+// read back mtu null, ipam null, serverId null - the trio's nullable
+// tolerance holds for all three, as predicted).
+//
+// This does not change Task 2's client: CreateNetworkRequest.IPAM carries
+// no omitempty, so a nil pointer always marshals a literal JSON null, the
+// probe-nulls shape, never the bare-curl probe-bare shape. The {} shape
+// is only reachable by omitting the key entirely from the HTTP body,
+// which this Go client never does - encoding/json has no way to omit a
+// field except omitempty, and this field does not carry it. Task 3's
+// flattenIPAM only needs to handle nil (-> types.ObjectNull) and a
+// populated object; the {} shape never reaches it through this client.
+//
+// ## network.one 404 and network.remove while attached (gate B)
+//
+// network.one with a bogus id returns HTTP 404, body
+// {"message":"Network not found","code":"NOT_FOUND","data":{"code":
+// "NOT_FOUND","httpStatus":404,"path":"network.one","zodError":null}} -
+// the same tRPC-OpenAPI not-found shape this client already classifies
+// as ErrNotFound. Read's RemoveResource path (destination's pattern)
+// applies unchanged.
+//
+// network.remove does NOT refuse to delete a network still referenced by
+// an application's networkIds. Task 1 attached probe-full to a scratch
+// application (application.update {"applicationId":"...","networkIds":
+// ["<probe-full id>"]}, confirmed on the following application.one), then
+// called network.remove on that same network id: HTTP 200, and the
+// response body is the full deleted record, not a bare true. (This does
+// not change Task 2's DeleteNetwork - it discards the response body
+// regardless - but an acceptance test asserting the remove response
+// should expect the record, not `true`.) The very next network.one on
+// that id 404s: the network is genuinely gone. But the application record
+// was never touched - a follow-up application.one still reported
+// networkIds: ["<the now-deleted id>"], an orphaned reference the server
+// does nothing to clean up. Task 3's resource description and Delete docs
+// should say so: destroying a dokploy_network still attached to an
+// application does not fail and does not detach it; the application
+// keeps a dangling id in networkIds until it is next updated or
+// redeployed.
+//
+// ## duplicate names are rejected, not accepted
+//
+// The plan's open question - whether the data source needs a
+// never-take-[0] guard for duplicate names - assumed duplicates might be
+// allowed. They are not. A second network.create with the same name as
+// an existing network ("probe-bare" again) returned HTTP 400:
+// {"message":"(HTTP code 409) unexpected - network with name probe-bare
+// already exists ","code":"BAD_REQUEST","data":{"code":"BAD_REQUEST",
+// "httpStatus":400,"path":"network.create","zodError":null}} - the
+// underlying Docker 409 wrapped into a tRPC 400. Network names are unique
+// server-wide, not merely within one project or environment. Task 4's
+// data source can trust a name lookup to return at most one match; no
+// never-take-[0] guard is needed. A name collision at resource-create
+// time surfaces as a normal apply-time error from CreateNetwork.
+//
+// ## overlay is accepted (gate C)
+//
+// {"name":"probe-overlay","driver":"overlay"} returned HTTP 200 with a
+// full record: driver "overlay", the same bool/mtu/ipam defaults as a
+// bridge bare-create. The rig's inner dockerd runs swarm, as predicted,
+// and overlay creation needed no field beyond name and driver. Spec risk
+// 6 does not fire this wave: Task 3 should add the overlay acceptance
+// test, not skip it and fall back to bridge-only coverage.
 package client
