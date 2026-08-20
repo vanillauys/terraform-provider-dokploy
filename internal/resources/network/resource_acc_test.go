@@ -16,6 +16,28 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
 
+// checkApplicationServer reads the application back from the API and runs
+// assert against it, mirroring application_test.checkApplicationServer -
+// that helper lives in package application_test and is not importable from
+// here (this file is package network_test).
+func checkApplicationServer(resourceName string, assert func(*client.Application) error) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("%s not in state", resourceName)
+		}
+		c, err := acctest.ClientFromEnv()
+		if err != nil {
+			return err
+		}
+		app, err := c.GetApplication(context.Background(), rs.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("reading %s back from the server: %w", rs.Primary.ID, err)
+		}
+		return assert(app)
+	}
+}
+
 func checkNetworkDestroy(s *terraform.State) error {
 	c, err := acctest.ClientFromEnv()
 	if err != nil {
@@ -177,9 +199,22 @@ resource "dokploy_application" "test" {
 			},
 			{
 				// Detach: network_ids removed from the application's config.
-				// Proves detach converges cleanly.
+				// Proves detach converges cleanly. network_ids is a
+				// types.Set, so flatmap state never has a bare "network_ids"
+				// key (attached or not) - TestCheckNoResourceAttr must
+				// target the "network_ids.#" container key instead, and the
+				// server-side check confirms the API actually cleared the
+				// attachment rather than just the local plan looking empty.
 				Config: cfg(netName+"-renamed", false),
-				Check:  resource.TestCheckNoResourceAttr("dokploy_application.test", "network_ids"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "network_ids.#"),
+					checkApplicationServer("dokploy_application.test", func(a *client.Application) error {
+						if len(a.NetworkIDs) != 0 {
+							return fmt.Errorf("server network_ids = %v, want cleared", a.NetworkIDs)
+						}
+						return nil
+					}),
+				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
