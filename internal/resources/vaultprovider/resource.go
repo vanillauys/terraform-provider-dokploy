@@ -8,8 +8,9 @@
 // computed fields; every config block attribute - secret and non-secret
 // alike - is carried forward from state rather than refreshed from the
 // server (no mixed refresh within a block). A config value changed in the
-// Dokploy UI is undetectable until the next Terraform-side apply rewrites
-// the whole block. See the schema description on each config block.
+// Dokploy UI persists undetected until the next apply that modifies this
+// resource; that apply rewrites the whole block. See the schema
+// description on each config block.
 //
 // A second, separate defense guards against a server-side defect
 // (internal/client/doc.go, wave 6c "Duplicate names"): vaultProvider.create
@@ -108,8 +109,9 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			"~> **Secrets are masked on every read, never echoed back.** Dokploy returns every secret field in this resource's " +
 			"config blocks as the literal string `********`, on create, read, and update alike. This provider cannot detect a " +
 			"config value changed in the Dokploy UI - Read leaves every config block exactly as Terraform last wrote it, secret " +
-			"and non-secret fields alike. Manage a vault provider's config only through Terraform, or UI-side edits are silently " +
-			"reverted on the next apply.\n\n" +
+			"and non-secret fields alike. Manage a vault provider's config only through Terraform. A UI-side edit persists " +
+			"undetected until the next apply that modifies this resource; that apply's full-body update overwrites it with " +
+			"Terraform's config.\n\n" +
 			"~> **A config block cannot be recovered by `terraform import`.** The imported resource's config blocks are left null; " +
 			"re-supply the block matching the provider's actual type in configuration, and the first `terraform apply` writes it " +
 			"as a full-body update, not a partial patch.\n\n" +
@@ -142,6 +144,10 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 					"namespace": schema.StringAttribute{
 						Optional:    true,
 						Description: "Vault Enterprise namespace. Omit for OSS Vault or OpenBao; the server has no default for this field.",
+						// An empty string cannot round-trip: flattenHashicorpConfig (model.go) uses tfutil.StringOrNull,
+						// which collapses "" back to null on read, so a "" here would apply and then fail with an
+						// "inconsistent result" error. Reject it at plan time instead of at apply time.
+						Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"mount": schema.StringAttribute{
 						Optional: true, Computed: true,
@@ -185,6 +191,8 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 					"endpoint": schema.StringAttribute{
 						Optional:    true,
 						Description: "Custom Secrets Manager endpoint, for a compatible service or a VPC endpoint. Omit to use AWS's default endpoint; the server has no default for this field.",
+						// Same reason as hashicorp.namespace above: flattenAWSConfig collapses "" back to null.
+						Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 				},
 			},
@@ -196,12 +204,16 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 					"project": schema.StringAttribute{
 						Optional:    true,
 						Description: "Doppler project slug. Omit to let Doppler infer it from the service token; the server has no default for this field.",
+						// Same reason as hashicorp.namespace above: flattenDopplerConfig collapses "" back to null.
+						Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"config": schema.StringAttribute{
 						Optional: true,
 						Description: "Doppler config name (the wire field is also named `config`; `config` is legal as an attribute name here " +
 							"since it is nested inside this block, not at the resource's top level). Omit to let Doppler infer it from the service " +
 							"token; the server has no default for this field.",
+						// Same reason as hashicorp.namespace above: flattenDopplerConfig collapses "" back to null.
+						Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 				},
 			},
@@ -304,10 +316,10 @@ func populatedBlockType(m resourceModel) string {
 // Read cannot reconcile this: config is REDACT (internal/client/doc.go,
 // wave 6c gate R), so there is no way to decode the server's actual config
 // into the right block from here. State is left exactly as it was; the
-// next apply's full-body update rewrites the record from Terraform's
-// config regardless of what the server currently holds, so raising a
-// diagnostic here would only alarm the operator over something the next
-// apply already fixes on its own.
+// next apply that modifies this resource runs Update, which rewrites the
+// whole record from Terraform's config regardless of what the server
+// currently holds. Raising a diagnostic here would only alarm the
+// operator over something that apply already fixes on its own.
 func checkProviderTypeDrift(ctx context.Context, state resourceModel, serverType string) {
 	stateType := populatedBlockType(state)
 	if stateType == "" || serverType == "" || stateType == serverType {

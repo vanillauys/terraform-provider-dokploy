@@ -29,9 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   500 that leaks the failed request's secrets in cleartext, observed on
   doppler and hashicorp - is guarded on two sides: a best-effort
   name-uniqueness pre-check runs before any secret reaches the server,
-  and every server error text reaching a diagnostic is scrubbed of every
-  configured secret value first. A scrubbed secret in an error message
-  reads as `(redacted)`.
+  and every server error text reaching a diagnostic in Create, Update,
+  and the `verify_connection` check is scrubbed of every configured
+  secret value first - Read and Delete carry no secrets. A scrubbed
+  secret in an error message reads as `(redacted)`.
 
 ### Notes
 
