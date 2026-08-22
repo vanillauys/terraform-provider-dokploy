@@ -51,6 +51,12 @@ type VaultInfisicalConfig struct {
 
 // VaultAWSConfig. Endpoint carries the same documented omitempty exception
 // as the other optional, non-nullable, server-defaulted config fields.
+//
+// Unlike its five siblings, this shape was not probed live - the wave 6c
+// probes (doc.go) created hashicorp, doppler, infisical and scaleway
+// records only. Field names come from the v0.30.0 OpenAPI contract alone;
+// wave 6c's acceptance tests are the first live confirmation of this
+// struct.
 type VaultAWSConfig struct {
 	ProviderType    string `json:"providerType"` // always "aws"
 	Region          string `json:"region"`
@@ -71,6 +77,12 @@ type VaultDopplerConfig struct {
 
 // VaultAzureConfig has no optional fields; every field is required at the
 // API.
+//
+// Unlike its five siblings, this shape was not probed live - the wave 6c
+// probes (doc.go) created hashicorp, doppler, infisical and scaleway
+// records only. Field names come from the v0.30.0 OpenAPI contract alone;
+// wave 6c's acceptance tests are the first live confirmation of this
+// struct.
 type VaultAzureConfig struct {
 	ProviderType string `json:"providerType"` // always "azure"
 	VaultURI     string `json:"vaultUri"`
