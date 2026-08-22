@@ -1087,8 +1087,12 @@
 //
 // Every secret field comes back as the literal string "********", on
 // create's response, vaultProvider.one, and vaultProvider.all alike.
-// hashicorp.token, infisical.clientSecret, scaleway.secretKey, and
-// doppler.serviceToken all showed the same mask. Non-secret config
+// hashicorp.token and doppler.serviceToken were confirmed on the
+// original probe run; infisical.clientSecret and scaleway.secretKey were
+// confirmed on a follow-up probe against two fresh fake records
+// (probe-infisical-2, probe-scaleway-2), each checked on both its create
+// response and a vaultProvider.one read-back - all four fields showed
+// the identical mask, same as hashicorp and doppler. Non-secret config
 // fields - mount, siteUrl, secretPath, region, apiUrl, url, projectId,
 // clientId, environmentSlug - come back in cleartext. This is REDACT,
 // not ECHO. Task 2's VaultProvider.Config must model only what actually
@@ -1111,9 +1115,16 @@
 // vaultProviderId, name, providerType, config, assignments,
 // organizationId, createdAt. .one, .all, and the bodies of .create and
 // .update all agree on this field set. No create-only or read-only field
-// turned up. assignments echoes environmentIds as [] when a create
-// request sends only {"projectId":"X"} - gate E's empty-set default is
-// safe to model as Optional+Computed with an empty-set Default.
+// turned up.
+//
+// assignments also echoes a field it was never sent: a create request
+// with an entry of only {"projectId":"X"} (no environmentIds key at all)
+// reads back as {"projectId":"X","environmentIds":[]}. This is a
+// separate fact from gate E below (which asks whether the assignments
+// ARRAY itself can be empty) - here a single ASSIGNMENT's environmentIds
+// gets a server-stored empty-set default. Together the two facts make
+// environment_ids safe to model as Optional+Computed with an empty-set
+// Default.
 //
 // vaultProvider.one with a bogus id returns the ordinary shape: HTTP
 // 404, {"message":"Vault provider not found","code":"NOT_FOUND",...} -
@@ -1132,13 +1143,17 @@
 //
 // ## Update accepts a full type swap; no RequiresReplace is needed
 //
-// An update that changed a hashicorp record's config block outright to a
-// doppler block - a different providerType, an entirely different field
-// set - succeeded with HTTP 200. The read-back cleanly dropped every
-// hashicorp-only field: no orphaned url, mount, or token, only the
-// doppler fields remained. This settles Task 3's open question: the six
-// config blocks can update in place. The blocks need no RequiresReplace
-// plan modifier.
+// Tested pair: hashicorp -> doppler. An update that changed a hashicorp
+// record's config block outright to a doppler block - a different
+// providerType, an entirely different field set - succeeded with HTTP
+// 200. The read-back cleanly dropped every hashicorp-only field: no
+// orphaned url, mount, or token, only the doppler fields remained. Only
+// this one pair was probed; the other five type-to-type combinations
+// were not tried individually, but all six share the same update
+// endpoint and the same "config: any" wire shape, so there is no reason
+// to expect a different type pair to behave differently. This settles
+// Task 3's open question: the six config blocks can update in place.
+// The blocks need no RequiresReplace plan modifier.
 //
 // ## Defaults: mount, siteUrl, secretPath, region, apiUrl all match the plan
 //
@@ -1172,9 +1187,19 @@
 // returned HTTP 500, {"code":"INTERNAL_SERVER_ERROR",...}, with a
 // message field that carries the raw failed SQL INSERT statement AND
 // its bound parameters - including the request's serviceToken, in plain
-// text, unmasked. The server does reject duplicate names (a unique
-// constraint on vault_provider.name), but the rejection path skips
-// whatever logic redacts config on the success paths above.
+// text, unmasked. The same probe was repeated on a second, unrelated
+// type (hashicorp, name "probe-dup-hashicorp", fake url and token) to
+// check whether the leak was a doppler-only artifact: it was not. The
+// second type's failed create leaked its fake token in cleartext in the
+// identical params-list shape. Observed types: doppler and hashicorp;
+// the remaining four (infisical, aws, azure, scaleway) were not probed
+// for this specific path, but the leak clearly comes from a
+// type-agnostic layer (the SQL insert error handler, which runs after
+// config validation has already succeeded for whichever type was sent)
+// rather than from any per-type code, so there is no reason to expect
+// the other four to behave differently. The server does reject duplicate
+// names (a unique constraint on vault_provider.name), but the rejection
+// path skips whatever logic redacts config on the success paths above.
 //
 // This matters past tidiness. Task 3's Create must AddError with the
 // server's message verbatim on failure, the same pattern
