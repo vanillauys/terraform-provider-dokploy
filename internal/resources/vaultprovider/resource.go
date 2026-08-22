@@ -329,10 +329,12 @@ func refreshComputed(ctx context.Context, v *client.VaultProvider, m *resourceMo
 	m.Assignments = flattenAssignments(ctx, v.Assignments, diags)
 }
 
-// Create pre-checks name uniqueness before ever sending a secret to the
-// server - see the package doc comment for why. verify_connection, when
-// set, runs before CreateVaultProvider; a failed test leaves nothing
-// created.
+// Create builds the config struct - and its secrets, for redactSecrets -
+// before the name pre-check, not after: that pre-check's own
+// ListVaultProviders call can fail too, and its error must be scrubbed the
+// same as every other server-error path here (see the package doc
+// comment). verify_connection, when set, runs before CreateVaultProvider;
+// a failed test leaves nothing created.
 func (r *vaultProviderResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -340,10 +342,16 @@ func (r *vaultProviderResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	cfg, _ := expandConfig(ctx, plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	secrets := secretsOf(cfg)
+
 	name := plan.Name.ValueString()
 	existing, err := r.client.ListVaultProviders(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Checking existing vault providers", err.Error())
+		resp.Diagnostics.AddError("Checking existing vault providers", redactSecrets(err.Error(), secrets))
 		return
 	}
 	for _, v := range existing {
@@ -352,12 +360,6 @@ func (r *vaultProviderResource) Create(ctx context.Context, req resource.CreateR
 			return
 		}
 	}
-
-	cfg, _ := expandConfig(ctx, plan, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	secrets := secretsOf(cfg)
 
 	if plan.VerifyConnection.ValueBool() {
 		if err := r.client.TestVaultConnection(ctx, client.TestVaultConnectionRequest{Config: cfg}); err != nil {
@@ -449,7 +451,7 @@ func (r *vaultProviderResource) Update(ctx context.Context, req resource.UpdateR
 
 	v, err := r.client.GetVaultProvider(ctx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Reading vault provider after update", err.Error())
+		resp.Diagnostics.AddError("Reading vault provider after update", redactSecrets(err.Error(), secrets))
 		return
 	}
 	refreshComputed(ctx, v, &plan, &resp.Diagnostics)
