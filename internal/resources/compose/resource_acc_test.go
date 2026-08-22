@@ -318,8 +318,8 @@ resource "dokploy_compose" "test" {
 // service_networks, the three v0.30.0 additions from this task
 // (internal/client/doc.go's "compose createEnvFile" and "serviceNetworks
 // and icon on compose.update" sections). service_networks needs a real
-// network id, so this test calls createNetwork directly - the same reason
-// TestAccApplication_networkAttachment gates on TF_ACC before
+// network id, so this test calls acctest.CreateNetwork directly - the same
+// reason TestAccApplication_networkAttachment gates on TF_ACC before
 // resource.Test's Steps start.
 //
 // The compose file is raw-source with one service, "web": the rig never
@@ -334,8 +334,8 @@ func TestAccCompose_v030Fields(t *testing.T) {
 	projectName := acctest.RandomName("compose-proj")
 	name := acctest.RandomName("compose")
 	netName := acctest.RandomName("net")
-	networkID := createNetwork(t, netName)
-	t.Cleanup(func() { deleteNetwork(t, networkID) })
+	networkID := acctest.CreateNetwork(t, netName)
+	t.Cleanup(func() { acctest.DeleteNetwork(t, networkID) })
 
 	withFields := rawConfig(projectName, name, fmt.Sprintf(`
   create_env_file = false

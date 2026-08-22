@@ -71,11 +71,26 @@ var mustAlwaysSend = []struct {
 		"icon", "serviceNetworks",
 	}},
 	{SaveComposeEnvironmentRequest{}, []string{"env", "createEnvFile"}},
-	// UpdateLibsqlRequest had no row here before v0.30.0 added networkIds
-	// and detachDokployNetwork. This row guards only those two new fields.
-	// See libsql.go's doc comments for the struct's older dialect-A/C
-	// fields.
-	{UpdateLibsqlRequest{}, []string{"networkIds", "detachDokployNetwork"}},
+	// libsql.update is dialect B: an absent key keeps the stored value.
+	// This row lists every clearable pointer field on UpdateLibsqlRequest -
+	// description, sqldPrimaryUrl, command, cpuLimit, cpuReservation,
+	// memoryLimit, memoryReservation - plus the v0.30.0 network pair,
+	// networkIds and detachDokployNetwork. Each one needs an explicit
+	// null on the wire to clear the stored value, so omitempty on any of
+	// them would drop that null and freeze the field at whatever the
+	// server already holds.
+	//
+	// The struct's other fields - name, databaseUser, databasePassword,
+	// sqldNode, enableNamespaces, dockerImage, replicas - keep their
+	// omitempty tag on purpose: they are plain strings or values with an
+	// update-if-present shape, not nullable-clear fields, so this row
+	// does not guard them. See libsql.go's UpdateLibsqlRequest doc
+	// comment for the field-by-field reasoning.
+	{UpdateLibsqlRequest{}, []string{
+		"description", "sqldPrimaryUrl", "command", "cpuLimit",
+		"cpuReservation", "memoryLimit", "memoryReservation",
+		"networkIds", "detachDokployNetwork",
+	}},
 }
 
 // inMustAlwaysSend reports whether a request struct is registered above. It

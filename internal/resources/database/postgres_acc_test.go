@@ -192,18 +192,18 @@ resource "dokploy_postgres" "test" {
 // (tfutil.StringSetOrNull).
 func TestAccPostgres_networkAttachment(t *testing.T) {
 	// resource.Test below only checks TF_ACC once its Steps start, but this
-	// test calls createNetwork BEFORE that - a raw HTTP call of its own - so
-	// it needs the same gate up front. Skipping (not failing) matches every
-	// other acceptance test in this package and keeps `make test` green with
-	// TF_ACC unset.
+	// test calls acctest.CreateNetwork BEFORE that - a client call of its
+	// own - so it needs the same gate up front. Skipping (not failing)
+	// matches every other acceptance test in this package and keeps
+	// `make test` green with TF_ACC unset.
 	if os.Getenv("TF_ACC") == "" {
 		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
 	}
 	acctest.PreCheck(t)
 	name := acctest.RandomName("pg-net")
 	netName := acctest.RandomName("net")
-	networkID := createNetwork(t, netName)
-	t.Cleanup(func() { deleteNetwork(t, networkID) })
+	networkID := acctest.CreateNetwork(t, netName)
+	t.Cleanup(func() { acctest.DeleteNetwork(t, networkID) })
 
 	base := fmt.Sprintf(`
 resource "dokploy_project" "test" {

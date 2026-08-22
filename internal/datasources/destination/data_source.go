@@ -91,9 +91,9 @@ func (d *destinationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				// Terraform configuration and cannot be an attribute name.
 				Description: "Storage provider label, e.g. `Cloudflare`, `AWS`, `DigitalOcean`.",
 			},
-			"endpoint":   schema.StringAttribute{Computed: true, Description: "S3 endpoint URL."},
-			"bucket":     schema.StringAttribute{Computed: true, Description: "Bucket name."},
-			"region":     schema.StringAttribute{Computed: true, Description: "Bucket region."},
+			"endpoint": schema.StringAttribute{Computed: true, Description: "S3 endpoint URL."},
+			"bucket":   schema.StringAttribute{Computed: true, Description: "Bucket name."},
+			"region":   schema.StringAttribute{Computed: true, Description: "Bucket region."},
 			"additional_flags": schema.ListAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
