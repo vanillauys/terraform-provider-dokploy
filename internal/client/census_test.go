@@ -79,6 +79,9 @@ var endpointStructs = map[string]any{
 	"libsql.saveExternalPorts":       saveLibsqlExternalPortsShape{},
 	"libsql.saveEnvironment":         saveLibsqlEnvironmentShape{},
 	"network.create":                 CreateNetworkRequest{},
+	"vaultProvider.create":           CreateVaultProviderRequest{},
+	"vaultProvider.update":           UpdateVaultProviderRequest{},
+	"vaultProvider.testConnection":   TestVaultConnectionRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.

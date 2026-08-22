@@ -32,6 +32,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/network"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/volumebackup"
 )
 
@@ -178,6 +179,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		destination.NewResource,
 		network.NewResource,
 		schedule.NewResource,
+		vaultprovider.NewResource,
 		volumebackup.NewResource,
 		backup.NewResource,
 		compose.NewResource,
