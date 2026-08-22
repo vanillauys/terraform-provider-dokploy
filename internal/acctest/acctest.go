@@ -8,7 +8,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -89,4 +91,66 @@ func DeleteNetwork(t *testing.T, id string) {
 	if err := c.DeleteNetwork(context.Background(), id); err != nil {
 		t.Fatalf("deleting network %s: %v", id, err)
 	}
+}
+
+// rigContainer returns the acceptance rig's own container name, matching
+// acceptance/up.sh's DOKPLOY_ACC_CONTAINER fallback.
+func rigContainer() string {
+	if name := os.Getenv("DOKPLOY_ACC_CONTAINER"); name != "" {
+		return name
+	}
+	return "dokploy-acc"
+}
+
+// StartRigVault starts a disposable OpenBao dev-mode container as a sibling
+// inside the acceptance rig's dind sandbox, joined to dokploy-network, and
+// returns the address vaultProvider.testConnection can reach it at plus its
+// root token. This wraps the exact recipe wave 6c's task 1 probed live
+// (wave-6c task-1 report, "Step 2: dev vault, gate B"): the rig's own dind
+// sandbox answers "http://acc-vault-<suffix>:8200" directly on the first
+// try, with no `--network host` / 127.0.0.1 fallback needed.
+//
+// t.Cleanup removes the container; the rig container itself (dokploy-acc)
+// is never touched, matching the wave-6c rule to leave it running.
+func StartRigVault(t *testing.T) (url, token string) {
+	t.Helper()
+	rig := rigContainer()
+	suffix := sdkacctest.RandStringFromCharSet(8, sdkacctest.CharSetAlphaNum)
+	name := "acc-vault-" + suffix
+	token = "acc-root-token-" + suffix
+
+	run := exec.Command("docker", "exec", rig, "docker", "run", "-d", "--name", name,
+		"--network", "dokploy-network",
+		"-e", "BAO_DEV_ROOT_TOKEN_ID="+token,
+		"-e", "BAO_DEV_LISTEN_ADDRESS=0.0.0.0:8200",
+		"openbao/openbao:latest",
+	)
+	if out, err := run.CombinedOutput(); err != nil {
+		t.Fatalf("starting rig vault container %s: %v\n%s", name, err, out)
+	}
+	t.Cleanup(func() {
+		rm := exec.Command("docker", "exec", rig, "docker", "rm", "-f", name)
+		if out, err := rm.CombinedOutput(); err != nil {
+			t.Logf("removing rig vault container %s: %v\n%s", name, err, out)
+		}
+	})
+
+	// OpenBao's dev-mode server is usually ready within a second or two;
+	// poll `bao status` through the sibling container rather than assume a
+	// fixed sleep is enough. `bao status` exits 0 once unsealed.
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		status := exec.Command("docker", "exec", rig, "docker", "exec",
+			"-e", "BAO_ADDR=http://127.0.0.1:8200", "-e", "BAO_TOKEN="+token,
+			name, "bao", "status")
+		if err := status.Run(); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("rig vault container %s did not become ready within 30s", name)
+		}
+		time.Sleep(time.Second)
+	}
+
+	return fmt.Sprintf("http://%s:8200", name), token
 }
