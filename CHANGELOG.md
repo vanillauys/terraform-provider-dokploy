@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-08-22
+
+### Added
+
+- `dokploy_vault_provider` resource: create, update, and destroy a
+  secret-vault connection Dokploy can pull runtime secrets from at deploy
+  time, one of six provider types - `hashicorp` (also covers OpenBao),
+  `infisical`, `aws`, `doppler`, `azure`, `scaleway` - each its own typed,
+  mutually exclusive config block. `assignments` links the vault provider
+  to projects and, optionally, specific environments within them; an
+  empty list is legal. `verify_connection` is opt-in (default `false`)
+  and, when set, calls `vaultProvider.testConnection` against the real
+  vault before Create or Update writes anything, so a bad credential or
+  an unreachable server fails the apply instead of creating a broken
+  vault provider.
+
+  Dokploy masks every secret field as the literal string `********` on
+  every read - create, read, and update alike - so this provider cannot
+  detect a config value changed in the Dokploy UI, and `terraform import`
+  cannot recover a config block; the first apply after import re-writes
+  it in full from configuration. A server-side defect independent of
+  this - `vaultProvider.create`'s duplicate-name rejection is a raw HTTP
+  500 that leaks the failed request's secrets in cleartext, observed on
+  doppler and hashicorp - is guarded on two sides: a best-effort
+  name-uniqueness pre-check runs before any secret reaches the server,
+  and every server error text reaching a diagnostic is scrubbed of every
+  configured secret value first. A scrubbed secret in an error message
+  reads as `(redacted)`.
+
+### Notes
+
+- This closes the wave-6 slate. `vaultProvider.listSecretNames` and all
+  `dnsProvider` endpoints stay unmodeled by decision: `listSecretNames`
+  is read-only UI surface with no Terraform-shaped use, and DNS belongs
+  to the official `cloudflare`/`aws` providers, not this one.
+
 ## [0.9.0] - 2026-08-20
 
 ### Added
