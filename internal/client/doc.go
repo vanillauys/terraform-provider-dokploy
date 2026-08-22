@@ -1038,4 +1038,176 @@
 // and overlay creation needed no field beyond name and driver. Spec risk
 // 6 does not fire this wave: Task 3 should add the overlay acceptance
 // test, not skip it and fall back to bridge-only coverage.
+//
+// ## Wave 6c vault probes (probed 2026-08-22)
+//
+// Task 1 probed the acceptance rig at v0.30.2, the same installer build
+// waves 6a and 6b used. The probe used one scratch project
+// (wave6c-probe), one scratch environment, and one dev vault: OpenBao,
+// run as a sibling container inside the rig's dind sandbox, joined to
+// the dokploy-network overlay. Task 1 created and deleted five vault
+// provider records across four provider types (hashicorp, doppler,
+// infisical, scaleway). The wave-6c task-1 report holds the full
+// transcripts.
+//
+// ## Gate B: the dev vault answers at its container name, on the first try
+//
+// The rig did not need the plan's fallback (--network host,
+// http://127.0.0.1:8200). `docker run --network dokploy-network
+// openbao/openbao:latest` joined the same overlay network Dokploy's own
+// containers use. vaultProvider.testConnection reached it straight away
+// at http://acc-vault:8200 - HTTP 200, body true. Task 3's StartRigVault
+// helper can use this address with no extra network setup.
+//
+// testConnection's two failure shapes, both HTTP 400 with different
+// messages:
+//
+//	wrong token       {"message":"HashiCorp Vault: token validation
+//	                  failed (status 403)","code":"BAD_REQUEST",...}
+//	unreachable url   {"message":"fetch failed","code":"BAD_REQUEST",...}
+//
+// Neither failure comes back as a 5xx or a timeout. Both are ordinary
+// tRPC 400s with a message field verify_connection can surface directly.
+// The "fetch failed" text names no host and no DNS detail - the resource
+// description should say plainly that "fetch failed" usually means a bad
+// URL, not a bad credential.
+//
+// ## Gate V: fake credentials are accepted; create never contacts the vault
+//
+// vaultProvider.create does not validate config against the target vault
+// at all. A doppler create with serviceToken "dp.st.fake" returned HTTP
+// 200 with a full record. The same held for infisical and scaleway
+// creates with obviously invalid client and project ids. The server only
+// calls the vault when verify_connection explicitly asks it to, through
+// testConnection (gate B above). Create itself is a metadata write. This
+// is the PASS branch: all six types can get full lifecycle acceptance
+// coverage with fake credentials, not just stub-server unit tests.
+//
+// ## Gate R: config is redacted on every read, never echoed in cleartext
+//
+// Every secret field comes back as the literal string "********", on
+// create's response, vaultProvider.one, and vaultProvider.all alike.
+// hashicorp.token, infisical.clientSecret, scaleway.secretKey, and
+// doppler.serviceToken all showed the same mask. Non-secret config
+// fields - mount, siteUrl, secretPath, region, apiUrl, url, projectId,
+// clientId, environmentSlug - come back in cleartext. This is REDACT,
+// not ECHO. Task 2's VaultProvider.Config must model only what actually
+// comes back; the masked string cannot decode into anything useful.
+// Task 3's Read must keep the config blocks from state rather than try
+// to refresh them - the plan's gate R REDACT branch already lists the
+// consequences (Sensitive attributes, no ImportStateVerify on config, a
+// schema note that secret drift is undetectable).
+//
+// One surprise gate R does not cover: vaultProvider.create and .one both
+// also return a providerType field at the TOP level of the record, one
+// step above config.providerType. The two always agreed in every probe.
+// Task 2's VaultProvider struct should carry ProviderType string at the
+// top level too - it costs nothing and confirms the config union decoded
+// to the right type.
+//
+// ## Read shapes: create returns the full record; one 404; one write-through proof
+//
+// vaultProvider.create returns the full record, not a bare true:
+// vaultProviderId, name, providerType, config, assignments,
+// organizationId, createdAt. .one, .all, and the bodies of .create and
+// .update all agree on this field set. No create-only or read-only field
+// turned up. assignments echoes environmentIds as [] when a create
+// request sends only {"projectId":"X"} - gate E's empty-set default is
+// safe to model as Optional+Computed with an empty-set Default.
+//
+// vaultProvider.one with a bogus id returns the ordinary shape: HTTP
+// 404, {"message":"Vault provider not found","code":"NOT_FOUND",...} -
+// the same tRPC-OpenAPI not-found envelope this client already
+// classifies as ErrNotFound. No repeat of port.one's 400 anomaly.
+//
+// vaultProvider.update returns the full record too, and it genuinely
+// mutates the stored secret, even though every read masks it. Task 1
+// proved this rather than assumed it: it renamed a hashicorp record and
+// changed its token to a value the real dev vault would reject, then
+// called testConnection with only vaultProviderId (no config) - this
+// reads the STORED config server-side, and it failed with the same
+// "token validation failed (status 403)" gate B recorded above. A
+// masked-on-read update can look like a no-op from the client's side. It
+// is not one.
+//
+// ## Update accepts a full type swap; no RequiresReplace is needed
+//
+// An update that changed a hashicorp record's config block outright to a
+// doppler block - a different providerType, an entirely different field
+// set - succeeded with HTTP 200. The read-back cleanly dropped every
+// hashicorp-only field: no orphaned url, mount, or token, only the
+// doppler fields remained. This settles Task 3's open question: the six
+// config blocks can update in place. The blocks need no RequiresReplace
+// plan modifier.
+//
+// ## Defaults: mount, siteUrl, secretPath, region, apiUrl all match the plan
+//
+// Task 1 probed every server-stored default gate V's PASS made
+// reachable, by omitting the field on create and reading it back:
+//
+//	hashicorp.mount        -> "secret"
+//	infisical.siteUrl      -> "https://app.infisical.com"
+//	infisical.secretPath   -> "/"
+//	scaleway.region        -> "fr-par"
+//	scaleway.apiUrl        -> "https://api.scaleway.com"
+//
+// No coercion, no surprise value, no null in place of a default.
+// hashicorp.namespace, the one optional field with no documented
+// default, does not appear in the response at all when the request
+// omits it - not null, simply absent from the JSON object. This matches
+// Task 2's plan to model it as a plain string with omitempty on write,
+// and to leave it unset on read when absent.
+//
+// ## Gate E: assignments: [] is accepted
+//
+// A create request with "assignments":[] returned HTTP 200 and echoed
+// assignments: [] on every later read. assignments is
+// Required-but-may-be-empty, not effectively min-1. Task 3's schema
+// needs no length validator on it.
+//
+// ## Duplicate names: rejected, but through a 500 that leaks the fake secret
+//
+// A second create that reused the name "probe-fake" did not get the
+// clean 400 wave 6b's network.create duplicate-name probe found. It
+// returned HTTP 500, {"code":"INTERNAL_SERVER_ERROR",...}, with a
+// message field that carries the raw failed SQL INSERT statement AND
+// its bound parameters - including the request's serviceToken, in plain
+// text, unmasked. The server does reject duplicate names (a unique
+// constraint on vault_provider.name), but the rejection path skips
+// whatever logic redacts config on the success paths above.
+//
+// This matters past tidiness. Task 3's Create must AddError with the
+// server's message verbatim on failure, the same pattern
+// TestVaultConnection already uses. On a duplicate-name collision
+// specifically, that puts the plaintext secret from the FAILED request
+// straight into a Terraform diagnostic - a CI log or a terminal
+// scrollback then keeps it. The provider cannot suppress this without
+// breaking the general "surface the server's error text" contract every
+// other endpoint relies on. This is a server-side defect, not a client
+// bug to route around. Task 3's resource package doc should record it
+// plainly - this paragraph is the client-layer record of it - so the
+// duplicate-name path does not get treated as an ordinary validation
+// error when the resource's error handling and acceptance tests get
+// written.
+//
+// ## listSecretNames: a flat array of "path:key" strings
+//
+// vaultProvider.listSecretNames?vaultProviderId=&projectId= returned
+// ["probe/demo:FOO"] for the one secret seeded in the dev vault (bao kv
+// put -mount=secret probe/demo FOO=bar). The shape is a flat array of
+// colon-joined path:key strings, not a tree and not per-path key lists.
+// This confirms the plan's decision to leave the endpoint unmodeled: it
+// is read-only UI surface, and one probe is enough to know its shape
+// without a client method for it.
+//
+// ## Gate verdicts
+//
+// Gate V: PASS. Create accepts fake credentials for every provider type
+// tried; it never contacts the real vault.
+// Gate R: REDACT. Every secret field reads back masked as "********", on
+// create, one, all, and update alike.
+// Gate B: PASS. The sibling OpenBao container answers testConnection at
+// http://acc-vault:8200 directly, with no network workaround.
+// Gate E: PASS. assignments: [] is accepted on create and echoed back as
+// [].
 package client
