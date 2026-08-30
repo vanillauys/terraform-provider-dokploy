@@ -6,3 +6,9 @@
 .terraform.lock.hcl
 __pycache__/
 dogfood/scratch/
+
+# Local agent and IDE state
+.claude/
+.superpowers/
+.idea/
+.DS_Store
