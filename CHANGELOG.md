@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-08-30
+
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.30.0 to v0.30.2
+  (README and the provider index page). The endpoint census snapshot
+  was already taken against v0.30.2 (2026-08-19). The upstream
+  v0.30.0...v0.30.2 diff was re-read for this release and carries no
+  request-schema changes: `project.all` narrows its response columns
+  for restricted members, the GitHub webhook applies its preview limit
+  only to new pull requests, and stack deploys stop quoting `.env`
+  values. None of these touch a request struct this provider
+  transmits. The acceptance suite for this release ran against a fresh
+  v0.30.2 install.
+
 ## [0.10.0] - 2026-08-22
 
 ### Added
