@@ -1393,7 +1393,7 @@
  "domain.validateDomain": {
   "fields": [
    "domain",
-   "serverIp"
+   "serverId"
   ],
   "required": [
    "domain"
@@ -2379,6 +2379,14 @@
   ]
  },
  "network.remove": {
+  "fields": [
+   "networkId"
+  ],
+  "required": [
+   "networkId"
+  ]
+ },
+ "network.resync": {
   "fields": [
    "networkId"
   ],

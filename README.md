@@ -25,7 +25,7 @@ See the [registry documentation](https://registry.terraform.io/providers/vanilla
 
 ## Compatibility
 
-Developed and tested against **Dokploy v0.30.2**. The acceptance suite installs
+Developed and tested against **Dokploy v0.30.3**. The acceptance suite installs
 Dokploy with the upstream `install.sh`, which tracks the latest release, so
 newer versions are exercised as they ship; older ones are untested.
 
