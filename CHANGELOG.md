@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2] - 2026-09-01
+
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.30.2 to v0.30.3
+  (README and the provider index page). The endpoint census snapshot
+  now comes from a fresh v0.30.3 install (2026-09-01). The upstream
+  v0.30.2...v0.30.3 diff carries two request-schema changes, both on
+  endpoints this provider does not call: `domain.validateDomain`
+  replaces `serverIp` with `serverId`, and `network.resync` is a new
+  operational mutation. The network read shape gains a nullable
+  `dockerId` field on all three read paths (live-probed); this client
+  leaves it unmodeled and decodes past it. The OpenAPI route now
+  rejects oversized request bodies with HTTP 413; every payload this
+  provider sends is far below the limit. No request struct this
+  provider transmits changed. The acceptance suite for this release
+  ran against a fresh v0.30.3 install.
+
 ## [0.10.1] - 2026-08-30
 
 ### Changed

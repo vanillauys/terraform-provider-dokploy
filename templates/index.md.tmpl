@@ -20,7 +20,7 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 with deploy-on-change semantics and full import support throughout.
 
 Works with Terraform >= 1.5 and OpenTofu. Developed and tested against
-**Dokploy v0.30.2**; newer releases are exercised by the acceptance suite as
+**Dokploy v0.30.3**; newer releases are exercised by the acceptance suite as
 they ship, older ones are untested.
 
 ## Guides

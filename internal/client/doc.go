@@ -933,6 +933,17 @@
 // organizationId, serverId. All three read paths agreed on every probe in
 // this wave - no create-only or read-only field turned up.
 //
+// v0.30.3 adds dockerId to that shape on all three read paths alike
+// (probed 2026-09-01 against a fresh v0.30.3 rig). The field holds the
+// Docker engine's own network id, and it reads as null on an API-created
+// network before a deploy attaches it. The server uses it to detect an
+// out-of-band delete or recreate of the underlying Docker network. This
+// client leaves dockerId unmodeled; the JSON decoder ignores unknown
+// keys. v0.30.3 also adds network.resync, a mutation with input
+// {networkId}. That is an operational action, not Terraform-shaped
+// state, so it stays unmodeled next to network.recreate and
+// network.import.
+//
 // A bare create ({"name":"probe-bare"}) stores driver "bridge", internal
 // false, attachable false, enableIPv4 true, enableIPv6 false, mtu null,
 // and serverId null. Every one of these matches the plan's predicted
