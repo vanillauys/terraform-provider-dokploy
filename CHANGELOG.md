@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- `dokploy_backup`: the `schedule` attribute is now `cron_expression`, the
+  name that `dokploy_schedule` and `dokploy_volume_backup` already use. The
+  Dokploy wire field is unchanged. The schema version moves to 1, and a
+  state upgrader moves the value to the new name, so a state from v0.10.4
+  loads without an error. Rename the attribute in your configuration; a
+  configuration that still sets `schedule` fails at plan time with an
+  unsupported-argument error. The acceptance suite proves the upgrade: it
+  creates the backup with v0.10.4 from the registry, then plans with the
+  local build and the new name, and the plan is empty.
+
 ### Added
 
 - `dokploy_project` and the `dokploy_project` data source expose

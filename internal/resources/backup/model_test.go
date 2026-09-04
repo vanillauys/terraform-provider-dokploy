@@ -23,7 +23,7 @@ func strPtr(s string) *string { return &s }
 // TestNoStringPointerValueOutsideExemptions in internal/tfutil.
 //
 // service_name is the only optional string client.Backup carries. database,
-// prefix, schedule and destination_id are all Required in the schema, so
+// prefix, cron_expression and destination_id are all Required in the schema, so
 // configuration always supplies a value and a server-side "" cannot produce
 // the null mismatch this test is about.
 func TestFlattenEmptyStringsBecomeNull(t *testing.T) {

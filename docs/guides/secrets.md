@@ -103,12 +103,12 @@ data "dokploy_destination" "backups" {
 }
 
 resource "dokploy_backup" "db" {
-  destination_id = data.dokploy_destination.backups.id
-  service_id     = dokploy_postgres.db.id
-  service_type   = "postgres"
-  schedule       = "0 3 * * *"
-  database       = "app"
-  prefix         = "backups/app/"
+  destination_id  = data.dokploy_destination.backups.id
+  service_id      = dokploy_postgres.db.id
+  service_type    = "postgres"
+  cron_expression = "0 3 * * *"
+  database        = "app"
+  prefix          = "backups/app/"
 }
 ```
 
