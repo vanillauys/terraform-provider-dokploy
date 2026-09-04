@@ -3,13 +3,13 @@
 page_title: "dokploy_libsql Data Source - dokploy"
 subcategory: ""
 description: |-
-  Looks up a Dokploy libsql service (a distributed SQLite / sqld database) that already exists in Dokploy, by id or by name within an environment.
+  Look up a Dokploy libsql service (a distributed SQLite / sqld database) by id, or by name within an environment. The data source does not expose the database password.
   ~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql service shares a name, this data source fails instead of a guess. Look the record up by id in that case.
 ---
 
 # dokploy_libsql (Data Source)
 
-Looks up a Dokploy libsql service (a distributed SQLite / `sqld` database) that already exists in Dokploy, by id or by name within an environment.
+Look up a Dokploy libsql service (a distributed SQLite / `sqld` database) by id, or by name within an environment. The data source does not expose the database password.
 
 ~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql service shares a name, this data source fails instead of a guess. Look the record up by `id` in that case.
 
@@ -43,7 +43,6 @@ data "dokploy_libsql" "by_name" {
 - `cpu_limit` (String) Hard CPU limit in Docker notation, for example `"0.5"`.
 - `cpu_reservation` (String) Reserved CPU in Docker notation, for example `"0.25"`.
 - `created_at` (String) Creation timestamp from the server.
-- `database_password` (String, Sensitive) LibSQL database password.
 - `database_user` (String) LibSQL database user.
 - `description` (String) Free-form description.
 - `docker_image` (String) LibSQL Docker image.
