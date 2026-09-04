@@ -186,6 +186,9 @@ var censusExempt = map[string]map[string]string{
 	// live (v0.29.13, 2026-07-29) by setting thirteen fields away from their
 	// defaults and issuing an update carrying only composeId and name.
 	"compose.update": {
+		"isolatedDeployment":        "deprecated upstream since v0.30.0; service_networks replaces it",
+		"isolatedDeploymentsVolume": "deprecated upstream since v0.30.0; service_networks replaces it",
+
 		"gitlabId":            "no gitlab provider observed live; shape would be inferred",
 		"gitlabProjectId":     "no gitlab provider observed live; shape would be inferred",
 		"gitlabRepository":    "no gitlab provider observed live; shape would be inferred",

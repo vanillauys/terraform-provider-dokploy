@@ -117,8 +117,6 @@ resource "dokploy_domain" "web" {
 - `git` (Attributes) Source the compose file from a plain git remote. (see [below for nested schema](#nestedatt--git))
 - `github` (Attributes) Source the compose file from a GitHub App repository. (see [below for nested schema](#nestedatt--github))
 - `icon` (String) Service icon for the Dokploy UI: an icon name or a data URI, up to 2 MB.
-- `isolated_deployment` (Boolean, Deprecated) Run the stack in an isolated Docker network. Defaults to `false`. **Deprecated in Dokploy since v0.30.0.** Use `service_networks` instead.
-- `isolated_deployments_volume` (Boolean, Deprecated) Give the isolated deployment its own volume namespace. Defaults to `false`. **Deprecated in Dokploy since v0.30.0.** Use `service_networks` instead.
 - `randomize` (Boolean) Randomize the generated resource names with `suffix`. Defaults to `false`.
 - `raw` (Attributes) Supply the compose file inline, without a repository. (see [below for nested schema](#nestedatt--raw))
 - `server_id` (String) Id of the remote server that runs the service. Defaults to the Dokploy host.

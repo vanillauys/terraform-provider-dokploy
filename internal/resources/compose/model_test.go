@@ -103,7 +103,7 @@ func TestFlattenNullableColumnsStayNull(t *testing.T) {
 	}
 }
 
-// The other four booleans are NOT NULL server-side: an explicit null is
+// The other two booleans are NOT NULL server-side: an explicit null is
 // coerced to false on write. They must resolve to a concrete false rather
 // than stay null, or they diff forever against their own schema default.
 func TestFlattenResolvesNotNullBooleansToFalse(t *testing.T) {
@@ -115,10 +115,8 @@ func TestFlattenResolvesNotNullBooleansToFalse(t *testing.T) {
 	}
 
 	for name, got := range map[string]types.Bool{
-		"enable_submodules":           m.EnableSubmodules,
-		"randomize":                   m.Randomize,
-		"isolated_deployment":         m.IsolatedDeployment,
-		"isolated_deployments_volume": m.IsolatedDeploymentsVolume,
+		"enable_submodules": m.EnableSubmodules,
+		"randomize":         m.Randomize,
 	} {
 		if got.IsNull() || got.IsUnknown() {
 			t.Errorf("%s = %v, want a concrete bool: the column is NOT NULL server-side", name, got)
