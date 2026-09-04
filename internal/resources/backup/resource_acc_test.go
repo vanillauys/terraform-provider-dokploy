@@ -87,7 +87,7 @@ resource "dokploy_backup" "test" {
   service_type   = "postgres"
   database       = "accdb"
   prefix         = "backups/acc/"
-  schedule       = %q
+  cron_expression = %q
   destination_id = dokploy_destination.test.id
   %s
 }
@@ -170,6 +170,48 @@ resource "dokploy_backup" "test" {
 	})
 }
 
+// TestAccBackup_upgradeFromV0 creates the backup with v0.10.4, the last
+// release that named the cron attribute `schedule`, then runs the local build
+// against that state with the new name. The state upgrader must load the
+// version 0 state, and the plan must be empty (D6 in the Phase 1 brief).
+func TestAccBackup_upgradeFromV0(t *testing.T) {
+	name := acctest.RandomName("bk-up")
+	cfg := func(attr string) string {
+		return base(name) + fmt.Sprintf(`
+resource "dokploy_backup" "test" {
+  service_id     = dokploy_postgres.test.id
+  service_type   = "postgres"
+  database       = "accdb"
+  prefix         = "backups/acc/"
+  %s = "0 3 * * *"
+  destination_id = dokploy_destination.test.id
+}
+`, attr)
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.10.4"},
+				},
+				Config: cfg("schedule"),
+				Check:  resource.TestCheckResourceAttr("dokploy_backup.test", "schedule", "0 3 * * *"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   cfg("cron_expression"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_backup.test", "cron_expression", "0 3 * * *"),
+			},
+		},
+	})
+}
+
 // Redis must be rejected at PLAN time with a message naming the alternative,
 // not at apply with a zod "invalid option".
 func TestAccBackup_rejectsRedisAtPlanTime(t *testing.T) {
@@ -187,7 +229,7 @@ resource "dokploy_backup" "nope" {
   service_type   = "redis"
   database       = "acc"
   prefix         = "backups/acc/"
-  schedule       = "0 3 * * *"
+  cron_expression = "0 3 * * *"
   destination_id = dokploy_destination.test.id
 }
 `, name+"-redis")

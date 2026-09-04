@@ -21,9 +21,10 @@ import (
 )
 
 var (
-	_ resource.Resource                = (*backupResource)(nil)
-	_ resource.ResourceWithConfigure   = (*backupResource)(nil)
-	_ resource.ResourceWithImportState = (*backupResource)(nil)
+	_ resource.Resource                 = (*backupResource)(nil)
+	_ resource.ResourceWithConfigure    = (*backupResource)(nil)
+	_ resource.ResourceWithImportState  = (*backupResource)(nil)
+	_ resource.ResourceWithUpgradeState = (*backupResource)(nil)
 )
 
 type backupResource struct{ client *client.Client }
@@ -45,6 +46,9 @@ var serviceTypes = append([]string{"compose"}, client.BackupDatabaseTypes...)
 func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	requiresReplace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
+		// Version 1 (v0.11.0) renamed `schedule` to `cron_expression`; see
+		// UpgradeState.
+		Version: 1,
 		Description: "A scheduled logical dump of a database to an S3-compatible destination.\n\n" +
 			"~> **This resource does not support Redis.** Dokploy has no logical dump for Redis. Use " +
 			"`dokploy_volume_backup`, which archives the volume and accepts a Redis parent.\n\n" +
@@ -79,9 +83,9 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Required:    true,
 				Description: "Key prefix inside the destination bucket, for example `backups/app/`.",
 			},
-			"schedule": schema.StringAttribute{
+			"cron_expression": schema.StringAttribute{
 				Required:    true,
-				Description: "Standard five-field cron expression, for example `0 3 * * *`.",
+				Description: "Standard five-field cron expression, for example `0 4 * * *`.",
 			},
 			"destination_id": schema.StringAttribute{
 				Required:    true,
@@ -211,4 +215,39 @@ func (r *backupResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 func (r *backupResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// UpgradeState moves a version 0 state to the current schema. Version 0
+// named the cron attribute `schedule`. v0.11.0 renamed it to
+// `cron_expression`, the name that dokploy_schedule and dokploy_volume_backup
+// already use (D1 in the Phase 1 brief). The wire field stays `schedule`.
+func (r *backupResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	prior := schemaV0(ctx)
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema:   &prior,
+			StateUpgrader: upgradeStateV0,
+		},
+	}
+}
+
+// schemaV0 derives the version 0 schema from the current one. The two differ
+// only in the name of the cron attribute, so a full copy would drift.
+func schemaV0(ctx context.Context) schema.Schema {
+	var resp resource.SchemaResponse
+	(&backupResource{}).Schema(ctx, resource.SchemaRequest{}, &resp)
+	attrs := resp.Schema.Attributes
+	attrs["schedule"] = attrs["cron_expression"]
+	delete(attrs, "cron_expression")
+	resp.Schema.Version = 0
+	return resp.Schema
+}
+
+func upgradeStateV0(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+	var prior resourceModelV0
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, prior.upgrade())...)
 }

@@ -13,6 +13,23 @@ type resourceModel struct {
 	ServiceType          types.String `tfsdk:"service_type"`
 	Database             types.String `tfsdk:"database"`
 	Prefix               types.String `tfsdk:"prefix"`
+	CronExpression       types.String `tfsdk:"cron_expression"`
+	DestinationID        types.String `tfsdk:"destination_id"`
+	Enabled              types.Bool   `tfsdk:"enabled"`
+	KeepLatestCount      types.Int64  `tfsdk:"keep_latest_count"`
+	IncludeEncryptionKey types.Bool   `tfsdk:"include_encryption_key"`
+	ServiceName          types.String `tfsdk:"service_name"`
+	AppName              types.String `tfsdk:"app_name"`
+}
+
+// resourceModelV0 is the schema version 0 state shape. It differs from
+// resourceModel in one field: the cron attribute was named `schedule`.
+type resourceModelV0 struct {
+	ID                   types.String `tfsdk:"id"`
+	ServiceID            types.String `tfsdk:"service_id"`
+	ServiceType          types.String `tfsdk:"service_type"`
+	Database             types.String `tfsdk:"database"`
+	Prefix               types.String `tfsdk:"prefix"`
 	Schedule             types.String `tfsdk:"schedule"`
 	DestinationID        types.String `tfsdk:"destination_id"`
 	Enabled              types.Bool   `tfsdk:"enabled"`
@@ -20,6 +37,25 @@ type resourceModel struct {
 	IncludeEncryptionKey types.Bool   `tfsdk:"include_encryption_key"`
 	ServiceName          types.String `tfsdk:"service_name"`
 	AppName              types.String `tfsdk:"app_name"`
+}
+
+// upgrade copies every field into the current model and moves the cron
+// expression to its new name.
+func (v resourceModelV0) upgrade() resourceModel {
+	return resourceModel{
+		ID:                   v.ID,
+		ServiceID:            v.ServiceID,
+		ServiceType:          v.ServiceType,
+		Database:             v.Database,
+		Prefix:               v.Prefix,
+		CronExpression:       v.Schedule,
+		DestinationID:        v.DestinationID,
+		Enabled:              v.Enabled,
+		KeepLatestCount:      v.KeepLatestCount,
+		IncludeEncryptionKey: v.IncludeEncryptionKey,
+		ServiceName:          v.ServiceName,
+		AppName:              v.AppName,
+	}
 }
 
 // backupTypeFor derives the wire `backupType` from the parent kind. Dokploy
@@ -37,7 +73,7 @@ func flatten(b *client.Backup, out *resourceModel) {
 	out.ServiceType = types.StringValue(b.DatabaseType)
 	out.Database = types.StringValue(b.Database)
 	out.Prefix = types.StringValue(b.Prefix)
-	out.Schedule = types.StringValue(b.Schedule)
+	out.CronExpression = types.StringValue(b.Schedule)
 	out.DestinationID = types.StringValue(b.DestinationID)
 	out.ServiceName = tfutil.StringOrNull(b.ServiceName)
 	out.AppName = types.StringValue(b.AppName)
@@ -71,7 +107,7 @@ func parentRef(m resourceModel) client.ParentRef {
 func createRequest(m resourceModel) client.CreateBackupRequest {
 	ref := parentRef(m)
 	return client.CreateBackupRequest{
-		Schedule:             m.Schedule.ValueString(),
+		Schedule:             m.CronExpression.ValueString(),
 		Database:             m.Database.ValueString(),
 		Prefix:               m.Prefix.ValueString(),
 		DestinationID:        m.DestinationID.ValueString(),
@@ -104,7 +140,7 @@ func createRequest(m resourceModel) client.CreateBackupRequest {
 func updateRequest(m resourceModel) client.UpdateBackupRequest {
 	return client.UpdateBackupRequest{
 		BackupID:             m.ID.ValueString(),
-		Schedule:             m.Schedule.ValueString(),
+		Schedule:             m.CronExpression.ValueString(),
 		Database:             m.Database.ValueString(),
 		Prefix:               m.Prefix.ValueString(),
 		DestinationID:        m.DestinationID.ValueString(),

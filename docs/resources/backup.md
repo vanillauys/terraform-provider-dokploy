@@ -20,12 +20,12 @@ A scheduled logical dump of a database to an S3-compatible destination.
 
 ```terraform
 resource "dokploy_backup" "db_nightly" {
-  service_id     = dokploy_postgres.db.id
-  service_type   = "postgres"
-  database       = "app"
-  prefix         = "backups/app/"
-  schedule       = "0 3 * * *"
-  destination_id = dokploy_destination.backups.id
+  service_id      = dokploy_postgres.db.id
+  service_type    = "postgres"
+  database        = "app"
+  prefix          = "backups/app/"
+  cron_expression = "0 3 * * *"
+  destination_id  = dokploy_destination.backups.id
 
   keep_latest_count = 30
 }
@@ -39,10 +39,10 @@ resource "dokploy_backup" "db_nightly" {
 
 ### Required
 
+- `cron_expression` (String) Standard five-field cron expression, for example `0 4 * * *`.
 - `database` (String) Name of the database to dump.
 - `destination_id` (String) Id of the `dokploy_destination` that receives the dumps.
 - `prefix` (String) Key prefix inside the destination bucket, for example `backups/app/`.
-- `schedule` (String) Standard five-field cron expression, for example `0 3 * * *`.
 - `service_id` (String) Id of the database or compose service to dump. A change forces a replacement: the Dokploy update endpoint has no parent field, so a retarget is not possible.
 - `service_type` (String) Kind of service that `service_id` refers to: one of `postgres`, `mysql`, `mariadb`, `mongo`, `libsql`, `compose`. A change forces a replacement. The provider derives the Dokploy `databaseType` and `backupType` fields from this attribute. Independent values would allow a record whose type and parent disagree, so the provider does not expose them.
 

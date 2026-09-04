@@ -56,12 +56,12 @@ data "dokploy_destination" "by_id" {
 # The usual purpose of a lookup: a shared S3 target that exists once and
 # that several projects reference.
 resource "dokploy_backup" "db" {
-  service_id     = dokploy_postgres.main.id
-  service_type   = "postgres"
-  destination_id = data.dokploy_destination.backups.id
-  database       = "app"
-  prefix         = "app/"
-  schedule       = "0 3 * * *"
+  service_id      = dokploy_postgres.main.id
+  service_type    = "postgres"
+  destination_id  = data.dokploy_destination.backups.id
+  database        = "app"
+  prefix          = "app/"
+  cron_expression = "0 3 * * *"
 }
 ```
 
