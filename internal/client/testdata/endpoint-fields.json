@@ -165,6 +165,15 @@
    "applicationId"
   ]
  },
+ "application.deployNginxQuickstart": {
+  "fields": [
+   "environmentId",
+   "serverId"
+  ],
+  "required": [
+   "environmentId"
+  ]
+ },
  "application.disconnectGitProvider": {
   "fields": [
    "applicationId"
@@ -788,6 +797,7 @@
   "fields": [
    "composeId",
    "description",
+   "freshVolumes",
    "title"
   ],
   "required": [
@@ -893,6 +903,7 @@
   "fields": [
    "composeId",
    "description",
+   "freshVolumes",
    "title"
   ],
   "required": [
@@ -1127,6 +1138,7 @@
    "content",
    "dnsProviderId",
    "name",
+   "proxied",
    "ttl",
    "type",
    "zoneId"
@@ -1183,6 +1195,7 @@
    "content",
    "dnsProviderId",
    "name",
+   "proxied",
    "recordId",
    "ttl",
    "type",
@@ -2489,6 +2502,7 @@
    "dokployRestart",
    "name",
    "priority",
+   "serverThreshold",
    "serverUrl",
    "volumeBackup"
   ],
@@ -2503,6 +2517,7 @@
    "dokployRestart",
    "name",
    "priority",
+   "serverThreshold",
    "serverUrl",
    "volumeBackup"
   ]
@@ -2572,6 +2587,7 @@
    "dokployRestart",
    "name",
    "priority",
+   "serverThreshold",
    "serverUrl",
    "topic",
    "volumeBackup"
@@ -2586,6 +2602,7 @@
    "dokployRestart",
    "name",
    "priority",
+   "serverThreshold",
    "serverUrl",
    "topic",
    "volumeBackup"
@@ -2977,6 +2994,7 @@
    "notificationId",
    "organizationId",
    "priority",
+   "serverThreshold",
    "serverUrl",
    "volumeBackup"
   ],
@@ -3043,6 +3061,7 @@
    "ntfyId",
    "organizationId",
    "priority",
+   "serverThreshold",
    "serverUrl",
    "topic",
    "volumeBackup"

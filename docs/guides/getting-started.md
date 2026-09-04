@@ -40,7 +40,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.6"
+      version = "~> 0.10"
     }
   }
 }
@@ -55,7 +55,7 @@ provider "dokploy" {
 `DOKPLOY_API_KEY`. Set `insecure = true` only if your server presents a
 self-signed certificate.
 
-Because this provider is pre-1.0, pin it exactly (`version = "0.6.0"`) if you
+Because this provider is pre-1.0, pin it exactly (`version = "0.10.2"`) if you
 need stability: breaking changes land in minor releases until v1.0.0.
 
 ## A first configuration

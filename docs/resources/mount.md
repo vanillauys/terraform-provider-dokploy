@@ -4,14 +4,14 @@ page_title: "dokploy_mount Resource - dokploy"
 subcategory: ""
 description: |-
   A volume, bind or file mount attached to a Dokploy service.
-  ~> Database services create their own data mount. A dokploy_postgres (or mysql/mariadb/mongo/redis) owns a volume mount for its data directory from the moment it is created, without anything asking for it. That mount belongs to the server, not to Terraform — do not import it or declare it here.
+  ~> Database services create their own data mount. A dokploy_postgres (or mysql/mariadb/mongo/redis/libsql) owns a volume mount for its data directory from the moment it is created, without anything asking for it. That mount belongs to the server, not to Terraform — do not import it or declare it here.
 ---
 
 # dokploy_mount (Resource)
 
 A volume, bind or file mount attached to a Dokploy service.
 
-~> **Database services create their own data mount.** A `dokploy_postgres` (or mysql/mariadb/mongo/redis) owns a volume mount for its data directory from the moment it is created, without anything asking for it. That mount belongs to the server, not to Terraform — do not import it or declare it here.
+~> **Database services create their own data mount.** A `dokploy_postgres` (or mysql/mariadb/mongo/redis/libsql) owns a volume mount for its data directory from the moment it is created, without anything asking for it. That mount belongs to the server, not to Terraform — do not import it or declare it here.
 
 ## Example Usage
 

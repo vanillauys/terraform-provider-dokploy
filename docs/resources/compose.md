@@ -124,7 +124,7 @@ resource "dokploy_domain" "web" {
 - `server_id` (String) Remote server to run the service on. Defaults to the Dokploy host.
 - `service_networks` (Attributes Set) Per-service Docker network attachments (Dokploy v0.30.0). Each entry names one compose service and the Dokploy network ids to attach. Applied on the next deploy. (see [below for nested schema](#nestedatt--service_networks))
 - `suffix` (String) Suffix appended to generated resource names when `randomize` is set.
-- `trigger_type` (String) Which git event triggers an auto-deploy.
+- `trigger_type` (String) Which git event triggers an auto-deploy: `push` or `tag`.
 - `watch_paths` (List of String) Only auto-deploy when a change touches one of these paths.
 
 ### Read-Only
@@ -184,5 +184,5 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import dokploy_compose.web V1StGXR8_Z5jdHi6B-myT
+terraform import dokploy_compose.inline V1StGXR8_Z5jdHi6B-myT
 ```

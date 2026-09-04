@@ -61,7 +61,7 @@ resource "dokploy_application" "example" {
 - `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this application. Defaults to `false`. Only meaningful together with `network_ids`; applied on the next deploy.
 - `docker` (Attributes) Docker image source. (see [below for nested schema](#nestedatt--docker))
 - `enable_submodules` (Boolean) Check out git submodules when cloning. Applies to the `github` and `git` sources; ignored for `docker`.
-- `env` (String) Environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. Setting this also clears the application's **build secrets** in Dokploy, which this resource does not expose.
+- `env` (String) Environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. `build_secrets` is written in the same request, so an omitted `build_secrets` clears the server's value. Set it explicitly to keep it.
 - `git` (Attributes) Custom git source (any reachable repo over https/ssh). Exactly one of `github`, `git`, or `docker` must be set. (see [below for nested schema](#nestedatt--git))
 - `github` (Attributes) GitHub App source. Exactly one of `github`, `git`, or `docker` must be set. The GitHub provider (`github_id`) is configured in Dokploy (Git > GitHub) — a documented manual prerequisite. (see [below for nested schema](#nestedatt--github))
 - `memory_limit` (String) Hard memory limit, Docker-style (e.g. `"512m"`).
@@ -83,7 +83,7 @@ resource "dokploy_application" "example" {
 
 Required:
 
-- `type` (String) Build type: one of `nixpacks`, `dockerfile`, `heroku_buildpacks`, `paketo_buildpacks`, `static`, `railpack`. Note that `heroku_buildpacks` and `railpack` take a builder version in Dokploy which this provider does not expose; it is always sent unset, so those two build types always use the server's default builder version and any version chosen in the Dokploy UI is reset on apply.
+- `type` (String) Build type: one of `nixpacks`, `dockerfile`, `heroku_buildpacks`, `paketo_buildpacks`, `static`, `railpack`. `heroku_buildpacks` and `railpack` take a builder version: set `heroku_version` or `railpack_version`. When the version attribute is omitted, the server's default builder version applies, and a version chosen in the Dokploy UI is reset on apply.
 
 Optional:
 

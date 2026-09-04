@@ -1,7 +1,7 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, environments, applications, compose stacks, databases, domains, mounts, ports, redirects, basic auth, backups and cron schedules with Terraform.
+  Manage Dokploy projects, environments, applications, compose stacks, databases, domains, mounts, ports, redirects, basic auth, backups, cron schedules, Docker networks and vault providers with Terraform.
 ---
 
 # Dokploy Provider
@@ -16,11 +16,13 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 - **Storage**: bind, volume and file mounts on any service
 - **Backups**: S3-compatible destinations, scheduled database dumps and Docker volume archives
 - **Scheduling**: cron jobs against a service, a remote server, or the Dokploy host
+- **Networks**: Docker bridge and overlay networks, attached to any service
+- **Vault providers**: HashiCorp Vault or OpenBao, Infisical, AWS Secrets Manager, Doppler, Azure Key Vault and Scaleway connections for runtime secrets
 
 with deploy-on-change semantics and full import support throughout.
 
 Works with Terraform >= 1.5 and OpenTofu. Developed and tested against
-**Dokploy v0.30.3**; newer releases are exercised by the acceptance suite as
+**Dokploy v0.30.5**; newer releases are exercised by the acceptance suite as
 they ship, older ones are untested.
 
 ## Guides

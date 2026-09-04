@@ -61,17 +61,17 @@ Terraform propagates sensitivity through interpolation, so the whole `env`
 value is redacted in plan output once a sensitive variable is interpolated
 into it.
 
-One behaviour worth knowing: setting `env` on `dokploy_application` also
-clears the application's **build secrets** in Dokploy.
-[`build_secrets`](../resources/application#schema) is a
-separate schema attribute; set it explicitly if you need it.
+One behaviour worth knowing: `dokploy_application` writes `env` and
+[`build_secrets`](../resources/application#schema) in the same request. A
+configuration that sets `env` but omits `build_secrets` clears the build
+secrets in Dokploy. Set `build_secrets` explicitly if you need it.
 
 ## Database passwords
 
-`database_password` is `Required` and `Sensitive` on all five engines - see
+`database_password` is `Required` and `Sensitive` on all six engines - see
 [`dokploy_postgres`](../resources/postgres#schema) for the attribute in
-context; `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo` and
-`dokploy_redis` declare it identically. The
+context; `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`, `dokploy_redis`
+and `dokploy_libsql` declare it identically. The
 server genuinely requires a caller-supplied password and never generates one.
 
 Two consequences:

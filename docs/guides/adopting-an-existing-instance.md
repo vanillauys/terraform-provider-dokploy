@@ -35,7 +35,7 @@ silently blanked.
 ## Database engines own their data mount
 
 A `dokploy_postgres` (or `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`,
-`dokploy_redis`) creates a volume mount for its data directory the moment it is
+`dokploy_redis`, `dokploy_libsql`) creates a volume mount for its data directory the moment it is
 created, and owns it from then on. That mount belongs to the engine resource,
 and Terraform must not be given a second claim on it:
 
@@ -71,9 +71,11 @@ export DOKPLOY_API_KEY=...
 `introspect.py` enumerates projects, environments, services, domains and their
 child resources. Secrets are reported as a length, never printed.
 
-`generate_imports.py` then emits Terraform `import` blocks for every live
-resource this provider supports, with one deliberate exception: each database
-engine's auto-created data-volume mount (`type == "volume"` and `volumeName ==
+`generate_imports.py` then emits Terraform `import` blocks for the live
+resources this provider supports. It does not enumerate `dokploy_compose`,
+`dokploy_network` or `dokploy_vault_provider` yet; import those by hand. It
+also skips one record on purpose: each database engine's auto-created
+data-volume mount (`type == "volume"` and `volumeName ==
 appName + "-data"`) is skipped, marked with a `# skipped <id>: ...` comment in
 `imports.tf` rather than silently omitted. Importing it as a `dokploy_mount`
 would hand Terraform a volume the engine resource already recreates on its
@@ -84,8 +86,8 @@ directory.
 
 `terraform plan -generate-config-out` cannot, by itself, produce a config that
 later plans cleanly for **any** stack containing a
-`dokploy_postgres`, `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo` or
-`dokploy_redis` resource. All five engines are affected. You get:
+`dokploy_postgres`, `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`,
+`dokploy_redis` or `dokploy_libsql` resource. All six engines are affected. You get:
 
 ```
 Error: Missing Configuration for Required Attribute

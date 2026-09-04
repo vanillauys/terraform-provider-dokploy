@@ -105,7 +105,8 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 		Description: "A secret-vault connection Dokploy can pull runtime secrets from at deploy time, referenced from other resources' " +
 			"`env` attributes as `${{vault.<name>.<key>}}` - a plain string this provider does not parse or validate. " +
 			"One of six provider types: `hashicorp` (also covers OpenBao, which speaks the same wire protocol), " +
-			"`infisical`, `aws`, `doppler`, `azure`, `scaleway`.\n\n" +
+			"`infisical`, `aws`, `doppler`, `azure`, `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), " +
+			"which this resource does not model yet.\n\n" +
 			"~> **Secrets are masked on every read, never echoed back.** Dokploy returns every secret field in this resource's " +
 			"config blocks as the literal string `********`, on create, read, and update alike. This provider cannot detect a " +
 			"config value changed in the Dokploy UI - Read leaves every config block exactly as Terraform last wrote it, secret " +
@@ -129,7 +130,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 				Required: true,
 				Description: "Display name, 1-64 characters, matching `^[a-zA-Z0-9_-]+$`. Dokploy rejects a duplicate name; " +
 					"this provider pre-checks for one before ever sending a create request, so a collision fails cleanly rather " +
-					"than through the server's raw error (internal/client/doc.go, wave 6c).",
+					"than through the server's raw error.",
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, 64),
 					stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9_-]+$`), "must contain only letters, numbers, underscores, and hyphens"),
@@ -182,7 +183,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			"aws": schema.SingleNestedAttribute{
 				Optional: true,
 				Description: "AWS Secrets Manager connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.\n\n" +
-					"~> This block's shape came from the OpenAPI contract alone, not a live probe (internal/client/doc.go, wave 6c) - " +
+					"~> This block's shape came from the OpenAPI contract alone, not a live probe - " +
 					"this resource's own acceptance tests are the first live confirmation of it.",
 				Attributes: map[string]schema.Attribute{
 					"region":            schema.StringAttribute{Required: true, Description: "AWS region for Secrets Manager, e.g. `us-east-1`."},
@@ -220,7 +221,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			"azure": schema.SingleNestedAttribute{
 				Optional: true,
 				Description: "Azure Key Vault connection. Every field is required at the API - Azure has no optional fields here. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.\n\n" +
-					"~> This block's shape came from the OpenAPI contract alone, not a live probe (internal/client/doc.go, wave 6c).",
+					"~> This block's shape came from the OpenAPI contract alone, not a live probe.",
 				Attributes: map[string]schema.Attribute{
 					"vault_uri":     schema.StringAttribute{Required: true, Description: "Azure Key Vault URI, e.g. `https://myvault.vault.azure.net/`."},
 					"tenant_id":     schema.StringAttribute{Required: true, Description: "Azure AD tenant id."},
@@ -249,7 +250,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			"assignments": schema.ListNestedAttribute{
 				Required: true,
 				Description: "Projects (and optionally specific environments within them) this vault provider is available to. " +
-					"An empty list is legal - `assignments = []` is accepted and echoed back by the server (internal/client/doc.go, wave 6c gate E).",
+					"An empty list is legal - `assignments = []` is accepted and echoed back by the server.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"project_id": schema.StringAttribute{Required: true, Description: "Id of the assigned project."},
@@ -259,7 +260,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 							Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{})),
 							Description: "Ids of specific environments within the project to restrict this assignment to. Omit (or set an " +
 								"empty list) to make every environment in the project eligible; the server stores and echoes an empty set for " +
-								"that case, not null (internal/client/doc.go, wave 6c).",
+								"that case, not null.",
 						},
 					},
 				},

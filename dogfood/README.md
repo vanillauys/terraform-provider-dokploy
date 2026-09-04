@@ -7,7 +7,7 @@ exposes every mutation as POST.
 | Script | Purpose |
 |---|---|
 | `introspect.py` | Enumerate a server: projects, environments, services, domains, and their child resources. Secrets are reported as a length, never printed. |
-| `generate_imports.py` | Emit Terraform `import` blocks for every live resource this provider supports, **except** database data volumes (see below). |
+| `generate_imports.py` | Emit Terraform `import` blocks for the live resources this provider supports, **except** database data volumes (see below). It does not enumerate `dokploy_compose`, `dokploy_network` or `dokploy_vault_provider` yet. |
 | `dry-run.sh` | Build the provider, import the live stack into a throwaway state, have Terraform generate the config (patching in any live secret value Terraform itself refused to write), and require a second plan to be empty. |
 
 ## Running it
@@ -45,7 +45,7 @@ Discovered against a live rig (v0.29.13, 2026-07-27, wave-2 task 8):
 `terraform plan -generate-config-out` cannot, by itself, produce a config
 that later plans cleanly for **any** stack containing a
 `dokploy_postgres`/`mysql`/`mariadb`/`mongo`/`redis` resource, all five
-engines alike. The command itself exits nonzero (though it still writes
+engines alike (and `dokploy_libsql`, added later with the same schema shape). The command itself exits nonzero (though it still writes
 `generated.tf` first — see below):
 
 ```
@@ -117,12 +117,13 @@ through this harness in this task.
 
 ## Database engines own a mount nobody asked for
 
-Creating a `dokploy_postgres` — or mysql, mariadb, mongo, redis — makes
+Creating a `dokploy_postgres` — or mysql, mariadb, mongo, redis, libsql — makes
 Dokploy attach a volume mount for the container's data directory
 immediately. Verified live on the rig (v0.29.13, 2026-07-28): a
 freshly-created postgres already owns `volumeName`
 `"<appName>-data"` mounted at `/var/lib/postgresql/18/docker`, with nothing
-having requested it.
+having requested it. A libsql service does the same (verified on v0.30.5,
+2026-09-04): `"<appName>-data"` mounted at `/var/lib/sqld`.
 
 It is an ordinary mount — `mounts.remove` deletes it — but it belongs to the
 server, not to anyone's configuration. Two things follow:

@@ -4,6 +4,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.3] - 2026-09-04
+
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.30.3 to v0.30.5
+  (README and the provider index page). The endpoint census snapshot
+  now comes from a fresh v0.30.5 install (2026-09-04). The upstream
+  v0.30.3...v0.30.5 diff carries four request-schema changes, none on
+  a request struct this provider transmits: `compose.deploy` and
+  `compose.redeploy` accept an optional `freshVolumes` flag (a one-shot
+  `docker compose down --volumes` before the deploy, which this
+  provider never sends), `application.deployNginxQuickstart` is a new
+  onboarding mutation, the `dnsProvider` record endpoints accept
+  `proxied` and nine record types, and the Gotify and ntfy notification
+  endpoints accept `serverThreshold`. Two changes sit below the request
+  schema and were probed live: `vaultProvider` gains a seventh type,
+  `phase` (Phase.dev), which `dokploy_vault_provider` does not model
+  yet; and every database engine's deploy now waits up to 45 seconds
+  for the swarm service to converge, so a container that never starts
+  fails the deploy call with a `did not converge` error and status
+  `error` instead of a false `done`. The acceptance suite for this
+  release ran against a fresh v0.30.5 install.
+
+### Fixed
+
+- Documentation sweep. `dokploy_application`: the `env` and
+  `build.type` descriptions no longer claim that `build_secrets`,
+  `heroku_version` and `railpack_version` are unexposed; all three have
+  been schema attributes since v0.4.0. `dokploy_compose`: the import
+  example names a label the example configuration defines, and
+  `trigger_type` lists its two values. `dokploy_mount`, the adopting
+  guide and the dogfood README: the auto-created data mount note now
+  covers `dokploy_libsql` (live-verified: `<appName>-data` at
+  `/var/lib/sqld`). `dokploy_vault_provider`: registry descriptions no
+  longer cite internal development files, and the resource description
+  names the unmodeled `phase` type. README, the provider index page and
+  the four guides: the version constraint examples move from `~> 0.6`
+  to `~> 0.10`; "five engines" becomes six wherever LibSQL is included;
+  the index page lists networks and vault providers; the README's
+  coverage gaps add DNS providers and the Phase vault type and name
+  every by-name data source; the adopting guide and the dogfood README
+  state that `generate_imports.py` does not enumerate compose services,
+  networks or vault providers; the deploy guide records the v0.30.5
+  convergence wait, the `freshVolumes` flag, and that the MariaDB and
+  MongoDB default images are still missing on v0.30.5.
+
 ## [0.10.2] - 2026-09-01
 
 ### Changed

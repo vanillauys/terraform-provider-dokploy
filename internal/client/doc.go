@@ -1246,4 +1246,78 @@
 // http://acc-vault:8200 directly, with no network workaround.
 // Gate E: PASS. assignments: [] is accepted on create and echoed back as
 // [].
+//
+// # v0.30.5 census (probed 2026-09-04)
+//
+// The pin moved from v0.30.3 to v0.30.5 against a fresh v0.30.5 rig. The
+// regenerated endpoint census differs from the v0.30.3 snapshot in four
+// places, and the upstream v0.30.3...v0.30.5 router diff agrees with all
+// four. None touches a request struct this client transmits.
+//
+//   - compose.deploy and compose.redeploy accept an optional boolean
+//     freshVolumes. When true, the server runs `docker compose down
+//     --volumes` before the deploy, on docker-compose stacks only. This
+//     client sends composeId alone, so the server default (false) applies
+//     and every deploy keeps its volumes. A destructive one-shot deploy
+//     option is not Terraform-shaped state; it stays unmodeled.
+//   - application.deployNginxQuickstart is new: the demo deploy behind the
+//     cloud onboarding wizard. Not modeled.
+//   - dnsProvider.createRecord and dnsProvider.updateRecord accept proxied,
+//     and their type enum widens from A/CNAME to nine record types. The
+//     dnsProvider surface stays unmodeled by decision (CHANGELOG v0.9.0).
+//   - notification.createGotify, updateGotify, createNtfy, and updateNtfy
+//     accept serverThreshold. No notification endpoint is modeled.
+//
+// Two changes do not show in the census because they live below the
+// request schema.
+//
+// ## vaultProvider: a seventh type, phase
+//
+// vaultProvider.create's config is an untyped object in the OpenAPI
+// document, so the census cannot see the discriminated union grow. v0.30.5
+// adds providerType "phase" (Phase.dev): required token, appId, and env;
+// optional path (default "/") and apiUrl (default
+// "https://api.phase.dev"). Probed live: a create with fake credentials
+// returned HTTP 200 and the full record; token reads back as "********"
+// on the create response and on vaultProvider.one, the same REDACT shape
+// as the six existing types, and the top-level providerType echoes
+// "phase". testConnection against the stored fake config fails with the
+// ordinary HTTP 400 {"message":"fetch failed"} shape. An unknown
+// providerType is rejected with HTTP 400 ("No matching discriminator").
+// This client models the six original types only. VaultProvider.Config is
+// a json.RawMessage, so a phase record decodes without error, but
+// dokploy_vault_provider has no phase block: its ExactlyOneOf validator
+// accepts only the six existing blocks, so the resource can import a phase
+// record (Read finds no populated block and logs nothing) but can never
+// create or update one. Modeling phase is a wave item, not a pin bump.
+//
+// ## Database deploys now wait for swarm convergence
+//
+// deployPostgres, deployMysql, deployMariadb, deployMongo, deployRedis, and
+// deployLibsql call waitForSwarmServiceConvergence after the build: the
+// swarm service's tasks must reach running (45s timeout, 2s poll) before
+// applicationStatus moves to done. On failure the deploy endpoint itself
+// returns HTTP 500 with "Service <appName> did not converge within
+// 45000ms: 0/1 tasks running (last state: ...)" and the record's
+// applicationStatus reads error. Probed live: postgres.deploy with
+// dockerImage alpine:3.20 (an image that exists but exits at once)
+// returned the 500 after 56s and left status error; the same call with
+// the default postgres:18 returned HTTP 200 after 36s, status done. Before
+// v0.30.5 a database deploy reported done as soon as the swarm service
+// was created or updated, whatever its tasks then did. For this provider
+// the change is visible only as a better failure: the engine's Deploy call
+// returns the 500 and deployAndWait surfaces it, where the same
+// misconfiguration used to end in a false done.
+//
+// ## Other v0.30.5 changes, checked and not relevant
+//
+// compose.one no longer embeds git provider secrets in its nested
+// github/gitlab/bitbucket/gitea relations, and github.one strips them for
+// callers who are not the provider's owner or an organization owner or
+// admin. This client decodes neither nested object. The compose build
+// command now pins --project-directory only when the stack has mounts, and
+// passes --env-file next to the compose file when createEnvFile is set;
+// both are server-side build details with no API shape. schedule.update in
+// cloud mode replaces the repeatable job instead of adding one; the
+// self-hosted path is unchanged.
 package client
