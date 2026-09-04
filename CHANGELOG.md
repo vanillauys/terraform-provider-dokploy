@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.0] - 2026-09-05
+
+The last minor release with breaking changes before v1.0.0. The
+[upgrade guide](docs/guides/upgrading.md) shows the old and the new
+configuration for each breaking change.
 
 ### Breaking
 
@@ -17,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unsupported-argument error. The acceptance suite proves the upgrade: it
   creates the backup with v0.10.4 from the registry, then plans with the
   local build and the new name, and the plan is empty.
+- The `dokploy_libsql` data source no longer exposes `database_password`.
+  The five engine data sources never did; one convention now covers all
+  six. `database_user` stays. A configuration that references the
+  attribute fails at plan time with an unsupported-attribute error. Read
+  the password from the `dokploy_libsql` resource instead.
+- `dokploy_compose` no longer has `isolated_deployment` and
+  `isolated_deployments_volume`. Dokploy deprecated Isolated Deployment in
+  v0.30.0; `service_networks` replaces it. The provider no longer sends
+  `isolatedDeployment` and `isolatedDeploymentsVolume` to `compose.update`,
+  and the server keeps the stored values (dialect B, verified live on
+  v0.30.5). The schema version moves to 1, and a state upgrader drops the
+  two attributes from a v0.10.4 state, so the state loads and the plan is
+  empty. The acceptance suite proves it against v0.10.4 from the registry.
+  Remove the two attributes from your configuration.
 
 ### Added
 
@@ -37,6 +55,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   application that used the for-expression. With
   `production_environment_id` the same change planned an in-place project
   update only. Move every `environment_id` to the new attribute.
+
+### Changed
+
+- CI: the test and acceptance workflows pin `actions/checkout` v7.0.1 and
+  `actions/setup-go` v7.0.0, which run on Node.js 24. GitHub printed a
+  Node.js 20 deprecation notice on every run with the v4 and v5 pins. The
+  release workflow moves its pins in its own change.
+- Every example and guide uses `dokploy_project.example.production_environment_id`
+  in place of the `[for e in ... : e.id if e.name == "production"][0]`
+  expression, and the `environment_id` descriptions of `dokploy_application`,
+  `dokploy_compose`, `dokploy_libsql` and the five engine resources point at
+  the new attribute. The Get started guide explains when the `environments`
+  list is still the right tool, and why a `for` expression over it forces a
+  replacement of the service on every project update.
 
 ## [0.10.4] - 2026-09-04
 

@@ -11,7 +11,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.10"
+      version = "~> 0.11"
     }
   }
 }
@@ -42,6 +42,7 @@ Start with the guides:
 - **[Adopt an existing Dokploy server](docs/guides/adopting-an-existing-instance.md)**: import a running server without a rebuild.
 - **[Deploy semantics](docs/guides/deploy-semantics.md)**: `deploy_on_change`, timeouts, and deploy failures.
 - **[Secrets and sensitive values](docs/guides/secrets.md)**: environment variables, database passwords, and backup credentials.
+- **[Upgrade to v0.11](docs/guides/upgrading.md)**: the breaking changes in v0.11.0 and the configuration edit for each.
 
 ## Before you start
 
