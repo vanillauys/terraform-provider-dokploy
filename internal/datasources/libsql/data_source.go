@@ -8,18 +8,12 @@
 // own Schema/Read, and a local findByName that never returns a slice's
 // [0] element on ambiguity.
 //
-// One thing diverges from destination on purpose: database_password IS
-// modelled here, Computed and Sensitive, where destination's data source
-// omits its credentials entirely. destination's access_key/secret_access_key
-// describe a SHARED backup target that many resources reference, so copying
-// them into every consumer's state widens the blast radius of one shared
-// secret for no gain. A libsql service's database_password is not shared -
-// it belongs to this one service - and the five database-engine data
-// sources (internal/datasources/database) already expose their own
-// credential attributes the same way, Sensitive but not omitted. Omitting
-// it here would make dokploy_libsql the only one of six database-shaped
-// data sources that cannot report its own password to a consumer that only
-// has an id or name, not the managing resource.
+// Like destination and the five database-engine data sources
+// (internal/datasources/database), this data source does not expose the
+// database password. Until v0.11.0 it did, Computed and Sensitive, and was
+// the only one of six database-shaped data sources to do so. D2 in the Phase
+// 1 brief removed it: one convention for every engine, and a lookup by id
+// or name does not copy a credential into the consumer's state.
 package libsql
 
 import (
@@ -57,7 +51,6 @@ type model struct {
 	AppName           types.String `tfsdk:"app_name"`
 	Description       types.String `tfsdk:"description"`
 	DatabaseUser      types.String `tfsdk:"database_user"`
-	DatabasePassword  types.String `tfsdk:"database_password"`
 	SqldNode          types.String `tfsdk:"sqld_node"`
 	SqldPrimaryURL    types.String `tfsdk:"sqld_primary_url"`
 	EnableNamespaces  types.Bool   `tfsdk:"enable_namespaces"`
@@ -90,8 +83,8 @@ func (d *libsqlDataSource) ConfigValidators(_ context.Context) []datasource.Conf
 
 func (d *libsqlDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Looks up a Dokploy libsql service (a distributed SQLite / `sqld` database) that already " +
-			"exists in Dokploy, by id or by name within an environment.\n\n" +
+		Description: "Look up a Dokploy libsql service (a distributed SQLite / `sqld` database) by id, or by name " +
+			"within an environment. The data source does not expose the database password.\n\n" +
 			"~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql " +
 			"service shares a name, this data source fails instead of a guess. Look the record up by " +
 			"`id` in that case.",
@@ -116,13 +109,6 @@ func (d *libsqlDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			"database_user": schema.StringAttribute{
 				Computed:    true,
 				Description: "LibSQL database user.",
-			},
-			// See this file's package doc comment for why, unlike
-			// dokploy_destination's data source, this credential IS exposed.
-			"database_password": schema.StringAttribute{
-				Computed:    true,
-				Sensitive:   true,
-				Description: "LibSQL database password.",
 			},
 			"sqld_node": schema.StringAttribute{
 				Computed:    true,
@@ -249,7 +235,6 @@ func (d *libsqlDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	config.AppName = types.StringValue(found.AppName)
 	config.Description = tfutil.StringOrNull(found.Description)
 	config.DatabaseUser = types.StringValue(found.DatabaseUser)
-	config.DatabasePassword = types.StringValue(found.DatabasePassword)
 	config.SqldNode = types.StringValue(found.SqldNode)
 	config.SqldPrimaryURL = tfutil.StringOrNull(found.SqldPrimaryURL)
 	config.EnableNamespaces = types.BoolValue(found.EnableNamespaces)

@@ -47,7 +47,7 @@ data "dokploy_libsql" "by_name" {
 }`, name+"-proj", name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.dokploy_libsql.by_id", "database_user", "acc"),
-					resource.TestCheckResourceAttrSet("data.dokploy_libsql.by_id", "database_password"),
+					resource.TestCheckNoResourceAttr("data.dokploy_libsql.by_id", "database_password"),
 					resource.TestCheckResourceAttrSet("data.dokploy_libsql.by_id", "app_name"),
 					resource.TestCheckResourceAttrSet("data.dokploy_libsql.by_id", "sqld_node"),
 					// Both lookups must land on the same record the resource

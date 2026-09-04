@@ -60,23 +60,18 @@ func TestFindByNameReturnsExactMatch(t *testing.T) {
 	}
 }
 
-// database_password is deliberately exposed here, unlike dokploy_destination:
-// this is a single service's own password rather than a shared target's
-// credential, and the five database-engine data sources already expose
-// theirs. This test pins that decision so it does not regress by accident.
-func TestSchemaExposesDatabasePassword(t *testing.T) {
+// The data source does not expose database_password, like the five
+// database-engine data sources (D2 in the Phase 1 brief). This test pins
+// that convention so it does not regress by accident. database_user stays.
+func TestSchemaOmitsDatabasePassword(t *testing.T) {
 	var resp datasource.SchemaResponse
 	(&libsqlDataSource{}).Schema(context.Background(), datasource.SchemaRequest{}, &resp)
 
-	attr, found := resp.Schema.Attributes["database_password"]
-	if !found {
-		t.Fatal("database_password is missing from the schema")
+	if _, found := resp.Schema.Attributes["database_password"]; found {
+		t.Error("database_password must not be in the schema: no engine data source exposes the password")
 	}
-	if !attr.IsComputed() {
-		t.Error("database_password must be Computed - a data source only reads")
-	}
-	if !attr.IsSensitive() {
-		t.Error("database_password must be Sensitive")
+	if _, found := resp.Schema.Attributes["database_user"]; !found {
+		t.Error("database_user is missing from the schema")
 	}
 }
 
