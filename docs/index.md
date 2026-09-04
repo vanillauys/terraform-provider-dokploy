@@ -36,6 +36,8 @@ it ships. The suite does not test older releases.
   `deployment_timeout`, and deploy failures.
 - [Secrets and sensitive values](guides/secrets): environment variables,
   database passwords, and backup credentials.
+- [Upgrade to v0.11](guides/upgrading): the breaking changes in v0.11.0 and
+  the configuration edit for each.
 
 ## Before you start
 

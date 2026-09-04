@@ -42,7 +42,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.10"
+      version = "~> 0.11"
     }
   }
 }
@@ -59,7 +59,8 @@ when the server presents a self-signed certificate.
 
 This provider is pre-1.0. Breaking changes can land in minor releases until
 v1.0.0. If you need a stable configuration, pin an exact version, for example
-`version = "0.10.3"`.
+`version = "0.11.0"`. The [Upgrade to v0.11](upgrading) guide lists the
+breaking changes of the current release.
 
 ## A first configuration
 
