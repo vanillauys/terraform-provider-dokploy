@@ -43,9 +43,9 @@ func (r *genericResource[M]) Schema(_ context.Context, _ resource.SchemaRequest,
 		},
 		"application_id": schema.StringAttribute{
 			Required: true,
-			Description: "Id of the application this belongs to. Changing it forces replacement: " +
-				"Dokploy's update endpoint for this record type takes no parent field, so a " +
-				"record cannot be moved between applications.",
+			Description: "Id of the application that owns this record. A change forces a replacement: " +
+				"the Dokploy update endpoint for this record type has no parent field, so a " +
+				"record cannot move between applications.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 	}

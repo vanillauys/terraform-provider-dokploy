@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.4] - 2026-09-04
+
+### Changed
+
+- The documentation now follows ASD-STE100 Simplified Technical English:
+  active voice, simple tenses, short sentences, one instruction per
+  sentence, and consistent terms. This covers the README, CONTRIBUTING,
+  the provider index page, the four guides, the dogfood README, every
+  resource and data source description that renders into the registry
+  pages, and the comments in the examples. The examples also use neutral
+  names in place of the maintainer's own project names. The guide titles
+  change to "Get started" and "Adopt an existing Dokploy server"; the
+  page paths and anchors are unchanged. No schema, default, or behavior
+  changes.
+
 ## [0.10.3] - 2026-09-04
 
 ### Changed

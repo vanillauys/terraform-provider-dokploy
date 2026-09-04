@@ -3,12 +3,12 @@
 page_title: "dokploy_project Resource - dokploy"
 subcategory: ""
 description: |-
-  A Dokploy project. Dokploy creates a default production environment with every project; service resources reference its id via the environments attribute.
+  A Dokploy project. Dokploy creates a default production environment with each project. Service resources reference its id through the environments attribute.
 ---
 
 # dokploy_project (Resource)
 
-A Dokploy project. Dokploy creates a default `production` environment with every project; service resources reference its id via the `environments` attribute.
+A Dokploy project. Dokploy creates a default `production` environment with each project. Service resources reference its id through the `environments` attribute.
 
 ## Example Usage
 
@@ -36,8 +36,8 @@ output "production_environment_id" {
 
 ### Read-Only
 
-- `created_at` (String) Creation timestamp (server-side).
-- `environments` (Attributes List) Environments in this project, including the auto-created `production` environment. (see [below for nested schema](#nestedatt--environments))
+- `created_at` (String) Creation timestamp from the server.
+- `environments` (Attributes List) Environments in this project, the auto-created `production` environment included. (see [below for nested schema](#nestedatt--environments))
 - `id` (String) Project id.
 
 <a id="nestedatt--environments"></a>

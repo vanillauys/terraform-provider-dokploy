@@ -3,20 +3,20 @@
 page_title: "dokploy_mount Resource - dokploy"
 subcategory: ""
 description: |-
-  A volume, bind or file mount attached to a Dokploy service.
-  ~> Database services create their own data mount. A dokploy_postgres (or mysql/mariadb/mongo/redis/libsql) owns a volume mount for its data directory from the moment it is created, without anything asking for it. That mount belongs to the server, not to Terraform — do not import it or declare it here.
+  A volume, bind, or file mount on a Dokploy service.
+  ~> Database services create their own data mount. A dokploy_postgres (or mysql/mariadb/mongo/redis/libsql) owns a volume mount for its data directory from the moment of its creation, without a request for it. That mount belongs to the server, not to Terraform. Do not import it, and do not declare it here.
 ---
 
 # dokploy_mount (Resource)
 
-A volume, bind or file mount attached to a Dokploy service.
+A volume, bind, or file mount on a Dokploy service.
 
-~> **Database services create their own data mount.** A `dokploy_postgres` (or mysql/mariadb/mongo/redis/libsql) owns a volume mount for its data directory from the moment it is created, without anything asking for it. That mount belongs to the server, not to Terraform — do not import it or declare it here.
+~> **Database services create their own data mount.** A `dokploy_postgres` (or mysql/mariadb/mongo/redis/libsql) owns a volume mount for its data directory from the moment of its creation, without a request for it. That mount belongs to the server, not to Terraform. Do not import it, and do not declare it here.
 
 ## Example Usage
 
 ```terraform
-# A named Docker volume for an application's uploads directory.
+# A named Docker volume for the uploads directory of an application.
 resource "dokploy_mount" "uploads" {
   service_id   = dokploy_application.web.id
   service_type = "application"
@@ -36,7 +36,7 @@ resource "dokploy_mount" "certs" {
   mount_path = "/certs"
 }
 
-# A file written into the container at deploy time.
+# A file that Dokploy writes into the container at deploy time.
 resource "dokploy_mount" "config" {
   service_id   = dokploy_application.web.id
   service_type = "application"
@@ -53,10 +53,10 @@ resource "dokploy_mount" "config" {
 
 ### Required
 
-- `mount_path` (String) Path inside the container to mount at.
-- `service_id` (String) Id of the service this mount attaches to. Changing it forces replacement: Dokploy's update endpoint sets the new parent without clearing the old one, leaving the mount owned by two services at once.
-- `service_type` (String) Kind of service `service_id` refers to: one of `application`, `postgres`, `mysql`, `mariadb`, `mongo`, `redis`, `compose`, `libsql`. Changing it forces replacement, for the same reason as `service_id`.
-- `type` (String) Mount kind: `bind` (host path), `volume` (named Docker volume), or `file` (inline content written into the container).
+- `mount_path` (String) Mount path inside the container.
+- `service_id` (String) Id of the service that this mount attaches to. A change forces a replacement: the Dokploy update endpoint sets the new parent without a clear of the old one, and the mount then belongs to two services at once.
+- `service_type` (String) Kind of service that `service_id` refers to: one of `application`, `postgres`, `mysql`, `mariadb`, `mongo`, `redis`, `compose`, `libsql`. A change forces a replacement, for the same reason as `service_id`.
+- `type` (String) Mount kind: `bind` (a host path), `volume` (a named Docker volume), or `file` (inline content that Dokploy writes into the container).
 
 ### Optional
 

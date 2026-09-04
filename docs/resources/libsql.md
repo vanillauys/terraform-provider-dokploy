@@ -4,14 +4,14 @@ page_title: "dokploy_libsql Resource - dokploy"
 subcategory: ""
 description: |-
   A Dokploy libsql service: a distributed SQLite (sqld) database.
-  ~> A replica (sqld_node = "replica") requires sqld_primary_url, and cannot set any external port. A non-replica (sqld_node unset or "primary") must NOT set sqld_primary_url. Dokploy rejects all three violations at apply time; this provider catches them earlier, at plan time.
+  ~> A replica (sqld_node = "replica") requires sqld_primary_url and cannot set an external port. A primary (sqld_node unset or "primary") must not set sqld_primary_url. Dokploy rejects all three violations at apply time. The provider rejects them earlier, at plan time.
 ---
 
 # dokploy_libsql (Resource)
 
 A Dokploy libsql service: a distributed SQLite (`sqld`) database.
 
-~> A replica (`sqld_node = "replica"`) requires `sqld_primary_url`, and cannot set any external port. A non-replica (`sqld_node` unset or `"primary"`) must NOT set `sqld_primary_url`. Dokploy rejects all three violations at apply time; this provider catches them earlier, at plan time.
+~> A replica (`sqld_node = "replica"`) requires `sqld_primary_url` and cannot set an external port. A primary (`sqld_node` unset or `"primary"`) must not set `sqld_primary_url`. Dokploy rejects all three violations at apply time. The provider rejects them earlier, at plan time.
 
 ## Example Usage
 
@@ -36,38 +36,38 @@ resource "dokploy_libsql" "example" {
 
 - `database_password` (String, Sensitive) LibSQL database password.
 - `database_user` (String) LibSQL database user.
-- `environment_id` (String) Id of the environment this service lives in (see `dokploy_project.environments`).
+- `environment_id` (String) Id of the environment that holds this service. See `dokploy_project.environments`.
 - `name` (String) Display name of the libsql service.
 
 ### Optional
 
 - `command` (String) Override the container command.
-- `cpu_limit` (String) Hard CPU limit, Docker-style (e.g. `"0.5"`). A string, not a number.
-- `cpu_reservation` (String) Reserved CPU, Docker-style (e.g. `"0.25"`).
-- `deploy_on_change` (Boolean) Deploy after create and after changes to deploy-triggering attributes. Defaults to `true`.
-- `deployment_timeout` (String) How long to wait for a triggered deployment to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout the apply fails but the server-side deployment keeps running.
+- `cpu_limit` (String) Hard CPU limit in Docker notation, for example `"0.5"`. A string, not a number.
+- `cpu_reservation` (String) Reserved CPU in Docker notation, for example `"0.25"`.
+- `deploy_on_change` (Boolean) Deploy after a create, and after a change to an attribute that starts a deploy. Defaults to `true`.
+- `deployment_timeout` (String) The maximum wait for a deploy to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout, the apply fails, but the deploy continues on the server.
 - `description` (String) Free-form description.
-- `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this service. Defaults to `false`. Only meaningful together with `network_ids`; applied on the next deploy.
-- `docker_image` (String) LibSQL docker image, e.g. `ghcr.io/tursodatabase/libsql-server:v0.24.32`. That is also the server's own default when this is omitted, and it is a real, pullable tag.
-- `enable_namespaces` (Boolean) Enable sqld namespaces (multi-database mode). Defaults to `false`.
-- `env` (String) Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. Omitting this attribute and setting it to "" are indistinguishable on read - both come back null. Use omission, not "", to clear it.
-- `external_admin_port` (Number) Host port to expose the libsql admin interface on. Not permitted when `sqld_node` is `replica`.
-- `external_grpc_port` (Number) Host port to expose the libsql gRPC replication interface on. Not permitted when `sqld_node` is `replica`.
-- `external_port` (Number) Host port to expose the libsql HTTP interface on. Not permitted when `sqld_node` is `replica`.
-- `memory_limit` (String) Hard memory limit, Docker-style (e.g. `"512m"`).
-- `memory_reservation` (String) Reserved memory, Docker-style (e.g. `"256m"`).
-- `network_ids` (Set of String) Ids of Docker networks (Dokploy network records) to attach this service to. Applied on the next deploy. Omit to keep only the default `dokploy-network`. An empty set is not valid - omit the attribute instead.
-- `replicas` (Number) Number of container replicas to run. Defaults to `1`.
-- `server_id` (String) Remote server to run the service on. Defaults to the Dokploy host.
+- `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this service. Defaults to `false`. It has an effect only together with `network_ids`, and it applies on the next deploy.
+- `docker_image` (String) LibSQL Docker image, for example `ghcr.io/tursodatabase/libsql-server:v0.24.32`. That tag is also the server default when you omit the attribute, and it exists in the registry.
+- `enable_namespaces` (Boolean) Enable sqld namespaces, the multi-database mode. Defaults to `false`.
+- `env` (String) Extra environment variables in the native Dokploy multiline `KEY=value` format. Use Terraform sensitive variables for secret values. An omitted value and `""` both read back as null. Omit the attribute to clear it.
+- `external_admin_port` (Number) Host port for the libsql admin interface. Not permitted when `sqld_node` is `replica`.
+- `external_grpc_port` (Number) Host port for the libsql gRPC replication interface. Not permitted when `sqld_node` is `replica`.
+- `external_port` (Number) Host port for the libsql HTTP interface. Not permitted when `sqld_node` is `replica`.
+- `memory_limit` (String) Hard memory limit in Docker notation, for example `"512m"`.
+- `memory_reservation` (String) Reserved memory in Docker notation, for example `"256m"`.
+- `network_ids` (Set of String) Ids of the Dokploy network records to attach this service to. The attachment applies on the next deploy. Omit it to keep only the default `dokploy-network`. An empty set is not valid. Omit the attribute instead.
+- `replicas` (Number) Number of container replicas. Defaults to `1`.
+- `server_id` (String) Id of the remote server that runs the service. Defaults to the Dokploy host.
 - `sqld_node` (String) Topology role: `primary` or `replica`. A replica requires `sqld_primary_url`, and cannot have any external port.
-- `sqld_primary_url` (String) URL of the primary sqld node. Required when `sqld_node` is `replica`; rejected by the server whenever `sqld_node` is not `replica`, including the default (`primary`).
+- `sqld_primary_url` (String) URL of the primary sqld node. Required when `sqld_node` is `replica`. The server rejects it when `sqld_node` is not `replica`, which includes the default `primary`.
 
 ### Read-Only
 
-- `app_name` (String) Dokploy-internal app name. Always server-generated: the server derives it from `name` and appends a random suffix for uniqueness. It cannot be set directly.
-- `created_at` (String) Creation timestamp (server-side).
+- `app_name` (String) Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it.
+- `created_at` (String) Creation timestamp from the server.
 - `id` (String) LibSQL service id.
-- `status` (String) Service status reported by Dokploy.
+- `status` (String) Service status from Dokploy.
 
 ## Import
 

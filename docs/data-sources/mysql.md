@@ -3,12 +3,12 @@
 page_title: "dokploy_mysql Data Source - dokploy"
 subcategory: ""
 description: |-
-  Look up a Dokploy mysql service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
+  Look up a Dokploy mysql service by id, or by name within an environment. The data source does not expose the database password. It exposes each other credential attribute as sensitive.
 ---
 
 # dokploy_mysql (Data Source)
 
-Look up a Dokploy mysql service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
+Look up a Dokploy mysql service by id, or by name within an environment. The data source does not expose the database password. It exposes each other credential attribute as sensitive.
 
 ## Example Usage
 
@@ -30,12 +30,12 @@ data "dokploy_mysql" "by_name" {
 ### Optional
 
 - `environment_id` (String) Id of the environment to search. Required with `name`.
-- `id` (String) MySQL service id. Set either this or both `environment_id` and `name`.
-- `name` (String) Exact mysql service name, searched within `environment_id`. Errors when zero or multiple mysql services match.
+- `id` (String) MySQL service id. Set this attribute, or set both `environment_id` and `name`.
+- `name` (String) Exact mysql service name. The lookup searches within `environment_id` and errors when zero or many mysql services match.
 
 ### Read-Only
 
-- `app_name` (String) Dokploy-internal app name.
+- `app_name` (String) Internal Dokploy app name.
 - `created_at` (String) Creation timestamp.
 - `database_name` (String) Database name.
 - `database_root_password` (String, Sensitive) Database root password.

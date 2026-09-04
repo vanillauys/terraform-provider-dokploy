@@ -1,4 +1,4 @@
-# Nightly archive of an application's uploads volume.
+# Nightly archive of the uploads volume of an application.
 resource "dokploy_volume_backup" "uploads" {
   name            = "web-uploads-nightly"
   service_id      = dokploy_application.web.id
@@ -12,7 +12,7 @@ resource "dokploy_volume_backup" "uploads" {
 }
 
 # Redis has no logical dump in Dokploy, so a volume backup is the only way
-# to capture it. dokploy_backup rejects a redis parent at plan time.
+# to capture it. dokploy_backup rejects a Redis parent at plan time.
 resource "dokploy_volume_backup" "cache" {
   name            = "cache-nightly"
   service_id      = dokploy_redis.cache.id

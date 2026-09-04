@@ -2,7 +2,7 @@ resource "dokploy_project" "example" {
   name = "example"
 }
 
-# Inline compose file. Nothing is fetched: the YAML below is the source.
+# Inline compose file. Dokploy fetches nothing: the YAML below is the source.
 resource "dokploy_compose" "inline" {
   name           = "inline-stack"
   environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
@@ -19,8 +19,8 @@ resource "dokploy_compose" "inline" {
   }
 }
 
-# From a GitHub App repository. github_id comes from the data source rather
-# than a hardcoded opaque id.
+# From a GitHub App repository. github_id comes from the data source, not
+# from a hardcoded opaque id.
 data "dokploy_github_provider" "main" {
   name = "my-org"
 }

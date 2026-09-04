@@ -41,7 +41,7 @@ func (r *domainResource) Metadata(_ context.Context, req resource.MetadataReques
 
 func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "A domain (Traefik router rule) attached to a Dokploy application or compose service.",
+		Description: "A domain, a Traefik router rule, on a Dokploy application or compose service.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -50,16 +50,16 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"host": schema.StringAttribute{
 				Required:    true,
-				Description: "Hostname to serve, e.g. `app.example.com`. Dokploy does not enforce uniqueness, so the same host may be attached twice.",
+				Description: "Hostname to serve, for example `app.example.com`. Dokploy does not enforce uniqueness, so the same host can attach twice.",
 			},
 			"application_id": schema.StringAttribute{
 				Optional:      true,
-				Description:   "Id of the application this domain serves. Exactly one of `application_id` or `compose_id` must be set. Changing it replaces the domain.",
+				Description:   "Id of the application that this domain serves. Set exactly one of `application_id` or `compose_id`. A change replaces the domain.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"compose_id": schema.StringAttribute{
 				Optional:      true,
-				Description:   "Id of the compose service this domain serves. Exactly one of `application_id` or `compose_id` must be set. Changing it replaces the domain.",
+				Description:   "Id of the compose service that this domain serves. Set exactly one of `application_id` or `compose_id`. A change replaces the domain.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"port": schema.Int64Attribute{
@@ -78,25 +78,25 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Optional:    true,
 				Computed:    true,
 				Default:     stringdefault.StaticString("/"),
-				Description: "External path this rule matches. Defaults to `\"/\"`.",
+				Description: "External path that this rule matches. Defaults to `\"/\"`.",
 			},
 			"internal_path": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
 				Default:     stringdefault.StaticString("/"),
-				Description: "Path forwarded to the container. Defaults to `\"/\"`.",
+				Description: "Path that Traefik forwards to the container. Defaults to `\"/\"`.",
 			},
 			"strip_path": schema.BoolAttribute{
 				Optional:    true,
 				Computed:    true,
 				Default:     booldefault.StaticBool(false),
-				Description: "Strip `path` before forwarding. Defaults to `false`.",
+				Description: "Strip `path` before the forward. Defaults to `false`.",
 			},
 			"certificate_type": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
 				Default:     stringdefault.StaticString("none"),
-				Description: "Certificate strategy: `letsencrypt`, `none` or `custom`. Defaults to `\"none\"`.",
+				Description: "Certificate strategy: `letsencrypt`, `none`, or `custom`. Defaults to `\"none\"`.",
 				Validators: []validator.String{
 					stringvalidator.OneOf("letsencrypt", "none", "custom"),
 				},
@@ -111,7 +111,7 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"service_name": schema.StringAttribute{
 				Optional:    true,
-				Description: "Compose service to route to. Only meaningful with `compose_id`.",
+				Description: "Compose service to route to. It has an effect only with `compose_id`.",
 			},
 			"forward_auth_enabled": schema.BoolAttribute{
 				Optional:    true,
@@ -121,25 +121,25 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"enabled": schema.BoolAttribute{
 				Optional: true, Computed: true, Default: booldefault.StaticBool(true),
-				Description: "Serve this domain. `false` removes the route from Traefik but keeps the configuration, so it can be re-enabled without re-entering certificates and paths. Defaults to `true`.",
+				Description: "Serve this domain. `false` removes the route from Traefik but keeps the configuration, so you can enable it again without a new certificate and path setup. Defaults to `true`.",
 			},
 			"middlewares": schema.ListAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Traefik middlewares attached to this domain. Read-only: middlewares are created outside this provider, so a writable list would reference names Terraform cannot manage.",
+				Description: "Traefik middlewares on this domain. Read-only: middlewares come from outside this provider, so a writable list would reference names that Terraform cannot manage.",
 			},
 			"domain_type": schema.StringAttribute{
 				Computed:      true,
-				Description:   "`application` or `compose`, derived from which of `application_id` / `compose_id` is set.",
+				Description:   "`application` or `compose`. The provider derives it from `application_id` or `compose_id`.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"unique_config_key": schema.Int64Attribute{
 				Computed:    true,
-				Description: "Server-assigned ordering key. Dokploy ignores any value submitted for it.",
+				Description: "Ordering key that the server assigns. Dokploy ignores any submitted value.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Creation timestamp (server-side).",
+				Description:   "Creation timestamp from the server.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},

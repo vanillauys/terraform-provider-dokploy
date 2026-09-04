@@ -8,8 +8,8 @@ data "dokploy_destination" "by_id" {
   id = "V1StGXR8_Z5jdHi6B-myT"
 }
 
-# The usual reason to look one up: a shared S3 target created once and
-# referenced from several projects.
+# The usual purpose of a lookup: a shared S3 target that exists once and
+# that several projects reference.
 resource "dokploy_backup" "db" {
   service_id     = dokploy_postgres.main.id
   service_type   = "postgres"

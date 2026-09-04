@@ -3,21 +3,21 @@
 page_title: "dokploy_vault_provider Resource - dokploy"
 subcategory: ""
 description: |-
-  A secret-vault connection Dokploy can pull runtime secrets from at deploy time, referenced from other resources' env attributes as ${{vault.<name>.<key>}} - a plain string this provider does not parse or validate. One of six provider types: hashicorp (also covers OpenBao, which speaks the same wire protocol), infisical, aws, doppler, azure, scaleway. Dokploy v0.30.5 adds a seventh type, phase (Phase.dev), which this resource does not model yet.
-  ~> Secrets are masked on every read, never echoed back. Dokploy returns every secret field in this resource's config blocks as the literal string ********, on create, read, and update alike. This provider cannot detect a config value changed in the Dokploy UI - Read leaves every config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage a vault provider's config only through Terraform. A UI-side edit persists undetected until the next apply that modifies this resource; that apply's full-body update overwrites it with Terraform's config.
-  ~> A config block cannot be recovered by terraform import. The imported resource's config blocks are left null; re-supply the block matching the provider's actual type in configuration, and the first terraform apply writes it as a full-body update, not a partial patch.
-  ~> Dokploy never validates vault credentials on create or update, for any provider type - only verify_connection = true reaches the real vault, through vaultProvider.testConnection, before the write. A misconfigured vault provider otherwise applies successfully and only fails the next deploy that needs a secret from it.
+  A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their env attribute as ${{vault.<name>.<key>}}, a plain string that this provider does not parse or validate. The resource models six provider types: hashicorp (also OpenBao, which uses the same wire protocol), infisical, aws, doppler, azure, and scaleway. Dokploy v0.30.5 adds a seventh type, phase (Phase.dev), which this resource does not model yet.
+  ~> Dokploy masks each secret on each read. Dokploy returns each secret field in the config blocks of this resource as the literal string ********, on create, read, and update alike. The provider therefore cannot detect a config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage the config of a vault provider only through Terraform. An edit in the UI stays undetected until the next apply that modifies this resource. That apply writes the full body and overwrites the edit with the Terraform config.
+  ~> terraform import cannot recover a config block. The import leaves the config blocks null. Supply the block that matches the actual provider type in the configuration. The first terraform apply then writes it as a full-body update, not as a partial patch.
+  ~> Dokploy does not validate vault credentials on create or update, for any provider type. Only verify_connection = true reaches the real vault, through vaultProvider.testConnection, before the write. Without it, a misconfigured vault provider applies successfully and fails only on the next deploy that needs a secret from it.
 ---
 
 # dokploy_vault_provider (Resource)
 
-A secret-vault connection Dokploy can pull runtime secrets from at deploy time, referenced from other resources' `env` attributes as `${{vault.<name>.<key>}}` - a plain string this provider does not parse or validate. One of six provider types: `hashicorp` (also covers OpenBao, which speaks the same wire protocol), `infisical`, `aws`, `doppler`, `azure`, `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), which this resource does not model yet.
+A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their `env` attribute as `${{vault.<name>.<key>}}`, a plain string that this provider does not parse or validate. The resource models six provider types: `hashicorp` (also OpenBao, which uses the same wire protocol), `infisical`, `aws`, `doppler`, `azure`, and `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), which this resource does not model yet.
 
-~> **Secrets are masked on every read, never echoed back.** Dokploy returns every secret field in this resource's config blocks as the literal string `********`, on create, read, and update alike. This provider cannot detect a config value changed in the Dokploy UI - Read leaves every config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage a vault provider's config only through Terraform. A UI-side edit persists undetected until the next apply that modifies this resource; that apply's full-body update overwrites it with Terraform's config.
+~> **Dokploy masks each secret on each read.** Dokploy returns each secret field in the config blocks of this resource as the literal string `********`, on create, read, and update alike. The provider therefore cannot detect a config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage the config of a vault provider only through Terraform. An edit in the UI stays undetected until the next apply that modifies this resource. That apply writes the full body and overwrites the edit with the Terraform config.
 
-~> **A config block cannot be recovered by `terraform import`.** The imported resource's config blocks are left null; re-supply the block matching the provider's actual type in configuration, and the first `terraform apply` writes it as a full-body update, not a partial patch.
+~> **`terraform import` cannot recover a config block.** The import leaves the config blocks null. Supply the block that matches the actual provider type in the configuration. The first `terraform apply` then writes it as a full-body update, not as a partial patch.
 
-~> **Dokploy never validates vault credentials on create or update**, for any provider type - only `verify_connection = true` reaches the real vault, through `vaultProvider.testConnection`, before the write. A misconfigured vault provider otherwise applies successfully and only fails the next deploy that needs a secret from it.
+~> **Dokploy does not validate vault credentials on create or update**, for any provider type. Only `verify_connection = true` reaches the real vault, through `vaultProvider.testConnection`, before the write. Without it, a misconfigured vault provider applies successfully and fails only on the next deploy that needs a secret from it.
 
 ## Example Usage
 
@@ -33,28 +33,28 @@ resource "dokploy_vault_provider" "secrets" {
   hashicorp = {
     url   = "https://vault.example.com:8200"
     token = var.vault_token
-    # namespace = "admin" # Vault Enterprise only; omit for OSS Vault or OpenBao.
-    # mount     = "secret" # KV mount path; this is the server's own default.
+    # namespace = "admin" # Vault Enterprise only. Omit it for open-source Vault or OpenBao.
+    # mount     = "secret" # KV mount path. This is the server default.
   }
 
   assignments = [
     {
       project_id = dokploy_project.example.id
-      # environment_ids = [] # Omit (or leave empty) to make every
-      #                        environment in the project eligible.
+      # environment_ids = [] # Omit it, or leave it empty, to cover each
+      #                        environment in the project.
     }
   ]
 
-  # Reaches the real vault through vaultProvider.testConnection before
-  # writing anything, so a bad token or an unreachable server fails the
-  # apply instead of silently creating a broken vault provider.
+  # Tests the real vault through vaultProvider.testConnection before the
+  # write, so a bad token or an unreachable server fails the apply instead
+  # of a broken vault provider.
   verify_connection = true
 }
 
-# Reference a secret from this vault provider in another resource's `env`.
-# Dokploy resolves ${{vault.<name>.<key>}} at deploy time; this provider
-# passes the string through untouched - it does not parse or validate it.
-# The doubled `$$` escapes Terraform's own `${...}` interpolation so the
+# Reference a secret from this vault provider in the `env` of another resource.
+# Dokploy resolves ${{vault.<name>.<key>}} at deploy time. The provider
+# passes the string through unchanged and does not parse or validate it.
+# The doubled `$$` escapes the Terraform `${...}` interpolation, so the
 # literal `${{...}}` reaches Dokploy.
 #
 # resource "dokploy_application" "api" {
@@ -70,26 +70,26 @@ resource "dokploy_vault_provider" "secrets" {
 
 ### Required
 
-- `assignments` (Attributes List) Projects (and optionally specific environments within them) this vault provider is available to. An empty list is legal - `assignments = []` is accepted and echoed back by the server. (see [below for nested schema](#nestedatt--assignments))
-- `name` (String) Display name, 1-64 characters, matching `^[a-zA-Z0-9_-]+$`. Dokploy rejects a duplicate name; this provider pre-checks for one before ever sending a create request, so a collision fails cleanly rather than through the server's raw error.
+- `assignments` (Attributes List) Projects, and optionally specific environments in them, that can use this vault provider. An empty list is valid: the server accepts `assignments = []` and returns it. (see [below for nested schema](#nestedatt--assignments))
+- `name` (String) Display name, 1 to 64 characters, that matches `^[a-zA-Z0-9_-]+$`. Dokploy rejects a duplicate name. The provider checks for a duplicate before it sends a create request, so a collision fails with a clear error instead of the raw server error.
 
 ### Optional
 
-- `aws` (Attributes) AWS Secrets Manager connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.
+- `aws` (Attributes) AWS Secrets Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.
 
-~> This block's shape came from the OpenAPI contract alone, not a live probe - this resource's own acceptance tests are the first live confirmation of it. (see [below for nested schema](#nestedatt--aws))
-- `azure` (Attributes) Azure Key Vault connection. Every field is required at the API - Azure has no optional fields here. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.
+~> The shape of this block comes from the OpenAPI contract, not from a live probe. The acceptance tests of this resource are the first live confirmation of it. (see [below for nested schema](#nestedatt--aws))
+- `azure` (Attributes) Azure Key Vault connection. The API requires each field; Azure has no optional field here. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.
 
-~> This block's shape came from the OpenAPI contract alone, not a live probe. (see [below for nested schema](#nestedatt--azure))
-- `doppler` (Attributes) Doppler connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set. (see [below for nested schema](#nestedatt--doppler))
-- `hashicorp` (Attributes) HashiCorp Vault or OpenBao connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set. (see [below for nested schema](#nestedatt--hashicorp))
-- `infisical` (Attributes) Infisical connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set. (see [below for nested schema](#nestedatt--infisical))
-- `scaleway` (Attributes) Scaleway Secret Manager connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set. (see [below for nested schema](#nestedatt--scaleway))
-- `verify_connection` (Boolean) Test the config against the real vault before writing, through `vaultProvider.testConnection`. Defaults to `false`. On failure the apply fails with the server's message and nothing is created or updated. This attribute is provider-only - Dokploy stores no server-side value for it - so `terraform import` always seeds it `false`.
+~> The shape of this block comes from the OpenAPI contract, not from a live probe. (see [below for nested schema](#nestedatt--azure))
+- `doppler` (Attributes) Doppler connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`. (see [below for nested schema](#nestedatt--doppler))
+- `hashicorp` (Attributes) HashiCorp Vault or OpenBao connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`. (see [below for nested schema](#nestedatt--hashicorp))
+- `infisical` (Attributes) Infisical connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`. (see [below for nested schema](#nestedatt--infisical))
+- `scaleway` (Attributes) Scaleway Secret Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`. (see [below for nested schema](#nestedatt--scaleway))
+- `verify_connection` (Boolean) Test the config against the real vault before the write, through `vaultProvider.testConnection`. Defaults to `false`. On failure, the apply fails with the server message, and the provider creates or updates nothing. This attribute is provider-only, and Dokploy stores no value for it, so `terraform import` always seeds it with `false`.
 
 ### Read-Only
 
-- `created_at` (String) Creation timestamp (server-side).
+- `created_at` (String) Creation timestamp from the server.
 - `id` (String) Vault provider id.
 
 <a id="nestedatt--assignments"></a>
@@ -101,7 +101,7 @@ Required:
 
 Optional:
 
-- `environment_ids` (Set of String) Ids of specific environments within the project to restrict this assignment to. Omit (or set an empty list) to make every environment in the project eligible; the server stores and echoes an empty set for that case, not null.
+- `environment_ids` (Set of String) Ids of the environments in the project that this assignment covers. Omit it, or set an empty list, to cover each environment in the project. The server stores and returns an empty set for that case, not null.
 
 
 <a id="nestedatt--aws"></a>
@@ -110,12 +110,12 @@ Optional:
 Required:
 
 - `access_key_id` (String, Sensitive) AWS access key id.
-- `region` (String) AWS region for Secrets Manager, e.g. `us-east-1`.
+- `region` (String) AWS region for Secrets Manager, for example `us-east-1`.
 - `secret_access_key` (String, Sensitive) AWS secret access key.
 
 Optional:
 
-- `endpoint` (String) Custom Secrets Manager endpoint, for a compatible service or a VPC endpoint. Omit to use AWS's default endpoint; the server has no default for this field.
+- `endpoint` (String) Custom Secrets Manager endpoint, for a compatible service or a VPC endpoint. Omit it to use the default AWS endpoint. The server has no default for this field.
 
 
 <a id="nestedatt--azure"></a>
@@ -123,10 +123,10 @@ Optional:
 
 Required:
 
-- `client_id` (String) Azure AD application (client) id.
+- `client_id` (String) Azure AD application client id.
 - `client_secret` (String, Sensitive) Azure AD application client secret.
 - `tenant_id` (String) Azure AD tenant id.
-- `vault_uri` (String) Azure Key Vault URI, e.g. `https://myvault.vault.azure.net/`.
+- `vault_uri` (String) Azure Key Vault URI, for example `https://myvault.vault.azure.net/`.
 
 
 <a id="nestedatt--doppler"></a>
@@ -138,8 +138,8 @@ Required:
 
 Optional:
 
-- `config` (String) Doppler config name (the wire field is also named `config`; `config` is legal as an attribute name here since it is nested inside this block, not at the resource's top level). Omit to let Doppler infer it from the service token; the server has no default for this field.
-- `project` (String) Doppler project slug. Omit to let Doppler infer it from the service token; the server has no default for this field.
+- `config` (String) Doppler config name. The wire field is also named `config`. Omit it, and Doppler infers it from the service token. The server has no default for this field.
+- `project` (String) Doppler project slug. Omit it, and Doppler infers it from the service token. The server has no default for this field.
 
 
 <a id="nestedatt--hashicorp"></a>
@@ -148,12 +148,12 @@ Optional:
 Required:
 
 - `token` (String, Sensitive) Vault authentication token.
-- `url` (String) Vault (or OpenBao) server URL, e.g. `https://vault.example.com:8200`.
+- `url` (String) Vault or OpenBao server URL, for example `https://vault.example.com:8200`.
 
 Optional:
 
 - `mount` (String) KV secrets engine mount path. Defaults to `secret`.
-- `namespace` (String) Vault Enterprise namespace. Omit for OSS Vault or OpenBao; the server has no default for this field.
+- `namespace` (String) Vault Enterprise namespace. Omit it for open-source Vault or OpenBao. The server has no default for this field.
 
 
 <a id="nestedatt--infisical"></a>
@@ -163,7 +163,7 @@ Required:
 
 - `client_id` (String) Infisical machine identity client id.
 - `client_secret` (String, Sensitive) Infisical machine identity client secret.
-- `environment_slug` (String) Infisical environment slug, e.g. `dev` or `prod`.
+- `environment_slug` (String) Infisical environment slug, for example `dev` or `prod`.
 - `project_id` (String) Infisical project id.
 
 Optional:

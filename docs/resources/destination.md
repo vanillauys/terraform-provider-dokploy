@@ -3,25 +3,25 @@
 page_title: "dokploy_destination Resource - dokploy"
 subcategory: ""
 description: |-
-  An S3-compatible bucket Dokploy writes backups to.
-  ~> Dokploy stores and returns access_key and secret_access_key in cleartext. Both are marked sensitive so Terraform will not print them, but anyone with API access to the instance can read them.
+  An S3-compatible bucket that receives Dokploy backups.
+  ~> Dokploy stores and returns access_key and secret_access_key in cleartext. Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server can read them.
 ---
 
 # dokploy_destination (Resource)
 
-An S3-compatible bucket Dokploy writes backups to.
+An S3-compatible bucket that receives Dokploy backups.
 
-~> Dokploy stores and returns `access_key` and `secret_access_key` in cleartext. Both are marked sensitive so Terraform will not print them, but anyone with API access to the instance can read them.
+~> Dokploy stores and returns `access_key` and `secret_access_key` in cleartext. Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server can read them.
 
 ## Example Usage
 
 ```terraform
 # Cloudflare R2 is S3-compatible and works as a Dokploy backup destination.
 resource "dokploy_destination" "backups" {
-  name              = "vnly-io-dokploy"
+  name              = "app-backups"
   provider_name     = "Cloudflare"
   endpoint          = "https://${var.r2_account_id}.r2.cloudflarestorage.com"
-  bucket            = "vnly-io-dokploy"
+  bucket            = "app-backups"
   region            = "WEUR"
   access_key        = var.r2_access_key
   secret_access_key = var.r2_secret_access_key
@@ -37,17 +37,17 @@ resource "dokploy_destination" "backups" {
 - `bucket` (String) Bucket name.
 - `endpoint` (String) S3 endpoint URL.
 - `name` (String) Display name.
-- `provider_name` (String) Storage provider label, e.g. `Cloudflare`, `AWS`, `DigitalOcean`. Free text; Dokploy does not validate it.
+- `provider_name` (String) Storage provider label, for example `Cloudflare`, `AWS`, or `DigitalOcean`. Free text. Dokploy does not validate it.
 - `region` (String) Bucket region.
 - `secret_access_key` (String, Sensitive) S3 secret access key.
 
 ### Optional
 
-- `additional_flags` (List of String) Extra flags passed to the underlying storage client. Defaults to an empty list; removing it from configuration clears any flags.
+- `additional_flags` (List of String) Extra flags for the storage client. Defaults to an empty list. If you remove it from the configuration, the provider clears the flags.
 
 ### Read-Only
 
-- `created_at` (String) Creation timestamp (server-side).
+- `created_at` (String) Creation timestamp from the server.
 - `id` (String) Destination id.
 
 ## Import

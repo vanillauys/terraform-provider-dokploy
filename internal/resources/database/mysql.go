@@ -51,7 +51,7 @@ func MysqlKind(c *client.Client) Kind {
 			},
 			{
 				TFName:      "database_root_password",
-				Description: "MySQL root password. Server-generated when left unset. Changing it triggers a redeploy.",
+				Description: "MySQL root password. If unset, the server generates one. A change starts a redeploy.",
 				Sensitive:   true,
 				Computed:    true,
 				// Verified live (2026-07-27): mysql.update alone changes

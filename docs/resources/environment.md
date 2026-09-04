@@ -3,12 +3,12 @@
 page_title: "dokploy_environment Resource - dokploy"
 subcategory: ""
 description: |-
-  An environment inside a Dokploy project. Services (dokploy_application, dokploy_postgres) belong to an environment rather than directly to a project. Dokploy creates a production environment with every project, which cannot be deleted — see is_default.
+  An environment inside a Dokploy project. Services such as dokploy_application and dokploy_postgres belong to an environment, not directly to a project. Dokploy creates a production environment with each project, and the API cannot delete that environment. See is_default.
 ---
 
 # dokploy_environment (Resource)
 
-An environment inside a Dokploy project. Services (`dokploy_application`, `dokploy_postgres`) belong to an environment rather than directly to a project. Dokploy creates a `production` environment with every project, which cannot be deleted — see `is_default`.
+An environment inside a Dokploy project. Services such as `dokploy_application` and `dokploy_postgres` belong to an environment, not directly to a project. Dokploy creates a `production` environment with each project, and the API cannot delete that environment. See `is_default`.
 
 ## Example Usage
 
@@ -17,14 +17,14 @@ resource "dokploy_project" "example" {
   name = "example"
 }
 
-# Dokploy creates a "production" environment with every project; this adds a
-# second one alongside it.
+# Dokploy creates a "production" environment with each project. This adds a
+# second environment beside it.
 resource "dokploy_environment" "staging" {
   project_id  = dokploy_project.example.id
   name        = "staging"
   description = "Pre-production environment"
 
-  # Shared by every service in this environment.
+  # Each service in this environment shares these variables.
   env = <<-EOT
     LOG_LEVEL=debug
     FEATURE_FLAGS=beta
@@ -37,18 +37,18 @@ resource "dokploy_environment" "staging" {
 
 ### Required
 
-- `name` (String) Environment name. Dokploy does not enforce uniqueness within a project, so two environments may share a name.
-- `project_id` (String) Id of the project this environment belongs to. Changing it replaces the environment: Dokploy has no endpoint that moves one between projects.
+- `name` (String) Environment name. Dokploy does not enforce uniqueness within a project, so two environments can share a name.
+- `project_id` (String) Id of the project that owns this environment. A change replaces the environment: Dokploy has no endpoint that moves an environment between projects.
 
 ### Optional
 
-- `description` (String) Free-form description. Dokploy stores a cleared description as an empty string rather than null; the provider reports both as null.
-- `env` (String) Environment-level variables shared by every service in this environment, as `KEY=value` lines. Dokploy's create endpoint ignores this field, so setting it on a new environment costs one extra API call. Omitting this attribute and setting it to "" are indistinguishable on read — both come back null. Use omission, not "", to clear it.
+- `description` (String) Free-form description. Dokploy stores a cleared description as an empty string, not as null. The provider reports both as null.
+- `env` (String) Variables that each service in this environment shares, as `KEY=value` lines. The Dokploy create endpoint ignores this field, so a value on a new environment costs one more API call. An omitted value and `""` both read back as null. Omit the attribute to clear it.
 
 ### Read-Only
 
 - `id` (String) Environment id.
-- `is_default` (Boolean) True for the `production` environment Dokploy creates with each project. Dokploy refuses to delete that environment, so destroying a resource with `is_default = true` fails with an explanatory error.
+- `is_default` (Boolean) True for the `production` environment that Dokploy creates with each project. Dokploy refuses to delete that environment, so a destroy of a resource with `is_default = true` fails with an error that explains this.
 
 ## Import
 

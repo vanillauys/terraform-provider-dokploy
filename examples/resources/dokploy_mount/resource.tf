@@ -1,4 +1,4 @@
-# A named Docker volume for an application's uploads directory.
+# A named Docker volume for the uploads directory of an application.
 resource "dokploy_mount" "uploads" {
   service_id   = dokploy_application.web.id
   service_type = "application"
@@ -18,7 +18,7 @@ resource "dokploy_mount" "certs" {
   mount_path = "/certs"
 }
 
-# A file written into the container at deploy time.
+# A file that Dokploy writes into the container at deploy time.
 resource "dokploy_mount" "config" {
   service_id   = dokploy_application.web.id
   service_type = "application"

@@ -57,7 +57,7 @@ func TestSchemaAttributes_TwoCredentialAttrs(t *testing.T) {
 	if !ok {
 		t.Fatalf("id is not a schema.StringAttribute: %T", attrs["id"])
 	}
-	if id.Description != "Postgres service id. Set either this or both `environment_id` and `name`." {
+	if id.Description != "Postgres service id. Set this attribute, or set both `environment_id` and `name`." {
 		t.Errorf("unexpected id description: %q", id.Description)
 	}
 
@@ -65,7 +65,7 @@ func TestSchemaAttributes_TwoCredentialAttrs(t *testing.T) {
 	if !ok {
 		t.Fatalf("name is not a schema.StringAttribute: %T", attrs["name"])
 	}
-	if name.Description != "Exact postgres service name, searched within `environment_id`. Errors when zero or multiple postgres services match." {
+	if name.Description != "Exact postgres service name. The lookup searches within `environment_id` and errors when zero or many postgres services match." {
 		t.Errorf("unexpected name description: %q", name.Description)
 	}
 }
@@ -131,7 +131,7 @@ func TestSchemaAttributes_ZeroCredentialAttrs(t *testing.T) {
 	if !ok {
 		t.Fatalf("id is not a schema.StringAttribute: %T", attrs["id"])
 	}
-	if id.Description != "Redis service id. Set either this or both `environment_id` and `name`." {
+	if id.Description != "Redis service id. Set this attribute, or set both `environment_id` and `name`." {
 		t.Errorf("unexpected id description: %q", id.Description)
 	}
 }

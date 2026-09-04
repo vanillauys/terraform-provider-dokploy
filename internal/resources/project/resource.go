@@ -34,7 +34,7 @@ func (r *projectResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "A Dokploy project. Dokploy creates a default `production` environment with every project; service resources reference its id via the `environments` attribute.",
+		Description: "A Dokploy project. Dokploy creates a default `production` environment with each project. Service resources reference its id through the `environments` attribute.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:    true,
@@ -60,12 +60,12 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			// apply"; see internal/resources/application/resource.go.
 			"created_at": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Creation timestamp (server-side).",
+				Description:   "Creation timestamp from the server.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"environments": schema.ListNestedAttribute{
 				Computed:    true,
-				Description: "Environments in this project, including the auto-created `production` environment.",
+				Description: "Environments in this project, the auto-created `production` environment included.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id":   schema.StringAttribute{Computed: true, Description: "Environment id."},

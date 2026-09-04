@@ -41,7 +41,7 @@ func MariadbKind(c *client.Client) Kind {
 		// does not exist on Docker Hub. deploy_on_change defaults to true,
 		// so a first apply that leaves docker_image unset creates the
 		// record and then fails the deploy with a manifest-unknown error.
-		DockerImageCaveat: " The server's own default (`mariadb:6`) does not exist on Docker Hub; a first apply that leaves this unset creates the record and then fails the deploy (`deploy_on_change` defaults to `true`). Set an explicit, real tag such as `mariadb:11.4`.",
+		DockerImageCaveat: " The server default `mariadb:6` does not exist on Docker Hub. A first apply without this attribute creates the record and then fails the deploy, because `deploy_on_change` defaults to `true`. Set an explicit tag that exists, for example `mariadb:11.4`.",
 		CredentialAttrs: []CredentialAttr{
 			{
 				TFName:          "database_name",
@@ -57,7 +57,7 @@ func MariadbKind(c *client.Client) Kind {
 			},
 			{
 				TFName:      "database_root_password",
-				Description: "MariaDB root password. Server-generated when left unset. Changing it triggers a redeploy.",
+				Description: "MariaDB root password. If unset, the server generates one. A change starts a redeploy.",
 				Sensitive:   true,
 				Computed:    true,
 				// Same live-verified behavior as mysql's database_root_password

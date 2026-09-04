@@ -1,4 +1,4 @@
-# Nightly cleanup inside an application's container.
+# Nightly cleanup inside the container of an application.
 resource "dokploy_schedule" "prune" {
   name            = "nightly-prune"
   schedule_type   = "application"
@@ -8,7 +8,7 @@ resource "dokploy_schedule" "prune" {
   timezone        = "Africa/Johannesburg"
 }
 
-# A job on the Dokploy host itself takes no service_id.
+# A job on the Dokploy host takes no service_id.
 resource "dokploy_schedule" "host_df" {
   name            = "disk-report"
   schedule_type   = "dokploy-server"

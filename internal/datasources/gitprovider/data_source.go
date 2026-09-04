@@ -55,33 +55,32 @@ func (d *githubProviderDataSource) ConfigValidators(_ context.Context) []datasou
 
 func (d *githubProviderDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Looks up a GitHub App registered in Dokploy (Git > GitHub).\n\n" +
-			"Use it so `dokploy_application`'s `github_id` stops being a hardcoded opaque id:\n\n" +
+		Description: "Looks up a GitHub App that is registered in Dokploy (Git > GitHub).\n\n" +
+			"Use it so that the `github_id` of `dokploy_application` is not a hardcoded opaque id:\n\n" +
 			"```terraform\n" +
 			"data \"dokploy_github_provider\" \"main\" {\n  name = \"my-org\"\n}\n\n" +
 			"resource \"dokploy_application\" \"web\" {\n  github = {\n    github_id = data.dokploy_github_provider.main.id\n    # ...\n  }\n}\n" +
 			"```\n\n" +
-			"~> **`id` here is the `githubId`, not the `gitProviderId`.** Dokploy keeps both — " +
-			"`git_provider_id` is the generic record, `id` is the GitHub-specific one — and an application " +
-			"references the GitHub-specific one. Passing the wrong id is accepted by validation and then " +
-			"fails with an HTTP 500, because the foreign key is only enforced at the database layer.\n\n" +
-			"~> GitHub Apps cannot be created from Terraform. Dokploy's API has no `github.create`; " +
-			"installation is a browser flow. This data source reads what is already there.",
+			"~> **`id` is the `githubId`, not the `gitProviderId`.** Dokploy keeps both: `git_provider_id` is the generic record, " +
+			"and `id` is the GitHub-specific record. An application references the GitHub-specific record. Validation accepts " +
+			"the wrong id, and the request then fails with an HTTP 500, because only the database layer enforces the foreign key.\n\n" +
+			"~> Terraform cannot create a GitHub App. The Dokploy API has no `github.create`, and the installation is a " +
+			"browser flow. This data source reads what already exists.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
-				Description: "The `githubId`. Set this to look up by id, or leave it unset and set `name`. " +
-					"This is the value `dokploy_application.github.github_id` expects.",
+				Description: "The `githubId`. Set it for a lookup by id, or leave it unset and set `name`. " +
+					"This is the value that `dokploy_application.github.github_id` expects.",
 			},
 			"name": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Provider name as shown in Dokploy. Exactly one of `id` or `name` must be set.",
+				Description: "Provider name as shown in Dokploy. Set exactly one of `id` or `name`.",
 			},
 			"git_provider_id": schema.StringAttribute{
 				Computed:    true,
-				Description: "Id of the generic git-provider record this GitHub App hangs off. Not what an application references.",
+				Description: "Id of the generic git-provider record that owns this GitHub App. An application does not reference it.",
 			},
 			"provider_type": schema.StringAttribute{
 				Computed:    true,
@@ -89,7 +88,7 @@ func (d *githubProviderDataSource) Schema(_ context.Context, _ datasource.Schema
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,
-				Description: "Creation timestamp (server-side).",
+				Description: "Creation timestamp from the server.",
 			},
 			"shared_with_organization": schema.BoolAttribute{
 				Computed:    true,

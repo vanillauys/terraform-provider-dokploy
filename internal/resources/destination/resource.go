@@ -47,9 +47,9 @@ func (r *destinationResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *destinationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "An S3-compatible bucket Dokploy writes backups to.\n\n" +
-			"~> Dokploy stores and returns `access_key` and `secret_access_key` in cleartext. Both are marked " +
-			"sensitive so Terraform will not print them, but anyone with API access to the instance can read them.",
+		Description: "An S3-compatible bucket that receives Dokploy backups.\n\n" +
+			"~> Dokploy stores and returns `access_key` and `secret_access_key` in cleartext. Both attributes are " +
+			"sensitive, so Terraform does not print them, but anyone with API access to the server can read them.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -62,7 +62,7 @@ func (r *destinationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			// an attribute name.
 			"provider_name": schema.StringAttribute{
 				Required:    true,
-				Description: "Storage provider label, e.g. `Cloudflare`, `AWS`, `DigitalOcean`. Free text; Dokploy does not validate it.",
+				Description: "Storage provider label, for example `Cloudflare`, `AWS`, or `DigitalOcean`. Free text. Dokploy does not validate it.",
 			},
 			"endpoint": schema.StringAttribute{Required: true, Description: "S3 endpoint URL."},
 			"bucket":   schema.StringAttribute{Required: true, Description: "Bucket name."},
@@ -84,11 +84,11 @@ func (r *destinationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Default: listdefault.StaticValue(
 					types.ListValueMust(types.StringType, []attr.Value{}),
 				),
-				Description: "Extra flags passed to the underlying storage client. Defaults to an empty list; removing it from configuration clears any flags.",
+				Description: "Extra flags for the storage client. Defaults to an empty list. If you remove it from the configuration, the provider clears the flags.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Creation timestamp (server-side).",
+				Description:   "Creation timestamp from the server.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},

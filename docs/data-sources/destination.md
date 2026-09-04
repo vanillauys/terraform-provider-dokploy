@@ -3,8 +3,8 @@
 page_title: "dokploy_destination Data Source - dokploy"
 subcategory: ""
 description: |-
-  Looks up an S3-compatible backup destination already registered in Dokploy.
-  A shared backup target is typically created once and referenced from several projects:
+  Looks up an S3-compatible backup destination that already exists in Dokploy.
+  Users usually create a shared backup target once and reference it from several projects:
   
   data "dokploy_destination" "backups" {
     name = "cloudflare-r2"
@@ -15,15 +15,15 @@ description: |-
     # ...
   }
   
-  ~> Credentials are not exposed. access_key and secret_access_key exist on the dokploy_destination resource but deliberately not here: consumers need only the id, and copying an access key into every consumer's state widens its blast radius for no gain.
-  ~> Dokploy does not enforce name uniqueness. If two destinations share a name this data source fails rather than picking one; look the record up by id in that case.
+  ~> The data source does not expose the credentials. access_key and secret_access_key exist on the dokploy_destination resource, but not here, by design. A consumer needs only the id, and a copy of an access key in the state of each consumer widens its exposure with no gain.
+  ~> Dokploy does not enforce name uniqueness. If two destinations share a name, this data source fails instead of a guess. Look the record up by id in that case.
 ---
 
 # dokploy_destination (Data Source)
 
-Looks up an S3-compatible backup destination already registered in Dokploy.
+Looks up an S3-compatible backup destination that already exists in Dokploy.
 
-A shared backup target is typically created once and referenced from several projects:
+Users usually create a shared backup target once and reference it from several projects:
 
 ```terraform
 data "dokploy_destination" "backups" {
@@ -36,9 +36,9 @@ resource "dokploy_backup" "db" {
 }
 ```
 
-~> **Credentials are not exposed.** `access_key` and `secret_access_key` exist on the `dokploy_destination` resource but deliberately not here: consumers need only the id, and copying an access key into every consumer's state widens its blast radius for no gain.
+~> **The data source does not expose the credentials.** `access_key` and `secret_access_key` exist on the `dokploy_destination` resource, but not here, by design. A consumer needs only the id, and a copy of an access key in the state of each consumer widens its exposure with no gain.
 
-~> Dokploy does not enforce name uniqueness. If two destinations share a name this data source fails rather than picking one; look the record up by `id` in that case.
+~> Dokploy does not enforce name uniqueness. If two destinations share a name, this data source fails instead of a guess. Look the record up by `id` in that case.
 
 ## Example Usage
 
@@ -53,8 +53,8 @@ data "dokploy_destination" "by_id" {
   id = "V1StGXR8_Z5jdHi6B-myT"
 }
 
-# The usual reason to look one up: a shared S3 target created once and
-# referenced from several projects.
+# The usual purpose of a lookup: a shared S3 target that exists once and
+# that several projects reference.
 resource "dokploy_backup" "db" {
   service_id     = dokploy_postgres.main.id
   service_type   = "postgres"
@@ -70,14 +70,14 @@ resource "dokploy_backup" "db" {
 
 ### Optional
 
-- `id` (String) Destination id. Set this to look it up by id, or leave it unset and set `name`.
-- `name` (String) Display name as shown in Dokploy. Exactly one of `id` or `name` must be set.
+- `id` (String) Destination id. Set it for a lookup by id, or leave it unset and set `name`.
+- `name` (String) Display name as shown in Dokploy. Set exactly one of `id` or `name`.
 
 ### Read-Only
 
-- `additional_flags` (List of String) Extra flags passed to the underlying storage client. Empty when none are set.
+- `additional_flags` (List of String) Extra flags for the storage client. Empty when none are set.
 - `bucket` (String) Bucket name.
-- `created_at` (String) Creation timestamp (server-side).
+- `created_at` (String) Creation timestamp from the server.
 - `endpoint` (String) S3 endpoint URL.
-- `provider_name` (String) Storage provider label, e.g. `Cloudflare`, `AWS`, `DigitalOcean`.
+- `provider_name` (String) Storage provider label, for example `Cloudflare`, `AWS`, or `DigitalOcean`.
 - `region` (String) Bucket region.

@@ -1,7 +1,7 @@
 resource "dokploy_network" "backend" {
   name = "backend-net"
 
-  # Networks are immutable: changing any attribute replaces the network.
+  # Networks are immutable: a change to any attribute replaces the network.
   # attachable = true
   # mtu        = 1400
   # ipam = {
@@ -9,7 +9,7 @@ resource "dokploy_network" "backend" {
   # }
 }
 
-# Attach a service to it (applies on the service's next deploy):
+# Attach a service to it. The attachment applies on the next deploy of the service:
 # resource "dokploy_application" "api" {
 #   # ...
 #   network_ids = [dokploy_network.backend.id]

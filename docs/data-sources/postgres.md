@@ -3,12 +3,12 @@
 page_title: "dokploy_postgres Data Source - dokploy"
 subcategory: ""
 description: |-
-  Look up a Dokploy postgres service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
+  Look up a Dokploy postgres service by id, or by name within an environment. The data source does not expose the database password. It exposes each other credential attribute as sensitive.
 ---
 
 # dokploy_postgres (Data Source)
 
-Look up a Dokploy postgres service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
+Look up a Dokploy postgres service by id, or by name within an environment. The data source does not expose the database password. It exposes each other credential attribute as sensitive.
 
 ## Example Usage
 
@@ -30,12 +30,12 @@ data "dokploy_postgres" "by_name" {
 ### Optional
 
 - `environment_id` (String) Id of the environment to search. Required with `name`.
-- `id` (String) Postgres service id. Set either this or both `environment_id` and `name`.
-- `name` (String) Exact postgres service name, searched within `environment_id`. Errors when zero or multiple postgres services match.
+- `id` (String) Postgres service id. Set this attribute, or set both `environment_id` and `name`.
+- `name` (String) Exact postgres service name. The lookup searches within `environment_id` and errors when zero or many postgres services match.
 
 ### Read-Only
 
-- `app_name` (String) Dokploy-internal app name.
+- `app_name` (String) Internal Dokploy app name.
 - `created_at` (String) Creation timestamp.
 - `database_name` (String) Database name.
 - `database_user` (String) Database user.

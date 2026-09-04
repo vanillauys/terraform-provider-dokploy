@@ -43,8 +43,8 @@ func (d *projectDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 	resp.Schema = schema.Schema{
 		Description: "Look up a Dokploy project by id or by exact name.",
 		Attributes: map[string]schema.Attribute{
-			"id":          schema.StringAttribute{Optional: true, Computed: true, Description: "Project id. Exactly one of `id` or `name` must be set."},
-			"name":        schema.StringAttribute{Optional: true, Computed: true, Description: "Exact project name. Errors when zero or multiple projects match."},
+			"id":          schema.StringAttribute{Optional: true, Computed: true, Description: "Project id. Set exactly one of `id` or `name`."},
+			"name":        schema.StringAttribute{Optional: true, Computed: true, Description: "Exact project name. The lookup errors when zero or many projects match."},
 			"description": schema.StringAttribute{Computed: true, Description: "Project description."},
 			"created_at":  schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
 			"environments": schema.ListNestedAttribute{

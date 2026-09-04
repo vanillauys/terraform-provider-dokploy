@@ -1,13 +1,13 @@
 resource "dokploy_backup" "db_nightly" {
   service_id     = dokploy_postgres.db.id
   service_type   = "postgres"
-  database       = "vanillauys"
-  prefix         = "backups/vanillauys/"
+  database       = "app"
+  prefix         = "backups/app/"
   schedule       = "0 3 * * *"
   destination_id = dokploy_destination.backups.id
 
   keep_latest_count = 30
 }
 
-# Redis has no logical dump in Dokploy. This resource rejects it at plan
-# time; use dokploy_volume_backup instead.
+# Redis has no logical dump in Dokploy. This resource rejects a Redis parent
+# at plan time. Use dokploy_volume_backup instead.

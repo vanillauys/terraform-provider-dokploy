@@ -48,21 +48,21 @@ func (d *applicationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"id": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Application id. Set either this or both `environment_id` and `name`.",
+				Description: "Application id. Set this attribute, or set both `environment_id` and `name`.",
 			},
 			"name": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Exact application name, searched within `environment_id`. Errors when zero or multiple applications match.",
+				Description: "Exact application name. The lookup searches within `environment_id` and errors when zero or many applications match.",
 			},
-			"app_name":    schema.StringAttribute{Computed: true, Description: "Dokploy-internal app name."},
+			"app_name":    schema.StringAttribute{Computed: true, Description: "Internal Dokploy app name."},
 			"description": schema.StringAttribute{Computed: true, Description: "Description."},
 			"environment_id": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
 				Description: "Id of the environment to search. Required with `name`.",
 			},
-			"source_type": schema.StringAttribute{Computed: true, Description: "Configured source type (github, git, docker)."},
+			"source_type": schema.StringAttribute{Computed: true, Description: "Configured source type: `github`, `git`, or `docker`."},
 			"status":      schema.StringAttribute{Computed: true, Description: "Application status."},
 			"created_at":  schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
 			// Marked sensitive, unlike the resource's `env`. On the resource
@@ -77,8 +77,8 @@ func (d *applicationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"env": schema.StringAttribute{
 				Computed:  true,
 				Sensitive: true,
-				Description: "Environment variables (multiline `KEY=value`), exactly as stored in Dokploy. " +
-					"Marked sensitive because it typically holds credentials that this provider did not author; it is redacted in plan output but, like all Terraform data, stored in plain text in state.",
+				Description: "Environment variables as multiline `KEY=value` lines, exactly as Dokploy stores them. " +
+					"The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.",
 			},
 		},
 	}

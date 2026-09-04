@@ -101,16 +101,16 @@ func (p *DokployProvider) Schema(_ context.Context, _ provider.SchemaRequest, re
 		Attributes: map[string]schema.Attribute{
 			"endpoint": schema.StringAttribute{
 				Optional:    true,
-				Description: "Base URL of the Dokploy server, e.g. `https://dokploy.example.com`. Falls back to the `DOKPLOY_ENDPOINT` environment variable.",
+				Description: "Base URL of the Dokploy server, for example `https://dokploy.example.com`. If unset, the provider reads the `DOKPLOY_ENDPOINT` environment variable.",
 			},
 			"api_key": schema.StringAttribute{
 				Optional:    true,
 				Sensitive:   true,
-				Description: "Dokploy API key, sent as the `x-api-key` header. Falls back to the `DOKPLOY_API_KEY` environment variable.",
+				Description: "Dokploy API key. The provider sends it as the `x-api-key` header. If unset, the provider reads the `DOKPLOY_API_KEY` environment variable.",
 			},
 			"insecure": schema.BoolAttribute{
 				Optional:    true,
-				Description: "Skip TLS certificate verification (for self-signed endpoints). Defaults to `false`.",
+				Description: "Skip the TLS certificate verification, for self-signed endpoints. Defaults to `false`.",
 			},
 		},
 	}

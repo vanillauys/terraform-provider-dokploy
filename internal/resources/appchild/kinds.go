@@ -36,7 +36,7 @@ func flattenPort(p *client.Port, m *PortModel) {
 func PortKind() Kind[PortModel] {
 	return Kind[PortModel]{
 		Name:        "port",
-		Description: "A published port on a Dokploy application, mapping a host port to a container port.",
+		Description: "A published port on a Dokploy application. It maps a host port to a container port.",
 		Attributes: map[string]schema.Attribute{
 			"published_port": schema.Int64Attribute{
 				Required:    true,
@@ -44,7 +44,7 @@ func PortKind() Kind[PortModel] {
 			},
 			"target_port": schema.Int64Attribute{
 				Required:    true,
-				Description: "Port the container listens on.",
+				Description: "Port that the container listens on.",
 			},
 			"protocol": schema.StringAttribute{
 				Optional: true, Computed: true, Default: stringdefault.StaticString("tcp"),
@@ -119,22 +119,22 @@ func RedirectKind() Kind[RedirectModel] {
 		Name: "redirect",
 		Description: "A Traefik regex redirect on a Dokploy application.\n\n" +
 			"~> Redirects are not unique. Dokploy allows two identical redirects on one application, " +
-			"and `redirects.create` does not return the record it made, so this provider identifies a " +
-			"newly created redirect by diffing the application's redirect list around the call. " +
-			"Creating redirects through the Dokploy UI while an apply is running can make that ambiguous, " +
+			"and `redirects.create` does not return the new record. The provider therefore identifies a " +
+			"new redirect from a comparison of the redirect list of the application before and after the call. " +
+			"A redirect from the Dokploy UI during an apply can make that comparison ambiguous, " +
 			"and the provider errors rather than guessing.",
 		Attributes: map[string]schema.Attribute{
 			"regex": schema.StringAttribute{
 				Required:    true,
-				Description: "Path regex to match, e.g. `^/old/(.*)`.",
+				Description: "Path regex to match, for example `^/old/(.*)`.",
 			},
 			"replacement": schema.StringAttribute{
 				Required:    true,
-				Description: "Replacement path, e.g. `/new/$1`.",
+				Description: "Replacement path, for example `/new/$1`.",
 			},
 			"permanent": schema.BoolAttribute{
 				Optional: true, Computed: true, Default: booldefault.StaticBool(false),
-				Description: "Issue a permanent (308) redirect rather than a temporary (307) one.",
+				Description: "Issue a permanent redirect (308) instead of a temporary one (307).",
 			},
 		},
 		ID:    func(m *RedirectModel) string { return m.ID.ValueString() },
@@ -193,10 +193,10 @@ func flattenSecurity(s *client.Security, m *SecurityModel) {
 func SecurityKind() Kind[SecurityModel] {
 	return Kind[SecurityModel]{
 		Name: "security",
-		Description: "HTTP basic-auth credentials protecting a Dokploy application.\n\n" +
-			"~> Dokploy stores and returns `password` in cleartext. The attribute is marked sensitive so " +
-			"Terraform will not print it, but it is readable by anyone with API access to the instance, " +
-			"and it is written to Terraform state in cleartext like any other attribute.",
+		Description: "HTTP basic-auth credentials that protect a Dokploy application.\n\n" +
+			"~> Dokploy stores and returns `password` in cleartext. The attribute is sensitive, so " +
+			"Terraform does not print it, but anyone with API access to the server can read it, " +
+			"and the Terraform state holds it in cleartext like any other attribute.",
 		Attributes: map[string]schema.Attribute{
 			"username": schema.StringAttribute{
 				Required:    true,

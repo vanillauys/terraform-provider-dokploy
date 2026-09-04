@@ -3,15 +3,15 @@
 page_title: "dokploy_libsql Data Source - dokploy"
 subcategory: ""
 description: |-
-  Looks up a Dokploy libsql service (a distributed SQLite / sqld database) already registered in Dokploy, by id or by name within an environment.
-  ~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql service shares a name this data source fails rather than picking one; look the record up by id in that case.
+  Looks up a Dokploy libsql service (a distributed SQLite / sqld database) that already exists in Dokploy, by id or by name within an environment.
+  ~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql service shares a name, this data source fails instead of a guess. Look the record up by id in that case.
 ---
 
 # dokploy_libsql (Data Source)
 
-Looks up a Dokploy libsql service (a distributed SQLite / `sqld` database) already registered in Dokploy, by id or by name within an environment.
+Looks up a Dokploy libsql service (a distributed SQLite / `sqld` database) that already exists in Dokploy, by id or by name within an environment.
 
-~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql service shares a name this data source fails rather than picking one; look the record up by `id` in that case.
+~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql service shares a name, this data source fails instead of a guess. Look the record up by `id` in that case.
 
 ## Example Usage
 
@@ -32,30 +32,30 @@ data "dokploy_libsql" "by_name" {
 
 ### Optional
 
-- `environment_id` (String) Id of the environment to search when looking up by `name`. Required together with `name`.
-- `id` (String) LibSQL service id. Set this to look it up by id, or leave it unset and set `name` and `environment_id`.
-- `name` (String) Display name of the libsql service. Exactly one of `id` or `name` must be set. `environment_id` is required together with `name`.
+- `environment_id` (String) Id of the environment to search for a lookup by `name`. Required together with `name`.
+- `id` (String) LibSQL service id. Set it for a lookup by id, or leave it unset and set `name` and `environment_id`.
+- `name` (String) Display name of the libsql service. Set exactly one of `id` or `name`. `name` requires `environment_id`.
 
 ### Read-Only
 
-- `app_name` (String) Dokploy-internal app name. Always server-generated.
+- `app_name` (String) Internal Dokploy app name. The server always generates it.
 - `command` (String) Container command override, if any.
-- `cpu_limit` (String) Hard CPU limit, Docker-style (e.g. `"0.5"`).
-- `cpu_reservation` (String) Reserved CPU, Docker-style (e.g. `"0.25"`).
-- `created_at` (String) Creation timestamp (server-side).
+- `cpu_limit` (String) Hard CPU limit in Docker notation, for example `"0.5"`.
+- `cpu_reservation` (String) Reserved CPU in Docker notation, for example `"0.25"`.
+- `created_at` (String) Creation timestamp from the server.
 - `database_password` (String, Sensitive) LibSQL database password.
 - `database_user` (String) LibSQL database user.
 - `description` (String) Free-form description.
-- `docker_image` (String) LibSQL docker image.
-- `enable_namespaces` (Boolean) Whether sqld namespaces (multi-database mode) are enabled.
-- `env` (String) Extra environment variables in Dokploy's native multiline `KEY=value` format.
-- `external_admin_port` (Number) Host port the libsql admin interface is exposed on, if any.
-- `external_grpc_port` (Number) Host port the libsql gRPC replication interface is exposed on, if any.
-- `external_port` (Number) Host port the libsql HTTP interface is exposed on, if any.
-- `memory_limit` (String) Hard memory limit, Docker-style (e.g. `"512m"`).
-- `memory_reservation` (String) Reserved memory, Docker-style (e.g. `"256m"`).
+- `docker_image` (String) LibSQL Docker image.
+- `enable_namespaces` (Boolean) Whether sqld namespaces, the multi-database mode, are enabled.
+- `env` (String) Extra environment variables in the native Dokploy multiline `KEY=value` format.
+- `external_admin_port` (Number) Host port for the libsql admin interface, if any.
+- `external_grpc_port` (Number) Host port for the libsql gRPC replication interface, if any.
+- `external_port` (Number) Host port for the libsql HTTP interface, if any.
+- `memory_limit` (String) Hard memory limit in Docker notation, for example `"512m"`.
+- `memory_reservation` (String) Reserved memory in Docker notation, for example `"256m"`.
 - `replicas` (Number) Number of container replicas.
-- `server_id` (String) Remote server the service runs on, if not the Dokploy host.
+- `server_id` (String) Id of the remote server that runs the service, if not the Dokploy host.
 - `sqld_node` (String) Topology role: `primary` or `replica`.
 - `sqld_primary_url` (String) URL of the primary sqld node. Set only when `sqld_node` is `replica`.
-- `status` (String) Service status reported by Dokploy.
+- `status` (String) Service status from Dokploy.

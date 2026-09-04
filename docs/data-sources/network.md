@@ -3,7 +3,7 @@
 page_title: "dokploy_network Data Source - dokploy"
 subcategory: ""
 description: |-
-  Looks up a Docker network already registered in Dokploy, whether created by this provider or by the Dokploy UI (including a network imported through the UI).
+  Looks up a Docker network that already exists in Dokploy, whether this provider or the Dokploy UI created it. That includes a network that was imported through the UI.
   
   data "dokploy_network" "shared" {
     name = "shared-network"
@@ -14,13 +14,13 @@ description: |-
     # ...
   }
   
-  ~> ipam is not exposed here. A consumer needs only the id to attach a service to the network; copying a shared network's address pools into every consumer's state widens their blast radius for no gain.
-  ~> Network names are unique per server, not install-wide: Docker enforces the name uniquely per daemon, and on a multi-server install each remote server runs its own daemon. On a single-server install a name lookup never needs server_id to disambiguate; on a multi-server install, set server_id to disambiguate a name found on more than one server. server_id can only be set together with name, not id.
+  ~> The data source does not expose ipam. A consumer needs only the id to attach a service to the network. A copy of the address pools of a shared network in the state of each consumer widens their exposure with no gain.
+  ~> Network names are unique per server, not per Dokploy installation. Docker enforces a unique name per daemon, and on a multi-server installation each remote server runs its own daemon. On a single-server installation, a name lookup never needs server_id. On a multi-server installation, set server_id when the same name exists on more than one server. server_id is valid only together with name, not with id.
 ---
 
 # dokploy_network (Data Source)
 
-Looks up a Docker network already registered in Dokploy, whether created by this provider or by the Dokploy UI (including a network imported through the UI).
+Looks up a Docker network that already exists in Dokploy, whether this provider or the Dokploy UI created it. That includes a network that was imported through the UI.
 
 ```terraform
 data "dokploy_network" "shared" {
@@ -33,14 +33,14 @@ resource "dokploy_application" "app" {
 }
 ```
 
-~> **`ipam` is not exposed here.** A consumer needs only the id to attach a service to the network; copying a shared network's address pools into every consumer's state widens their blast radius for no gain.
+~> **The data source does not expose `ipam`.** A consumer needs only the id to attach a service to the network. A copy of the address pools of a shared network in the state of each consumer widens their exposure with no gain.
 
-~> Network names are unique per server, not install-wide: Docker enforces the name uniquely per daemon, and on a multi-server install each remote server runs its own daemon. On a single-server install a name lookup never needs `server_id` to disambiguate; on a multi-server install, set `server_id` to disambiguate a name found on more than one server. `server_id` can only be set together with `name`, not `id`.
+~> Network names are unique per server, not per Dokploy installation. Docker enforces a unique name per daemon, and on a multi-server installation each remote server runs its own daemon. On a single-server installation, a name lookup never needs `server_id`. On a multi-server installation, set `server_id` when the same name exists on more than one server. `server_id` is valid only together with `name`, not with `id`.
 
 ## Example Usage
 
 ```terraform
-# Look up a network created (or imported) in the Dokploy UI.
+# Look up a network that the Dokploy UI created or imported.
 data "dokploy_network" "shared" {
   name = "backend-net"
 }
@@ -51,16 +51,16 @@ data "dokploy_network" "shared" {
 
 ### Optional
 
-- `id` (String) Network id. Set this to look it up by id, or leave it unset and set `name`.
-- `name` (String) Network name, unique per server in Dokploy. Exactly one of `id` or `name` must be set.
-- `server_id` (String) Id of the remote server to narrow the `name` lookup to. Only usable together with `name`; conflicts with `id`.
+- `id` (String) Network id. Set it for a lookup by id, or leave it unset and set `name`.
+- `name` (String) Network name, unique per server in Dokploy. Set exactly one of `id` or `name`.
+- `server_id` (String) Id of the remote server that narrows the `name` lookup. Valid only together with `name`. It conflicts with `id`.
 
 ### Read-Only
 
-- `attachable` (Boolean) Whether manual container attachment is allowed (overlay networks).
-- `created_at` (String) Creation timestamp (server-side).
+- `attachable` (Boolean) Whether manual container attachment is allowed, for overlay networks.
+- `created_at` (String) Creation timestamp from the server.
 - `driver` (String) Network driver: `bridge` or `overlay`.
 - `enable_ipv4` (Boolean) Whether IPv4 is enabled on the network.
 - `enable_ipv6` (Boolean) Whether IPv6 is enabled on the network.
 - `internal` (Boolean) Whether external access to the network is restricted.
-- `mtu` (Number) MTU for the network. Null when Docker's default applies.
+- `mtu` (Number) MTU for the network. Null when the Docker default applies.
