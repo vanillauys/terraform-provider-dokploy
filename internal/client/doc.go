@@ -1320,4 +1320,15 @@
 // both are server-side build details with no API shape. schedule.update in
 // cloud mode replaces the repeatable job instead of adding one; the
 // self-hosted path is unchanged.
+//
+// # project.one and project.all: isDefault on the nested environments (probed 2026-09-05)
+//
+// Both endpoints return each nested environment with an isDefault boolean
+// next to environmentId and name. The rig (v0.30.5) returned isDefault true
+// on the production environment of a fresh project. environment.update
+// accepts no isDefault field (census), and the default environment refuses
+// deletion, so the flag stays on one environment for the life of the
+// project. dokploy_project and its data source derive
+// production_environment_id from this flag, not from the name "production",
+// which a user can change.
 package client

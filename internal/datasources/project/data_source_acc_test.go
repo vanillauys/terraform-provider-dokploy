@@ -43,6 +43,10 @@ data "dokploy_project" "by_name" {
 					resource.TestCheckResourceAttr("data.dokploy_project.by_id", "name", name),
 					resource.TestCheckResourceAttrPair("data.dokploy_project.by_name", "id", "dokploy_project.test", "id"),
 					resource.TestCheckResourceAttrSet("data.dokploy_project.by_name", "environments.0.id"),
+					// The resource test proves that production_environment_id is
+					// the id of the production entry; both lookups must agree with it.
+					resource.TestCheckResourceAttrPair("data.dokploy_project.by_id", "production_environment_id", "dokploy_project.test", "production_environment_id"),
+					resource.TestCheckResourceAttrPair("data.dokploy_project.by_name", "production_environment_id", "dokploy_project.test", "production_environment_id"),
 				),
 			},
 		},

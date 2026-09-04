@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `dokploy_project` and the `dokploy_project` data source expose
+  `production_environment_id`: the id of the environment that carries the
+  server's `isDefault` flag. Dokploy creates that environment with the
+  project and names it `production`. The provider selects it with the
+  flag, not with the name, so a rename of the environment does not change
+  the value. When no environment carries the flag, the attribute is null
+  and the provider adds a warning. Use it in place of the
+  `[for e in dokploy_project.example.environments : e.id if e.name == "production"][0]`
+  expression. On the resource, the attribute keeps its prior value in the
+  plan of a project update. That matters: `environments` is unknown in the
+  plan of every project update, so the for-expression also becomes
+  unknown, and an unknown `environment_id` forces a replacement of the
+  service that references it. Live check on the rig (Dokploy v0.30.5): a
+  change to the project description planned a destroy and re-create of an
+  application that used the for-expression. With
+  `production_environment_id` the same change planned an in-place project
+  update only. Move every `environment_id` to the new attribute.
+
 ## [0.10.4] - 2026-09-04
 
 ### Changed

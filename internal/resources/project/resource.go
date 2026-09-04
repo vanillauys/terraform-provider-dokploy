@@ -34,7 +34,7 @@ func (r *projectResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "A Dokploy project. Dokploy creates a default `production` environment with each project. Service resources reference its id through the `environments` attribute.",
+		Description: "A Dokploy project. Dokploy creates a default `production` environment with each project. Service resources reference its id through `production_environment_id`. The `environments` attribute lists every environment in the project.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:    true,
@@ -73,6 +73,17 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					},
 				},
 			},
+			// The default environment cannot be deleted, and environment.update
+			// has no isDefault field (census, v0.30.5), so the id is fixed for
+			// the life of the project. Pinning the prior value keeps a project
+			// update from planning "(known after apply)" here, which would
+			// otherwise flow into every environment_id that references it and
+			// force a replacement of those services.
+			"production_environment_id": schema.StringAttribute{
+				Computed:      true,
+				Description:   "Id of the default environment. Dokploy creates it with the project and names it `production`. The provider selects it with the server's `isDefault` flag, not by name, so a rename does not change the value. Use it as the `environment_id` of a service in the default environment.",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
 		},
 	}
 }
@@ -107,6 +118,7 @@ func (r *projectResource) Create(ctx context.Context, req resource.CreateRequest
 		// the next apply converges. Unknown computed fields become null.
 		plan.CreatedAt = types.StringNull()
 		plan.Environments = types.ListNull(EnvironmentObjectType)
+		plan.ProductionEnvironmentID = types.StringNull()
 		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.AddError("Reading project after create",
 			fmt.Sprintf("project %s was created, but reading it back failed: %s. The next apply will converge.", created.ProjectID, err))

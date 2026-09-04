@@ -26,11 +26,12 @@ type projectDataSource struct {
 }
 
 type dataSourceModel struct {
-	ID           types.String `tfsdk:"id"`
-	Name         types.String `tfsdk:"name"`
-	Description  types.String `tfsdk:"description"`
-	CreatedAt    types.String `tfsdk:"created_at"`
-	Environments types.List   `tfsdk:"environments"`
+	ID                      types.String `tfsdk:"id"`
+	Name                    types.String `tfsdk:"name"`
+	Description             types.String `tfsdk:"description"`
+	CreatedAt               types.String `tfsdk:"created_at"`
+	Environments            types.List   `tfsdk:"environments"`
+	ProductionEnvironmentID types.String `tfsdk:"production_environment_id"`
 }
 
 func NewDataSource() datasource.DataSource { return &projectDataSource{} }
@@ -56,6 +57,10 @@ func (d *projectDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 						"name": schema.StringAttribute{Computed: true, Description: "Environment name."},
 					},
 				},
+			},
+			"production_environment_id": schema.StringAttribute{
+				Computed:    true,
+				Description: "Id of the default environment. Dokploy creates it with the project and names it `production`. The provider selects it with the server's `isDefault` flag, not by name, so a rename does not change the value. Use it as the `environment_id` of a service in the default environment.",
 			},
 		},
 	}
@@ -129,5 +134,8 @@ func (d *projectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	list, diags := resproject.BuildEnvironments(p.Environments)
 	resp.Diagnostics.Append(diags...)
 	config.Environments = list
+	prod, diags := resproject.ProductionEnvironmentID(p.ProjectID, p.Environments)
+	resp.Diagnostics.Append(diags...)
+	config.ProductionEnvironmentID = prod
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

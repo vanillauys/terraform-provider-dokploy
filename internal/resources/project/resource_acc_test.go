@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -53,6 +54,35 @@ func getAccProject(s *terraform.State) (*client.Project, error) {
 	return c.GetProject(context.Background(), rs.Primary.ID)
 }
 
+// checkProductionEnvironmentID asserts that production_environment_id equals
+// the id of the `environments` entry named production. A fresh project has
+// exactly that one environment, so the check also proves that the isDefault
+// flag and the name agree on a new project.
+func checkProductionEnvironmentID(name string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[name]
+		if !ok {
+			return fmt.Errorf("%s not found in state", name)
+		}
+		attrs := rs.Primary.Attributes
+		n, err := strconv.Atoi(attrs["environments.#"])
+		if err != nil {
+			return fmt.Errorf("%s: environments.# = %q", name, attrs["environments.#"])
+		}
+		for i := 0; i < n; i++ {
+			prefix := fmt.Sprintf("environments.%d.", i)
+			if attrs[prefix+"name"] != "production" {
+				continue
+			}
+			if got, want := attrs["production_environment_id"], attrs[prefix+"id"]; got != want {
+				return fmt.Errorf("%s: production_environment_id = %q, want %q", name, got, want)
+			}
+			return nil
+		}
+		return fmt.Errorf("%s: no environment named production in state", name)
+	}
+}
+
 func TestAccProject_lifecycle(t *testing.T) {
 	name := acctest.RandomName("proj")
 	// description is passed through so a step can drop it entirely, which is
@@ -76,6 +106,7 @@ resource "dokploy_project" "test" {
 					resource.TestCheckResourceAttr("dokploy_project.test", "name", name),
 					resource.TestCheckResourceAttrSet("dokploy_project.test", "created_at"),
 					resource.TestCheckResourceAttrSet("dokploy_project.test", "environments.0.id"),
+					checkProductionEnvironmentID("dokploy_project.test"),
 					func(s *terraform.State) error { // verify via direct API read (spec §7)
 						_, err := getAccProject(s)
 						return err
