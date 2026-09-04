@@ -8,7 +8,7 @@ description: |-
 # Deploy semantics
 
 Every service resource in this provider (applications, compose services and
-all five database engines) carries two attributes that exist only in
+all six database engines) carries two attributes that exist only in
 Terraform, never on the Dokploy server:
 
 - `deploy_on_change` (boolean, default `true`) - deploy after create, and
@@ -30,6 +30,16 @@ terminal status, `deployment_timeout` expires, or the context is cancelled.
   running. Terraform has stopped waiting; Dokploy has not stopped working.
 
 An apply that looks hung is almost always a deploy in progress.
+
+## Database deploys fail when the container never starts
+
+Since Dokploy v0.30.5, a database deploy waits for the service's container to
+reach the `running` state. The wait stops after 45 seconds. If the container
+exits or restarts in that time, the deploy call fails with a `did not
+converge` error, the service status becomes `error`, and the apply fails.
+Before v0.30.5 the same deploy reported success as soon as the service was
+created. This applies to all six database engines. Application and compose
+deploys are not affected.
 
 ## Turning it off
 
@@ -53,7 +63,7 @@ MySQL's and MariaDB's root password is server-generated when left unset.
 ## Two engines whose default image does not exist
 
 MariaDB's and MongoDB's server-side default `docker_image` does not exist on
-Docker Hub: `mariadb:6` and `mongo:15` as of Dokploy v0.29.13.
+Docker Hub: `mariadb:6` and `mongo:15`, still the defaults as of Dokploy v0.30.5.
 
 Leaving `docker_image` unset on [`dokploy_mariadb`](../resources/mariadb) or
 [`dokploy_mongo`](../resources/mongo) and then
@@ -73,7 +83,7 @@ resource "dokploy_mariadb" "db" {
 
 `mongo:7` is the equivalent for `dokploy_mongo`. The other three engines have
 usable server defaults, but pinning an explicit tag is good practice for all
-five.
+six.
 
 ## Compose: `command` replaces the deploy invocation
 
@@ -95,3 +105,7 @@ state; a deploy is an event.
 The deploy this provider does perform is a consequence of a state change, which
 is why it is controlled by `deploy_on_change` rather than by a resource of its
 own.
+
+Since Dokploy v0.30.5, `compose.deploy` also accepts a `freshVolumes` flag,
+which removes the stack's volumes before the deploy. That is a destructive
+one-shot action, and this provider never sends it.

@@ -184,7 +184,7 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 		},
 		"trigger_type": schema.StringAttribute{
 			Optional:    true,
-			Description: "Which git event triggers an auto-deploy.",
+			Description: "Which git event triggers an auto-deploy: `push` or `tag`.",
 			Validators:  []validator.String{stringvalidator.OneOf("push", "tag")},
 		},
 		"watch_paths": schema.ListAttribute{

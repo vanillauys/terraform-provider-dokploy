@@ -10,7 +10,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.6"
+      version = "~> 0.10"
     }
   }
 }
@@ -25,7 +25,7 @@ See the [registry documentation](https://registry.terraform.io/providers/vanilla
 
 ## Compatibility
 
-Developed and tested against **Dokploy v0.30.3**. The acceptance suite installs
+Developed and tested against **Dokploy v0.30.5**. The acceptance suite installs
 Dokploy with the upstream `install.sh`, which tracks the latest release, so
 newer versions are exercised as they ship; older ones are untested.
 
@@ -65,8 +65,11 @@ What the provider does not model yet, and why.
 
 - **Not everything Dokploy can do is covered yet.** Databases beyond
   PostgreSQL, MySQL, MariaDB, MongoDB, Redis and LibSQL, registries,
-  SSH keys, certificates, notifications and remote servers all still have to
-  be managed in the Dokploy UI.
+  SSH keys, certificates, notifications, DNS providers and remote servers all
+  still have to be managed in the Dokploy UI.
+- **`dokploy_vault_provider` models six provider types.** Dokploy v0.30.5
+  adds a seventh, `phase` (Phase.dev). The resource cannot create or update a
+  Phase vault provider yet; manage one in the Dokploy UI.
 - **`dokploy_backup` cannot back up Redis**, because Dokploy has no logical
   dump for it. Use `dokploy_volume_backup`, which snapshots the volume and
   does accept a Redis parent. Backing up the Dokploy instance itself
@@ -92,8 +95,9 @@ What the provider does not model yet, and why.
   every `saveExternalPorts` call while `sqld_node` is `replica`, regardless of
   which ports the request carries.
 - **Names are not unique in Dokploy.** Every data source that looks up by
-  name (project, environment, application, destination, and all five database
-  engines) errors when more than one record matches, rather than silently
+  name (project, environment, application, destination, network,
+  github_provider, and all six database engines) errors when more than one
+  record matches, rather than silently
   picking one. Domain hosts are not unique either (the same host may be
   attached to more than one domain); there is no `dokploy_domain` data
   source, so nothing looks domains up by host.
@@ -112,5 +116,3 @@ git hooks, test layout, engineering contract). Quick reference:
 - `./acceptance/up.sh && eval "$(./acceptance/bootstrap.sh)" && make testacc` — acceptance tests against a disposable Dokploy (never point these at a real instance)
 - `make docs` — regenerate registry docs
 - `make hooks` — enable the gitleaks pre-commit secret scan (automatic on first `make build`)
-
-Wave-0 scope and the full design live in the project's design spec.

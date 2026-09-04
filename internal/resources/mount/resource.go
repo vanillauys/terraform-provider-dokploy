@@ -65,7 +65,7 @@ func (r *mountResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	requiresReplace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
 		Description: "A volume, bind or file mount attached to a Dokploy service.\n\n" +
-			"~> **Database services create their own data mount.** A `dokploy_postgres` (or mysql/mariadb/mongo/redis) " +
+			"~> **Database services create their own data mount.** A `dokploy_postgres` (or mysql/mariadb/mongo/redis/libsql) " +
 			"owns a volume mount for its data directory from the moment it is created, without anything asking for it. " +
 			"That mount belongs to the server, not to Terraform — do not import it or declare it here.",
 		Attributes: map[string]schema.Attribute{

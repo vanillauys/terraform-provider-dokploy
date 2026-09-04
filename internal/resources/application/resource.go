@@ -144,8 +144,8 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				"type": schema.StringAttribute{
 					Required: true,
 					Description: "Build type: one of `nixpacks`, `dockerfile`, `heroku_buildpacks`, `paketo_buildpacks`, `static`, `railpack`. " +
-						"Note that `heroku_buildpacks` and `railpack` take a builder version in Dokploy which this provider does not expose; " +
-						"it is always sent unset, so those two build types always use the server's default builder version and any version chosen in the Dokploy UI is reset on apply.",
+						"`heroku_buildpacks` and `railpack` take a builder version: set `heroku_version` or `railpack_version`. " +
+						"When the version attribute is omitted, the server's default builder version applies, and a version chosen in the Dokploy UI is reset on apply.",
 					Validators: []validator.String{
 						stringvalidator.OneOf("nixpacks", "dockerfile", "heroku_buildpacks", "paketo_buildpacks", "static", "railpack"),
 					},
@@ -171,7 +171,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		"env": schema.StringAttribute{
 			Optional: true,
 			Description: "Environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for secret values. " +
-				"Setting this also clears the application's **build secrets** in Dokploy, which this resource does not expose.",
+				"`build_secrets` is written in the same request, so an omitted `build_secrets` clears the server's value. Set it explicitly to keep it.",
 		},
 		"build_args": schema.StringAttribute{
 			Optional:    true,

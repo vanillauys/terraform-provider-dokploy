@@ -1,1 +1,1 @@
-terraform import dokploy_compose.web V1StGXR8_Z5jdHi6B-myT
+terraform import dokploy_compose.inline V1StGXR8_Z5jdHi6B-myT

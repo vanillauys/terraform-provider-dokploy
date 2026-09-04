@@ -3,7 +3,7 @@
 page_title: "dokploy_vault_provider Resource - dokploy"
 subcategory: ""
 description: |-
-  A secret-vault connection Dokploy can pull runtime secrets from at deploy time, referenced from other resources' env attributes as ${{vault.<name>.<key>}} - a plain string this provider does not parse or validate. One of six provider types: hashicorp (also covers OpenBao, which speaks the same wire protocol), infisical, aws, doppler, azure, scaleway.
+  A secret-vault connection Dokploy can pull runtime secrets from at deploy time, referenced from other resources' env attributes as ${{vault.<name>.<key>}} - a plain string this provider does not parse or validate. One of six provider types: hashicorp (also covers OpenBao, which speaks the same wire protocol), infisical, aws, doppler, azure, scaleway. Dokploy v0.30.5 adds a seventh type, phase (Phase.dev), which this resource does not model yet.
   ~> Secrets are masked on every read, never echoed back. Dokploy returns every secret field in this resource's config blocks as the literal string ********, on create, read, and update alike. This provider cannot detect a config value changed in the Dokploy UI - Read leaves every config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage a vault provider's config only through Terraform. A UI-side edit persists undetected until the next apply that modifies this resource; that apply's full-body update overwrites it with Terraform's config.
   ~> A config block cannot be recovered by terraform import. The imported resource's config blocks are left null; re-supply the block matching the provider's actual type in configuration, and the first terraform apply writes it as a full-body update, not a partial patch.
   ~> Dokploy never validates vault credentials on create or update, for any provider type - only verify_connection = true reaches the real vault, through vaultProvider.testConnection, before the write. A misconfigured vault provider otherwise applies successfully and only fails the next deploy that needs a secret from it.
@@ -11,7 +11,7 @@ description: |-
 
 # dokploy_vault_provider (Resource)
 
-A secret-vault connection Dokploy can pull runtime secrets from at deploy time, referenced from other resources' `env` attributes as `${{vault.<name>.<key>}}` - a plain string this provider does not parse or validate. One of six provider types: `hashicorp` (also covers OpenBao, which speaks the same wire protocol), `infisical`, `aws`, `doppler`, `azure`, `scaleway`.
+A secret-vault connection Dokploy can pull runtime secrets from at deploy time, referenced from other resources' `env` attributes as `${{vault.<name>.<key>}}` - a plain string this provider does not parse or validate. One of six provider types: `hashicorp` (also covers OpenBao, which speaks the same wire protocol), `infisical`, `aws`, `doppler`, `azure`, `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), which this resource does not model yet.
 
 ~> **Secrets are masked on every read, never echoed back.** Dokploy returns every secret field in this resource's config blocks as the literal string `********`, on create, read, and update alike. This provider cannot detect a config value changed in the Dokploy UI - Read leaves every config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage a vault provider's config only through Terraform. A UI-side edit persists undetected until the next apply that modifies this resource; that apply's full-body update overwrites it with Terraform's config.
 
@@ -70,17 +70,17 @@ resource "dokploy_vault_provider" "secrets" {
 
 ### Required
 
-- `assignments` (Attributes List) Projects (and optionally specific environments within them) this vault provider is available to. An empty list is legal - `assignments = []` is accepted and echoed back by the server (internal/client/doc.go, wave 6c gate E). (see [below for nested schema](#nestedatt--assignments))
-- `name` (String) Display name, 1-64 characters, matching `^[a-zA-Z0-9_-]+$`. Dokploy rejects a duplicate name; this provider pre-checks for one before ever sending a create request, so a collision fails cleanly rather than through the server's raw error (internal/client/doc.go, wave 6c).
+- `assignments` (Attributes List) Projects (and optionally specific environments within them) this vault provider is available to. An empty list is legal - `assignments = []` is accepted and echoed back by the server. (see [below for nested schema](#nestedatt--assignments))
+- `name` (String) Display name, 1-64 characters, matching `^[a-zA-Z0-9_-]+$`. Dokploy rejects a duplicate name; this provider pre-checks for one before ever sending a create request, so a collision fails cleanly rather than through the server's raw error.
 
 ### Optional
 
 - `aws` (Attributes) AWS Secrets Manager connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.
 
-~> This block's shape came from the OpenAPI contract alone, not a live probe (internal/client/doc.go, wave 6c) - this resource's own acceptance tests are the first live confirmation of it. (see [below for nested schema](#nestedatt--aws))
+~> This block's shape came from the OpenAPI contract alone, not a live probe - this resource's own acceptance tests are the first live confirmation of it. (see [below for nested schema](#nestedatt--aws))
 - `azure` (Attributes) Azure Key Vault connection. Every field is required at the API - Azure has no optional fields here. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.
 
-~> This block's shape came from the OpenAPI contract alone, not a live probe (internal/client/doc.go, wave 6c). (see [below for nested schema](#nestedatt--azure))
+~> This block's shape came from the OpenAPI contract alone, not a live probe. (see [below for nested schema](#nestedatt--azure))
 - `doppler` (Attributes) Doppler connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set. (see [below for nested schema](#nestedatt--doppler))
 - `hashicorp` (Attributes) HashiCorp Vault or OpenBao connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set. (see [below for nested schema](#nestedatt--hashicorp))
 - `infisical` (Attributes) Infisical connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set. (see [below for nested schema](#nestedatt--infisical))
@@ -101,7 +101,7 @@ Required:
 
 Optional:
 
-- `environment_ids` (Set of String) Ids of specific environments within the project to restrict this assignment to. Omit (or set an empty list) to make every environment in the project eligible; the server stores and echoes an empty set for that case, not null (internal/client/doc.go, wave 6c).
+- `environment_ids` (Set of String) Ids of specific environments within the project to restrict this assignment to. Omit (or set an empty list) to make every environment in the project eligible; the server stores and echoes an empty set for that case, not null.
 
 
 <a id="nestedatt--aws"></a>
@@ -194,8 +194,8 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 ```shell
 # Vault providers import by their own id.
 #
-# Dokploy masks every secret field as "********" on every read (gate R,
-# internal/client/doc.go, wave 6c), so no config block can be recovered by
+# Dokploy masks every secret field as "********" on every read, so no
+# config block can be recovered by
 # import - it is left null in the imported state. Re-supply the block
 # matching the provider's actual type (hashicorp, infisical, aws, doppler,
 # azure, or scaleway) in configuration; the first `terraform apply` after
