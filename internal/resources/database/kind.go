@@ -262,7 +262,7 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 		"name": schema.StringAttribute{Required: true, Description: "Display name of the database service."},
 		"environment_id": schema.StringAttribute{
 			Required:      true,
-			Description:   "Id of the environment that holds this service. See `dokploy_project.environments`.",
+			Description:   "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		"database_password": schema.StringAttribute{

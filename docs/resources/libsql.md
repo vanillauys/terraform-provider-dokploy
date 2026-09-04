@@ -18,7 +18,7 @@ A Dokploy libsql service: a distributed SQLite (`sqld`) database.
 ```terraform
 resource "dokploy_libsql" "example" {
   name              = "edge-db"
-  environment_id    = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id    = dokploy_project.example.production_environment_id
   database_user     = "libsql"
   database_password = var.db_password # use a sensitive variable
   docker_image      = "ghcr.io/tursodatabase/libsql-server:v0.24.32"
@@ -36,7 +36,7 @@ resource "dokploy_libsql" "example" {
 
 - `database_password` (String, Sensitive) LibSQL database password.
 - `database_user` (String) LibSQL database user.
-- `environment_id` (String) Id of the environment that holds this service. See `dokploy_project.environments`.
+- `environment_id` (String) Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.
 - `name` (String) Display name of the libsql service.
 
 ### Optional

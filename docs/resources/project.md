@@ -19,7 +19,7 @@ resource "dokploy_project" "example" {
 }
 
 output "production_environment_id" {
-  value = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  value = dokploy_project.example.production_environment_id
 }
 ```
 

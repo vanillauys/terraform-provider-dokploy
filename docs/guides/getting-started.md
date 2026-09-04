@@ -75,7 +75,7 @@ resource "dokploy_project" "example" {
 
 resource "dokploy_postgres" "db" {
   name              = "app-db"
-  environment_id    = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id    = dokploy_project.example.production_environment_id
   database_name     = "app"
   database_user     = "app"
   database_password = var.db_password
@@ -84,7 +84,7 @@ resource "dokploy_postgres" "db" {
 
 resource "dokploy_application" "web" {
   name           = "web"
-  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id = dokploy_project.example.production_environment_id
 
   docker = {
     image = "traefik/whoami:v1.10"
@@ -110,13 +110,16 @@ The reference has the full schema of each resource:
 [`dokploy_application`](../resources/application), and
 [`dokploy_domain`](../resources/domain).
 
-**Select the environment by name, not by index.** The `environments` list
-keeps the order of the Dokploy API response, and the provider does not sort
-it. `environments[0]` is therefore not fixed to `production`. It is correct
-only while the project has one environment, and it resolves to a different
-environment when a second one exists. The
-`[for e in ... : e.id if e.name == "production"][0]` expression above does not
-depend on the order. This documentation uses that expression throughout.
+**Use `production_environment_id` for the default environment.** Dokploy
+creates that environment with each project and names it `production`. The
+attribute selects it with the server's `isDefault` flag, so a rename does not
+change the value. The `environments` list keeps the order of the Dokploy API
+response, and the provider does not sort it, so `environments[0]` is not fixed
+to `production`. Use the list, or the `dokploy_environment` data source, only
+for an environment that is not the default. Do not derive `environment_id`
+from the list with a `for` expression: a project update marks the list unknown
+in the plan, and an unknown `environment_id` forces a replacement of the
+service.
 
 Declare `var.db_password` as a sensitive variable.
 [Secrets and sensitive values](secrets) explains why the provider does not

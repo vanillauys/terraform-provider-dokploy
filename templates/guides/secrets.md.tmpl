@@ -15,7 +15,7 @@ string. The provider exposes it as a plain string:
 ```hcl
 resource "dokploy_application" "web" {
   name           = "web"
-  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id = dokploy_project.example.production_environment_id
 
   docker = {
     image = "traefik/whoami:v1.10"
@@ -44,7 +44,7 @@ variable "api_token" {
 
 resource "dokploy_application" "web" {
   name           = "web"
-  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id = dokploy_project.example.production_environment_id
 
   docker = {
     image = "traefik/whoami:v1.10"

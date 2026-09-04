@@ -44,7 +44,7 @@ func (d *environmentDataSource) Metadata(_ context.Context, req datasource.Metad
 
 func (d *environmentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Look up a Dokploy environment by id, or by name within a project. The usual purpose is to get the id of the `production` environment that Dokploy creates with each project.",
+		Description: "Look up a Dokploy environment by id, or by name within a project. For the default environment, `dokploy_project.production_environment_id` gives the id without a lookup.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:    true,

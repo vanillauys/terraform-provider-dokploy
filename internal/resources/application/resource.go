@@ -69,7 +69,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		"description": schema.StringAttribute{Optional: true, Description: "Free-form description."},
 		"environment_id": schema.StringAttribute{
 			Required:      true,
-			Description:   "Id of the environment that holds this application. See `dokploy_project.environments`.",
+			Description:   "Id of the environment that holds this application. Use `dokploy_project.production_environment_id` for the default environment.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		"app_name": schema.StringAttribute{

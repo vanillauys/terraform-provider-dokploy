@@ -15,7 +15,7 @@ A MongoDB database service in a Dokploy environment.
 ```terraform
 resource "dokploy_mongo" "example" {
   name              = "app-db"
-  environment_id    = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id    = dokploy_project.example.production_environment_id
   database_user     = "app"
   database_password = var.db_password # use a sensitive variable
   docker_image      = "mongo:7"
@@ -33,7 +33,7 @@ resource "dokploy_mongo" "example" {
 
 - `database_password` (String, Sensitive) MongoDB password. A change starts a redeploy.
 - `database_user` (String) MongoDB user.
-- `environment_id` (String) Id of the environment that holds this service. See `dokploy_project.environments`.
+- `environment_id` (String) Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.
 - `name` (String) Display name of the database service.
 
 ### Optional

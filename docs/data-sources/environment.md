@@ -3,12 +3,12 @@
 page_title: "dokploy_environment Data Source - dokploy"
 subcategory: ""
 description: |-
-  Look up a Dokploy environment by id, or by name within a project. The usual purpose is to get the id of the production environment that Dokploy creates with each project.
+  Look up a Dokploy environment by id, or by name within a project. For the default environment, dokploy_project.production_environment_id gives the id without a lookup.
 ---
 
 # dokploy_environment (Data Source)
 
-Look up a Dokploy environment by id, or by name within a project. The usual purpose is to get the id of the `production` environment that Dokploy creates with each project.
+Look up a Dokploy environment by id, or by name within a project. For the default environment, `dokploy_project.production_environment_id` gives the id without a lookup.
 
 ## Example Usage
 

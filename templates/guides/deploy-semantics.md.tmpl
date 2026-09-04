@@ -76,7 +76,7 @@ such a deploy. Set an explicit tag that exists:
 ```hcl
 resource "dokploy_mariadb" "db" {
   name              = "app-db"
-  environment_id    = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id    = dokploy_project.example.production_environment_id
   database_name     = "app"
   database_user     = "app"
   database_password = var.db_password
