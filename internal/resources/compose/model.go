@@ -65,8 +65,6 @@ type resourceModel struct {
 	WatchPaths                types.List   `tfsdk:"watch_paths"`
 	EnableSubmodules          types.Bool   `tfsdk:"enable_submodules"`
 	Randomize                 types.Bool   `tfsdk:"randomize"`
-	IsolatedDeployment        types.Bool   `tfsdk:"isolated_deployment"`
-	IsolatedDeploymentsVolume types.Bool   `tfsdk:"isolated_deployments_volume"`
 
 	Status    types.String `tfsdk:"status"`
 	CreatedAt types.String `tfsdk:"created_at"`
@@ -120,14 +118,12 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 	m.AutoDeploy = types.BoolPointerValue(c.AutoDeploy)
 	m.TriggerType = tfutil.StringOrNull(c.TriggerType)
 
-	// The other four booleans are NOT NULL server-side - an explicit null is
+	// The other two booleans are NOT NULL server-side - an explicit null is
 	// coerced to false on write (doc.go) - so they resolve to a concrete
 	// bool. Their attributes are Optional+Computed with a false default to
 	// match; leaving them null here would diff against that default forever.
 	m.EnableSubmodules = boolOrFalse(c.EnableSubmodules)
 	m.Randomize = boolOrFalse(c.Randomize)
-	m.IsolatedDeployment = boolOrFalse(c.IsolatedDeployment)
-	m.IsolatedDeploymentsVolume = boolOrFalse(c.IsolatedDeploymentsVolume)
 
 	paths, pathDiags := types.ListValueFrom(ctx, types.StringType, c.WatchPaths)
 	diags.Append(pathDiags...)
@@ -262,8 +258,6 @@ func expandUpdate(ctx context.Context, m *resourceModel) (client.UpdateComposeRe
 		AutoDeploy:                m.AutoDeploy.ValueBoolPointer(),
 		EnableSubmodules:          m.EnableSubmodules.ValueBoolPointer(),
 		Randomize:                 m.Randomize.ValueBoolPointer(),
-		IsolatedDeployment:        m.IsolatedDeployment.ValueBoolPointer(),
-		IsolatedDeploymentsVolume: m.IsolatedDeploymentsVolume.ValueBoolPointer(),
 	}
 
 	// Every source column is sent on every call, including the ones for the

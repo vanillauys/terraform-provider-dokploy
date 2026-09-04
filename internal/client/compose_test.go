@@ -157,8 +157,7 @@ func TestUpdateComposeRequestMarshalsNullsAndEmptyStrings(t *testing.T) {
 	for _, k := range []string{
 		"description", "repository", "owner", "branch", "githubId",
 		"customGitUrl", "customGitBranch", "customGitSSHKeyId", "triggerType",
-		"autoDeploy", "enableSubmodules", "randomize", "isolatedDeployment",
-		"isolatedDeploymentsVolume", "watchPaths",
+		"autoDeploy", "enableSubmodules", "randomize", "watchPaths",
 	} {
 		got, ok := raw[k]
 		if !ok {

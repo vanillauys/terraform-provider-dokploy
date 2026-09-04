@@ -147,8 +147,6 @@ type UpdateComposeRequest struct {
 	AutoDeploy                *bool     `json:"autoDeploy"`
 	EnableSubmodules          *bool     `json:"enableSubmodules"`
 	Randomize                 *bool     `json:"randomize"`
-	IsolatedDeployment        *bool     `json:"isolatedDeployment"`
-	IsolatedDeploymentsVolume *bool     `json:"isolatedDeploymentsVolume"`
 	WatchPaths                *[]string `json:"watchPaths"`
 
 	// v0.30.0, nullable - null clears. See doc.go's "serviceNetworks and

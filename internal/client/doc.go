@@ -1331,4 +1331,11 @@
 // project. dokploy_project and its data source derive
 // production_environment_id from this flag, not from the name "production",
 // which a user can change.
+//
+// ## compose.update keeps isolatedDeployment when the key is absent (probed 2026-09-05)
+//
+// Set both isolatedDeployment and isolatedDeploymentsVolume to true, then
+// send an update with only composeId and name: compose.one read both back
+// as true. Dialect B, like the rest of compose.update. v0.11.0 stopped
+// sending the two fields; the server keeps whatever a v0.10.x apply stored.
 package client

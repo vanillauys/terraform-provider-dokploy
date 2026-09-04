@@ -10,6 +10,7 @@ package compose
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/deploy"
@@ -36,6 +38,7 @@ var (
 	_ resource.ResourceWithConfigure        = (*composeResource)(nil)
 	_ resource.ResourceWithImportState      = (*composeResource)(nil)
 	_ resource.ResourceWithConfigValidators = (*composeResource)(nil)
+	_ resource.ResourceWithUpgradeState     = (*composeResource)(nil)
 )
 
 type composeResource struct {
@@ -192,13 +195,13 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			ElementType: types.StringType,
 			Description: "Auto-deploy only when a change touches one of these paths.",
 		},
-		// These four are Optional+Computed WITH a Default, unlike auto_deploy
+		// These two are Optional+Computed WITH a Default, unlike auto_deploy
 		// and trigger_type above, because their columns are NOT NULL
-		// server-side: an explicit null on any of them is accepted and then
-		// coerced to false (verified live, v0.29.13, 2026-07-29 - set all
-		// four true, send null for each, read back false). A plain Optional
-		// would therefore read back false against a null configuration and
-		// diff forever.
+		// server-side: an explicit null on either of them is accepted and
+		// then coerced to false (verified live, v0.29.13, 2026-07-29, on
+		// these two and on the isolated pair that v0.11.0 removed - set each
+		// true, send null, read back false). A plain Optional would therefore
+		// read back false against a null configuration and diff forever.
 		"enable_submodules": schema.BoolAttribute{
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
 			Description: "Clone git submodules with the repository. Defaults to `false`.",
@@ -207,16 +210,9 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
 			Description: "Randomize the generated resource names with `suffix`. Defaults to `false`.",
 		},
-		"isolated_deployment": schema.BoolAttribute{
-			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
-			DeprecationMessage: "Dokploy v0.30.0 deprecates Isolated Deployment in favor of per-service network attachments. Use service_networks instead.",
-			Description:        "Run the stack in an isolated Docker network. Defaults to `false`. **Deprecated in Dokploy since v0.30.0.** Use `service_networks` instead.",
-		},
-		"isolated_deployments_volume": schema.BoolAttribute{
-			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
-			DeprecationMessage: "Dokploy v0.30.0 deprecates Isolated Deployment in favor of per-service network attachments. Use service_networks instead.",
-			Description:        "Give the isolated deployment its own volume namespace. Defaults to `false`. **Deprecated in Dokploy since v0.30.0.** Use `service_networks` instead.",
-		},
+		// isolated_deployment and isolated_deployments_volume were removed in
+		// v0.11.0 (schema version 1): Dokploy deprecated them in v0.30.0 and
+		// service_networks replaces them. See UpgradeState.
 
 		// v0.30.0. See doc.go's "compose createEnvFile" and "serviceNetworks
 		// and icon on compose.update" sections.
@@ -266,6 +262,9 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	}
 
 	resp.Schema = schema.Schema{
+		// Version 1 (v0.11.0) removed isolated_deployment and
+		// isolated_deployments_volume; see UpgradeState.
+		Version: 1,
 		Description: "A Dokploy compose service: a `docker-compose` project or a Docker Swarm `stack`.\n\n" +
 			"Set exactly one of the `github`, `git`, or `raw` source blocks.\n\n" +
 			"~> Dokploy also supports GitLab, Bitbucket, and Gitea sources. The provider does not model them, for the same " +
@@ -530,4 +529,42 @@ func (r *composeResource) ImportState(ctx context.Context, req resource.ImportSt
 	// nothing server-side to read them back from, so they must be seeded with
 	// their schema defaults or the plan after an import is never empty.
 	resp.Diagnostics.Append(tfutil.ImportDeployDefaults(ctx, &resp.State)...)
+}
+
+// removedInV1 lists the version 0 attributes that the current schema no
+// longer has. Dokploy deprecated Isolated Deployment in v0.30.0 and
+// service_networks replaces it (D3 in the Phase 1 brief).
+var removedInV1 = []string{"isolated_deployment", "isolated_deployments_volume"}
+
+// UpgradeState moves a version 0 state to the current schema. The upgrader
+// works on the raw JSON state: it drops the removed attributes and decodes
+// the rest with the current schema type, so the large compose schema needs
+// no version 0 copy. The server keeps the stored values of the two removed
+// fields; compose.update is dialect B, verified live on v0.30.5 (2026-09-05).
+func (r *composeResource) UpgradeState(_ context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {StateUpgrader: upgradeStateV0},
+	}
+}
+
+func upgradeStateV0(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+	var prior map[string]json.RawMessage
+	if err := json.Unmarshal(req.RawState.JSON, &prior); err != nil {
+		resp.Diagnostics.AddError("Upgrading dokploy_compose state", fmt.Sprintf("decode the version 0 state: %s", err))
+		return
+	}
+	for _, name := range removedInV1 {
+		delete(prior, name)
+	}
+	raw, err := json.Marshal(prior)
+	if err != nil {
+		resp.Diagnostics.AddError("Upgrading dokploy_compose state", fmt.Sprintf("encode the upgraded state: %s", err))
+		return
+	}
+	upgraded, err := tfprotov6.RawState{JSON: raw}.Unmarshal(resp.State.Schema.Type().TerraformType(ctx))
+	if err != nil {
+		resp.Diagnostics.AddError("Upgrading dokploy_compose state", fmt.Sprintf("decode the upgraded state with the current schema: %s", err))
+		return
+	}
+	resp.State.Raw = upgraded
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -176,5 +177,77 @@ func TestSourceBlocksAreNotComputed(t *testing.T) {
 		if attr.Computed {
 			t.Errorf("%s is Optional+Computed, which marks every config-null Computed attribute unknown on every plan", name)
 		}
+	}
+}
+
+// TestUpgradeStateV0DropsRemovedAttributes feeds a version 0 raw state that
+// carries isolated_deployment and isolated_deployments_volume through the
+// upgrader, and asserts that the rest of the state arrives intact under the
+// current schema.
+func TestUpgradeStateV0DropsRemovedAttributes(t *testing.T) {
+	ctx := context.Background()
+	s := testSchema(t)
+	if s.Version != 1 {
+		t.Fatalf("schema version = %d, want 1", s.Version)
+	}
+
+	raw := []byte(`{
+		"id": "c1",
+		"name": "stack",
+		"environment_id": "e1",
+		"compose_path": "./docker-compose.yml",
+		"deploy_on_change": false,
+		"deployment_timeout": "15m",
+		"enable_submodules": true,
+		"randomize": false,
+		"isolated_deployment": true,
+		"isolated_deployments_volume": true,
+		"watch_paths": ["src/**"]
+	}`)
+
+	// Control: without the upgrader the version 0 state does not decode with
+	// the current schema, so the test below proves something.
+	if _, err := (tfprotov6.RawState{JSON: raw}).Unmarshal(s.Type().TerraformType(ctx)); err == nil {
+		t.Fatal("the version 0 state decodes with the current schema; the upgrader has nothing to prove")
+	}
+
+	upgrader, ok := (&composeResource{}).UpgradeState(ctx)[0]
+	if !ok {
+		t.Fatal("no upgrader registered for version 0")
+	}
+	resp := resource.UpgradeStateResponse{State: tfsdk.State{Schema: s}}
+	upgrader.StateUpgrader(ctx, resource.UpgradeStateRequest{RawState: &tfprotov6.RawState{JSON: raw}}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("upgrade: %v", resp.Diagnostics)
+	}
+
+	var m resourceModel
+	if d := resp.State.Get(ctx, &m); d.HasError() {
+		t.Fatalf("read the upgraded state: %v", d)
+	}
+	if m.ID.ValueString() != "c1" || m.Name.ValueString() != "stack" || m.EnvironmentID.ValueString() != "e1" {
+		t.Errorf("identity fields = %v %v %v", m.ID, m.Name, m.EnvironmentID)
+	}
+	if m.DeploymentTimeout.ValueString() != "15m" || m.DeployOnChange.ValueBool() || !m.EnableSubmodules.ValueBool() {
+		t.Errorf("scalar fields = timeout %v deploy_on_change %v enable_submodules %v",
+			m.DeploymentTimeout, m.DeployOnChange, m.EnableSubmodules)
+	}
+	var paths []string
+	if d := m.WatchPaths.ElementsAs(ctx, &paths, false); d.HasError() {
+		t.Fatalf("watch_paths: %v", d)
+	}
+	if len(paths) != 1 || paths[0] != "src/**" {
+		t.Errorf("watch_paths = %v, want [src/**]", paths)
+	}
+	if m.Github != nil || m.Git != nil {
+		t.Errorf("source blocks must stay null: github %v git %v", m.Github, m.Git)
+	}
+
+	// Terraform selects the upgrader on the version number alone, so a
+	// version 0 state that never set the removed attributes must upgrade too.
+	resp = resource.UpgradeStateResponse{State: tfsdk.State{Schema: s}}
+	upgrader.StateUpgrader(ctx, resource.UpgradeStateRequest{RawState: &tfprotov6.RawState{JSON: []byte(`{"id":"c2"}`)}}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("upgrade without the removed attributes: %v", resp.Diagnostics)
 	}
 }

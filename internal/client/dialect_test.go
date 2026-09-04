@@ -67,8 +67,7 @@ var mustAlwaysSend = []struct {
 		"description", "repository", "owner", "branch", "githubId",
 		"customGitUrl", "customGitBranch", "customGitSSHKeyId",
 		"triggerType", "autoDeploy", "enableSubmodules", "randomize",
-		"isolatedDeployment", "isolatedDeploymentsVolume", "watchPaths",
-		"icon", "serviceNetworks",
+		"watchPaths", "icon", "serviceNetworks",
 	}},
 	{SaveComposeEnvironmentRequest{}, []string{"env", "createEnvFile"}},
 	// libsql.update is dialect B: an absent key keeps the stored value.

@@ -193,8 +193,6 @@ func TestAccCompose_optionalAttributesRevert(t *testing.T) {
   watch_paths                 = ["src/**"]
   enable_submodules           = true
   randomize                   = true
-  isolated_deployment         = true
-  isolated_deployments_volume = true
 `),
 			},
 			{
@@ -238,6 +236,44 @@ func TestAccCompose_optionalAttributesRevert(t *testing.T) {
 					}
 					return nil
 				},
+			},
+		},
+	})
+}
+
+// TestAccCompose_upgradeFromV0 creates the stack with v0.10.4, the last
+// release that modeled isolated_deployment and isolated_deployments_volume,
+// with both set to true. It then runs the local build against that state
+// without the two attributes. The state upgrader must drop them from the
+// version 0 state, and the plan must be empty (D3 and D6 in the Phase 1
+// brief). The server keeps the stored true values: compose.update is
+// dialect B, an omitted key keeps the stored value, verified live on
+// v0.30.5 (2026-09-05).
+func TestAccCompose_upgradeFromV0(t *testing.T) {
+	projectName := acctest.RandomName("compose-proj")
+	name := acctest.RandomName("compose-up")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkComposeDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.10.4"},
+				},
+				Config: rawConfig(projectName, name, `
+  isolated_deployment         = true
+  isolated_deployments_volume = true
+`),
+				Check: resource.TestCheckResourceAttr("dokploy_compose.test", "isolated_deployment", "true"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   rawConfig(projectName, name, ``),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckNoResourceAttr("dokploy_compose.test", "isolated_deployment"),
 			},
 		},
 	})
