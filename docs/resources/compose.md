@@ -29,7 +29,7 @@ resource "dokploy_project" "example" {
 # Inline compose file. Dokploy fetches nothing: the YAML below is the source.
 resource "dokploy_compose" "inline" {
   name           = "inline-stack"
-  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id = dokploy_project.example.production_environment_id
   description    = "Defined entirely in Terraform"
 
   raw = {
@@ -51,7 +51,7 @@ data "dokploy_github_provider" "main" {
 
 resource "dokploy_compose" "from_github" {
   name           = "github-stack"
-  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id = dokploy_project.example.production_environment_id
 
   github = {
     repository = "my-stack"
@@ -69,7 +69,7 @@ resource "dokploy_compose" "from_github" {
 # From a plain git remote, run as a Docker Swarm stack.
 resource "dokploy_compose" "from_git" {
   name           = "git-stack"
-  environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
+  environment_id = dokploy_project.example.production_environment_id
   compose_type   = "stack"
 
   git = {
@@ -98,7 +98,7 @@ resource "dokploy_domain" "web" {
 
 ### Required
 
-- `environment_id` (String) Id of the environment that holds this service. See `dokploy_project.environments`.
+- `environment_id` (String) Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.
 - `name` (String) Display name of the compose service.
 
 ### Optional
