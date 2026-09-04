@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -12,11 +13,12 @@ import (
 )
 
 type resourceModel struct {
-	ID           types.String `tfsdk:"id"`
-	Name         types.String `tfsdk:"name"`
-	Description  types.String `tfsdk:"description"`
-	CreatedAt    types.String `tfsdk:"created_at"`
-	Environments types.List   `tfsdk:"environments"`
+	ID                      types.String `tfsdk:"id"`
+	Name                    types.String `tfsdk:"name"`
+	Description             types.String `tfsdk:"description"`
+	CreatedAt               types.String `tfsdk:"created_at"`
+	Environments            types.List   `tfsdk:"environments"`
+	ProductionEnvironmentID types.String `tfsdk:"production_environment_id"`
 }
 
 type environmentModel struct {
@@ -49,6 +51,24 @@ func BuildEnvironments(envs []client.Environment) (types.List, diag.Diagnostics)
 	return list, diags
 }
 
+// ProductionEnvironmentID returns the id of the environment that carries the
+// server's isDefault flag. It is exported for the dokploy_project data
+// source. The selection uses the flag, not the name: a user can rename the
+// default environment, and Dokploy does not enforce unique names. When no
+// environment carries the flag, the value is null and the diagnostics hold
+// a warning; an imported project must still read (D4 in the Phase 1 brief).
+func ProductionEnvironmentID(projectID string, envs []client.Environment) (types.String, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	for _, e := range envs {
+		if e.IsDefault {
+			return types.StringValue(e.EnvironmentID), diags
+		}
+	}
+	diags.AddWarning("No default environment",
+		fmt.Sprintf("project %s has no environment with isDefault true; production_environment_id is null", projectID))
+	return types.StringNull(), diags
+}
+
 // flatten maps the full API object into the model (used by Read).
 func flatten(_ context.Context, p *client.Project, m *resourceModel) diag.Diagnostics {
 	m.ID = types.StringValue(p.ProjectID)
@@ -57,6 +77,9 @@ func flatten(_ context.Context, p *client.Project, m *resourceModel) diag.Diagno
 	m.CreatedAt = types.StringValue(p.CreatedAt)
 	list, diags := BuildEnvironments(p.Environments)
 	m.Environments = list
+	prod, d := ProductionEnvironmentID(p.ProjectID, p.Environments)
+	diags.Append(d...)
+	m.ProductionEnvironmentID = prod
 	return diags
 }
 
@@ -68,5 +91,8 @@ func setComputed(p *client.Project, m *resourceModel) diag.Diagnostics {
 	m.CreatedAt = types.StringValue(p.CreatedAt)
 	list, diags := BuildEnvironments(p.Environments)
 	m.Environments = list
+	prod, d := ProductionEnvironmentID(p.ProjectID, p.Environments)
+	diags.Append(d...)
+	m.ProductionEnvironmentID = prod
 	return diags
 }

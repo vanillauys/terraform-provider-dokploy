@@ -15,7 +15,7 @@ const projectJSON = `{
 	"name": "demo",
 	"description": "a demo",
 	"createdAt": "2026-07-23T10:00:00.000Z",
-	"environments": [{"environmentId": "e1", "name": "production", "projectId": "p1"}]
+	"environments": [{"environmentId": "e1", "name": "production", "projectId": "p1", "isDefault": true}]
 }`
 
 // createProjectJSON matches the real /project.create response: unlike
@@ -29,7 +29,7 @@ const createProjectJSON = `{
 		"description": "a demo",
 		"createdAt": "2026-07-23T10:00:00.000Z"
 	},
-	"environment": {"environmentId": "e1", "name": "production", "projectId": "p1"}
+	"environment": {"environmentId": "e1", "name": "production", "projectId": "p1", "isDefault": true}
 }`
 
 func TestCreateProject(t *testing.T) {
@@ -54,7 +54,7 @@ func TestCreateProject(t *testing.T) {
 	if p.ProjectID != "p1" || p.Name != "demo" {
 		t.Errorf("project = %+v", p)
 	}
-	if len(p.Environments) != 1 || p.Environments[0].EnvironmentID != "e1" {
+	if len(p.Environments) != 1 || p.Environments[0].EnvironmentID != "e1" || !p.Environments[0].IsDefault {
 		t.Errorf("environments = %+v", p.Environments)
 	}
 }
@@ -72,7 +72,7 @@ func TestGetProject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetProject: %v", err)
 	}
-	if len(p.Environments) != 1 || p.Environments[0].EnvironmentID != "e1" {
+	if len(p.Environments) != 1 || p.Environments[0].EnvironmentID != "e1" || !p.Environments[0].IsDefault {
 		t.Errorf("environments = %+v", p.Environments)
 	}
 	if p.Description == nil || *p.Description != "a demo" {

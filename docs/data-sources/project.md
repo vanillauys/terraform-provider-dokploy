@@ -31,6 +31,7 @@ data "dokploy_project" "example" {
 - `created_at` (String) Creation timestamp.
 - `description` (String) Project description.
 - `environments` (Attributes List) Environments in this project. (see [below for nested schema](#nestedatt--environments))
+- `production_environment_id` (String) Id of the default environment. Dokploy creates it with the project and names it `production`. The provider selects it with the server's `isDefault` flag, not by name, so a rename does not change the value. Use it as the `environment_id` of a service in the default environment.
 
 <a id="nestedatt--environments"></a>
 ### Nested Schema for `environments`
