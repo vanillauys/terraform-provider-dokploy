@@ -3,12 +3,12 @@
 page_title: "dokploy_environment Data Source - dokploy"
 subcategory: ""
 description: |-
-  Look up a Dokploy environment by id, or by name within a project. The usual reason to use this is to get the id of the production environment Dokploy creates with every project.
+  Look up a Dokploy environment by id, or by name within a project. The usual purpose is to get the id of the production environment that Dokploy creates with each project.
 ---
 
 # dokploy_environment (Data Source)
 
-Look up a Dokploy environment by id, or by name within a project. The usual reason to use this is to get the id of the `production` environment Dokploy creates with every project.
+Look up a Dokploy environment by id, or by name within a project. The usual purpose is to get the id of the `production` environment that Dokploy creates with each project.
 
 ## Example Usage
 
@@ -18,8 +18,8 @@ data "dokploy_environment" "by_id" {
   id = "Ux7kFq2mNp4RtWvYzAbCd"
 }
 
-# By name within a project — the usual way to reach the production
-# environment Dokploy creates automatically.
+# By name within a project: the usual way to reach the production
+# environment that Dokploy creates automatically.
 data "dokploy_environment" "production" {
   project_id = dokploy_project.example.id
   name       = "production"
@@ -39,12 +39,12 @@ resource "dokploy_postgres" "db" {
 
 ### Optional
 
-- `id` (String) Environment id. Set either this or both `project_id` and `name`.
-- `name` (String) Exact environment name, searched within `project_id`. Errors when zero or multiple environments match — Dokploy does not enforce unique names.
+- `id` (String) Environment id. Set this attribute, or set both `project_id` and `name`.
+- `name` (String) Exact environment name. The lookup searches within `project_id` and errors when zero or many environments match. Dokploy does not enforce unique names.
 - `project_id` (String) Id of the project to search. Required with `name`.
 
 ### Read-Only
 
 - `description` (String) Free-form description.
-- `env` (String, Sensitive) Environment-level variables shared by every service in this environment, exactly as stored in Dokploy. Marked sensitive because it typically holds credentials that this provider did not author; it is redacted in plan output but, like all Terraform data, stored in plain text in state.
-- `is_default` (Boolean) True for the `production` environment Dokploy creates with each project.
+- `env` (String, Sensitive) Variables that each service in this environment shares, exactly as Dokploy stores them. The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.
+- `is_default` (Boolean) True for the `production` environment that Dokploy creates with each project.

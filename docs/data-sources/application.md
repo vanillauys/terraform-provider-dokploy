@@ -30,14 +30,14 @@ data "dokploy_application" "by_name" {
 ### Optional
 
 - `environment_id` (String) Id of the environment to search. Required with `name`.
-- `id` (String) Application id. Set either this or both `environment_id` and `name`.
-- `name` (String) Exact application name, searched within `environment_id`. Errors when zero or multiple applications match.
+- `id` (String) Application id. Set this attribute, or set both `environment_id` and `name`.
+- `name` (String) Exact application name. The lookup searches within `environment_id` and errors when zero or many applications match.
 
 ### Read-Only
 
-- `app_name` (String) Dokploy-internal app name.
+- `app_name` (String) Internal Dokploy app name.
 - `created_at` (String) Creation timestamp.
 - `description` (String) Description.
-- `env` (String, Sensitive) Environment variables (multiline `KEY=value`), exactly as stored in Dokploy. Marked sensitive because it typically holds credentials that this provider did not author; it is redacted in plan output but, like all Terraform data, stored in plain text in state.
-- `source_type` (String) Configured source type (github, git, docker).
+- `env` (String, Sensitive) Environment variables as multiline `KEY=value` lines, exactly as Dokploy stores them. The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.
+- `source_type` (String) Configured source type: `github`, `git`, or `docker`.
 - `status` (String) Application status.

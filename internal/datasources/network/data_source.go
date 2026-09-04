@@ -64,36 +64,35 @@ func (d *networkDataSource) ConfigValidators(_ context.Context) []datasource.Con
 
 func (d *networkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Looks up a Docker network already registered in Dokploy, whether created by " +
-			"this provider or by the Dokploy UI (including a network imported through the UI).\n\n" +
+		Description: "Looks up a Docker network that already exists in Dokploy, whether this provider or the " +
+			"Dokploy UI created it. That includes a network that was imported through the UI.\n\n" +
 			"```terraform\n" +
 			"data \"dokploy_network\" \"shared\" {\n  name = \"shared-network\"\n}\n\n" +
 			"resource \"dokploy_application\" \"app\" {\n  network_ids = [data.dokploy_network.shared.id]\n  # ...\n}\n" +
 			"```\n\n" +
-			"~> **`ipam` is not exposed here.** A consumer needs only the id to attach a service to the " +
-			"network; copying a shared network's address pools into every consumer's state widens their " +
-			"blast radius for no gain.\n\n" +
-			"~> Network names are unique per server, not install-wide: Docker enforces the name " +
-			"uniquely per daemon, and on a multi-server install each remote server runs its own " +
-			"daemon. On a single-server install a name lookup never needs `server_id` to disambiguate; " +
-			"on a multi-server install, set `server_id` to disambiguate a name found on more than one " +
-			"server. `server_id` can only be set together with `name`, not `id`.",
+			"~> **The data source does not expose `ipam`.** A consumer needs only the id to attach a service to the " +
+			"network. A copy of the address pools of a shared network in the state of each consumer widens their " +
+			"exposure with no gain.\n\n" +
+			"~> Network names are unique per server, not per Dokploy installation. Docker enforces a unique name per " +
+			"daemon, and on a multi-server installation each remote server runs its own daemon. On a single-server " +
+			"installation, a name lookup never needs `server_id`. On a multi-server installation, set `server_id` when " +
+			"the same name exists on more than one server. `server_id` is valid only together with `name`, not with `id`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Network id. Set this to look it up by id, or leave it unset and set `name`.",
+				Description: "Network id. Set it for a lookup by id, or leave it unset and set `name`.",
 			},
 			"name": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Network name, unique per server in Dokploy. Exactly one of `id` or `name` must be set.",
+				Description: "Network name, unique per server in Dokploy. Set exactly one of `id` or `name`.",
 			},
 			"server_id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
-				Description: "Id of the remote server to narrow the `name` lookup to. Only usable together " +
-					"with `name`; conflicts with `id`.",
+				Description: "Id of the remote server that narrows the `name` lookup. Valid only together " +
+					"with `name`. It conflicts with `id`.",
 			},
 			"driver": schema.StringAttribute{
 				Computed:    true,
@@ -105,7 +104,7 @@ func (d *networkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			},
 			"attachable": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Whether manual container attachment is allowed (overlay networks).",
+				Description: "Whether manual container attachment is allowed, for overlay networks.",
 			},
 			"enable_ipv4": schema.BoolAttribute{
 				Computed:    true,
@@ -117,11 +116,11 @@ func (d *networkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			},
 			"mtu": schema.Int64Attribute{
 				Computed:    true,
-				Description: "MTU for the network. Null when Docker's default applies.",
+				Description: "MTU for the network. Null when the Docker default applies.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,
-				Description: "Creation timestamp (server-side).",
+				Description: "Creation timestamp from the server.",
 			},
 		},
 	}

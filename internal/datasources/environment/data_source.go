@@ -44,12 +44,12 @@ func (d *environmentDataSource) Metadata(_ context.Context, req datasource.Metad
 
 func (d *environmentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Look up a Dokploy environment by id, or by name within a project. The usual reason to use this is to get the id of the `production` environment Dokploy creates with every project.",
+		Description: "Look up a Dokploy environment by id, or by name within a project. The usual purpose is to get the id of the `production` environment that Dokploy creates with each project.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Environment id. Set either this or both `project_id` and `name`.",
+				Description: "Environment id. Set this attribute, or set both `project_id` and `name`.",
 			},
 			"project_id": schema.StringAttribute{
 				Optional:    true,
@@ -59,7 +59,7 @@ func (d *environmentDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"name": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Exact environment name, searched within `project_id`. Errors when zero or multiple environments match — Dokploy does not enforce unique names.",
+				Description: "Exact environment name. The lookup searches within `project_id` and errors when zero or many environments match. Dokploy does not enforce unique names.",
 			},
 			"description": schema.StringAttribute{Computed: true, Description: "Free-form description."},
 			// Marked sensitive, unlike the resource's `env`. On the resource
@@ -74,10 +74,10 @@ func (d *environmentDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"env": schema.StringAttribute{
 				Computed:  true,
 				Sensitive: true,
-				Description: "Environment-level variables shared by every service in this environment, exactly as stored in Dokploy. " +
-					"Marked sensitive because it typically holds credentials that this provider did not author; it is redacted in plan output but, like all Terraform data, stored in plain text in state.",
+				Description: "Variables that each service in this environment shares, exactly as Dokploy stores them. " +
+					"The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.",
 			},
-			"is_default": schema.BoolAttribute{Computed: true, Description: "True for the `production` environment Dokploy creates with each project."},
+			"is_default": schema.BoolAttribute{Computed: true, Description: "True for the `production` environment that Dokploy creates with each project."},
 		},
 	}
 }

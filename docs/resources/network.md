@@ -3,21 +3,21 @@
 page_title: "dokploy_network Resource - dokploy"
 subcategory: ""
 description: |-
-  A Docker network managed by Dokploy, for attaching services to extra networks beyond the default dokploy-network (see network_ids on dokploy_application and the database resources, and service_networks on dokploy_compose).
-  ~> Networks are immutable. Dokploy exposes no update endpoint, so changing any attribute replaces the network. Attached services keep working until their next deploy; re-attach them to the replacement id (a dokploy_network.<name>.id reference does this automatically) and redeploy.
-  ~> Deleting an attached network does not fail and does not detach it. network.remove succeeds even while an application still references the network in its network_ids; the reference is left dangling until that application is next updated or redeployed.
-  -> A network created outside Dokploy (e.g. docker network create) has no Dokploy id. Import it once in the Dokploy UI (Networks -> Import), then read it with the dokploy_network data source or terraform import.
+  A Docker network that Dokploy manages. Attach services to it as an extra network beside the default dokploy-network. See network_ids on dokploy_application and the database resources, and service_networks on dokploy_compose.
+  ~> Networks are immutable. Dokploy has no update endpoint, so a change to any attribute replaces the network. Attached services continue to work until their next deploy. Attach them to the replacement id, which a dokploy_network.<name>.id reference does automatically, and deploy them again.
+  ~> A delete of an attached network does not fail and does not detach it. network.remove succeeds while an application still references the network in its network_ids. The reference stays until the next update or deploy of that application.
+  -> A network from outside Dokploy, for example from docker network create, has no Dokploy id. Import it once in the Dokploy UI (Networks > Import), then read it with the dokploy_network data source or terraform import.
 ---
 
 # dokploy_network (Resource)
 
-A Docker network managed by Dokploy, for attaching services to extra networks beyond the default `dokploy-network` (see `network_ids` on `dokploy_application` and the database resources, and `service_networks` on `dokploy_compose`).
+A Docker network that Dokploy manages. Attach services to it as an extra network beside the default `dokploy-network`. See `network_ids` on `dokploy_application` and the database resources, and `service_networks` on `dokploy_compose`.
 
-~> **Networks are immutable.** Dokploy exposes no update endpoint, so changing any attribute replaces the network. Attached services keep working until their next deploy; re-attach them to the replacement id (a `dokploy_network.<name>.id` reference does this automatically) and redeploy.
+~> **Networks are immutable.** Dokploy has no update endpoint, so a change to any attribute replaces the network. Attached services continue to work until their next deploy. Attach them to the replacement id, which a `dokploy_network.<name>.id` reference does automatically, and deploy them again.
 
-~> **Deleting an attached network does not fail and does not detach it.** `network.remove` succeeds even while an application still references the network in its `network_ids`; the reference is left dangling until that application is next updated or redeployed.
+~> **A delete of an attached network does not fail and does not detach it.** `network.remove` succeeds while an application still references the network in its `network_ids`. The reference stays until the next update or deploy of that application.
 
--> A network created outside Dokploy (e.g. `docker network create`) has no Dokploy id. Import it once in the Dokploy UI (Networks -> Import), then read it with the `dokploy_network` data source or `terraform import`.
+-> A network from outside Dokploy, for example from `docker network create`, has no Dokploy id. Import it once in the Dokploy UI (Networks > Import), then read it with the `dokploy_network` data source or `terraform import`.
 
 ## Example Usage
 
@@ -25,7 +25,7 @@ A Docker network managed by Dokploy, for attaching services to extra networks be
 resource "dokploy_network" "backend" {
   name = "backend-net"
 
-  # Networks are immutable: changing any attribute replaces the network.
+  # Networks are immutable: a change to any attribute replaces the network.
   # attachable = true
   # mtu        = 1400
   # ipam = {
@@ -33,7 +33,7 @@ resource "dokploy_network" "backend" {
   # }
 }
 
-# Attach a service to it (applies on the service's next deploy):
+# Attach a service to it. The attachment applies on the next deploy of the service:
 # resource "dokploy_application" "api" {
 #   # ...
 #   network_ids = [dokploy_network.backend.id]
@@ -45,22 +45,22 @@ resource "dokploy_network" "backend" {
 
 ### Required
 
-- `name` (String) Network name. Changing it replaces the network.
+- `name` (String) Network name. A change replaces the network.
 
 ### Optional
 
-- `attachable` (Boolean) Allow manual container attachment (overlay networks).
+- `attachable` (Boolean) Allow manual container attachment, for overlay networks.
 - `driver` (String) Network driver: `bridge` or `overlay`. Defaults to `bridge`.
 - `enable_ipv4` (Boolean) Enable IPv4 on the network.
 - `enable_ipv6` (Boolean) Enable IPv6 on the network.
 - `internal` (Boolean) Restrict external access to the network.
-- `ipam` (Attributes) Custom IP address management. Unset leaves Docker's defaults. (see [below for nested schema](#nestedatt--ipam))
-- `mtu` (Number) MTU for the network, 68-65535. Unset leaves Docker's default.
-- `server_id` (String) Id of the remote server to create the network on. Unset targets the Dokploy host.
+- `ipam` (Attributes) Custom IP address management. If unset, the Docker defaults apply. (see [below for nested schema](#nestedatt--ipam))
+- `mtu` (Number) MTU for the network, 68 to 65535. If unset, the Docker default applies.
+- `server_id` (String) Id of the remote server that hosts the network. If unset, the Dokploy host applies.
 
 ### Read-Only
 
-- `created_at` (String) Creation timestamp (server-side).
+- `created_at` (String) Creation timestamp from the server.
 - `id` (String) Network id.
 
 <a id="nestedatt--ipam"></a>
@@ -69,7 +69,7 @@ resource "dokploy_network" "backend" {
 Optional:
 
 - `config` (Attributes List) Address pools. (see [below for nested schema](#nestedatt--ipam--config))
-- `driver` (String) IPAM driver, e.g. `default`.
+- `driver` (String) IPAM driver, for example `default`.
 
 <a id="nestedatt--ipam--config"></a>
 ### Nested Schema for `ipam.config`
@@ -77,8 +77,8 @@ Optional:
 Optional:
 
 - `gateway` (String) Gateway address for the pool.
-- `ip_range` (String) Sub-range to allocate from, in CIDR form.
-- `subnet` (String) Pool subnet in CIDR form, e.g. `172.28.0.0/16`.
+- `ip_range` (String) Sub-range for allocation, in CIDR form.
+- `subnet` (String) Pool subnet in CIDR form, for example `172.28.0.0/16`.
 
 ## Import
 

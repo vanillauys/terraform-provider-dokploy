@@ -70,7 +70,7 @@ func MongoKind(c *client.Client) Kind {
 		// does not exist on Docker Hub. deploy_on_change defaults to true,
 		// so a first apply that leaves docker_image unset creates the
 		// record and then fails the deploy with a manifest-unknown error.
-		DockerImageCaveat: " The server's own default (`mongo:15`) does not exist on Docker Hub; a first apply that leaves this unset creates the record and then fails the deploy (`deploy_on_change` defaults to `true`). Set an explicit, real tag such as `mongo:7`.",
+		DockerImageCaveat: " The server default `mongo:15` does not exist on Docker Hub. A first apply without this attribute creates the record and then fails the deploy, because `deploy_on_change` defaults to `true`. Set an explicit tag that exists, for example `mongo:7`.",
 		CredentialAttrs: []CredentialAttr{
 			{
 				TFName:          "database_user",

@@ -1,4 +1,4 @@
-# Look up a network created (or imported) in the Dokploy UI.
+# Look up a network that the Dokploy UI created or imported.
 data "dokploy_network" "shared" {
   name = "backend-net"
 }

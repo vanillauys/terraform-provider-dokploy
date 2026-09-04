@@ -3,12 +3,12 @@
 page_title: "dokploy_domain Resource - dokploy"
 subcategory: ""
 description: |-
-  A domain (Traefik router rule) attached to a Dokploy application or compose service.
+  A domain, a Traefik router rule, on a Dokploy application or compose service.
 ---
 
 # dokploy_domain (Resource)
 
-A domain (Traefik router rule) attached to a Dokploy application or compose service.
+A domain, a Traefik router rule, on a Dokploy application or compose service.
 
 ## Example Usage
 
@@ -23,9 +23,9 @@ resource "dokploy_domain" "app" {
 }
 
 # A second hostname for the same application is a second domain resource.
-# Disabled here as an example: `enabled = false` removes the route from
-# Traefik but keeps the configuration, so it can be re-enabled later without
-# re-entering certificates and paths.
+# This one is disabled as an example: `enabled = false` removes the route from
+# Traefik but keeps the configuration, so you can enable it again later
+# without a new certificate and path setup.
 resource "dokploy_domain" "app_www" {
   application_id   = dokploy_application.frontend.id
   host             = "www.app.example.com"
@@ -41,31 +41,31 @@ resource "dokploy_domain" "app_www" {
 
 ### Required
 
-- `host` (String) Hostname to serve, e.g. `app.example.com`. Dokploy does not enforce uniqueness, so the same host may be attached twice.
+- `host` (String) Hostname to serve, for example `app.example.com`. Dokploy does not enforce uniqueness, so the same host can attach twice.
 
 ### Optional
 
-- `application_id` (String) Id of the application this domain serves. Exactly one of `application_id` or `compose_id` must be set. Changing it replaces the domain.
-- `certificate_type` (String) Certificate strategy: `letsencrypt`, `none` or `custom`. Defaults to `"none"`.
-- `compose_id` (String) Id of the compose service this domain serves. Exactly one of `application_id` or `compose_id` must be set. Changing it replaces the domain.
+- `application_id` (String) Id of the application that this domain serves. Set exactly one of `application_id` or `compose_id`. A change replaces the domain.
+- `certificate_type` (String) Certificate strategy: `letsencrypt`, `none`, or `custom`. Defaults to `"none"`.
+- `compose_id` (String) Id of the compose service that this domain serves. Set exactly one of `application_id` or `compose_id`. A change replaces the domain.
 - `custom_cert_resolver` (String) Traefik certificate resolver name, for `certificate_type = "custom"`.
 - `custom_entrypoint` (String) Traefik entrypoint to bind, instead of the default.
-- `enabled` (Boolean) Serve this domain. `false` removes the route from Traefik but keeps the configuration, so it can be re-enabled without re-entering certificates and paths. Defaults to `true`.
+- `enabled` (Boolean) Serve this domain. `false` removes the route from Traefik but keeps the configuration, so you can enable it again without a new certificate and path setup. Defaults to `true`.
 - `forward_auth_enabled` (Boolean) Route this domain through the configured forward-auth middleware. Defaults to `false`.
 - `https` (Boolean) Serve over HTTPS. Defaults to `false`.
-- `internal_path` (String) Path forwarded to the container. Defaults to `"/"`.
-- `path` (String) External path this rule matches. Defaults to `"/"`.
+- `internal_path` (String) Path that Traefik forwards to the container. Defaults to `"/"`.
+- `path` (String) External path that this rule matches. Defaults to `"/"`.
 - `port` (Number) Container port Traefik forwards to. Defaults to `3000`.
-- `service_name` (String) Compose service to route to. Only meaningful with `compose_id`.
-- `strip_path` (Boolean) Strip `path` before forwarding. Defaults to `false`.
+- `service_name` (String) Compose service to route to. It has an effect only with `compose_id`.
+- `strip_path` (Boolean) Strip `path` before the forward. Defaults to `false`.
 
 ### Read-Only
 
-- `created_at` (String) Creation timestamp (server-side).
-- `domain_type` (String) `application` or `compose`, derived from which of `application_id` / `compose_id` is set.
+- `created_at` (String) Creation timestamp from the server.
+- `domain_type` (String) `application` or `compose`. The provider derives it from `application_id` or `compose_id`.
 - `id` (String) Domain id.
-- `middlewares` (List of String) Traefik middlewares attached to this domain. Read-only: middlewares are created outside this provider, so a writable list would reference names Terraform cannot manage.
-- `unique_config_key` (Number) Server-assigned ordering key. Dokploy ignores any value submitted for it.
+- `middlewares` (List of String) Traefik middlewares on this domain. Read-only: middlewares come from outside this provider, so a writable list would reference names that Terraform cannot manage.
+- `unique_config_key` (Number) Ordering key that the server assigns. Dokploy ignores any submitted value.
 
 ## Import
 

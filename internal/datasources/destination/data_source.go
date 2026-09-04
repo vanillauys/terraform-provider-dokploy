@@ -62,34 +62,34 @@ func (d *destinationDataSource) ConfigValidators(_ context.Context) []datasource
 
 func (d *destinationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Looks up an S3-compatible backup destination already registered in Dokploy.\n\n" +
-			"A shared backup target is typically created once and referenced from several projects:\n\n" +
+		Description: "Looks up an S3-compatible backup destination that already exists in Dokploy.\n\n" +
+			"Users usually create a shared backup target once and reference it from several projects:\n\n" +
 			"```terraform\n" +
 			"data \"dokploy_destination\" \"backups\" {\n  name = \"cloudflare-r2\"\n}\n\n" +
 			"resource \"dokploy_backup\" \"db\" {\n  destination_id = data.dokploy_destination.backups.id\n  # ...\n}\n" +
 			"```\n\n" +
-			"~> **Credentials are not exposed.** `access_key` and `secret_access_key` exist on the " +
-			"`dokploy_destination` resource but deliberately not here: consumers need only the id, and " +
-			"copying an access key into every consumer's state widens its blast radius for no gain.\n\n" +
-			"~> Dokploy does not enforce name uniqueness. If two destinations share a name this data " +
-			"source fails rather than picking one; look the record up by `id` in that case.",
+			"~> **The data source does not expose the credentials.** `access_key` and `secret_access_key` exist on the " +
+			"`dokploy_destination` resource, but not here, by design. A consumer needs only the id, and a copy of an " +
+			"access key in the state of each consumer widens its exposure with no gain.\n\n" +
+			"~> Dokploy does not enforce name uniqueness. If two destinations share a name, this data source fails " +
+			"instead of a guess. Look the record up by `id` in that case.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Destination id. Set this to look it up by id, or leave it unset and set `name`.",
+				Description: "Destination id. Set it for a lookup by id, or leave it unset and set `name`.",
 			},
 			"name": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Display name as shown in Dokploy. Exactly one of `id` or `name` must be set.",
+				Description: "Display name as shown in Dokploy. Set exactly one of `id` or `name`.",
 			},
 			"provider_name": schema.StringAttribute{
 				Computed: true,
 				// Named provider_name, not provider, for the same reason the
 				// resource is: `provider` is a reserved meta-argument in
 				// Terraform configuration and cannot be an attribute name.
-				Description: "Storage provider label, e.g. `Cloudflare`, `AWS`, `DigitalOcean`.",
+				Description: "Storage provider label, for example `Cloudflare`, `AWS`, or `DigitalOcean`.",
 			},
 			"endpoint": schema.StringAttribute{Computed: true, Description: "S3 endpoint URL."},
 			"bucket":   schema.StringAttribute{Computed: true, Description: "Bucket name."},
@@ -97,11 +97,11 @@ func (d *destinationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"additional_flags": schema.ListAttribute{
 				Computed:    true,
 				ElementType: types.StringType,
-				Description: "Extra flags passed to the underlying storage client. Empty when none are set.",
+				Description: "Extra flags for the storage client. Empty when none are set.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,
-				Description: "Creation timestamp (server-side).",
+				Description: "Creation timestamp from the server.",
 			},
 		},
 	}

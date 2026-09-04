@@ -3,12 +3,12 @@
 page_title: "dokploy_port Resource - dokploy"
 subcategory: ""
 description: |-
-  A published port on a Dokploy application, mapping a host port to a container port.
+  A published port on a Dokploy application. It maps a host port to a container port.
 ---
 
 # dokploy_port (Resource)
 
-A published port on a Dokploy application, mapping a host port to a container port.
+A published port on a Dokploy application. It maps a host port to a container port.
 
 ## Example Usage
 
@@ -27,9 +27,9 @@ resource "dokploy_port" "metrics" {
 
 ### Required
 
-- `application_id` (String) Id of the application this belongs to. Changing it forces replacement: Dokploy's update endpoint for this record type takes no parent field, so a record cannot be moved between applications.
+- `application_id` (String) Id of the application that owns this record. A change forces a replacement: the Dokploy update endpoint for this record type has no parent field, so a record cannot move between applications.
 - `published_port` (Number) Port published on the host.
-- `target_port` (Number) Port the container listens on.
+- `target_port` (Number) Port that the container listens on.
 
 ### Optional
 

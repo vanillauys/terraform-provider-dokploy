@@ -1,37 +1,39 @@
 ---
-page_title: "Getting started"
+page_title: "Get started"
 subcategory: ""
 description: |-
-  Configure the provider against a Dokploy server and apply a first project, database, application and domain.
+  Configure the provider against a Dokploy server, then apply a first project, database, application, and domain.
 ---
 
-# Getting started
+# Get started
 
-This guide takes a running Dokploy server and brings a project, a PostgreSQL
-database, an application and a domain under Terraform management.
+This guide starts from a running Dokploy server. It brings a project, a
+PostgreSQL database, an application, and a domain under Terraform management.
 
-You need a Dokploy server you can reach over HTTPS, and an API key from
-**Settings > API/CLI** in the Dokploy UI.
+You need:
+
+- A Dokploy server that you can reach over HTTPS.
+- An API key from **Settings > API/CLI** in the Dokploy UI.
 
 ## Before your first apply: API key rate limits
 
-Read this first. It is the most likely thing to break a first apply, and it
-does not look like what it is.
+Read this section first. This problem is the most likely cause of a failed
+first apply, and the error does not describe the cause.
 
-Dokploy rate-limits API keys server-side, in its api-key plugin. When the
-limit is hit **the API answers `401 Unauthorized` rather than `429`**, so an
-exhausted budget surfaces as an authentication failure. A key that works fine
-for a single request can fail partway through a larger apply, which reads as
-"my credentials are wrong" when the credentials are fine.
+Dokploy rate-limits API keys on the server, in its api-key plugin. When a key
+reaches the limit, **the API answers `401 Unauthorized`, not `429`**. An
+exhausted key therefore looks like an authentication failure. A key that works
+for one request can fail in the middle of a larger apply. The error then reads
+as "the credentials are wrong", but the credentials are correct.
 
-Applying a large configuration can exhaust the budget, and so can a
-configuration with long-running deploys, because this provider polls the
-server while it waits for a deployment to finish.
+A large configuration can exhaust the limit. A configuration with long deploys
+can also exhaust it, because the provider polls the server while it waits for
+a deploy.
 
-If applies fail with an unexpected `401` against a key that works for single
-requests, you probably need a key with rate limiting disabled. The acceptance
-rig mints exactly that, in `acceptance/bootstrap.sh`. Whether keys minted
-through the Dokploy UI carry the same limit has not been verified.
+If an apply fails with an unexpected `401` on a key that works for single
+requests, you need a key with rate limiting disabled. The acceptance rig mints
+such a key in `acceptance/bootstrap.sh`. No test has shown whether keys from
+the Dokploy UI carry the same limit.
 
 ## Configure the provider
 
@@ -47,22 +49,23 @@ terraform {
 
 provider "dokploy" {
   endpoint = "https://dokploy.example.com"
-  # api_key sourced from the DOKPLOY_API_KEY environment variable
+  # The provider reads api_key from the DOKPLOY_API_KEY environment variable.
 }
 ```
 
-`endpoint` falls back to `DOKPLOY_ENDPOINT` and `api_key` to
-`DOKPLOY_API_KEY`. Set `insecure = true` only if your server presents a
-self-signed certificate.
+If `endpoint` is not set, the provider reads `DOKPLOY_ENDPOINT`. If `api_key`
+is not set, the provider reads `DOKPLOY_API_KEY`. Set `insecure = true` only
+when the server presents a self-signed certificate.
 
-Because this provider is pre-1.0, pin it exactly (`version = "0.10.2"`) if you
-need stability: breaking changes land in minor releases until v1.0.0.
+This provider is pre-1.0. Breaking changes can land in minor releases until
+v1.0.0. If you need a stable configuration, pin an exact version, for example
+`version = "0.10.3"`.
 
 ## A first configuration
 
-Dokploy's hierarchy is **project > environment > service**. Every project is
-created with a `production` environment, so you rarely need
-`dokploy_environment` on day one.
+The Dokploy hierarchy is **project > environment > service**. Dokploy creates
+a `production` environment with each project, so you rarely need
+`dokploy_environment` on the first day.
 
 ```hcl
 resource "dokploy_project" "example" {
@@ -101,39 +104,40 @@ resource "dokploy_domain" "web" {
 }
 ```
 
-Full schemas for the four resources used here:
+The reference has the full schema of each resource:
 [`dokploy_project`](../resources/project),
 [`dokploy_postgres`](../resources/postgres),
-[`dokploy_application`](../resources/application) and
+[`dokploy_application`](../resources/application), and
 [`dokploy_domain`](../resources/domain).
 
-**Select the environment by name, not by index.** `environments` is populated
-in the order Dokploy's API returns it, and the provider does not sort it, so
-`environments[0]` is not pinned to `production` - it happens to be right only
-while the project has exactly one environment, and silently starts resolving to
-something else once a second one exists. The
-`[for e in ... : e.id if e.name == "production"][0]` filter above is
-order-independent, and is the idiom used throughout these docs.
+**Select the environment by name, not by index.** The `environments` list
+keeps the order of the Dokploy API response, and the provider does not sort
+it. `environments[0]` is therefore not fixed to `production`. It is correct
+only while the project has one environment, and it resolves to a different
+environment when a second one exists. The
+`[for e in ... : e.id if e.name == "production"][0]` expression above does not
+depend on the order. This documentation uses that expression throughout.
 
-`var.db_password` should be a sensitive variable. See
-[Secrets and sensitive values](secrets) for why this provider does not mark
-`env` sensitive for you.
+Declare `var.db_password` as a sensitive variable.
+[Secrets and sensitive values](secrets) explains why the provider does not
+mark `env` as sensitive.
 
 ## What happens on apply
 
-Creating a service deploys it. The provider triggers the deploy, then polls
-until it reaches a terminal status or `deployment_timeout` (default `15m`)
-expires. An apply that appears to hang is usually a deploy in progress.
+When Terraform creates a service, the provider deploys it. The provider starts
+the deploy, then polls the server until the deploy reaches a terminal status
+or `deployment_timeout` (default `15m`) expires. An apply that appears to hang
+is usually a deploy in progress.
 
-A failed deployment fails the apply, with Dokploy's status in the diagnostic.
-A timeout also fails the apply, but leaves the server-side deployment running.
+A failed deploy fails the apply, and the diagnostic shows the Dokploy status.
+A timeout also fails the apply, but the deploy continues on the server.
 
-Both behaviours, and how to turn them off, are covered in
-[Deploy semantics](deploy-semantics).
+[Deploy semantics](deploy-semantics) describes both behaviors and how to
+disable the deploy.
 
 ## Next steps
 
-- Already have services on this server? See
-  [Adopting an existing Dokploy instance](adopting-an-existing-instance).
-- Handling secrets: [Secrets and sensitive values](secrets).
-- Controlling deploys: [Deploy semantics](deploy-semantics).
+- If the server already has services, see
+  [Adopt an existing Dokploy server](adopting-an-existing-instance).
+- For secrets, see [Secrets and sensitive values](secrets).
+- To control deploys, see [Deploy semantics](deploy-semantics).

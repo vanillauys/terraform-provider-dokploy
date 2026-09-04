@@ -64,10 +64,10 @@ func (r *mountResource) ConfigValidators(_ context.Context) []resource.ConfigVal
 func (r *mountResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	requiresReplace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		Description: "A volume, bind or file mount attached to a Dokploy service.\n\n" +
+		Description: "A volume, bind, or file mount on a Dokploy service.\n\n" +
 			"~> **Database services create their own data mount.** A `dokploy_postgres` (or mysql/mariadb/mongo/redis/libsql) " +
-			"owns a volume mount for its data directory from the moment it is created, without anything asking for it. " +
-			"That mount belongs to the server, not to Terraform — do not import it or declare it here.",
+			"owns a volume mount for its data directory from the moment of its creation, without a request for it. " +
+			"That mount belongs to the server, not to Terraform. Do not import it, and do not declare it here.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -76,25 +76,25 @@ func (r *mountResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			},
 			"service_id": schema.StringAttribute{
 				Required: true,
-				Description: "Id of the service this mount attaches to. Changing it forces replacement: Dokploy's update endpoint " +
-					"sets the new parent without clearing the old one, leaving the mount owned by two services at once.",
+				Description: "Id of the service that this mount attaches to. A change forces a replacement: the Dokploy update endpoint " +
+					"sets the new parent without a clear of the old one, and the mount then belongs to two services at once.",
 				PlanModifiers: requiresReplace,
 			},
 			"service_type": schema.StringAttribute{
 				Required: true,
-				Description: "Kind of service `service_id` refers to: one of `application`, `postgres`, `mysql`, `mariadb`, " +
-					"`mongo`, `redis`, `compose`, `libsql`. Changing it forces replacement, for the same reason as `service_id`.",
+				Description: "Kind of service that `service_id` refers to: one of `application`, `postgres`, `mysql`, `mariadb`, " +
+					"`mongo`, `redis`, `compose`, `libsql`. A change forces a replacement, for the same reason as `service_id`.",
 				PlanModifiers: requiresReplace,
 				Validators:    []validator.String{stringvalidator.OneOf(client.MountServiceTypes...)},
 			},
 			"type": schema.StringAttribute{
 				Required:    true,
-				Description: "Mount kind: `bind` (host path), `volume` (named Docker volume), or `file` (inline content written into the container).",
+				Description: "Mount kind: `bind` (a host path), `volume` (a named Docker volume), or `file` (inline content that Dokploy writes into the container).",
 				Validators:  []validator.String{stringvalidator.OneOf("bind", "volume", "file")},
 			},
 			"mount_path": schema.StringAttribute{
 				Required:    true,
-				Description: "Path inside the container to mount at.",
+				Description: "Mount path inside the container.",
 			},
 			"host_path": schema.StringAttribute{
 				Optional:    true,

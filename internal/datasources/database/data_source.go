@@ -74,7 +74,7 @@ func (d *genericDataSource) Metadata(_ context.Context, req datasource.MetadataR
 
 func (d *genericDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: fmt.Sprintf("Look up a Dokploy %s service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.", d.kind.Name),
+		Description: fmt.Sprintf("Look up a Dokploy %s service by id, or by name within an environment. The data source does not expose the database password. It exposes each other credential attribute as sensitive.", d.kind.Name),
 		Attributes:  schemaAttributes(d.kind),
 	}
 }
@@ -171,14 +171,14 @@ func schemaAttributes(k resourcedb.Kind) map[string]schema.Attribute {
 		"id": schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: k.ShortName + " service id. Set either this or both `environment_id` and `name`.",
+			Description: k.ShortName + " service id. Set this attribute, or set both `environment_id` and `name`.",
 		},
 		"name": schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
-			Description: "Exact " + k.Name + " service name, searched within `environment_id`. Errors when zero or multiple " + k.Name + " services match.",
+			Description: "Exact " + k.Name + " service name. The lookup searches within `environment_id` and errors when zero or many " + k.Name + " services match.",
 		},
-		"app_name": schema.StringAttribute{Computed: true, Description: "Dokploy-internal app name."},
+		"app_name": schema.StringAttribute{Computed: true, Description: "Internal Dokploy app name."},
 		"environment_id": schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,

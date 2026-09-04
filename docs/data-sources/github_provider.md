@@ -3,8 +3,8 @@
 page_title: "dokploy_github_provider Data Source - dokploy"
 subcategory: ""
 description: |-
-  Looks up a GitHub App registered in Dokploy (Git > GitHub).
-  Use it so dokploy_application's github_id stops being a hardcoded opaque id:
+  Looks up a GitHub App that is registered in Dokploy (Git > GitHub).
+  Use it so that the github_id of dokploy_application is not a hardcoded opaque id:
   
   data "dokploy_github_provider" "main" {
     name = "my-org"
@@ -17,15 +17,15 @@ description: |-
     }
   }
   
-  ~> id here is the githubId, not the gitProviderId. Dokploy keeps both — git_provider_id is the generic record, id is the GitHub-specific one — and an application references the GitHub-specific one. Passing the wrong id is accepted by validation and then fails with an HTTP 500, because the foreign key is only enforced at the database layer.
-  ~> GitHub Apps cannot be created from Terraform. Dokploy's API has no github.create; installation is a browser flow. This data source reads what is already there.
+  ~> id is the githubId, not the gitProviderId. Dokploy keeps both: git_provider_id is the generic record, and id is the GitHub-specific record. An application references the GitHub-specific record. Validation accepts the wrong id, and the request then fails with an HTTP 500, because only the database layer enforces the foreign key.
+  ~> Terraform cannot create a GitHub App. The Dokploy API has no github.create, and the installation is a browser flow. This data source reads what already exists.
 ---
 
 # dokploy_github_provider (Data Source)
 
-Looks up a GitHub App registered in Dokploy (Git > GitHub).
+Looks up a GitHub App that is registered in Dokploy (Git > GitHub).
 
-Use it so `dokploy_application`'s `github_id` stops being a hardcoded opaque id:
+Use it so that the `github_id` of `dokploy_application` is not a hardcoded opaque id:
 
 ```terraform
 data "dokploy_github_provider" "main" {
@@ -40,16 +40,16 @@ resource "dokploy_application" "web" {
 }
 ```
 
-~> **`id` here is the `githubId`, not the `gitProviderId`.** Dokploy keeps both — `git_provider_id` is the generic record, `id` is the GitHub-specific one — and an application references the GitHub-specific one. Passing the wrong id is accepted by validation and then fails with an HTTP 500, because the foreign key is only enforced at the database layer.
+~> **`id` is the `githubId`, not the `gitProviderId`.** Dokploy keeps both: `git_provider_id` is the generic record, and `id` is the GitHub-specific record. An application references the GitHub-specific record. Validation accepts the wrong id, and the request then fails with an HTTP 500, because only the database layer enforces the foreign key.
 
-~> GitHub Apps cannot be created from Terraform. Dokploy's API has no `github.create`; installation is a browser flow. This data source reads what is already there.
+~> Terraform cannot create a GitHub App. The Dokploy API has no `github.create`, and the installation is a browser flow. This data source reads what already exists.
 
 ## Example Usage
 
 ```terraform
-# Look the GitHub App up by name instead of pasting an opaque id.
+# Look up the GitHub App by name instead of an opaque id.
 data "dokploy_github_provider" "main" {
-  name = "vnly-io-dokploy"
+  name = "my-org"
 }
 
 resource "dokploy_application" "web" {
@@ -57,10 +57,10 @@ resource "dokploy_application" "web" {
   environment_id = [for e in dokploy_project.example.environments : e.id if e.name == "production"][0]
 
   github = {
-    owner      = "vanillauys"
-    repository = "vanillauys-app"
+    owner      = "my-org"
+    repository = "my-app"
     branch     = "master"
-    # NOTE: `id`, not `git_provider_id` — an application references the
+    # Use `id`, not `git_provider_id`: an application references the
     # GitHub-specific record.
     github_id = data.dokploy_github_provider.main.id
   }
@@ -72,12 +72,12 @@ resource "dokploy_application" "web" {
 
 ### Optional
 
-- `id` (String) The `githubId`. Set this to look up by id, or leave it unset and set `name`. This is the value `dokploy_application.github.github_id` expects.
-- `name` (String) Provider name as shown in Dokploy. Exactly one of `id` or `name` must be set.
+- `id` (String) The `githubId`. Set it for a lookup by id, or leave it unset and set `name`. This is the value that `dokploy_application.github.github_id` expects.
+- `name` (String) Provider name as shown in Dokploy. Set exactly one of `id` or `name`.
 
 ### Read-Only
 
-- `created_at` (String) Creation timestamp (server-side).
-- `git_provider_id` (String) Id of the generic git-provider record this GitHub App hangs off. Not what an application references.
+- `created_at` (String) Creation timestamp from the server.
+- `git_provider_id` (String) Id of the generic git-provider record that owns this GitHub App. An application does not reference it.
 - `provider_type` (String) Always `github` for this data source.
 - `shared_with_organization` (Boolean) Whether the provider is shared with the whole Dokploy organization.

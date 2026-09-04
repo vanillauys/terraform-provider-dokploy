@@ -35,7 +35,7 @@ func (r *environmentResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "An environment inside a Dokploy project. Services (`dokploy_application`, `dokploy_postgres`) belong to an environment rather than directly to a project. Dokploy creates a `production` environment with every project, which cannot be deleted — see `is_default`.",
+		Description: "An environment inside a Dokploy project. Services such as `dokploy_application` and `dokploy_postgres` belong to an environment, not directly to a project. Dokploy creates a `production` environment with each project, and the API cannot delete that environment. See `is_default`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -44,20 +44,20 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 			},
 			"project_id": schema.StringAttribute{
 				Required:      true,
-				Description:   "Id of the project this environment belongs to. Changing it replaces the environment: Dokploy has no endpoint that moves one between projects.",
+				Description:   "Id of the project that owns this environment. A change replaces the environment: Dokploy has no endpoint that moves an environment between projects.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"name": schema.StringAttribute{
 				Required:    true,
-				Description: "Environment name. Dokploy does not enforce uniqueness within a project, so two environments may share a name.",
+				Description: "Environment name. Dokploy does not enforce uniqueness within a project, so two environments can share a name.",
 			},
 			"description": schema.StringAttribute{
 				Optional:    true,
-				Description: "Free-form description. Dokploy stores a cleared description as an empty string rather than null; the provider reports both as null.",
+				Description: "Free-form description. Dokploy stores a cleared description as an empty string, not as null. The provider reports both as null.",
 			},
 			"env": schema.StringAttribute{
 				Optional:    true,
-				Description: "Environment-level variables shared by every service in this environment, as `KEY=value` lines. Dokploy's create endpoint ignores this field, so setting it on a new environment costs one extra API call. Omitting this attribute and setting it to \"\" are indistinguishable on read — both come back null. Use omission, not \"\", to clear it.",
+				Description: "Variables that each service in this environment shares, as `KEY=value` lines. The Dokploy create endpoint ignores this field, so a value on a new environment costs one more API call. An omitted value and `\"\"` both read back as null. Omit the attribute to clear it.",
 			},
 			// is_default is server-assigned and immutable: Dokploy exposes no
 			// endpoint that promotes or demotes an environment, so pinning the
@@ -69,7 +69,7 @@ func (r *environmentResource) Schema(_ context.Context, _ resource.SchemaRequest
 			// apply" on dokploy_application.
 			"is_default": schema.BoolAttribute{
 				Computed:      true,
-				Description:   "True for the `production` environment Dokploy creates with each project. Dokploy refuses to delete that environment, so destroying a resource with `is_default = true` fails with an explanatory error.",
+				Description:   "True for the `production` environment that Dokploy creates with each project. Dokploy refuses to delete that environment, so a destroy of a resource with `is_default = true` fails with an error that explains this.",
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 		},

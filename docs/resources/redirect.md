@@ -4,14 +4,14 @@ page_title: "dokploy_redirect Resource - dokploy"
 subcategory: ""
 description: |-
   A Traefik regex redirect on a Dokploy application.
-  ~> Redirects are not unique. Dokploy allows two identical redirects on one application, and redirects.create does not return the record it made, so this provider identifies a newly created redirect by diffing the application's redirect list around the call. Creating redirects through the Dokploy UI while an apply is running can make that ambiguous, and the provider errors rather than guessing.
+  ~> Redirects are not unique. Dokploy allows two identical redirects on one application, and redirects.create does not return the new record. The provider therefore identifies a new redirect from a comparison of the redirect list of the application before and after the call. A redirect from the Dokploy UI during an apply can make that comparison ambiguous, and the provider errors rather than guessing.
 ---
 
 # dokploy_redirect (Resource)
 
 A Traefik regex redirect on a Dokploy application.
 
-~> Redirects are not unique. Dokploy allows two identical redirects on one application, and `redirects.create` does not return the record it made, so this provider identifies a newly created redirect by diffing the application's redirect list around the call. Creating redirects through the Dokploy UI while an apply is running can make that ambiguous, and the provider errors rather than guessing.
+~> Redirects are not unique. Dokploy allows two identical redirects on one application, and `redirects.create` does not return the new record. The provider therefore identifies a new redirect from a comparison of the redirect list of the application before and after the call. A redirect from the Dokploy UI during an apply can make that comparison ambiguous, and the provider errors rather than guessing.
 
 ## Example Usage
 
@@ -29,13 +29,13 @@ resource "dokploy_redirect" "legacy_blog" {
 
 ### Required
 
-- `application_id` (String) Id of the application this belongs to. Changing it forces replacement: Dokploy's update endpoint for this record type takes no parent field, so a record cannot be moved between applications.
-- `regex` (String) Path regex to match, e.g. `^/old/(.*)`.
-- `replacement` (String) Replacement path, e.g. `/new/$1`.
+- `application_id` (String) Id of the application that owns this record. A change forces a replacement: the Dokploy update endpoint for this record type has no parent field, so a record cannot move between applications.
+- `regex` (String) Path regex to match, for example `^/old/(.*)`.
+- `replacement` (String) Replacement path, for example `/new/$1`.
 
 ### Optional
 
-- `permanent` (Boolean) Issue a permanent (308) redirect rather than a temporary (307) one.
+- `permanent` (Boolean) Issue a permanent redirect (308) instead of a temporary one (307).
 
 ### Read-Only
 

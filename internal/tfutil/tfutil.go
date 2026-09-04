@@ -51,14 +51,14 @@ func DeployAttributes() map[string]schema.Attribute {
 			Optional:    true,
 			Computed:    true,
 			Default:     booldefault.StaticBool(DefaultDeployOnChange),
-			Description: "Deploy after create and after changes to deploy-triggering attributes. Defaults to `true`.",
+			Description: "Deploy after a create, and after a change to an attribute that starts a deploy. Defaults to `true`.",
 		},
 		"deployment_timeout": schema.StringAttribute{
 			Optional:    true,
 			Computed:    true,
 			Default:     stringdefault.StaticString(DefaultDeploymentTimeout),
 			Validators:  []validator.String{DurationString()},
-			Description: "How long to wait for a triggered deployment to reach a terminal status, as a Go duration string. Defaults to `\"15m\"`. On timeout the apply fails but the server-side deployment keeps running.",
+			Description: "The maximum wait for a deploy to reach a terminal status, as a Go duration string. Defaults to `\"15m\"`. On timeout, the apply fails, but the deploy continues on the server.",
 		},
 	}
 }

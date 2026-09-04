@@ -46,10 +46,10 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	requiresReplace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
 		Description: "A scheduled logical dump of a database to an S3-compatible destination.\n\n" +
-			"~> **Redis is not supported here.** Dokploy has no logical dump for Redis; use " +
-			"`dokploy_volume_backup`, which snapshots the volume instead and does accept a Redis parent.\n\n" +
-			"~> Backing up the Dokploy instance itself (Dokploy's `web-server` backup type) is not exposed " +
-			"by this resource: it has no parent service and needs a separate validation path.",
+			"~> **This resource does not support Redis.** Dokploy has no logical dump for Redis. Use " +
+			"`dokploy_volume_backup`, which archives the volume and accepts a Redis parent.\n\n" +
+			"~> This resource does not expose a backup of the Dokploy server itself (the Dokploy `web-server` backup type). " +
+			"That backup type has no parent service and needs a separate validation path.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -58,16 +58,16 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"service_id": schema.StringAttribute{
 				Required: true,
-				Description: "Id of the database or compose service to dump. Changing it forces replacement: " +
-					"Dokploy's update endpoint carries no parent field at all, so a retarget is not expressible.",
+				Description: "Id of the database or compose service to dump. A change forces a replacement: " +
+					"the Dokploy update endpoint has no parent field, so a retarget is not possible.",
 				PlanModifiers: requiresReplace,
 			},
 			"service_type": schema.StringAttribute{
 				Required: true,
-				Description: "Kind of service `service_id` refers to: one of `postgres`, `mysql`, `mariadb`, " +
-					"`mongo`, `libsql`, `compose`. Changing it forces replacement. Dokploy's own `databaseType` " +
-					"and `backupType` fields are derived from this — setting them independently is what allows a " +
-					"record whose type and parent disagree, so they are not exposed.",
+				Description: "Kind of service that `service_id` refers to: one of `postgres`, `mysql`, `mariadb`, " +
+					"`mongo`, `libsql`, `compose`. A change forces a replacement. The provider derives the Dokploy `databaseType` " +
+					"and `backupType` fields from this attribute. Independent values would allow a " +
+					"record whose type and parent disagree, so the provider does not expose them.",
 				PlanModifiers: requiresReplace,
 				Validators:    []validator.String{stringvalidator.OneOf(serviceTypes...)},
 			},
@@ -77,32 +77,32 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"prefix": schema.StringAttribute{
 				Required:    true,
-				Description: "Key prefix inside the destination bucket, e.g. `backups/vanillauys/`.",
+				Description: "Key prefix inside the destination bucket, for example `backups/app/`.",
 			},
 			"schedule": schema.StringAttribute{
 				Required:    true,
-				Description: "Standard five-field cron expression, e.g. `0 3 * * *`.",
+				Description: "Standard five-field cron expression, for example `0 3 * * *`.",
 			},
 			"destination_id": schema.StringAttribute{
 				Required:    true,
-				Description: "Id of the `dokploy_destination` dumps are written to.",
+				Description: "Id of the `dokploy_destination` that receives the dumps.",
 			},
 			"enabled": schema.BoolAttribute{
 				Optional: true, Computed: true, Default: booldefault.StaticBool(true),
-				Description: "Whether the backup runs. Defaults to `true`: Dokploy leaves this null when a record is " +
-					"created through the API alone, which is neither on nor off, and a backup declared in " +
-					"configuration that silently never runs is the worse failure.",
+				Description: "Whether the backup runs. Defaults to `true`. Dokploy leaves this field null for a record " +
+					"from the API alone, which is neither on nor off, and a backup in the " +
+					"configuration that never runs is the worse failure.",
 			},
 			"include_encryption_key": schema.BoolAttribute{
 				Optional: true, Computed: true, Default: booldefault.StaticBool(true),
-				Description: "Include the database encryption key in the dump. Defaults to `true`, matching what " +
-					"Dokploy stores for a newly created backup. This provider always transmits the field: Dokploy's " +
-					"update endpoint stores `false` when it is omitted, so a request that left it out would silently " +
-					"turn it off on a record created with it on.",
+				Description: "Include the database encryption key in the dump. Defaults to `true`, the value that " +
+					"Dokploy stores for a new backup. The provider always sends the field: the Dokploy " +
+					"update endpoint stores `false` for an omitted field, so a request without it would " +
+					"turn the key off on a record that had it on.",
 			},
 			"keep_latest_count": schema.Int64Attribute{
 				Optional:    true,
-				Description: "How many dumps to retain. Omit to keep all of them.",
+				Description: "Number of dumps to keep. Omit it to keep all of them.",
 			},
 			"service_name": schema.StringAttribute{
 				Optional:    true,
@@ -110,7 +110,7 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			},
 			"app_name": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Dokploy-internal app name, generated by the server.",
+				Description:   "Internal Dokploy app name. The server generates it.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},

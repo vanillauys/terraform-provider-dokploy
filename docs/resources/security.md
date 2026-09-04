@@ -3,15 +3,15 @@
 page_title: "dokploy_security Resource - dokploy"
 subcategory: ""
 description: |-
-  HTTP basic-auth credentials protecting a Dokploy application.
-  ~> Dokploy stores and returns password in cleartext. The attribute is marked sensitive so Terraform will not print it, but it is readable by anyone with API access to the instance, and it is written to Terraform state in cleartext like any other attribute.
+  HTTP basic-auth credentials that protect a Dokploy application.
+  ~> Dokploy stores and returns password in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it, and the Terraform state holds it in cleartext like any other attribute.
 ---
 
 # dokploy_security (Resource)
 
-HTTP basic-auth credentials protecting a Dokploy application.
+HTTP basic-auth credentials that protect a Dokploy application.
 
-~> Dokploy stores and returns `password` in cleartext. The attribute is marked sensitive so Terraform will not print it, but it is readable by anyone with API access to the instance, and it is written to Terraform state in cleartext like any other attribute.
+~> Dokploy stores and returns `password` in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it, and the Terraform state holds it in cleartext like any other attribute.
 
 ## Example Usage
 
@@ -29,7 +29,7 @@ resource "dokploy_security" "staging_gate" {
 
 ### Required
 
-- `application_id` (String) Id of the application this belongs to. Changing it forces replacement: Dokploy's update endpoint for this record type takes no parent field, so a record cannot be moved between applications.
+- `application_id` (String) Id of the application that owns this record. A change forces a replacement: the Dokploy update endpoint for this record type has no parent field, so a record cannot move between applications.
 - `password` (String, Sensitive) Basic-auth password.
 - `username` (String) Basic-auth username.
 

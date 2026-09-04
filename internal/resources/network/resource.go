@@ -94,19 +94,18 @@ func (r *networkResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *networkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "A Docker network managed by Dokploy, for attaching services to " +
-			"extra networks beyond the default `dokploy-network` (see `network_ids` on " +
-			"`dokploy_application` and the database resources, and `service_networks` on `dokploy_compose`).\n\n" +
-			"~> **Networks are immutable.** Dokploy exposes no update endpoint, so changing any " +
-			"attribute replaces the network. Attached services keep working until their next deploy; " +
-			"re-attach them to the replacement id (a `dokploy_network.<name>.id` reference does this " +
-			"automatically) and redeploy.\n\n" +
-			"~> **Deleting an attached network does not fail and does not detach it.** " +
-			"`network.remove` succeeds even while an application still references the network in " +
-			"its `network_ids`; the reference is left dangling until that application is next " +
-			"updated or redeployed.\n\n" +
-			"-> A network created outside Dokploy (e.g. `docker network create`) has no Dokploy id. " +
-			"Import it once in the Dokploy UI (Networks -> Import), then read it with the " +
+		Description: "A Docker network that Dokploy manages. Attach services to it as an extra network beside the " +
+			"default `dokploy-network`. See `network_ids` on `dokploy_application` and the database resources, " +
+			"and `service_networks` on `dokploy_compose`.\n\n" +
+			"~> **Networks are immutable.** Dokploy has no update endpoint, so a change to any " +
+			"attribute replaces the network. Attached services continue to work until their next deploy. " +
+			"Attach them to the replacement id, which a `dokploy_network.<name>.id` reference does " +
+			"automatically, and deploy them again.\n\n" +
+			"~> **A delete of an attached network does not fail and does not detach it.** " +
+			"`network.remove` succeeds while an application still references the network in " +
+			"its `network_ids`. The reference stays until the next update or deploy of that application.\n\n" +
+			"-> A network from outside Dokploy, for example from `docker network create`, has no Dokploy id. " +
+			"Import it once in the Dokploy UI (Networks > Import), then read it with the " +
 			"`dokploy_network` data source or `terraform import`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -116,7 +115,7 @@ func (r *networkResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"name": schema.StringAttribute{
 				Required:      true,
-				Description:   "Network name. Changing it replaces the network.",
+				Description:   "Network name. A change replaces the network.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"driver": schema.StringAttribute{
@@ -135,7 +134,7 @@ func (r *networkResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"attachable": schema.BoolAttribute{
 				Optional: true, Computed: true,
 				Default:       booldefault.StaticBool(false),
-				Description:   "Allow manual container attachment (overlay networks).",
+				Description:   "Allow manual container attachment, for overlay networks.",
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
 			},
 			"enable_ipv4": schema.BoolAttribute{
@@ -152,24 +151,24 @@ func (r *networkResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"mtu": schema.Int64Attribute{
 				Optional:      true,
-				Description:   "MTU for the network, 68-65535. Unset leaves Docker's default.",
+				Description:   "MTU for the network, 68 to 65535. If unset, the Docker default applies.",
 				Validators:    []validator.Int64{int64validator.Between(68, 65535)},
 				PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()},
 			},
 			"ipam": schema.SingleNestedAttribute{
 				Optional:      true,
-				Description:   "Custom IP address management. Unset leaves Docker's defaults.",
+				Description:   "Custom IP address management. If unset, the Docker defaults apply.",
 				PlanModifiers: []planmodifier.Object{objectplanmodifier.RequiresReplace()},
 				Attributes: map[string]schema.Attribute{
-					"driver": schema.StringAttribute{Optional: true, Description: "IPAM driver, e.g. `default`."},
+					"driver": schema.StringAttribute{Optional: true, Description: "IPAM driver, for example `default`."},
 					"config": schema.ListNestedAttribute{
 						Optional:    true,
 						Description: "Address pools.",
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
-								"subnet":   schema.StringAttribute{Optional: true, Description: "Pool subnet in CIDR form, e.g. `172.28.0.0/16`."},
+								"subnet":   schema.StringAttribute{Optional: true, Description: "Pool subnet in CIDR form, for example `172.28.0.0/16`."},
 								"gateway":  schema.StringAttribute{Optional: true, Description: "Gateway address for the pool."},
-								"ip_range": schema.StringAttribute{Optional: true, Description: "Sub-range to allocate from, in CIDR form."},
+								"ip_range": schema.StringAttribute{Optional: true, Description: "Sub-range for allocation, in CIDR form."},
 							},
 						},
 					},
@@ -177,12 +176,12 @@ func (r *networkResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"server_id": schema.StringAttribute{
 				Optional:      true,
-				Description:   "Id of the remote server to create the network on. Unset targets the Dokploy host.",
+				Description:   "Id of the remote server that hosts the network. If unset, the Dokploy host applies.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Creation timestamp (server-side).",
+				Description:   "Creation timestamp from the server.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},

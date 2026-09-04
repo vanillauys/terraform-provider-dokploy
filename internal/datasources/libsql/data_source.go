@@ -90,28 +90,28 @@ func (d *libsqlDataSource) ConfigValidators(_ context.Context) []datasource.Conf
 
 func (d *libsqlDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Looks up a Dokploy libsql service (a distributed SQLite / `sqld` database) already " +
-			"registered in Dokploy, by id or by name within an environment.\n\n" +
+		Description: "Looks up a Dokploy libsql service (a distributed SQLite / `sqld` database) that already " +
+			"exists in Dokploy, by id or by name within an environment.\n\n" +
 			"~> Dokploy does not enforce name uniqueness within an environment. If more than one libsql " +
-			"service shares a name this data source fails rather than picking one; look the record up by " +
+			"service shares a name, this data source fails instead of a guess. Look the record up by " +
 			"`id` in that case.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "LibSQL service id. Set this to look it up by id, or leave it unset and set `name` and `environment_id`.",
+				Description: "LibSQL service id. Set it for a lookup by id, or leave it unset and set `name` and `environment_id`.",
 			},
 			"name": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Display name of the libsql service. Exactly one of `id` or `name` must be set. `environment_id` is required together with `name`.",
+				Description: "Display name of the libsql service. Set exactly one of `id` or `name`. `name` requires `environment_id`.",
 			},
 			"environment_id": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Id of the environment to search when looking up by `name`. Required together with `name`.",
+				Description: "Id of the environment to search for a lookup by `name`. Required together with `name`.",
 			},
-			"app_name":    schema.StringAttribute{Computed: true, Description: "Dokploy-internal app name. Always server-generated."},
+			"app_name":    schema.StringAttribute{Computed: true, Description: "Internal Dokploy app name. The server always generates it."},
 			"description": schema.StringAttribute{Computed: true, Description: "Free-form description."},
 			"database_user": schema.StringAttribute{
 				Computed:    true,
@@ -134,25 +134,25 @@ func (d *libsqlDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"enable_namespaces": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Whether sqld namespaces (multi-database mode) are enabled.",
+				Description: "Whether sqld namespaces, the multi-database mode, are enabled.",
 			},
-			"docker_image": schema.StringAttribute{Computed: true, Description: "LibSQL docker image."},
+			"docker_image": schema.StringAttribute{Computed: true, Description: "LibSQL Docker image."},
 			"env": schema.StringAttribute{
 				Computed:    true,
-				Description: "Extra environment variables in Dokploy's native multiline `KEY=value` format.",
+				Description: "Extra environment variables in the native Dokploy multiline `KEY=value` format.",
 			},
-			"external_port":       schema.Int64Attribute{Computed: true, Description: "Host port the libsql HTTP interface is exposed on, if any."},
-			"external_admin_port": schema.Int64Attribute{Computed: true, Description: "Host port the libsql admin interface is exposed on, if any."},
-			"external_grpc_port":  schema.Int64Attribute{Computed: true, Description: "Host port the libsql gRPC replication interface is exposed on, if any."},
+			"external_port":       schema.Int64Attribute{Computed: true, Description: "Host port for the libsql HTTP interface, if any."},
+			"external_admin_port": schema.Int64Attribute{Computed: true, Description: "Host port for the libsql admin interface, if any."},
+			"external_grpc_port":  schema.Int64Attribute{Computed: true, Description: "Host port for the libsql gRPC replication interface, if any."},
 			"command":             schema.StringAttribute{Computed: true, Description: "Container command override, if any."},
-			"cpu_limit":           schema.StringAttribute{Computed: true, Description: "Hard CPU limit, Docker-style (e.g. `\"0.5\"`)."},
-			"cpu_reservation":     schema.StringAttribute{Computed: true, Description: "Reserved CPU, Docker-style (e.g. `\"0.25\"`)."},
-			"memory_limit":        schema.StringAttribute{Computed: true, Description: "Hard memory limit, Docker-style (e.g. `\"512m\"`)."},
-			"memory_reservation":  schema.StringAttribute{Computed: true, Description: "Reserved memory, Docker-style (e.g. `\"256m\"`)."},
+			"cpu_limit":           schema.StringAttribute{Computed: true, Description: "Hard CPU limit in Docker notation, for example `\"0.5\"`."},
+			"cpu_reservation":     schema.StringAttribute{Computed: true, Description: "Reserved CPU in Docker notation, for example `\"0.25\"`."},
+			"memory_limit":        schema.StringAttribute{Computed: true, Description: "Hard memory limit in Docker notation, for example `\"512m\"`."},
+			"memory_reservation":  schema.StringAttribute{Computed: true, Description: "Reserved memory in Docker notation, for example `\"256m\"`."},
 			"replicas":            schema.Int64Attribute{Computed: true, Description: "Number of container replicas."},
-			"server_id":           schema.StringAttribute{Computed: true, Description: "Remote server the service runs on, if not the Dokploy host."},
-			"status":              schema.StringAttribute{Computed: true, Description: "Service status reported by Dokploy."},
-			"created_at":          schema.StringAttribute{Computed: true, Description: "Creation timestamp (server-side)."},
+			"server_id":           schema.StringAttribute{Computed: true, Description: "Id of the remote server that runs the service, if not the Dokploy host."},
+			"status":              schema.StringAttribute{Computed: true, Description: "Service status from Dokploy."},
+			"created_at":          schema.StringAttribute{Computed: true, Description: "Creation timestamp from the server."},
 		},
 	}
 }

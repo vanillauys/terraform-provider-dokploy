@@ -79,7 +79,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		"name": schema.StringAttribute{Required: true, Description: "Display name of the libsql service."},
 		"environment_id": schema.StringAttribute{
 			Required:      true,
-			Description:   "Id of the environment this service lives in (see `dokploy_project.environments`).",
+			Description:   "Id of the environment that holds this service. See `dokploy_project.environments`.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		"description": schema.StringAttribute{Optional: true, Description: "Free-form description."},
@@ -111,7 +111,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		},
 		"sqld_primary_url": schema.StringAttribute{
 			Optional:    true,
-			Description: "URL of the primary sqld node. Required when `sqld_node` is `replica`; rejected by the server whenever `sqld_node` is not `replica`, including the default (`primary`).",
+			Description: "URL of the primary sqld node. Required when `sqld_node` is `replica`. The server rejects it when `sqld_node` is not `replica`, which includes the default `primary`.",
 		},
 		// enable_namespaces has a Default, not a plain Optional: the wire
 		// field (client.Libsql.EnableNamespaces) is a plain bool, never
@@ -121,7 +121,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			Optional:    true,
 			Computed:    true,
 			Default:     booldefault.StaticBool(false),
-			Description: "Enable sqld namespaces (multi-database mode). Defaults to `false`.",
+			Description: "Enable sqld namespaces, the multi-database mode. Defaults to `false`.",
 		},
 		// app_name is Computed-only, not Optional+Computed like sqld_node/
 		// enable_namespaces above: libsql.create requires a non-empty appName
@@ -140,7 +140,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		// replace.
 		"app_name": schema.StringAttribute{
 			Computed:      true,
-			Description:   "Dokploy-internal app name. Always server-generated: the server derives it from `name` and appends a random suffix for uniqueness. It cannot be set directly.",
+			Description:   "Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
 		// docker_image has no Default either, the same "server decides" shape
@@ -154,31 +154,30 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		"docker_image": schema.StringAttribute{
 			Optional:      true,
 			Computed:      true,
-			Description:   "LibSQL docker image, e.g. `ghcr.io/tursodatabase/libsql-server:v0.24.32`. That is also the server's own default when this is omitted, and it is a real, pullable tag.",
+			Description:   "LibSQL Docker image, for example `ghcr.io/tursodatabase/libsql-server:v0.24.32`. That tag is also the server default when you omit the attribute, and it exists in the registry.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
 		"server_id": schema.StringAttribute{
 			Optional:      true,
-			Description:   "Remote server to run the service on. Defaults to the Dokploy host.",
+			Description:   "Id of the remote server that runs the service. Defaults to the Dokploy host.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
 		"env": schema.StringAttribute{
 			Optional: true,
-			Description: "Extra environment variables in Dokploy's native multiline `KEY=value` format. Use Terraform sensitive variables for " +
-				"secret values. Omitting this attribute and setting it to \"\" are indistinguishable on read - both come back null. Use omission, " +
-				"not \"\", to clear it.",
+			Description: "Extra environment variables in the native Dokploy multiline `KEY=value` format. Use Terraform sensitive variables for " +
+				"secret values. An omitted value and `\"\"` both read back as null. Omit the attribute to clear it.",
 		},
 		"external_port": schema.Int64Attribute{
 			Optional:    true,
-			Description: "Host port to expose the libsql HTTP interface on. Not permitted when `sqld_node` is `replica`.",
+			Description: "Host port for the libsql HTTP interface. Not permitted when `sqld_node` is `replica`.",
 		},
 		"external_admin_port": schema.Int64Attribute{
 			Optional:    true,
-			Description: "Host port to expose the libsql admin interface on. Not permitted when `sqld_node` is `replica`.",
+			Description: "Host port for the libsql admin interface. Not permitted when `sqld_node` is `replica`.",
 		},
 		"external_grpc_port": schema.Int64Attribute{
 			Optional:    true,
-			Description: "Host port to expose the libsql gRPC replication interface on. Not permitted when `sqld_node` is `replica`.",
+			Description: "Host port for the libsql gRPC replication interface. Not permitted when `sqld_node` is `replica`.",
 		},
 		"command": schema.StringAttribute{
 			Optional:    true,
@@ -186,19 +185,19 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		},
 		"cpu_limit": schema.StringAttribute{
 			Optional:    true,
-			Description: "Hard CPU limit, Docker-style (e.g. `\"0.5\"`). A string, not a number.",
+			Description: "Hard CPU limit in Docker notation, for example `\"0.5\"`. A string, not a number.",
 		},
 		"cpu_reservation": schema.StringAttribute{
 			Optional:    true,
-			Description: "Reserved CPU, Docker-style (e.g. `\"0.25\"`).",
+			Description: "Reserved CPU in Docker notation, for example `\"0.25\"`.",
 		},
 		"memory_limit": schema.StringAttribute{
 			Optional:    true,
-			Description: "Hard memory limit, Docker-style (e.g. `\"512m\"`).",
+			Description: "Hard memory limit in Docker notation, for example `\"512m\"`.",
 		},
 		"memory_reservation": schema.StringAttribute{
 			Optional:    true,
-			Description: "Reserved memory, Docker-style (e.g. `\"256m\"`).",
+			Description: "Reserved memory in Docker notation, for example `\"256m\"`.",
 		},
 		// replicas has a Default for the same reason as enable_namespaces:
 		// the wire field (client.Libsql.Replicas) is a plain int64, never
@@ -207,7 +206,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			Optional:    true,
 			Computed:    true,
 			Default:     int64default.StaticInt64(1),
-			Description: "Number of container replicas to run. Defaults to `1`.",
+			Description: "Number of container replicas. Defaults to `1`.",
 		},
 		// network_ids and detach_dokploy_network are the v0.30.0 network
 		// attachment attributes, worded identically to every other engine
@@ -216,25 +215,25 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		"network_ids": schema.SetAttribute{
 			Optional:    true,
 			ElementType: types.StringType,
-			Description: "Ids of Docker networks (Dokploy network records) to attach this service to. " +
-				"Applied on the next deploy. Omit to keep only the default `dokploy-network`. " +
-				"An empty set is not valid - omit the attribute instead.",
+			Description: "Ids of the Dokploy network records to attach this service to. " +
+				"The attachment applies on the next deploy. Omit it to keep only the default `dokploy-network`. " +
+				"An empty set is not valid. Omit the attribute instead.",
 			Validators: []validator.Set{setvalidator.SizeAtLeast(1)},
 		},
 		"detach_dokploy_network": schema.BoolAttribute{
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
 			Description: "Detach the shared `dokploy-network` from this service. Defaults to `false`. " +
-				"Only meaningful together with `network_ids`; applied on the next deploy.",
+				"It has an effect only together with `network_ids`, and it applies on the next deploy.",
 		},
 		// status deliberately has NO UseStateForUnknown: a deploy moves it
 		// out of Terraform's control, so pinning the prior value as a known
 		// plan value makes core reject the apply with "Provider produced
 		// inconsistent result after apply". See the same attribute in
 		// internal/resources/compose/resource.go.
-		"status": schema.StringAttribute{Computed: true, Description: "Service status reported by Dokploy."},
+		"status": schema.StringAttribute{Computed: true, Description: "Service status from Dokploy."},
 		"created_at": schema.StringAttribute{
 			Computed:      true,
-			Description:   "Creation timestamp (server-side).",
+			Description:   "Creation timestamp from the server.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
 	}
@@ -244,9 +243,9 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 
 	resp.Schema = schema.Schema{
 		Description: "A Dokploy libsql service: a distributed SQLite (`sqld`) database.\n\n" +
-			"~> A replica (`sqld_node = \"replica\"`) requires `sqld_primary_url`, and cannot set any external port. " +
-			"A non-replica (`sqld_node` unset or `\"primary\"`) must NOT set `sqld_primary_url`. " +
-			"Dokploy rejects all three violations at apply time; this provider catches them earlier, at plan time.",
+			"~> A replica (`sqld_node = \"replica\"`) requires `sqld_primary_url` and cannot set an external port. " +
+			"A primary (`sqld_node` unset or `\"primary\"`) must not set `sqld_primary_url`. " +
+			"Dokploy rejects all three violations at apply time. The provider rejects them earlier, at plan time.",
 		Attributes: attrs,
 	}
 }

@@ -102,23 +102,23 @@ func (r *vaultProviderResource) ConfigValidators(_ context.Context) []resource.C
 
 func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "A secret-vault connection Dokploy can pull runtime secrets from at deploy time, referenced from other resources' " +
-			"`env` attributes as `${{vault.<name>.<key>}}` - a plain string this provider does not parse or validate. " +
-			"One of six provider types: `hashicorp` (also covers OpenBao, which speaks the same wire protocol), " +
-			"`infisical`, `aws`, `doppler`, `azure`, `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), " +
+		Description: "A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their " +
+			"`env` attribute as `${{vault.<name>.<key>}}`, a plain string that this provider does not parse or validate. " +
+			"The resource models six provider types: `hashicorp` (also OpenBao, which uses the same wire protocol), " +
+			"`infisical`, `aws`, `doppler`, `azure`, and `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), " +
 			"which this resource does not model yet.\n\n" +
-			"~> **Secrets are masked on every read, never echoed back.** Dokploy returns every secret field in this resource's " +
-			"config blocks as the literal string `********`, on create, read, and update alike. This provider cannot detect a " +
-			"config value changed in the Dokploy UI - Read leaves every config block exactly as Terraform last wrote it, secret " +
-			"and non-secret fields alike. Manage a vault provider's config only through Terraform. A UI-side edit persists " +
-			"undetected until the next apply that modifies this resource; that apply's full-body update overwrites it with " +
-			"Terraform's config.\n\n" +
-			"~> **A config block cannot be recovered by `terraform import`.** The imported resource's config blocks are left null; " +
-			"re-supply the block matching the provider's actual type in configuration, and the first `terraform apply` writes it " +
-			"as a full-body update, not a partial patch.\n\n" +
-			"~> **Dokploy never validates vault credentials on create or update**, for any provider type - only " +
+			"~> **Dokploy masks each secret on each read.** Dokploy returns each secret field in the config blocks of this resource " +
+			"as the literal string `********`, on create, read, and update alike. The provider therefore cannot detect a " +
+			"config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret " +
+			"and non-secret fields alike. Manage the config of a vault provider only through Terraform. An edit in the UI stays " +
+			"undetected until the next apply that modifies this resource. That apply writes the full body and overwrites the edit " +
+			"with the Terraform config.\n\n" +
+			"~> **`terraform import` cannot recover a config block.** The import leaves the config blocks null. " +
+			"Supply the block that matches the actual provider type in the configuration. The first `terraform apply` then writes it " +
+			"as a full-body update, not as a partial patch.\n\n" +
+			"~> **Dokploy does not validate vault credentials on create or update**, for any provider type. Only " +
 			"`verify_connection = true` reaches the real vault, through `vaultProvider.testConnection`, before the write. " +
-			"A misconfigured vault provider otherwise applies successfully and only fails the next deploy that needs a secret " +
+			"Without it, a misconfigured vault provider applies successfully and fails only on the next deploy that needs a secret " +
 			"from it.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -128,9 +128,9 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"name": schema.StringAttribute{
 				Required: true,
-				Description: "Display name, 1-64 characters, matching `^[a-zA-Z0-9_-]+$`. Dokploy rejects a duplicate name; " +
-					"this provider pre-checks for one before ever sending a create request, so a collision fails cleanly rather " +
-					"than through the server's raw error.",
+				Description: "Display name, 1 to 64 characters, that matches `^[a-zA-Z0-9_-]+$`. Dokploy rejects a duplicate name. " +
+					"The provider checks for a duplicate before it sends a create request, so a collision fails with a clear error " +
+					"instead of the raw server error.",
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, 64),
 					stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9_-]+$`), "must contain only letters, numbers, underscores, and hyphens"),
@@ -138,13 +138,13 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"hashicorp": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "HashiCorp Vault or OpenBao connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.",
+				Description: "HashiCorp Vault or OpenBao connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
 				Attributes: map[string]schema.Attribute{
-					"url":   schema.StringAttribute{Required: true, Description: "Vault (or OpenBao) server URL, e.g. `https://vault.example.com:8200`."},
+					"url":   schema.StringAttribute{Required: true, Description: "Vault or OpenBao server URL, for example `https://vault.example.com:8200`."},
 					"token": schema.StringAttribute{Required: true, Sensitive: true, Description: "Vault authentication token."},
 					"namespace": schema.StringAttribute{
 						Optional:    true,
-						Description: "Vault Enterprise namespace. Omit for OSS Vault or OpenBao; the server has no default for this field.",
+						Description: "Vault Enterprise namespace. Omit it for open-source Vault or OpenBao. The server has no default for this field.",
 						// An empty string cannot round-trip: flattenHashicorpConfig (model.go) uses tfutil.StringOrNull,
 						// which collapses "" back to null on read, so a "" here would apply and then fail with an
 						// "inconsistent result" error. Reject it at plan time instead of at apply time.
@@ -159,7 +159,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"infisical": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "Infisical connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.",
+				Description: "Infisical connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
 				Attributes: map[string]schema.Attribute{
 					"site_url": schema.StringAttribute{
 						Optional: true, Computed: true,
@@ -171,7 +171,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 					"project_id":    schema.StringAttribute{Required: true, Description: "Infisical project id."},
 					"environment_slug": schema.StringAttribute{
 						Required:    true,
-						Description: "Infisical environment slug, e.g. `dev` or `prod`.",
+						Description: "Infisical environment slug, for example `dev` or `prod`.",
 					},
 					"secret_path": schema.StringAttribute{
 						Optional: true, Computed: true,
@@ -182,16 +182,16 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"aws": schema.SingleNestedAttribute{
 				Optional: true,
-				Description: "AWS Secrets Manager connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.\n\n" +
-					"~> This block's shape came from the OpenAPI contract alone, not a live probe - " +
-					"this resource's own acceptance tests are the first live confirmation of it.",
+				Description: "AWS Secrets Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.\n\n" +
+					"~> The shape of this block comes from the OpenAPI contract, not from a live probe. " +
+					"The acceptance tests of this resource are the first live confirmation of it.",
 				Attributes: map[string]schema.Attribute{
-					"region":            schema.StringAttribute{Required: true, Description: "AWS region for Secrets Manager, e.g. `us-east-1`."},
+					"region":            schema.StringAttribute{Required: true, Description: "AWS region for Secrets Manager, for example `us-east-1`."},
 					"access_key_id":     schema.StringAttribute{Required: true, Sensitive: true, Description: "AWS access key id."},
 					"secret_access_key": schema.StringAttribute{Required: true, Sensitive: true, Description: "AWS secret access key."},
 					"endpoint": schema.StringAttribute{
 						Optional:    true,
-						Description: "Custom Secrets Manager endpoint, for a compatible service or a VPC endpoint. Omit to use AWS's default endpoint; the server has no default for this field.",
+						Description: "Custom Secrets Manager endpoint, for a compatible service or a VPC endpoint. Omit it to use the default AWS endpoint. The server has no default for this field.",
 						// Same reason as hashicorp.namespace above: flattenAWSConfig collapses "" back to null.
 						Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
@@ -199,20 +199,19 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"doppler": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "Doppler connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.",
+				Description: "Doppler connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
 				Attributes: map[string]schema.Attribute{
 					"service_token": schema.StringAttribute{Required: true, Sensitive: true, Description: "Doppler service token."},
 					"project": schema.StringAttribute{
 						Optional:    true,
-						Description: "Doppler project slug. Omit to let Doppler infer it from the service token; the server has no default for this field.",
+						Description: "Doppler project slug. Omit it, and Doppler infers it from the service token. The server has no default for this field.",
 						// Same reason as hashicorp.namespace above: flattenDopplerConfig collapses "" back to null.
 						Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"config": schema.StringAttribute{
 						Optional: true,
-						Description: "Doppler config name (the wire field is also named `config`; `config` is legal as an attribute name here " +
-							"since it is nested inside this block, not at the resource's top level). Omit to let Doppler infer it from the service " +
-							"token; the server has no default for this field.",
+						Description: "Doppler config name. The wire field is also named `config`. Omit it, and Doppler infers it from the service " +
+							"token. The server has no default for this field.",
 						// Same reason as hashicorp.namespace above: flattenDopplerConfig collapses "" back to null.
 						Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
@@ -220,18 +219,18 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"azure": schema.SingleNestedAttribute{
 				Optional: true,
-				Description: "Azure Key Vault connection. Every field is required at the API - Azure has no optional fields here. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.\n\n" +
-					"~> This block's shape came from the OpenAPI contract alone, not a live probe.",
+				Description: "Azure Key Vault connection. The API requires each field; Azure has no optional field here. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.\n\n" +
+					"~> The shape of this block comes from the OpenAPI contract, not from a live probe.",
 				Attributes: map[string]schema.Attribute{
-					"vault_uri":     schema.StringAttribute{Required: true, Description: "Azure Key Vault URI, e.g. `https://myvault.vault.azure.net/`."},
+					"vault_uri":     schema.StringAttribute{Required: true, Description: "Azure Key Vault URI, for example `https://myvault.vault.azure.net/`."},
 					"tenant_id":     schema.StringAttribute{Required: true, Description: "Azure AD tenant id."},
-					"client_id":     schema.StringAttribute{Required: true, Description: "Azure AD application (client) id."},
+					"client_id":     schema.StringAttribute{Required: true, Description: "Azure AD application client id."},
 					"client_secret": schema.StringAttribute{Required: true, Sensitive: true, Description: "Azure AD application client secret."},
 				},
 			},
 			"scaleway": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "Scaleway Secret Manager connection. Exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway` must be set.",
+				Description: "Scaleway Secret Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
 				Attributes: map[string]schema.Attribute{
 					"project_id": schema.StringAttribute{Required: true, Description: "Scaleway project id."},
 					"secret_key": schema.StringAttribute{Required: true, Sensitive: true, Description: "Scaleway API secret key."},
@@ -249,8 +248,8 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"assignments": schema.ListNestedAttribute{
 				Required: true,
-				Description: "Projects (and optionally specific environments within them) this vault provider is available to. " +
-					"An empty list is legal - `assignments = []` is accepted and echoed back by the server.",
+				Description: "Projects, and optionally specific environments in them, that can use this vault provider. " +
+					"An empty list is valid: the server accepts `assignments = []` and returns it.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"project_id": schema.StringAttribute{Required: true, Description: "Id of the assigned project."},
@@ -258,8 +257,8 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 							Optional: true, Computed: true,
 							ElementType: types.StringType,
 							Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{})),
-							Description: "Ids of specific environments within the project to restrict this assignment to. Omit (or set an " +
-								"empty list) to make every environment in the project eligible; the server stores and echoes an empty set for " +
+							Description: "Ids of the environments in the project that this assignment covers. Omit it, or set an " +
+								"empty list, to cover each environment in the project. The server stores and returns an empty set for " +
 								"that case, not null.",
 						},
 					},
@@ -268,13 +267,13 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			"verify_connection": schema.BoolAttribute{
 				Optional: true, Computed: true,
 				Default: booldefault.StaticBool(false),
-				Description: "Test the config against the real vault before writing, through `vaultProvider.testConnection`. Defaults to " +
-					"`false`. On failure the apply fails with the server's message and nothing is created or updated. This attribute is " +
-					"provider-only - Dokploy stores no server-side value for it - so `terraform import` always seeds it `false`.",
+				Description: "Test the config against the real vault before the write, through `vaultProvider.testConnection`. Defaults to " +
+					"`false`. On failure, the apply fails with the server message, and the provider creates or updates nothing. This attribute is " +
+					"provider-only, and Dokploy stores no value for it, so `terraform import` always seeds it with `false`.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:      true,
-				Description:   "Creation timestamp (server-side).",
+				Description:   "Creation timestamp from the server.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},

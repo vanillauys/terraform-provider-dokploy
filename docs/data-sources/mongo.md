@@ -3,12 +3,12 @@
 page_title: "dokploy_mongo Data Source - dokploy"
 subcategory: ""
 description: |-
-  Look up a Dokploy mongo service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
+  Look up a Dokploy mongo service by id, or by name within an environment. The data source does not expose the database password. It exposes each other credential attribute as sensitive.
 ---
 
 # dokploy_mongo (Data Source)
 
-Look up a Dokploy mongo service by id, or by name within an environment. The database password is intentionally not exposed; any other Sensitive credential attribute is exposed but marked Sensitive.
+Look up a Dokploy mongo service by id, or by name within an environment. The data source does not expose the database password. It exposes each other credential attribute as sensitive.
 
 ## Example Usage
 
@@ -30,12 +30,12 @@ data "dokploy_mongo" "by_name" {
 ### Optional
 
 - `environment_id` (String) Id of the environment to search. Required with `name`.
-- `id` (String) MongoDB service id. Set either this or both `environment_id` and `name`.
-- `name` (String) Exact mongo service name, searched within `environment_id`. Errors when zero or multiple mongo services match.
+- `id` (String) MongoDB service id. Set this attribute, or set both `environment_id` and `name`.
+- `name` (String) Exact mongo service name. The lookup searches within `environment_id` and errors when zero or many mongo services match.
 
 ### Read-Only
 
-- `app_name` (String) Dokploy-internal app name.
+- `app_name` (String) Internal Dokploy app name.
 - `created_at` (String) Creation timestamp.
 - `database_user` (String) Database user.
 - `docker_image` (String) Docker image.

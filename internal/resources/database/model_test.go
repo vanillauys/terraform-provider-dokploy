@@ -695,7 +695,7 @@ func TestSchemaAttributes_ZeroCredentialAttrs(t *testing.T) {
 	if !ok {
 		t.Fatalf("database_password is not a schema.StringAttribute: %T", attrs["database_password"])
 	}
-	if dbPassword.Description != "Redis password. Changing it triggers a redeploy." {
+	if dbPassword.Description != "Redis password. A change starts a redeploy." {
 		t.Errorf("unexpected database_password description: %q", dbPassword.Description)
 	}
 }

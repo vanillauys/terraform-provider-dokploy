@@ -23,8 +23,8 @@ data "dokploy_project" "example" {
 
 ### Optional
 
-- `id` (String) Project id. Exactly one of `id` or `name` must be set.
-- `name` (String) Exact project name. Errors when zero or multiple projects match.
+- `id` (String) Project id. Set exactly one of `id` or `name`.
+- `name` (String) Exact project name. The lookup errors when zero or many projects match.
 
 ### Read-Only
 
