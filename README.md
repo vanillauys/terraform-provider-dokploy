@@ -2,7 +2,9 @@
 
 A Terraform and OpenTofu provider for [Dokploy](https://dokploy.com).
 The registry address is `vanillauys/dokploy`. The provider requires
-Terraform 1.5 or later.
+Terraform 1.5 or later. The write-only companions of the secret attributes
+(`<name>_wo`) need Terraform 1.11 or later; a configuration without them
+works on 1.5.
 
 ## Usage
 
@@ -11,7 +13,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.11"
+      version = "~> 0.12"
     }
   }
 }
@@ -29,8 +31,11 @@ describes each resource and data source.
 
 This provider targets **Dokploy v0.30.5**. The acceptance suite installs
 Dokploy with the upstream `install.sh` script. That script installs the latest
-Dokploy release, so the suite tests each new version when it ships. The suite
-does not test older versions.
+Dokploy release, so the suite tests each new version when it ships, on every
+pull request and every night. The suite does not test older versions. A server
+older than the pinned version can reject a field that a newer Dokploy
+introduced, for example the network attachment fields of v0.30.0. If your
+server is older, upgrade it to the pinned version or later before you apply.
 
 ## Documentation
 

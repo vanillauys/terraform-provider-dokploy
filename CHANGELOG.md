@@ -4,6 +4,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-09-05
+
+The hardening release before v1.0.0. It has no breaking change: every
+attribute from v0.11.0 keeps its shape, and a v0.11.0 state loads with an
+empty plan. The acceptance suite proves that with the v0.11.0 provider from
+the registry, on every resource that gains an attribute here.
+
+### Added
+
+- Write-only secrets. Every sensitive attribute that a resource sends to the
+  server has a write-only companion: `<name>_wo` (write-only, sensitive) and
+  `<name>_wo_version` (a number). Terraform keeps a write-only value out of
+  the plan and the state, and the provider keeps the server's value out of
+  the state on every refresh. A new value reaches the server when
+  `<name>_wo_version` changes. The pairs:
+  - `database_password_wo` on the six database engines, and
+    `database_root_password_wo` on `dokploy_mysql` and `dokploy_mariadb`.
+  - `access_key_wo` and `secret_access_key_wo` on `dokploy_destination`.
+  - `password_wo` on `dokploy_security`.
+  - The secret of each `dokploy_vault_provider` config block:
+    `hashicorp.token_wo`, `infisical.client_secret_wo`,
+    `aws.access_key_id_wo`, `aws.secret_access_key_wo`,
+    `doppler.service_token_wo`, `azure.client_secret_wo`, and
+    `scaleway.secret_key_wo`. The Dokploy API masks these secrets on read,
+    so the provider sends the companion's value on every update, and the
+    version only starts an update when nothing else changed.
+
+  The plain attributes stay. `database_password`, `access_key`,
+  `secret_access_key`, `password`, and the vault secrets turn Optional; a
+  validator still demands exactly one of the plain attribute and its
+  companion. A write-only value needs Terraform 1.11 or later. A
+  configuration without the companions works on Terraform 1.5 as before.
+  See the [secrets guide](docs/guides/secrets.md#write-only-companions).
+- `dogfood/generate_imports.py` enumerates `dokploy_compose` (with its
+  domains, mounts, and backups) and `dokploy_network`, lists vault providers
+  as comments, and skips a compose without a usable source.
+
+### Changed
+
+- The Get started guide states the two API key shapes. A key from the UI
+  with "Enable Rate Limiting" off, its default, has no limit. A key from a
+  raw `user.createApiKey` call gets 10 requests per 24 hours, then `401`.
+- `dokploy_libsql`: on Dokploy v0.30.5 a replica needs the `command`
+  override to replicate. Dokploy stores the role and the primary URL and
+  passes them to the container, but starts `sqld` with a fixed command that
+  reads neither. The resource note, the `sqld_node`, `sqld_primary_url`, and
+  `command` descriptions, the example, and the README say so.
+- The README and the provider index state the support policy: the
+  acceptance suite runs on the latest Dokploy release, and the provider
+  targets the pinned version. Older servers are untested.
+- CI: the acceptance workflow installs one pinned Terraform CLI (1.16.1)
+  instead of one download per test package, and pulls the seven suite
+  images before the tests start. `acceptance/up.sh` forwards
+  `DOKPLOY_VERSION`, so a rig at the pinned or an older Dokploy version can
+  be built.
+
+### Fixed
+
+- The eight `*.deploy` calls get a 10-minute deadline. The old 60-second
+  client timeout failed a `dokploy_libsql` create while the server finished
+  the deploy.
+
 ## [0.11.0] - 2026-09-05
 
 The last minor release with breaking changes before v1.0.0. The

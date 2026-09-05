@@ -50,7 +50,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.11"
+      version = "~> 0.12"
     }
   }
 }
