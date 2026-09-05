@@ -77,10 +77,10 @@ func (r *envVarsResource) ValidateConfig(ctx context.Context, req resource.Valid
 	}
 }
 
-func targetAttribute(kind, label string) schema.Attribute {
+func targetAttribute(kind, label, note string) schema.Attribute {
 	return schema.StringAttribute{
 		Optional:      true,
-		Description:   "Id of the " + label + " whose variables this resource owns. Set exactly one of `application_id`, `compose_id`, or `environment_id`. A change replaces the resource.",
+		Description:   "Id of the " + label + " whose variables this resource owns." + note + " Set exactly one of `application_id`, `compose_id`, or `environment_id`. A change replaces the resource.",
 		PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 	}
 }
@@ -104,9 +104,9 @@ func (r *envVarsResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description:   "`application/<id>`, `compose/<id>`, or `environment/<id>`; also the import id.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"application_id": targetAttribute("application", "application"),
-			"compose_id":     targetAttribute("compose", "compose service"),
-			"environment_id": targetAttribute("environment", "environment, whose variables every service in it shares"),
+			"application_id": targetAttribute("application", "application", ""),
+			"compose_id":     targetAttribute("compose", "compose service", ""),
+			"environment_id": targetAttribute("environment", "environment", " Every service in the environment shares them."),
 			"variables": schema.MapAttribute{
 				Required:    true,
 				ElementType: types.StringType,

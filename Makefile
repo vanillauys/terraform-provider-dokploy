@@ -19,6 +19,9 @@ testacc:
 lint:
 	golangci-lint run
 
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
 acc-up:
 	./acceptance/up.sh
 
@@ -33,4 +36,4 @@ docs:
 hooks:
 	@git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true
 
-.PHONY: default build test testacc lint acc-up docs hooks
+.PHONY: default build test testacc lint vuln acc-up docs hooks

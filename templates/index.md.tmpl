@@ -38,6 +38,24 @@ server older than the pinned version can reject a field that a newer Dokploy
 introduced. If your server is older, upgrade it to the pinned version or later
 before you apply.
 
+## Stability
+
+The provider follows [semantic versioning](https://semver.org) from v1.0.0:
+
+- A minor release adds resources, data sources, and attributes. A
+  configuration and a state from the previous minor release load with an
+  empty plan.
+- A change that removes or renames an attribute, changes a default, or
+  changes what an existing attribute does is a breaking change. It needs a
+  major release, and the [upgrade guide](guides/upgrading) shows the old and
+  the new configuration.
+- A deprecated attribute stays for at least one minor release and prints a
+  warning at plan time before a major release removes it.
+- The Dokploy compatibility pin moves in minor releases.
+
+Pin the minor version, `~> 1.0`, to get fixes and additions without a
+breaking change.
+
 ## Guides
 
 - [Get started](guides/getting-started): configure the provider and apply a
@@ -54,8 +72,8 @@ before you apply.
   database passwords, backup credentials, and the write-only companions
   that keep a secret out of the state.
 - [Upgrade guide](guides/upgrading): what each release needs from your
-  configuration. v0.13 adds the coverage of this page; v0.12 adds the
-  write-only companions; v0.11 had the breaking changes.
+  configuration. v1.0 has no change; v0.13 adds the coverage of this page;
+  v0.12 adds the write-only companions; v0.11 had the breaking changes.
 
 ## Before you start
 
@@ -72,9 +90,6 @@ These three problems cause the most failures:
 3. **The default `docker_image` for MariaDB and MongoDB does not exist on
    Docker Hub.** Set an explicit tag, or each deploy fails. See
    [Deploy semantics](guides/deploy-semantics#two-engines-whose-default-image-does-not-exist).
-
-This provider is pre-1.0. Breaking changes can land in minor releases until
-v1.0.0. If you need a stable configuration, pin an exact version.
 
 ## Example Usage
 

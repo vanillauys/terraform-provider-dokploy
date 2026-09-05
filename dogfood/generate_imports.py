@@ -53,6 +53,27 @@ ONE = {
     "dokploy_volume_backup": ("volumeBackups.one", "volumeBackupId"),
     "dokploy_compose": ("compose.one", "composeId"),
     "dokploy_network": ("network.one", "networkId"),
+    "dokploy_ssh_key": ("sshKey.one", "sshKeyId"),
+    "dokploy_server": ("server.one", "serverId"),
+    "dokploy_certificate": ("certificates.one", "certificateId"),
+    "dokploy_gitlab_provider": ("gitlab.one", "gitlabId"),
+    "dokploy_bitbucket_provider": ("bitbucket.one", "bitbucketId"),
+    "dokploy_gitea_provider": ("gitea.one", "giteaId"),
+    "dokploy_ai": ("ai.one", "aiId"),
+    "dokploy_organization": ("organization.one", "organizationId"),
+}
+# The twelve notification resources share notification.one. The record
+# nests the channel fields (the webhook URL, the token) under the channel
+# name, which is the middle of the resource type name.
+for _channel in ("slack", "discord", "telegram", "email", "resend", "gotify", "ntfy",
+                 "mattermost", "lark", "teams", "pushover", "custom"):
+    ONE[f"dokploy_{_channel}_notification"] = ("notification.one", "notificationId")
+
+# registry.one omits the password; only the list carries it (checked live,
+# v0.30.5). These records come from a list call with no parameter, and the
+# element with the matching id is the record.
+LIST_ONE = {
+    "dokploy_registry": ("registry.all", "registryId"),
 }
 
 # (environment.one's collection key, resource type, id field). Drives the
@@ -279,12 +300,23 @@ def patch_sensitive(imports_path, generated_path):
             indent, attr, eq = sm.groups()
             resource_type = current_addr.split(".", 1)[0]
             rid = addr_to_id.get(current_addr)
-            endpoint = ONE.get(resource_type)
+            endpoint = ONE.get(resource_type) or LIST_ONE.get(resource_type)
             if rid and endpoint:
                 if current_addr not in one_cache:
                     path, idfield = endpoint
                     try:
-                        one_cache[current_addr] = get(path, **{idfield: rid})
+                        if resource_type in LIST_ONE:
+                            rec = next((r for r in get(path) or []
+                                        if isinstance(r, dict) and r.get(idfield) == rid), {})
+                        else:
+                            rec = get(path, **{idfield: rid})
+                        # A notification keeps the channel secret under the
+                        # channel name; lift it so the attribute lookup
+                        # below finds webhookUrl, botToken, and the rest.
+                        if resource_type.endswith("_notification") and isinstance(rec, dict):
+                            channel = resource_type[len("dokploy_"):-len("_notification")]
+                            rec = {**rec, **(rec.get(channel) or {})}
+                        one_cache[current_addr] = rec
                     except Exception as e:                      # noqa: BLE001
                         print(f"    !! {path} failed for {current_addr}: {e}",
                               file=sys.stderr)
@@ -416,6 +448,67 @@ def main():
             f'(id "{vid}", type {vp.get("providerType")}). The server redacts the config '
             f"block, so import it by hand and supply the block for its type."
         )
+
+    # The global records of v0.13, one list endpoint each. dokploy_user is
+    # listed as a comment: Dokploy never returns a password, so an imported
+    # user has no valid configuration until you add password or password_wo
+    # by hand. An API key cannot be imported at all (the key is returned
+    # once). Environment variables belong to the target's env, which the
+    # target import already carries.
+    for key in get("sshKey.all") or []:
+        emit("dokploy_ssh_key", label(key["name"], key["sshKeyId"]), key["sshKeyId"])
+
+    for srv in get("server.all") or []:
+        emit("dokploy_server", label(srv["name"], srv["serverId"]), srv["serverId"])
+
+    for reg in get("registry.all") or []:
+        emit("dokploy_registry", label(reg["registryName"], reg["registryId"]), reg["registryId"])
+
+    for cert in get("certificates.all") or []:
+        emit("dokploy_certificate", label(cert["name"], cert["certificateId"]), cert["certificateId"])
+
+    # gitProvider.getAll is the one list that shows every provider type.
+    # The type-specific id is the import id; the GitHub App has no resource.
+    for gp in get("gitProvider.getAll") or []:
+        kind = gp.get("providerType")
+        if kind == "gitlab" and gp.get("gitlab"):
+            gid = gp["gitlab"]["gitlabId"]
+            emit("dokploy_gitlab_provider", label(gp["name"], gid), gid)
+        elif kind == "bitbucket" and gp.get("bitbucket"):
+            bid = gp["bitbucket"]["bitbucketId"]
+            emit("dokploy_bitbucket_provider", label(gp["name"], bid), bid)
+        elif kind == "gitea" and gp.get("gitea"):
+            tid = gp["gitea"]["giteaId"]
+            emit("dokploy_gitea_provider", label(gp["name"], tid), tid)
+        elif kind == "github":
+            print(
+                f"# not imported: GitHub App {label(gp['name'], gp['gitProviderId'])}. "
+                f"Only the dokploy_github_provider data source exists."
+            )
+
+    # One resource type per channel: dokploy_<notificationType>_notification.
+    for n in get("notification.all") or []:
+        nid = n["notificationId"]
+        emit(f"dokploy_{n['notificationType']}_notification", label(n["name"], nid), nid)
+
+    for a in get("ai.getAll") or []:
+        emit("dokploy_ai", label(a["name"], a["aiId"]), a["aiId"])
+
+    for org in get("organization.all") or []:
+        emit("dokploy_organization", label(org["name"], org["id"]), org["id"])
+
+    # user.all lists the members of the active organization. The owner has
+    # no permission set to manage.
+    for member in get("user.all") or []:
+        if member.get("role") == "owner":
+            continue
+        uid = member["userId"]
+        who = (member.get("user") or {}).get("email") or uid
+        print(
+            f"# not imported: dokploy_user {label(who, uid)} (id \"{uid}\"). Dokploy never "
+            f"returns a password, so import it by hand and add password or password_wo."
+        )
+        emit("dokploy_user_permissions", label(who, uid), uid)
 
 
 if __name__ == "__main__":

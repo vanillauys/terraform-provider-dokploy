@@ -27,6 +27,16 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go test ./... -count=1
+  # A reachable vulnerability in a dependency or in the Go standard library
+  # fails the pull request, so it never reaches a tagged release.
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
   # go.mod is kept tidy in-tree so the release build never has to tidy it —
   # see the `before.hooks` comment in .goreleaser.yml. This job is what keeps
   # that true: a pin regression surfaces in the PR that causes it rather than

@@ -790,3 +790,49 @@ resource "dokploy_application" "test" {
 		},
 	})
 }
+
+// v1.0.0 promises that a v0.13.0 state loads with an empty plan. Step 1
+// creates the application with v0.13.0 from the registry; step 2 plans the
+// same configuration with the local build and expects no change.
+func TestAccApplication_upgradeFromV0_13(t *testing.T) {
+	name := acctest.RandomName("app-up")
+	cfg := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_application" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.production_environment_id
+  description      = "upgrade test"
+  env              = "WHOAMI_NAME=upgrade"
+  deploy_on_change = false
+
+  docker = {
+    image = "traefik/whoami:v1.10"
+  }
+}
+`, name+"-proj", name)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkApplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.13.0"},
+				},
+				Config: cfg,
+				Check:  resource.TestCheckResourceAttr("dokploy_application.test", "description", "upgrade test"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   cfg,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_application.test", "description", "upgrade test"),
+			},
+		},
+	})
+}

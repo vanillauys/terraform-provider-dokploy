@@ -13,7 +13,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.13"
+      version = "~> 1.0"
     }
   }
 }
@@ -56,6 +56,32 @@ older than the pinned version can reject a field that a newer Dokploy
 introduced, for example the network attachment fields of v0.30.0. If your
 server is older, upgrade it to the pinned version or later before you apply.
 
+The acceptance suite runs on Terraform 1.16.1 in CI. On 2026-09-05 the
+project and destination packages of the suite also passed on Terraform 1.5.7
+and on OpenTofu 1.12.6, with the provider binary from this repository. The
+provider is not on the OpenTofu registry yet.
+
+## Stability
+
+The provider follows [semantic versioning](https://semver.org) from v1.0.0:
+
+- A minor release adds resources, data sources, and attributes. A
+  configuration and a state from the previous minor release load with an
+  empty plan.
+- A change that removes or renames an attribute, changes a default, or
+  changes what an existing attribute does is a breaking change. It needs a
+  major release, and the [upgrade guide](docs/guides/upgrading.md) shows the
+  old and the new configuration.
+- A deprecated attribute stays for at least one minor release and prints a
+  warning at plan time before a major release removes it.
+- The Dokploy compatibility pin moves in minor releases, with the census of
+  the upstream changes in the changelog.
+- The write-only companions need Terraform 1.11 or later. Everything else
+  needs Terraform 1.5 or later.
+
+Pin the minor version, `~> 1.0`, to get fixes and additions without a
+breaking change.
+
 ## Documentation
 
 The full reference is on the
@@ -84,9 +110,6 @@ These three problems cause the most failures:
 3. **The default `docker_image` for MariaDB and MongoDB does not exist on
    Docker Hub.** Set an explicit tag, or each deploy fails. See
    [Deploy semantics](docs/guides/deploy-semantics.md#two-engines-whose-default-image-does-not-exist).
-
-This provider is pre-1.0. Breaking changes can land in minor releases until
-v1.0.0. If you need a stable configuration, pin an exact version.
 
 ## Coverage gaps
 
@@ -143,9 +166,10 @@ The provider does not model these Dokploy features yet.
   Domain hosts are also not unique, because the same host can attach to more
   than one domain. There is no `dokploy_domain` data source, so nothing
   looks up a domain by host.
-- **`dogfood/generate_imports.py` does not enumerate the v0.13 resources.**
-  Import servers, SSH keys, registries, certificates, git providers,
-  notifications, users, and organizations by hand.
+- **`dogfood/generate_imports.py` lists a user as a comment.** Dokploy
+  never returns a password, so an imported `dokploy_user` has no valid
+  configuration until you add `password` or `password_wo` by hand. The
+  script imports the permissions of each member.
 
 ## Development
 
