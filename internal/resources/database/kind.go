@@ -351,11 +351,11 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 		if ca.DeployTrigger {
 			note = "A version change starts a redeploy."
 		}
-		for name, attr := range tfutil.WriteOnlyCompanions(ca.TFName, false, note) {
+		for name, attr := range tfutil.WriteOnlyCompanions(ca.TFName, tfutil.WriteOnlyOptions{Effect: note}) {
 			attrs[name] = attr
 		}
 	}
-	for name, attr := range tfutil.WriteOnlyCompanions("database_password", true, "A version change starts a redeploy.") {
+	for name, attr := range tfutil.WriteOnlyCompanions("database_password", tfutil.WriteOnlyOptions{ExactlyOne: true, Effect: "A version change starts a redeploy."}) {
 		attrs[name] = attr
 	}
 	for name, attr := range tfutil.DeployAttributes() {

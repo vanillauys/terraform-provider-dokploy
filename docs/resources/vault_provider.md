@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their env attribute as ${{vault.<name>.<key>}}, a plain string that this provider does not parse or validate. The resource models six provider types: hashicorp (also OpenBao, which uses the same wire protocol), infisical, aws, doppler, azure, and scaleway. Dokploy v0.30.5 adds a seventh type, phase (Phase.dev), which this resource does not model yet.
   ~> Dokploy masks each secret on each read. Dokploy returns each secret field in the config blocks of this resource as the literal string ********, on create, read, and update alike. The provider therefore cannot detect a config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage the config of a vault provider only through Terraform. An edit in the UI stays undetected until the next apply that modifies this resource. That apply writes the full body and overwrites the edit with the Terraform config.
+  ~> Each secret field has a write-only companion, for example hashicorp.token_wo with hashicorp.token_wo_version. Terraform keeps the companion out of the plan and the state. The server does not return the secret, so the provider sends the companion's value on every update. Change the version to start an update when only the secret changed.
   ~> terraform import cannot recover a config block. The import leaves the config blocks null. Supply the block that matches the actual provider type in the configuration. The first terraform apply then writes it as a full-body update, not as a partial patch.
   ~> Dokploy does not validate vault credentials on create or update, for any provider type. Only verify_connection = true reaches the real vault, through vaultProvider.testConnection, before the write. Without it, a misconfigured vault provider applies successfully and fails only on the next deploy that needs a secret from it.
 ---
@@ -14,6 +15,8 @@ description: |-
 A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their `env` attribute as `${{vault.<name>.<key>}}`, a plain string that this provider does not parse or validate. The resource models six provider types: `hashicorp` (also OpenBao, which uses the same wire protocol), `infisical`, `aws`, `doppler`, `azure`, and `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), which this resource does not model yet.
 
 ~> **Dokploy masks each secret on each read.** Dokploy returns each secret field in the config blocks of this resource as the literal string `********`, on create, read, and update alike. The provider therefore cannot detect a config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage the config of a vault provider only through Terraform. An edit in the UI stays undetected until the next apply that modifies this resource. That apply writes the full body and overwrites the edit with the Terraform config.
+
+~> **Each secret field has a write-only companion**, for example `hashicorp.token_wo` with `hashicorp.token_wo_version`. Terraform keeps the companion out of the plan and the state. The server does not return the secret, so the provider sends the companion's value on every update. Change the version to start an update when only the secret changed.
 
 ~> **`terraform import` cannot recover a config block.** The import leaves the config blocks null. Supply the block that matches the actual provider type in the configuration. The first `terraform apply` then writes it as a full-body update, not as a partial patch.
 
@@ -109,13 +112,17 @@ Optional:
 
 Required:
 
-- `access_key_id` (String, Sensitive) AWS access key id.
 - `region` (String) AWS region for Secrets Manager, for example `us-east-1`.
-- `secret_access_key` (String, Sensitive) AWS secret access key.
 
 Optional:
 
+- `access_key_id` (String, Sensitive) AWS access key id. Set this attribute or `access_key_id_wo`.
+- `access_key_id_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `access_key_id`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `access_key_id` and `access_key_id_wo`. The server does not return the value, so every update sends it. Change `access_key_id_wo_version` to start an update when only this value changed.
+- `access_key_id_wo_version` (Number) Version of `access_key_id_wo`. Change it to start an update when only `access_key_id_wo` changed. It needs `access_key_id_wo`.
 - `endpoint` (String) Custom Secrets Manager endpoint, for a compatible service or a VPC endpoint. Omit it to use the default AWS endpoint. The server has no default for this field.
+- `secret_access_key` (String, Sensitive) AWS secret access key. Set this attribute or `secret_access_key_wo`.
+- `secret_access_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `secret_access_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `secret_access_key` and `secret_access_key_wo`. The server does not return the value, so every update sends it. Change `secret_access_key_wo_version` to start an update when only this value changed.
+- `secret_access_key_wo_version` (Number) Version of `secret_access_key_wo`. Change it to start an update when only `secret_access_key_wo` changed. It needs `secret_access_key_wo`.
 
 
 <a id="nestedatt--azure"></a>
@@ -124,22 +131,26 @@ Optional:
 Required:
 
 - `client_id` (String) Azure AD application client id.
-- `client_secret` (String, Sensitive) Azure AD application client secret.
 - `tenant_id` (String) Azure AD tenant id.
 - `vault_uri` (String) Azure Key Vault URI, for example `https://myvault.vault.azure.net/`.
+
+Optional:
+
+- `client_secret` (String, Sensitive) Azure AD application client secret. Set this attribute or `client_secret_wo`.
+- `client_secret_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `client_secret`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `client_secret` and `client_secret_wo`. The server does not return the value, so every update sends it. Change `client_secret_wo_version` to start an update when only this value changed.
+- `client_secret_wo_version` (Number) Version of `client_secret_wo`. Change it to start an update when only `client_secret_wo` changed. It needs `client_secret_wo`.
 
 
 <a id="nestedatt--doppler"></a>
 ### Nested Schema for `doppler`
 
-Required:
-
-- `service_token` (String, Sensitive) Doppler service token.
-
 Optional:
 
 - `config` (String) Doppler config name. The wire field is also named `config`. Omit it, and Doppler infers it from the service token. The server has no default for this field.
 - `project` (String) Doppler project slug. Omit it, and Doppler infers it from the service token. The server has no default for this field.
+- `service_token` (String, Sensitive) Doppler service token. Set this attribute or `service_token_wo`.
+- `service_token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `service_token`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `service_token` and `service_token_wo`. The server does not return the value, so every update sends it. Change `service_token_wo_version` to start an update when only this value changed.
+- `service_token_wo_version` (Number) Version of `service_token_wo`. Change it to start an update when only `service_token_wo` changed. It needs `service_token_wo`.
 
 
 <a id="nestedatt--hashicorp"></a>
@@ -147,13 +158,15 @@ Optional:
 
 Required:
 
-- `token` (String, Sensitive) Vault authentication token.
 - `url` (String) Vault or OpenBao server URL, for example `https://vault.example.com:8200`.
 
 Optional:
 
 - `mount` (String) KV secrets engine mount path. Defaults to `secret`.
 - `namespace` (String) Vault Enterprise namespace. Omit it for open-source Vault or OpenBao. The server has no default for this field.
+- `token` (String, Sensitive) Vault authentication token. Set this attribute or `token_wo`.
+- `token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `token`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `token` and `token_wo`. The server does not return the value, so every update sends it. Change `token_wo_version` to start an update when only this value changed.
+- `token_wo_version` (Number) Version of `token_wo`. Change it to start an update when only `token_wo` changed. It needs `token_wo`.
 
 
 <a id="nestedatt--infisical"></a>
@@ -162,12 +175,14 @@ Optional:
 Required:
 
 - `client_id` (String) Infisical machine identity client id.
-- `client_secret` (String, Sensitive) Infisical machine identity client secret.
 - `environment_slug` (String) Infisical environment slug, for example `dev` or `prod`.
 - `project_id` (String) Infisical project id.
 
 Optional:
 
+- `client_secret` (String, Sensitive) Infisical machine identity client secret. Set this attribute or `client_secret_wo`.
+- `client_secret_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `client_secret`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `client_secret` and `client_secret_wo`. The server does not return the value, so every update sends it. Change `client_secret_wo_version` to start an update when only this value changed.
+- `client_secret_wo_version` (Number) Version of `client_secret_wo`. Change it to start an update when only `client_secret_wo` changed. It needs `client_secret_wo`.
 - `secret_path` (String) Path inside the Infisical project to read secrets from. Defaults to `/`.
 - `site_url` (String) Infisical instance URL. Defaults to the Infisical Cloud URL.
 
@@ -178,12 +193,14 @@ Optional:
 Required:
 
 - `project_id` (String) Scaleway project id.
-- `secret_key` (String, Sensitive) Scaleway API secret key.
 
 Optional:
 
 - `api_url` (String) Scaleway Secret Manager API URL. Defaults to `https://api.scaleway.com`.
 - `region` (String) Scaleway region. Defaults to `fr-par`.
+- `secret_key` (String, Sensitive) Scaleway API secret key. Set this attribute or `secret_key_wo`.
+- `secret_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `secret_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `secret_key` and `secret_key_wo`. The server does not return the value, so every update sends it. Change `secret_key_wo_version` to start an update when only this value changed.
+- `secret_key_wo_version` (Number) Version of `secret_key_wo`. Change it to start an update when only `secret_key_wo` changed. It needs `secret_key_wo`.
 
 ## Import
 

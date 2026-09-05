@@ -146,6 +146,152 @@ resource "dokploy_vault_provider" "test" {
 	})
 }
 
+// TestAccVaultProvider_writeOnlyToken pins the companions inside a config
+// block, against the rig's real vault: verify_connection proves that the
+// write-only token reached the server, since the API masks it on read. The
+// resource sends the configured value on every update, so a wrong token
+// with an unchanged version fails the next update; that is the documented
+// shape of this resource, not a defect.
+func TestAccVaultProvider_writeOnlyToken(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
+	}
+	vaultURL, vaultToken := acctest.StartRigVault(t)
+	name := acctest.RandomName("vault-wo")
+
+	cfg := func(providerName, tokenLines string) string {
+		return fmt.Sprintf(`
+resource "dokploy_vault_provider" "test" {
+  name = %q
+
+  hashicorp = {
+    url = %q
+%s
+  }
+
+  assignments = []
+
+  verify_connection = true
+}
+`, providerName, vaultURL, tokenLines)
+	}
+	wo := func(token string, version int) string {
+		return fmt.Sprintf("    token_wo         = %q\n    token_wo_version = %d", token, version)
+	}
+	noSecretInState := resource.ComposeAggregateTestCheckFunc(
+		resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "hashicorp.token"),
+		resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "hashicorp.token_wo"),
+	)
+	update := resource.ConfigPlanChecks{
+		PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_vault_provider.test", plancheck.ResourceActionUpdate)},
+		PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkVaultProviderDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg(name, wo(vaultToken, 1)),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					noSecretInState,
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "hashicorp.token_wo_version", "1"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "hashicorp.mount", "secret"),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// A rename with the same version: the update sends the
+				// configured token again, and verify_connection accepts it.
+				Config:           cfg(name+"-renamed", wo(vaultToken, 1)),
+				ConfigPlanChecks: update,
+				Check:            noSecretInState,
+			},
+			{
+				// A wrong token with the same version, next to a rename:
+				// the update sends it, and verify_connection rejects it.
+				Config:      cfg(name+"-again", wo("definitely-the-wrong-token", 1)),
+				ExpectError: regexp.MustCompile(`(?i)token validation failed`),
+			},
+			{
+				Config:           cfg(name+"-renamed", wo(vaultToken, 2)),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					noSecretInState,
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "hashicorp.token_wo_version", "2"),
+				),
+			},
+			{
+				// Back to the plain attribute: the state holds the token again.
+				Config:           cfg(name+"-renamed", fmt.Sprintf("    token = %q", vaultToken)),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "hashicorp.token", vaultToken),
+					resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "hashicorp.token_wo_version"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccVaultProvider_upgradeFromV0_11 proves that a v0.11.0 state with
+// the token in its config block loads under the companions with an empty
+// plan, and that the move to the companion is an in-place update. Fake
+// credentials, no verification: the claim is about the state shape.
+func TestAccVaultProvider_upgradeFromV0_11(t *testing.T) {
+	name := acctest.RandomName("vault-up")
+	cfg := func(tokenLines string) string {
+		return fmt.Sprintf(`
+resource "dokploy_vault_provider" "test" {
+  name = %q
+
+  hashicorp = {
+    url = "https://vault.example.com:8200"
+%s
+  }
+
+  assignments = []
+}
+`, name, tokenLines)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkVaultProviderDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.11.0"},
+				},
+				Config: cfg("    token = \"s.fake-token-1\""),
+				Check:  resource.TestCheckResourceAttr("dokploy_vault_provider.test", "hashicorp.token", "s.fake-token-1"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   cfg("    token = \"s.fake-token-1\""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_vault_provider.test", "hashicorp.token", "s.fake-token-1"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   cfg("    token_wo         = \"s.fake-token-2\"\n    token_wo_version = 2"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_vault_provider.test", plancheck.ResourceActionUpdate)},
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "hashicorp.token"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "hashicorp.token_wo_version", "2"),
+				),
+			},
+		},
+	})
+}
+
 // TestAccVaultProvider_verifyConnectionFails covers both failure shapes
 // doc.go's wave 6c probes recorded for vaultProvider.testConnection: a wrong
 // credential against the real dev vault (gate B PASS), and an unreachable

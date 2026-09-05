@@ -196,32 +196,60 @@ func (durationString) ValidateString(_ context.Context, req validator.StringRequ
 	}
 }
 
+// WriteOnlyOptions tunes WriteOnlyCompanions.
+type WriteOnlyOptions struct {
+	// ExactlyOne is true when the base attribute is Optional only because
+	// the write-only form can replace it: the pair then needs exactly one
+	// value. Otherwise the two only conflict.
+	ExactlyOne bool
+	// Nested is true when the base attribute sits inside a nested attribute;
+	// the validators then reference it relative to the companion.
+	Nested bool
+	// SentOnEveryUpdate is true when the resource sends the write-only value
+	// on every update, because the server never returns the secret and each
+	// update carries the full body. The version then only starts an update
+	// when nothing else changed.
+	SentOnEveryUpdate bool
+	// Effect is an optional sentence for the effect of a version change,
+	// for example "A version change starts a redeploy."
+	Effect string
+}
+
 // WriteOnlyCompanions returns the two companions of the Sensitive attribute
 // name: `<name>_wo`, the write-only form, and `<name>_wo_version`, the
 // version that gates a new write-only value. The framework keeps a
 // write-only value out of the plan and the state, so the version is the only
 // signal that tells Update that the value changed (the HashiCorp convention,
-// for example aws_db_instance.password_wo_version). exactlyOne is true when
-// the base attribute is Optional only because the write-only form can
-// replace it: the pair then needs exactly one value. Otherwise the two only
-// conflict. note is an optional sentence for the effect of a version change,
-// for example "A version change starts a redeploy."
+// for example aws_db_instance.password_wo_version).
 //
 // A Terraform CLI before 1.11 rejects a non-null write-only value at
 // validation with a message that names the version (the framework's own
 // check). It accepts the schema, and a config that leaves the companions
 // unset behaves as before.
-func WriteOnlyCompanions(name string, exactlyOne bool, note string) map[string]schema.Attribute {
+func WriteOnlyCompanions(name string, o WriteOnlyOptions) map[string]schema.Attribute {
 	wo := name + "_wo"
 	version := wo + "_version"
-	pick := stringvalidator.ConflictsWith(path.MatchRoot(name))
+	ref := func(attr string) path.Expression {
+		if o.Nested {
+			return path.MatchRelative().AtParent().AtName(attr)
+		}
+		return path.MatchRoot(attr)
+	}
+	pick := stringvalidator.ConflictsWith(ref(name))
 	rule := "Do not set it together with `" + name + "`."
-	if exactlyOne {
-		pick = stringvalidator.ExactlyOneOf(path.MatchRoot(name))
+	if o.ExactlyOne {
+		pick = stringvalidator.ExactlyOneOf(ref(name))
 		rule = "Set exactly one of `" + name + "` and `" + wo + "`."
 	}
-	if note != "" {
-		note = " " + note
+	effect := ""
+	if o.Effect != "" {
+		effect = " " + o.Effect
+	}
+	woSuffix := " A new value reaches the server only when `" + version + "` changes."
+	versionText := "Change it to send the current `" + wo + "` value to the server."
+	if o.SentOnEveryUpdate {
+		woSuffix = " The server does not return the value, so every update sends it. Change `" + version + "` to start an update when only this value changed."
+		versionText = "Change it to start an update when only `" + wo + "` changed."
 	}
 	return map[string]schema.Attribute{
 		wo: schema.StringAttribute{
@@ -229,15 +257,13 @@ func WriteOnlyCompanions(name string, exactlyOne bool, note string) map[string]s
 			WriteOnly: true,
 			Sensitive: true,
 			Description: "Write-only form of `" + name + "`. Terraform keeps it out of the plan and the state. " +
-				"It needs Terraform 1.11 or later. " + rule +
-				" A new value reaches the server only when `" + version + "` changes.",
+				"It needs Terraform 1.11 or later. " + rule + woSuffix,
 			Validators: []validator.String{pick},
 		},
 		version: schema.Int64Attribute{
-			Optional: true,
-			Description: "Version of `" + wo + "`. Change it to send the current `" + wo + "` value to the server." + note +
-				" It needs `" + wo + "`.",
-			Validators: []validator.Int64{int64validator.AlsoRequires(path.MatchRoot(wo))},
+			Optional:    true,
+			Description: "Version of `" + wo + "`. " + versionText + effect + " It needs `" + wo + "`.",
+			Validators:  []validator.Int64{int64validator.AlsoRequires(ref(wo))},
 		},
 	}
 }
@@ -352,4 +378,25 @@ func SetWriteOnlyFlag(ctx context.Context, p PrivateState, name string, on bool)
 func WriteOnlyFlag(ctx context.Context, p PrivateState, name string) (bool, diag.Diagnostics) {
 	v, diags := p.GetKey(ctx, writeOnlyKey(name))
 	return string(v) == "true", diags
+}
+
+// SetWriteOnlyFlags records one flag per secret in names, from inUse.
+func SetWriteOnlyFlags(ctx context.Context, p PrivateState, names []string, inUse map[string]bool) diag.Diagnostics {
+	var diags diag.Diagnostics
+	for _, name := range names {
+		diags.Append(SetWriteOnlyFlag(ctx, p, name, inUse[name])...)
+	}
+	return diags
+}
+
+// WriteOnlyFlags reads the flag of every secret in names.
+func WriteOnlyFlags(ctx context.Context, p PrivateState, names []string) (map[string]bool, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	inUse := make(map[string]bool, len(names))
+	for _, name := range names {
+		on, d := WriteOnlyFlag(ctx, p, name)
+		diags.Append(d...)
+		inUse[name] = on
+	}
+	return inUse, diags
 }

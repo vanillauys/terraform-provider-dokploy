@@ -438,11 +438,7 @@ func (m *genericModel) takeSecrets(k Kind, cfg genericModel) {
 // secret, so Read can tell a write-only secret from a plain one without the
 // config (tfutil.SetWriteOnlyFlag).
 func (m genericModel) storeWriteOnlyFlags(ctx context.Context, k Kind, p tfutil.PrivateState) diag.Diagnostics {
-	var diags diag.Diagnostics
-	for _, name := range secretNames(k) {
-		diags.Append(tfutil.SetWriteOnlyFlag(ctx, p, name, m.writeOnly[name])...)
-	}
-	return diags
+	return tfutil.SetWriteOnlyFlags(ctx, p, secretNames(k), m.writeOnly)
 }
 
 // loadWriteOnlyFlags fills m.writeOnly from the private state (Read). A
@@ -450,12 +446,7 @@ func (m genericModel) storeWriteOnlyFlags(ctx context.Context, k Kind, p tfutil.
 // then reads as plain and keeps its refresh behavior.
 func (m *genericModel) loadWriteOnlyFlags(ctx context.Context, k Kind, p tfutil.PrivateState) diag.Diagnostics {
 	var diags diag.Diagnostics
-	m.writeOnly = map[string]bool{}
-	for _, name := range secretNames(k) {
-		on, d := tfutil.WriteOnlyFlag(ctx, p, name)
-		diags.Append(d...)
-		m.writeOnly[name] = on
-	}
+	m.writeOnly, diags = tfutil.WriteOnlyFlags(ctx, p, secretNames(k))
 	return diags
 }
 

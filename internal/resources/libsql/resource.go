@@ -246,7 +246,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
 	}
-	for name, attr := range tfutil.WriteOnlyCompanions("database_password", true, "A version change starts a redeploy.") {
+	for name, attr := range tfutil.WriteOnlyCompanions("database_password", tfutil.WriteOnlyOptions{ExactlyOne: true, Effect: "A version change starts a redeploy."}) {
 		attrs[name] = attr
 	}
 	for name, attr := range tfutil.DeployAttributes() {
