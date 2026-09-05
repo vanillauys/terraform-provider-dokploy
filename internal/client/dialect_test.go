@@ -59,6 +59,10 @@ var mustAlwaysSend = []struct {
 	{UpdateNtfyNotificationRequest{}, []string{"serverUrl", "topic", "accessToken", "priority"}},
 	{UpdatePushoverNotificationRequest{}, []string{"userKey", "apiToken", "priority", "retry", "expire"}},
 	{UpdateCustomNotificationRequest{}, []string{"endpoint", "headers"}},
+	{UpdateOrganizationRequest{}, []string{"name", "logo"}},
+	{AssignPermissionsRequest{}, []string{"accessedProjects", "accessedEnvironments", "accessedServices", "accessedServers", "accessedGitProviders",
+		"canAccessToAPI", "canAccessToDocker", "canAccessToGitProviders", "canAccessToSSHKeys", "canAccessToTraefikFiles",
+		"canCreateEnvironments", "canCreateProjects", "canCreateServices", "canDeleteEnvironments", "canDeleteProjects", "canDeleteServices"}},
 	// The dialect A application endpoints. Until wave 3 none of them was in
 	// this table at all: it held only dialect B Update* structs, so the
 	// endpoints where an absent key is a hard 400 were entirely unguarded.

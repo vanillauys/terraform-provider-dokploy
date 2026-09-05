@@ -268,3 +268,13 @@ func StartRigRegistry(t *testing.T) string {
 	}
 	return fmt.Sprintf("localhost:%d", port)
 }
+
+// ClientWithKey builds a client for the rig with another API key, so that a
+// test can prove a key that Terraform created authenticates.
+func ClientWithKey(apiKey string) (*client.Client, error) {
+	endpoint := os.Getenv("DOKPLOY_ENDPOINT")
+	if endpoint == "" {
+		return nil, fmt.Errorf("DOKPLOY_ENDPOINT must be set")
+	}
+	return client.New(endpoint, apiKey, false, "acctest")
+}

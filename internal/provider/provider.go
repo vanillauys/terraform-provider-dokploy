@@ -19,10 +19,13 @@ import (
 	dsgitproviders "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitproviders"
 	libsqldatasource "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/libsql"
 	dsnetwork "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/network"
+	dsorganization "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/organization"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	dsserver "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/server"
 	dssshkey "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/sshkey"
+	dsuser "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/user"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/ai"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/apikey"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/backup"
@@ -39,11 +42,14 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/mount"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/network"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/notification"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/organization"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/registry"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/server"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/sshkey"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/user"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/userpermissions"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/volumebackup"
 )
@@ -197,6 +203,10 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		gitlabprovider.NewResource,
 		bitbucketprovider.NewResource,
 		giteaprovider.NewResource,
+		organization.NewResource,
+		user.NewResource,
+		userpermissions.NewResource,
+		apikey.NewResource,
 		network.NewResource,
 		schedule.NewResource,
 		vaultprovider.NewResource,
@@ -252,6 +262,8 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsdestination.NewDataSource,
 		dssshkey.NewDataSource,
 		dsserver.NewDataSource,
+		dsorganization.NewDataSource,
+		dsuser.NewDataSource,
 		libsqldatasource.NewDataSource,
 		dsnetwork.NewDataSource,
 	}

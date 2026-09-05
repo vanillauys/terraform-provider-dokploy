@@ -125,6 +125,11 @@ var endpointStructs = map[string]any{
 	"notification.updatePushover":       UpdatePushoverNotificationRequest{},
 	"notification.createTeams":          CreateTeamsNotificationRequest{},
 	"notification.updateTeams":          UpdateTeamsNotificationRequest{},
+	"organization.create":               CreateOrganizationRequest{},
+	"organization.update":               UpdateOrganizationRequest{},
+	"user.createUserWithCredentials":    CreateUserRequest{},
+	"user.assignPermissions":            AssignPermissionsRequest{},
+	"user.createApiKey":                 CreateAPIKeyRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -336,6 +341,13 @@ var censusExempt = map[string]map[string]string{
 	"notification.updateLark":       {"organizationId": "implied by the API key's organization"},
 	"notification.updatePushover":   {"organizationId": "implied by the API key's organization"},
 	"notification.updateTeams":      {"organizationId": "implied by the API key's organization"},
+	// better-auth's refill quota fields: not exposed in the Dokploy UI, and
+	// the resource models the rate limit through rateLimitMax and the window.
+	"user.createApiKey": {
+		"remaining":      "better-auth refill quota; not exposed in the Dokploy UI and not modelled",
+		"refillAmount":   "better-auth refill quota; not exposed in the Dokploy UI and not modelled",
+		"refillInterval": "better-auth refill quota; not exposed in the Dokploy UI and not modelled",
+	},
 }
 
 type endpointFields struct {
