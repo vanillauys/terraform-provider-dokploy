@@ -47,6 +47,7 @@ var mustAlwaysSend = []struct {
 	{CreateCertificateRequest{}, []string{"serverId", "autoRenew"}},
 	{UpdateCertificateRequest{}, []string{"name", "certificateData", "privateKey"}},
 	{UpdateAIRequest{}, []string{"name", "apiUrl", "apiKey", "model", "isEnabled"}},
+	{UpdateRegistryRequest{}, []string{"registryName", "username", "password", "registryUrl", "registryType", "imagePrefix"}},
 	// The dialect A application endpoints. Until wave 3 none of them was in
 	// this table at all: it held only dialect B Update* structs, so the
 	// endpoints where an absent key is a hard 400 were entirely unguarded.

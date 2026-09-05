@@ -90,6 +90,8 @@ var endpointStructs = map[string]any{
 	"certificates.update":            UpdateCertificateRequest{},
 	"ai.create":                      CreateAIRequest{},
 	"ai.update":                      UpdateAIRequest{},
+	"registry.create":                CreateRegistryRequest{},
+	"registry.update":                UpdateRegistryRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -266,6 +268,18 @@ var censusExempt = map[string]map[string]string{
 	},
 	"ai.update": {
 		"createdAt": "server-generated; not user configuration",
+	},
+	// registry.create/update accept serverId, but registry.one and
+	// registry.all never return it (probed live, v0.30.5, 2026-09-05). A
+	// write-only field cannot round-trip, the same reasoning as
+	// destination.serverId.
+	"registry.create": {
+		"serverId": "registry.one does not return it; a write-only field cannot round-trip",
+	},
+	"registry.update": {
+		"serverId":       "registry.one does not return it; a write-only field cannot round-trip",
+		"createdAt":      "server-generated; not user configuration",
+		"organizationId": "implied by the API key's organization",
 	},
 }
 

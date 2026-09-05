@@ -5,6 +5,7 @@
 package acctest
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -212,4 +213,58 @@ func GenerateSSHKey(t *testing.T) (publicKey, privateKey string) {
 		t.Fatalf("generating an SSH key pair on the rig: %v", err)
 	}
 	return g.PublicKey, g.PrivateKey
+}
+
+// StartRigRegistry starts a disposable registry:2 container, published on
+// the loopback of the Docker daemon that Dokploy uses, and returns the
+// `localhost:<port>` address that registry.create accepts.
+//
+// registry.create runs `docker login` before it stores the record, and the
+// daemon performs that login: it resolves names with the host resolver, not
+// with Docker's embedded DNS, so a sibling container's name does not resolve
+// (probed live, 2026-09-05). A port on the daemon's loopback is reachable
+// and, being 127.0.0.0/8, is an insecure registry by default, so plain HTTP
+// works. The same two topologies as StartRigVault apply: inside the dind rig
+// locally, on the runner's own daemon in CI. registry:2 without an auth
+// backend accepts any login, so the tests use placeholder credentials.
+func StartRigRegistry(t *testing.T) string {
+	t.Helper()
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("TF_ACC is not set; acceptance tests are skipped")
+	}
+	rig := rigContainer()
+	inRig := rigExists(rig)
+	suffix := sdkacctest.RandStringFromCharSet(8, sdkacctest.CharSetAlphaNum)
+	name := "acc-registry-" + suffix
+	port := sdkacctest.RandIntRange(15000, 25000)
+
+	run := rigDocker(rig, inRig, "run", "-d", "--name", name,
+		"-p", fmt.Sprintf("127.0.0.1:%d:5000", port),
+		"registry:2",
+	)
+	if out, err := run.CombinedOutput(); err != nil {
+		t.Fatalf("starting rig registry container %s: %v\n%s", name, err, out)
+	}
+	t.Cleanup(func() {
+		rm := rigDocker(rig, inRig, "rm", "-f", name)
+		if out, err := rm.CombinedOutput(); err != nil {
+			t.Logf("removing rig registry container %s: %v\n%s", name, err, out)
+		}
+	})
+
+	// The registry answers within a second; the image carries no shell, so
+	// the readiness check is the container state plus a short grace period.
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		state := rigDocker(rig, inRig, "inspect", "-f", "{{.State.Running}}", name)
+		if out, err := state.Output(); err == nil && string(bytes.TrimSpace(out)) == "true" {
+			time.Sleep(2 * time.Second)
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("rig registry container %s did not start within 30s", name)
+		}
+		time.Sleep(time.Second)
+	}
+	return fmt.Sprintf("localhost:%d", port)
 }
