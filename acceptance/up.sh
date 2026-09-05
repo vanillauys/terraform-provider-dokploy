@@ -29,8 +29,12 @@ docker exec "$NAME" docker info >/dev/null 2>&1 || {
   exit 1
 }
 
-echo "installing dokploy (this pulls images; first run takes minutes)..." >&2
-docker exec "$NAME" sh -c \
+# DOKPLOY_VERSION passes through to install.sh, which reads the same variable:
+# a release tag such as v0.30.4 installs that release, an empty or unset value
+# installs the latest stable release (the default, and what CI runs). This is
+# how a rig for the pinned version or an older release is built.
+echo "installing dokploy ${DOKPLOY_VERSION:-latest} (this pulls images; first run takes minutes)..." >&2
+docker exec -e DOKPLOY_VERSION="${DOKPLOY_VERSION:-}" "$NAME" sh -c \
   'apk add --no-cache bash curl >/dev/null && curl -sSL https://dokploy.com/install.sh | ADVERTISE_ADDR=127.0.0.1 bash' &
 INSTALL_PID=$!
 
