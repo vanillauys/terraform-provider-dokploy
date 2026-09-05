@@ -10,5 +10,6 @@ dogfood/scratch/
 # Local agent and IDE state
 .claude/
 .superpowers/
+.serena/
 .idea/
 .DS_Store
