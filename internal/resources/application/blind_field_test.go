@@ -47,6 +47,39 @@ func fullyPopulatedModel(t *testing.T) resourceModel {
 	if d.HasError() {
 		t.Fatalf("docker object: %v", d)
 	}
+	gitlab, d := types.ObjectValueFrom(ctx, gitlabAttrTypes, gitlabModel{
+		GitlabID:      types.StringValue("gl-1"),
+		Owner:         types.StringValue("group"),
+		Repository:    types.StringValue("app"),
+		Branch:        types.StringValue("main"),
+		BuildPath:     types.StringValue("/sub"),
+		ProjectID:     types.Int64Value(42),
+		PathNamespace: types.StringValue("group/app"),
+	})
+	if d.HasError() {
+		t.Fatalf("gitlab object: %v", d)
+	}
+	bitbucket, d := types.ObjectValueFrom(ctx, bitbucketAttrTypes, bitbucketModel{
+		BitbucketID:    types.StringValue("bb-1"),
+		Owner:          types.StringValue("workspace"),
+		Repository:     types.StringValue("app"),
+		RepositorySlug: types.StringValue("app"),
+		Branch:         types.StringValue("main"),
+		BuildPath:      types.StringValue("/sub"),
+	})
+	if d.HasError() {
+		t.Fatalf("bitbucket object: %v", d)
+	}
+	gitea, d := types.ObjectValueFrom(ctx, giteaAttrTypes, giteaModel{
+		GiteaID:    types.StringValue("gt-1"),
+		Owner:      types.StringValue("org"),
+		Repository: types.StringValue("app"),
+		Branch:     types.StringValue("main"),
+		BuildPath:  types.StringValue("/sub"),
+	})
+	if d.HasError() {
+		t.Fatalf("gitea object: %v", d)
+	}
 	build, d := types.ObjectValueFrom(ctx, buildAttrTypes, buildModel{
 		Type:             types.StringValue("dockerfile"),
 		Dockerfile:       types.StringValue("Dockerfile"),
@@ -66,6 +99,9 @@ func fullyPopulatedModel(t *testing.T) resourceModel {
 		Github:           github,
 		Git:              git,
 		Docker:           docker,
+		Gitlab:           gitlab,
+		Bitbucket:        bitbucket,
+		Gitea:            gitea,
 		Build:            build,
 		Env:              types.StringValue("A=1"),
 		BuildArgs:        types.StringValue("B=2"),
@@ -110,13 +146,28 @@ func TestSaveRequestsReadEveryFieldFromTheModel(t *testing.T) {
 	if d.HasError() {
 		t.Fatalf("buildTypeRequest: %v", d)
 	}
+	gitlab, d := gitlabRequest(ctx, id, m)
+	if d.HasError() {
+		t.Fatalf("gitlabRequest: %v", d)
+	}
+	bitbucket, d := bitbucketRequest(ctx, id, m)
+	if d.HasError() {
+		t.Fatalf("bitbucketRequest: %v", d)
+	}
+	gitea, d := giteaRequest(ctx, id, m)
+	if d.HasError() {
+		t.Fatalf("giteaRequest: %v", d)
+	}
 
 	for name, req := range map[string]any{
-		"saveGithubProvider": github,
-		"saveGitProvider":    git,
-		"saveDockerProvider": docker,
-		"saveBuildType":      build,
-		"saveEnvironment":    environmentRequest(id, m),
+		"saveGithubProvider":    github,
+		"saveGitProvider":       git,
+		"saveDockerProvider":    docker,
+		"saveGitlabProvider":    gitlab,
+		"saveBitbucketProvider": bitbucket,
+		"saveGiteaProvider":     gitea,
+		"saveBuildType":         build,
+		"saveEnvironment":       environmentRequest(id, m),
 	} {
 		v := reflect.ValueOf(req)
 		for i := 0; i < v.NumField(); i++ {

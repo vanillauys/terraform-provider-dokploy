@@ -24,6 +24,9 @@ type resourceModel struct {
 	Github            types.Object `tfsdk:"github"`
 	Git               types.Object `tfsdk:"git"`
 	Docker            types.Object `tfsdk:"docker"`
+	Gitlab            types.Object `tfsdk:"gitlab"`
+	Bitbucket         types.Object `tfsdk:"bitbucket"`
+	Gitea             types.Object `tfsdk:"gitea"`
 	Build             types.Object `tfsdk:"build"`
 	Env               types.String `tfsdk:"env"`
 	BuildArgs         types.String `tfsdk:"build_args"`
@@ -99,6 +102,53 @@ var dockerAttrTypes = map[string]attr.Type{
 	"registry_url": types.StringType,
 }
 
+// The gitlab, bitbucket and gitea sources (phase 2). Each mirrors the
+// github block: a provider id, the repository coordinates, and a build
+// path. GitLab also needs the numeric project id and the path namespace
+// ("group/project") that the GitLab API addresses a project by.
+type gitlabModel struct {
+	GitlabID      types.String `tfsdk:"gitlab_id"`
+	Owner         types.String `tfsdk:"owner"`
+	Repository    types.String `tfsdk:"repository"`
+	Branch        types.String `tfsdk:"branch"`
+	BuildPath     types.String `tfsdk:"build_path"`
+	ProjectID     types.Int64  `tfsdk:"project_id"`
+	PathNamespace types.String `tfsdk:"path_namespace"`
+}
+
+type bitbucketModel struct {
+	BitbucketID    types.String `tfsdk:"bitbucket_id"`
+	Owner          types.String `tfsdk:"owner"`
+	Repository     types.String `tfsdk:"repository"`
+	RepositorySlug types.String `tfsdk:"repository_slug"`
+	Branch         types.String `tfsdk:"branch"`
+	BuildPath      types.String `tfsdk:"build_path"`
+}
+
+type giteaModel struct {
+	GiteaID    types.String `tfsdk:"gitea_id"`
+	Owner      types.String `tfsdk:"owner"`
+	Repository types.String `tfsdk:"repository"`
+	Branch     types.String `tfsdk:"branch"`
+	BuildPath  types.String `tfsdk:"build_path"`
+}
+
+var gitlabAttrTypes = map[string]attr.Type{
+	"gitlab_id": types.StringType, "owner": types.StringType, "repository": types.StringType,
+	"branch": types.StringType, "build_path": types.StringType, "project_id": types.Int64Type,
+	"path_namespace": types.StringType,
+}
+
+var bitbucketAttrTypes = map[string]attr.Type{
+	"bitbucket_id": types.StringType, "owner": types.StringType, "repository": types.StringType,
+	"repository_slug": types.StringType, "branch": types.StringType, "build_path": types.StringType,
+}
+
+var giteaAttrTypes = map[string]attr.Type{
+	"gitea_id": types.StringType, "owner": types.StringType, "repository": types.StringType,
+	"branch": types.StringType, "build_path": types.StringType,
+}
+
 var buildAttrTypes = map[string]attr.Type{
 	"type": types.StringType, "dockerfile": types.StringType, "context_path": types.StringType,
 	"build_stage": types.StringType, "publish_directory": types.StringType,
@@ -114,6 +164,9 @@ func deployNeeded(plan, state resourceModel) bool {
 	return !plan.Github.Equal(state.Github) ||
 		!plan.Git.Equal(state.Git) ||
 		!plan.Docker.Equal(state.Docker) ||
+		!plan.Gitlab.Equal(state.Gitlab) ||
+		!plan.Bitbucket.Equal(state.Bitbucket) ||
+		!plan.Gitea.Equal(state.Gitea) ||
 		!plan.Build.Equal(state.Build) ||
 		!plan.Env.Equal(state.Env) ||
 		!plan.BuildArgs.Equal(state.BuildArgs) ||
@@ -143,6 +196,9 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.Github.Equal(state.Github) &&
 		plan.Git.Equal(state.Git) &&
 		plan.Docker.Equal(state.Docker) &&
+		plan.Gitlab.Equal(state.Gitlab) &&
+		plan.Bitbucket.Equal(state.Bitbucket) &&
+		plan.Gitea.Equal(state.Gitea) &&
 		plan.Build.Equal(state.Build) &&
 		plan.Env.Equal(state.Env) &&
 		plan.BuildArgs.Equal(state.BuildArgs) &&
@@ -249,6 +305,57 @@ func dockerRequest(ctx context.Context, id string, m resourceModel) (client.Save
 		Username:      d.Username.ValueStringPointer(),
 		Password:      d.Password.ValueStringPointer(),
 		RegistryURL:   d.RegistryURL.ValueStringPointer(),
+	}, diags
+}
+
+func gitlabRequest(ctx context.Context, id string, m resourceModel) (client.SaveGitlabProviderRequest, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var g gitlabModel
+	diags.Append(m.Gitlab.As(ctx, &g, objectAsOptions)...)
+	return client.SaveGitlabProviderRequest{
+		ApplicationID:       id,
+		GitlabID:            g.GitlabID.ValueString(),
+		GitlabOwner:         g.Owner.ValueString(),
+		GitlabRepository:    g.Repository.ValueString(),
+		GitlabBranch:        g.Branch.ValueString(),
+		GitlabBuildPath:     g.BuildPath.ValueString(),
+		GitlabProjectID:     g.ProjectID.ValueInt64(),
+		GitlabPathNamespace: g.PathNamespace.ValueString(),
+		WatchPaths:          watchPathsRequest(ctx, m.WatchPaths, &diags),
+		EnableSubmodules:    m.EnableSubmodules.ValueBoolPointer(),
+	}, diags
+}
+
+func bitbucketRequest(ctx context.Context, id string, m resourceModel) (client.SaveBitbucketProviderRequest, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var b bitbucketModel
+	diags.Append(m.Bitbucket.As(ctx, &b, objectAsOptions)...)
+	return client.SaveBitbucketProviderRequest{
+		ApplicationID:           id,
+		BitbucketID:             b.BitbucketID.ValueString(),
+		BitbucketOwner:          b.Owner.ValueString(),
+		BitbucketRepository:     b.Repository.ValueString(),
+		BitbucketRepositorySlug: b.RepositorySlug.ValueString(),
+		BitbucketBranch:         b.Branch.ValueString(),
+		BitbucketBuildPath:      b.BuildPath.ValueString(),
+		WatchPaths:              watchPathsRequest(ctx, m.WatchPaths, &diags),
+		EnableSubmodules:        m.EnableSubmodules.ValueBoolPointer(),
+	}, diags
+}
+
+func giteaRequest(ctx context.Context, id string, m resourceModel) (client.SaveGiteaProviderRequest, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var g giteaModel
+	diags.Append(m.Gitea.As(ctx, &g, objectAsOptions)...)
+	return client.SaveGiteaProviderRequest{
+		ApplicationID:    id,
+		GiteaID:          g.GiteaID.ValueString(),
+		GiteaOwner:       g.Owner.ValueString(),
+		GiteaRepository:  g.Repository.ValueString(),
+		GiteaBranch:      g.Branch.ValueString(),
+		GiteaBuildPath:   g.BuildPath.ValueString(),
+		WatchPaths:       watchPathsRequest(ctx, m.WatchPaths, &diags),
+		EnableSubmodules: m.EnableSubmodules.ValueBoolPointer(),
 	}, diags
 }
 
@@ -406,7 +513,43 @@ func flatten(ctx context.Context, app *client.Application, m *resourceModel) dia
 	m.Github = types.ObjectNull(githubAttrTypes)
 	m.Git = types.ObjectNull(gitAttrTypes)
 	m.Docker = types.ObjectNull(dockerAttrTypes)
+	m.Gitlab = types.ObjectNull(gitlabAttrTypes)
+	m.Bitbucket = types.ObjectNull(bitbucketAttrTypes)
+	m.Gitea = types.ObjectNull(giteaAttrTypes)
 	switch app.SourceType {
+	case "gitlab":
+		obj, d := types.ObjectValueFrom(ctx, gitlabAttrTypes, gitlabModel{
+			GitlabID:      strOrNull(app.GitlabID),
+			Owner:         strOrNull(app.GitlabOwner),
+			Repository:    strOrNull(app.GitlabRepository),
+			Branch:        strOrNull(app.GitlabBranch),
+			BuildPath:     strOrNull(app.GitlabBuildPath),
+			ProjectID:     types.Int64PointerValue(app.GitlabProjectID),
+			PathNamespace: strOrNull(app.GitlabPathNamespace),
+		})
+		diags.Append(d...)
+		m.Gitlab = obj
+	case "bitbucket":
+		obj, d := types.ObjectValueFrom(ctx, bitbucketAttrTypes, bitbucketModel{
+			BitbucketID:    strOrNull(app.BitbucketID),
+			Owner:          strOrNull(app.BitbucketOwner),
+			Repository:     strOrNull(app.BitbucketRepository),
+			RepositorySlug: strOrNull(app.BitbucketRepositorySlug),
+			Branch:         strOrNull(app.BitbucketBranch),
+			BuildPath:      strOrNull(app.BitbucketBuildPath),
+		})
+		diags.Append(d...)
+		m.Bitbucket = obj
+	case "gitea":
+		obj, d := types.ObjectValueFrom(ctx, giteaAttrTypes, giteaModel{
+			GiteaID:    strOrNull(app.GiteaID),
+			Owner:      strOrNull(app.GiteaOwner),
+			Repository: strOrNull(app.GiteaRepository),
+			Branch:     strOrNull(app.GiteaBranch),
+			BuildPath:  strOrNull(app.GiteaBuildPath),
+		})
+		diags.Append(d...)
+		m.Gitea = obj
 	case "github":
 		obj, d := types.ObjectValueFrom(ctx, githubAttrTypes, githubModel{
 			Owner:       strOrNull(app.Owner),

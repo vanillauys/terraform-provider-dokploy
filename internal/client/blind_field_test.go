@@ -24,6 +24,9 @@ var dialectARequests = []any{
 	SaveGithubProviderRequest{},
 	SaveGitProviderRequest{},
 	SaveDockerProviderRequest{},
+	SaveGitlabProviderRequest{},
+	SaveBitbucketProviderRequest{},
+	SaveGiteaProviderRequest{},
 	SaveBuildTypeRequest{},
 	SaveApplicationEnvironmentRequest{},
 }

@@ -45,6 +45,24 @@ type Compose struct {
 	CustomGitBranch   *string `json:"customGitBranch"`
 	CustomGitSSHKeyID *string `json:"customGitSSHKeyId"`
 
+	// gitlab, bitbucket and gitea sources (phase 2). Unlike application,
+	// compose has no per-type build path; composePath serves every source.
+	GitlabID                *string `json:"gitlabId"`
+	GitlabProjectID         *int64  `json:"gitlabProjectId"`
+	GitlabRepository        *string `json:"gitlabRepository"`
+	GitlabOwner             *string `json:"gitlabOwner"`
+	GitlabBranch            *string `json:"gitlabBranch"`
+	GitlabPathNamespace     *string `json:"gitlabPathNamespace"`
+	BitbucketID             *string `json:"bitbucketId"`
+	BitbucketRepository     *string `json:"bitbucketRepository"`
+	BitbucketRepositorySlug *string `json:"bitbucketRepositorySlug"`
+	BitbucketOwner          *string `json:"bitbucketOwner"`
+	BitbucketBranch         *string `json:"bitbucketBranch"`
+	GiteaID                 *string `json:"giteaId"`
+	GiteaRepository         *string `json:"giteaRepository"`
+	GiteaOwner              *string `json:"giteaOwner"`
+	GiteaBranch             *string `json:"giteaBranch"`
+
 	// Nullable operational columns. See the struct comment.
 	TriggerType               *string  `json:"triggerType"`
 	AutoDeploy                *bool    `json:"autoDeploy"`
@@ -143,6 +161,21 @@ type UpdateComposeRequest struct {
 	CustomGitURL              *string   `json:"customGitUrl"`
 	CustomGitBranch           *string   `json:"customGitBranch"`
 	CustomGitSSHKeyID         *string   `json:"customGitSSHKeyId"`
+	GitlabID                  *string   `json:"gitlabId"`
+	GitlabProjectID           *int64    `json:"gitlabProjectId"`
+	GitlabRepository          *string   `json:"gitlabRepository"`
+	GitlabOwner               *string   `json:"gitlabOwner"`
+	GitlabBranch              *string   `json:"gitlabBranch"`
+	GitlabPathNamespace       *string   `json:"gitlabPathNamespace"`
+	BitbucketID               *string   `json:"bitbucketId"`
+	BitbucketRepository       *string   `json:"bitbucketRepository"`
+	BitbucketRepositorySlug   *string   `json:"bitbucketRepositorySlug"`
+	BitbucketOwner            *string   `json:"bitbucketOwner"`
+	BitbucketBranch           *string   `json:"bitbucketBranch"`
+	GiteaID                   *string   `json:"giteaId"`
+	GiteaRepository           *string   `json:"giteaRepository"`
+	GiteaOwner                *string   `json:"giteaOwner"`
+	GiteaBranch               *string   `json:"giteaBranch"`
 	TriggerType               *string   `json:"triggerType"`
 	AutoDeploy                *bool     `json:"autoDeploy"`
 	EnableSubmodules          *bool     `json:"enableSubmodules"`

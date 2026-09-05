@@ -55,6 +55,9 @@ var mustAlwaysSend = []struct {
 	// this table at all: it held only dialect B Update* structs, so the
 	// endpoints where an absent key is a hard 400 were entirely unguarded.
 	{SaveGithubProviderRequest{}, []string{"triggerType", "watchPaths", "enableSubmodules"}},
+	{SaveGitlabProviderRequest{}, []string{"watchPaths", "enableSubmodules"}},
+	{SaveBitbucketProviderRequest{}, []string{"watchPaths", "enableSubmodules"}},
+	{SaveGiteaProviderRequest{}, []string{"watchPaths", "enableSubmodules"}},
 	{SaveGitProviderRequest{}, []string{"customGitSSHKeyId", "watchPaths", "enableSubmodules"}},
 	{SaveDockerProviderRequest{}, []string{"username", "password", "registryUrl"}},
 	{SaveBuildTypeRequest{}, []string{

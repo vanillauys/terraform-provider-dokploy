@@ -54,6 +54,9 @@ func (r *composeResource) ConfigValidators(_ context.Context) []resource.ConfigV
 	return []resource.ConfigValidator{
 		resourcevalidator.ExactlyOneOf(
 			path.MatchRoot("github"),
+			path.MatchRoot("gitlab"),
+			path.MatchRoot("bitbucket"),
+			path.MatchRoot("gitea"),
 			path.MatchRoot("git"),
 			path.MatchRoot("raw"),
 		),
@@ -137,6 +140,44 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					Required:    true,
 					Description: "The compose YAML, verbatim.",
 				},
+			},
+		},
+		"gitlab": schema.SingleNestedAttribute{
+			Optional: true,
+			Description: "Source the compose file from a GitLab project, through a `dokploy_gitlab_provider`. The provider " +
+				"must be authorized in the Dokploy UI before a deploy can clone from it.",
+			Attributes: map[string]schema.Attribute{
+				"gitlab_id":  schema.StringAttribute{Required: true, Description: "Id of the GitLab provider in Dokploy: `dokploy_gitlab_provider.id` or the data source's `id`."},
+				"owner":      schema.StringAttribute{Required: true, Description: "Owner of the project: a user or a group."},
+				"repository": schema.StringAttribute{Required: true, Description: "Project name."},
+				"branch":     schema.StringAttribute{Required: true, Description: "Branch to deploy."},
+				"project_id": schema.Int64Attribute{Required: true, Description: "Numeric GitLab project id, shown on the project's settings page."},
+				"path_namespace": schema.StringAttribute{
+					Required:    true,
+					Description: "Full path of the project, for example `my-group/my-project`. GitLab addresses a project by it.",
+				},
+			},
+		},
+		"bitbucket": schema.SingleNestedAttribute{
+			Optional:    true,
+			Description: "Source the compose file from a Bitbucket repository, through a `dokploy_bitbucket_provider`.",
+			Attributes: map[string]schema.Attribute{
+				"bitbucket_id":    schema.StringAttribute{Required: true, Description: "Id of the Bitbucket provider in Dokploy: `dokploy_bitbucket_provider.id` or the data source's `id`."},
+				"owner":           schema.StringAttribute{Required: true, Description: "Workspace or user that owns the repository."},
+				"repository":      schema.StringAttribute{Required: true, Description: "Repository name."},
+				"repository_slug": schema.StringAttribute{Required: true, Description: "Repository slug, the last part of the repository URL. It usually equals the repository name in lowercase."},
+				"branch":          schema.StringAttribute{Required: true, Description: "Branch to deploy."},
+			},
+		},
+		"gitea": schema.SingleNestedAttribute{
+			Optional: true,
+			Description: "Source the compose file from a Gitea repository, through a `dokploy_gitea_provider`. The provider " +
+				"must be authorized in the Dokploy UI before a deploy can clone from it.",
+			Attributes: map[string]schema.Attribute{
+				"gitea_id":   schema.StringAttribute{Required: true, Description: "Id of the Gitea provider in Dokploy: `dokploy_gitea_provider.id` or the data source's `id`."},
+				"owner":      schema.StringAttribute{Required: true, Description: "Owner of the repository: a user or an organization."},
+				"repository": schema.StringAttribute{Required: true, Description: "Repository name."},
+				"branch":     schema.StringAttribute{Required: true, Description: "Branch to deploy."},
 			},
 		},
 

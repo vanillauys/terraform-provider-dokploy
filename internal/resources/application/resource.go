@@ -48,6 +48,9 @@ func (r *applicationResource) ConfigValidators(_ context.Context) []resource.Con
 	return []resource.ConfigValidator{
 		resourcevalidator.ExactlyOneOf(
 			path.MatchRoot("github"),
+			path.MatchRoot("gitlab"),
+			path.MatchRoot("bitbucket"),
+			path.MatchRoot("gitea"),
 			path.MatchRoot("git"),
 			path.MatchRoot("docker"),
 		),
@@ -85,7 +88,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		},
 		"github": schema.SingleNestedAttribute{
 			Optional:    true,
-			Description: "GitHub App source. Set exactly one of `github`, `git`, or `docker`. Configure the GitHub provider (`github_id`) in Dokploy under Git > GitHub before you use this block.",
+			Description: "GitHub App source. Set exactly one of `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `docker`. Configure the GitHub provider (`github_id`) in Dokploy under Git > GitHub before you use this block.",
 			Attributes: map[string]schema.Attribute{
 				"owner":      schema.StringAttribute{Required: true, Description: "Repository owner: a user or an organization."},
 				"repository": schema.StringAttribute{Required: true, Description: "Repository name."},
@@ -102,7 +105,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		},
 		"git": schema.SingleNestedAttribute{
 			Optional:    true,
-			Description: "Plain git source: any repository that the server can reach over HTTPS or SSH. Set exactly one of `github`, `git`, or `docker`.",
+			Description: "Plain git source: any repository that the server can reach over HTTPS or SSH. Set exactly one of `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `docker`.",
 			Attributes: map[string]schema.Attribute{
 				"url":        schema.StringAttribute{Required: true, Description: "Clone URL."},
 				"branch":     schema.StringAttribute{Required: true, Description: "Branch to deploy."},
@@ -118,6 +121,48 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				"username":     schema.StringAttribute{Optional: true, Description: "Registry username for private images."},
 				"password":     schema.StringAttribute{Optional: true, Sensitive: true, Description: "Registry password for private images."},
 				"registry_url": schema.StringAttribute{Optional: true, Description: "Registry URL for private registries."},
+			},
+		},
+		"gitlab": schema.SingleNestedAttribute{
+			Optional: true,
+			Description: "GitLab source, through a `dokploy_gitlab_provider`. Set exactly one of `github`, `gitlab`, `bitbucket`, " +
+				"`gitea`, `git`, or `docker`. The provider must be authorized in the Dokploy UI before a deploy can clone from it.",
+			Attributes: map[string]schema.Attribute{
+				"gitlab_id":  schema.StringAttribute{Required: true, Description: "Id of the GitLab provider in Dokploy: `dokploy_gitlab_provider.id` or the data source's `id`."},
+				"owner":      schema.StringAttribute{Required: true, Description: "Owner of the project: a user or a group."},
+				"repository": schema.StringAttribute{Required: true, Description: "Project name."},
+				"branch":     schema.StringAttribute{Required: true, Description: "Branch to deploy."},
+				"build_path": schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("/"), Description: "Path inside the repository to build from."},
+				"project_id": schema.Int64Attribute{Required: true, Description: "Numeric GitLab project id, shown on the project's settings page."},
+				"path_namespace": schema.StringAttribute{
+					Required:    true,
+					Description: "Full path of the project, for example `my-group/my-project`. GitLab addresses a project by it.",
+				},
+			},
+		},
+		"bitbucket": schema.SingleNestedAttribute{
+			Optional: true,
+			Description: "Bitbucket source, through a `dokploy_bitbucket_provider`. Set exactly one of `github`, `gitlab`, " +
+				"`bitbucket`, `gitea`, `git`, or `docker`.",
+			Attributes: map[string]schema.Attribute{
+				"bitbucket_id":    schema.StringAttribute{Required: true, Description: "Id of the Bitbucket provider in Dokploy: `dokploy_bitbucket_provider.id` or the data source's `id`."},
+				"owner":           schema.StringAttribute{Required: true, Description: "Workspace or user that owns the repository."},
+				"repository":      schema.StringAttribute{Required: true, Description: "Repository name."},
+				"repository_slug": schema.StringAttribute{Required: true, Description: "Repository slug, the last part of the repository URL. It usually equals the repository name in lowercase."},
+				"branch":          schema.StringAttribute{Required: true, Description: "Branch to deploy."},
+				"build_path":      schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("/"), Description: "Path inside the repository to build from."},
+			},
+		},
+		"gitea": schema.SingleNestedAttribute{
+			Optional: true,
+			Description: "Gitea source, through a `dokploy_gitea_provider`. Set exactly one of `github`, `gitlab`, `bitbucket`, " +
+				"`gitea`, `git`, or `docker`. The provider must be authorized in the Dokploy UI before a deploy can clone from it.",
+			Attributes: map[string]schema.Attribute{
+				"gitea_id":   schema.StringAttribute{Required: true, Description: "Id of the Gitea provider in Dokploy: `dokploy_gitea_provider.id` or the data source's `id`."},
+				"owner":      schema.StringAttribute{Required: true, Description: "Owner of the repository: a user or an organization."},
+				"repository": schema.StringAttribute{Required: true, Description: "Repository name."},
+				"branch":     schema.StringAttribute{Required: true, Description: "Branch to deploy."},
+				"build_path": schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("/"), Description: "Path inside the repository to build from."},
 			},
 		},
 		"build": schema.SingleNestedAttribute{
@@ -386,6 +431,24 @@ func (r *applicationResource) saveSource(ctx context.Context, id string, m resou
 			return "reading the docker block", diagsError(d)
 		}
 		return "saving the docker source", r.client.SaveDockerProvider(ctx, req)
+	case !m.Gitlab.IsNull():
+		req, d := gitlabRequest(ctx, id, m)
+		if d.HasError() {
+			return "reading the gitlab block", diagsError(d)
+		}
+		return "saving the gitlab source", r.client.SaveGitlabProvider(ctx, req)
+	case !m.Bitbucket.IsNull():
+		req, d := bitbucketRequest(ctx, id, m)
+		if d.HasError() {
+			return "reading the bitbucket block", diagsError(d)
+		}
+		return "saving the bitbucket source", r.client.SaveBitbucketProvider(ctx, req)
+	case !m.Gitea.IsNull():
+		req, d := giteaRequest(ctx, id, m)
+		if d.HasError() {
+			return "reading the gitea block", diagsError(d)
+		}
+		return "saving the gitea source", r.client.SaveGiteaProvider(ctx, req)
 	}
 	return "", nil
 }
@@ -604,6 +667,9 @@ func (r *applicationResource) Update(ctx context.Context, req resource.UpdateReq
 	sourceChanged := !plan.Github.Equal(state.Github) ||
 		!plan.Git.Equal(state.Git) ||
 		!plan.Docker.Equal(state.Docker) ||
+		!plan.Gitlab.Equal(state.Gitlab) ||
+		!plan.Bitbucket.Equal(state.Bitbucket) ||
+		!plan.Gitea.Equal(state.Gitea) ||
 		!plan.WatchPaths.Equal(state.WatchPaths) ||
 		!plan.EnableSubmodules.Equal(state.EnableSubmodules)
 	if sourceChanged {

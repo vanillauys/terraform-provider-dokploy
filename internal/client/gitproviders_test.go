@@ -7,16 +7,6 @@ import (
 	"testing"
 )
 
-const gitProviderInnerJSON = `{
-	"gitProviderId": "gp1",
-	"name": "probe",
-	"providerType": "%s",
-	"createdAt": "2026-09-05T15:49:10.620Z",
-	"organizationId": "org1",
-	"userId": "user1",
-	"sharedWithOrganization": false
-}`
-
 // gitProviderSummaryJSON is one gitProvider.getAll entry, captured live
 // (v0.30.5, 2026-09-05), with all three type summaries filled in so one
 // fixture covers every decoder.
