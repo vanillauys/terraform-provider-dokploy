@@ -1,26 +1,33 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, environments, applications, compose stacks, databases, domains, mounts, ports, redirects, basic auth, backups, cron schedules, Docker networks, and vault providers with Terraform.
+  Manage Dokploy projects, environments, applications, compose stacks, databases, domains, backups, schedules, networks, remote servers, SSH keys, registries, certificates, git providers, notifications, vault providers, users, and API keys with Terraform.
 ---
 
 # Dokploy Provider
 
 Manage [Dokploy](https://dokploy.com) resources with Terraform:
 
-- **Projects and environments**
-- **Applications** from a GitHub App, a plain git repository, or a Docker image
-- **Compose services**: `docker-compose` projects and Docker Swarm stacks, from a GitHub App, a plain git repository, or an inline compose file
+- **Projects and environments**, with shared environment variables
+- **Applications** from a GitHub App, a GitLab project, a Bitbucket repository, a Gitea repository, a plain git repository, or a Docker image
+- **Compose services**: `docker-compose` projects and Docker Swarm stacks, from the same sources or an inline compose file
 - **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, and LibSQL
-- **Routing**: domains, published ports, Traefik redirects, and HTTP basic auth
+- **Routing**: domains, published ports, Traefik redirects, HTTP basic auth, and TLS certificates
 - **Storage**: bind, volume, and file mounts on any service
 - **Backups**: S3-compatible destinations, scheduled database dumps, and Docker volume archives
 - **Schedules**: cron jobs on a service, a remote server, or the Dokploy host
 - **Networks**: Docker bridge and overlay networks, attached to any service
+- **Servers**: remote worker and build servers, and the SSH keys that reach them
+- **Git providers**: GitLab, Bitbucket, and Gitea connections, and lookups of GitHub Apps
+- **Registries**: container registry logins for private images and built images
+- **Notifications**: Slack, Discord, Telegram, email, Resend, Gotify, ntfy, Mattermost, Lark, Microsoft Teams, Pushover, and custom webhooks
 - **Vault providers**: HashiCorp Vault or OpenBao, Infisical, AWS Secrets Manager, Doppler, Azure Key Vault, and Scaleway connections for runtime secrets
+- **Organization and access**: the organization record, users with an initial password, per-user permissions, and API keys
+- **AI settings**: OpenAI-compatible endpoints for Dokploy's AI features
 
-Each service resource deploys on change, and each resource supports
-`terraform import`.
+Each service resource deploys on change. Each resource supports
+`terraform import`, except `dokploy_api_key`, whose key Dokploy returns only
+once.
 
 The provider works with Terraform 1.5 or later and with OpenTofu. The
 write-only companions of the secret attributes (`<name>_wo`) need Terraform
@@ -35,6 +42,10 @@ before you apply.
 
 - [Get started](guides/getting-started): configure the provider and apply a
   first project, database, application, and domain.
+- [Usage examples](guides/usage-examples): short, complete configurations
+  for the common setups: an app from GitLab with Slack alerts, a worker
+  server, private images, a teammate with limited access, nightly backups,
+  and variables as a map.
 - [Adopt an existing Dokploy server](guides/adopting-an-existing-instance):
   import a running server into the state without a rebuild.
 - [Deploy semantics](guides/deploy-semantics): `deploy_on_change`,
@@ -43,8 +54,8 @@ before you apply.
   database passwords, backup credentials, and the write-only companions
   that keep a secret out of the state.
 - [Upgrade guide](guides/upgrading): what each release needs from your
-  configuration. v0.12 adds the write-only companions; v0.11 had the
-  breaking changes.
+  configuration. v0.13 adds the coverage of this page; v0.12 adds the
+  write-only companions; v0.11 had the breaking changes.
 
 ## Before you start
 

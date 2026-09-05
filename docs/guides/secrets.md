@@ -107,6 +107,15 @@ The pairs:
 | `dokploy_destination` | `access_key`, `secret_access_key` | `access_key_wo`, `secret_access_key_wo` |
 | `dokploy_security` | `password` | `password_wo` |
 | `dokploy_vault_provider` | the secret of each config block, for example `hashicorp.token` | `hashicorp.token_wo`, and so on |
+| `dokploy_ssh_key` | `private_key` | `private_key_wo` (a new version replaces the key) |
+| `dokploy_certificate` | `private_key` | `private_key_wo` |
+| `dokploy_registry` | `password` | `password_wo` |
+| `dokploy_ai` | `api_key` | `api_key_wo` |
+| `dokploy_gitlab_provider` | `secret` | `secret_wo` |
+| `dokploy_bitbucket_provider` | `app_password`, `api_token` | `app_password_wo`, `api_token_wo` |
+| `dokploy_gitea_provider` | `client_secret` | `client_secret_wo` |
+| The notification resources | the channel secret: `webhook_url`, `bot_token`, `password`, `api_key`, `app_token`, `access_token`, `user_key` | the same name with `_wo` |
+| `dokploy_user` | `password` | `password_wo` (a new version replaces the account) |
 
 Set the plain attribute or its companion, not both. A validator rejects a
 configuration that sets both, and one that sets neither where the server

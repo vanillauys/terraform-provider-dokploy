@@ -13,7 +13,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.12"
+      version = "~> 0.13"
     }
   }
 }
@@ -26,6 +26,25 @@ provider "dokploy" {
 
 The [registry documentation](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs)
 describes each resource and data source.
+
+## What you can manage
+
+| Area | Resources |
+|------|-----------|
+| Projects | `dokploy_project`, `dokploy_environment`, `dokploy_environment_variables` |
+| Services | `dokploy_application` (GitHub, GitLab, Bitbucket, Gitea, git, or Docker source), `dokploy_compose` (the same sources or an inline file) |
+| Databases | `dokploy_postgres`, `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`, `dokploy_redis`, `dokploy_libsql` |
+| Routing | `dokploy_domain`, `dokploy_port`, `dokploy_redirect`, `dokploy_security`, `dokploy_certificate` |
+| Storage and backups | `dokploy_mount`, `dokploy_destination`, `dokploy_backup`, `dokploy_volume_backup`, `dokploy_network` |
+| Automation | `dokploy_schedule`, twelve `dokploy_<channel>_notification` resources (Slack, Discord, Telegram, email, Resend, Gotify, ntfy, Mattermost, Lark, Teams, Pushover, custom webhook) |
+| Servers | `dokploy_server`, `dokploy_ssh_key` |
+| Integrations | `dokploy_gitlab_provider`, `dokploy_bitbucket_provider`, `dokploy_gitea_provider`, `dokploy_registry`, `dokploy_vault_provider`, `dokploy_ai` |
+| Access | `dokploy_organization`, `dokploy_user`, `dokploy_user_permissions`, `dokploy_api_key` |
+
+A data source with the same name looks up most of these records by name or
+id, including the GitHub Apps that only the Dokploy UI can create. The
+[Usage examples](docs/guides/usage-examples.md) guide shows the common
+combinations in a few lines each.
 
 ## Compatibility
 
@@ -44,10 +63,11 @@ The full reference is on the
 Start with the guides:
 
 - **[Get started](docs/guides/getting-started.md)**: configure the provider and apply a first project, database, application, and domain.
+- **[Usage examples](docs/guides/usage-examples.md)**: short, complete configurations for the common setups.
 - **[Adopt an existing Dokploy server](docs/guides/adopting-an-existing-instance.md)**: import a running server without a rebuild.
 - **[Deploy semantics](docs/guides/deploy-semantics.md)**: `deploy_on_change`, timeouts, and deploy failures.
 - **[Secrets and sensitive values](docs/guides/secrets.md)**: environment variables, database passwords, and backup credentials.
-- **[Upgrade to v0.11](docs/guides/upgrading.md)**: the breaking changes in v0.11.0 and the configuration edit for each.
+- **[Upgrade guide](docs/guides/upgrading.md)**: what each release needs from your configuration; v0.11.0 had the breaking changes.
 
 ## Before you start
 
@@ -72,9 +92,22 @@ v1.0.0. If you need a stable configuration, pin an exact version.
 
 The provider does not model these Dokploy features yet.
 
-- **Some Dokploy features have no resource.** Manage registries, SSH keys,
-  certificates, notifications, DNS providers, and remote servers in the
-  Dokploy UI. The provider has no resource for them.
+- **Some Dokploy settings have no resource.** Manage DNS providers, the
+  Traefik configuration files, preview deployments, rollbacks, tags, and the
+  Docker Swarm placement fields of a service in the Dokploy UI.
+- **`dokploy_server` stores the record only.** It does not run the setup that
+  installs Docker on the machine. Run **Setup Server** in the Dokploy UI
+  after the first apply.
+- **A GitLab or Gitea connection needs one browser step.** Terraform stores
+  the OAuth application; a person authorizes it once in the Dokploy UI. The
+  `dokploy_gitlab_provider` and `dokploy_gitea_provider` data sources report
+  `is_configured` for that state. A GitHub App has no create endpoint at all;
+  only the `dokploy_github_provider` data source exists.
+- **`dokploy_api_key` cannot be imported.** Dokploy returns the key once, at
+  creation.
+- **`dokploy_user` cannot change a password.** Dokploy has no endpoint that
+  resets another user's password, so a password change replaces the
+  account.
 - **`dokploy_vault_provider` models six provider types.** Dokploy v0.30.5
   adds a seventh type, `phase` (Phase.dev). The resource cannot create or
   update a Phase vault provider. Manage one in the Dokploy UI.
@@ -105,15 +138,14 @@ The provider does not model these Dokploy features yet.
   `replica`.
 - **Names are not unique in Dokploy.** Each data source that looks up a
   record by name errors when more than one record matches. This applies to
-  project, environment, application, destination, network, github_provider,
-  and all six database engines. Domain hosts are also not unique, because the
-  same host can attach to more than one domain. There is no `dokploy_domain`
-  data source, so nothing looks up a domain by host.
-- **`dokploy_compose` supports the GitHub App, plain git, and inline sources
-  only.** Dokploy also has GitLab, Bitbucket, and Gitea sources. The provider
-  does not model them, because no test server was available to observe their
-  shapes. For the same reason, the only git provider data source is
-  `dokploy_github_provider`. The same gap applies to `dokploy_application`.
+  project, environment, application, destination, network, ssh_key, server,
+  organization, the four git providers, and all six database engines.
+  Domain hosts are also not unique, because the same host can attach to more
+  than one domain. There is no `dokploy_domain` data source, so nothing
+  looks up a domain by host.
+- **`dogfood/generate_imports.py` does not enumerate the v0.13 resources.**
+  Import servers, SSH keys, registries, certificates, git providers,
+  notifications, users, and organizations by hand.
 
 ## Development
 
