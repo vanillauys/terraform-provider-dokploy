@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-09-05
+
+The first stable release. It has no configuration change: every attribute
+from v0.13.0 keeps its shape, and a v0.13.0 state loads with an empty plan.
+From this release the provider follows semantic versioning. The Stability
+section of the README and of the provider index states the rules.
+
+### Changed
+
+- The Go toolchain moves to 1.26.6, and grpc, x/net, x/text, and x/crypto
+  move to their current versions. `govulncheck` reported six reachable
+  vulnerabilities on the v0.13.0 build: four in the Go 1.26.5 standard
+  library, one in grpc, and one in x/net and the standard library. It
+  reports none now. The `vuln` job in `test.yml` and `make vuln` run it on
+  every pull request.
+- Every resource and data source page on the registry carries a
+  subcategory. The sidebar groups the 46 resources and the 19 data sources
+  into twelve sections instead of one list.
+- Compatibility, checked on 2026-09-05: the project and destination
+  packages of the acceptance suite pass on Terraform 1.5.7 and on OpenTofu
+  1.12.6 with the provider binary from this repository. CI runs the suite on
+  Terraform 1.16.1. The provider is not on the OpenTofu registry yet.
+- `dogfood/generate_imports.py` enumerates the v0.13 resources: SSH keys,
+  servers, registries, certificates, GitLab, Bitbucket, and Gitea
+  providers, notifications, AI settings, organizations, and the permissions
+  of each member. It lists a user as a comment, because Dokploy never
+  returns a password.
+- Upgrade tests for `dokploy_project` and `dokploy_application`: v0.13.0
+  from the registry creates the record, and the local build plans no
+  change. Unit tests cover the flatten and lookup functions of the gitlab,
+  gitea, certificate, ai, and destination resources and of the
+  organization, user, and git-provider data sources.
+- Repository files: `SECURITY.md`, an issue template for bugs and one for
+  features, a pull request template with the touchpoint list, and a
+  Dependabot configuration for the Go modules and the actions.
+
+### Fixed
+
+- `dokploy_application`: the `registry_id` description no longer says that
+  the provider has no registry resource. `dokploy_registry` exists since
+  v0.13.0.
+- `dokploy_environment_variables`: the `environment_id` description is one
+  sentence again.
+
 ## [0.13.0] - 2026-09-05
 
 The coverage release before v1.0.0. It has no breaking change: every

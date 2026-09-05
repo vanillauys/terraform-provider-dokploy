@@ -273,7 +273,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		},
 		"registry_id": schema.StringAttribute{
 			Optional:    true,
-			Description: "Id of the Dokploy registry that receives the built images. This provider has no registry resource yet, so supply the id as a literal.",
+			Description: "Id of the Dokploy registry that receives the built images. Use the `id` of a `dokploy_registry` resource.",
 		},
 		"enable_submodules": schema.BoolAttribute{
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),

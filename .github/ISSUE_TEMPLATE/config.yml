@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Provider documentation
+    url: https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs
+    about: The reference for each resource, data source, and guide.
+  - name: Security report
+    url: https://github.com/vanillauys/terraform-provider-dokploy/security/advisories/new
+    about: Report a vulnerability in private. Do not open a public issue for it.

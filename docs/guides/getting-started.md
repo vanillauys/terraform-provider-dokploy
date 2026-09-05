@@ -50,7 +50,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 0.12"
+      version = "~> 1.0"
     }
   }
 }
@@ -65,10 +65,11 @@ If `endpoint` is not set, the provider reads `DOKPLOY_ENDPOINT`. If `api_key`
 is not set, the provider reads `DOKPLOY_API_KEY`. Set `insecure = true` only
 when the server presents a self-signed certificate.
 
-This provider is pre-1.0. Breaking changes can land in minor releases until
-v1.0.0. If you need a stable configuration, pin an exact version, for example
-`version = "0.11.0"`. The [Upgrade to v0.11](upgrading) guide lists the
-breaking changes of the current release.
+The provider follows semantic versioning from v1.0.0. Pin the minor version,
+for example `version = "~> 1.0"`: a minor release adds resources and
+attributes and never changes what an existing attribute does. The
+[Upgrade guide](upgrading) lists what each release needs from your
+configuration.
 
 ## A first configuration
 

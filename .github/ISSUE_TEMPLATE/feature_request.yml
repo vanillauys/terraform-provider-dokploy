@@ -1,0 +1,24 @@
+name: Feature request
+description: A Dokploy feature that the provider does not model yet.
+labels: [enhancement]
+body:
+  - type: input
+    id: feature
+    attributes:
+      label: Dokploy feature
+      description: The screen in the Dokploy UI, or the tRPC router and procedure.
+      placeholder: "Settings > Notifications, or notification.createSlack"
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: What you want to do with Terraform
+      description: The configuration you would write, in prose or in HCL.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: How you do it today
+      description: The UI steps or the API calls that the resource would replace.

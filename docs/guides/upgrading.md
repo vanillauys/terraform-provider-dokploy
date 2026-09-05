@@ -2,10 +2,26 @@
 page_title: "Upgrade guide"
 subcategory: ""
 description: |-
-  What each release since v0.11.0 needs from your configuration: the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
+  What each release since v0.11.0 needs from your configuration: nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
 ---
 
 # Upgrade guide
+
+## Upgrade to v1.0
+
+v1.0.0 has no configuration change. Every attribute from v0.13.0 keeps its
+shape, and a v0.13.0 state loads with an empty plan. The acceptance suite
+proves it on `dokploy_project` and `dokploy_application`: v0.13.0 from the
+registry creates the record, and the v1.0.0 build plans no change.
+
+1. Update the version constraint to `~> 1.0`.
+2. Run `terraform init -upgrade`.
+3. Run `terraform plan`. The plan must be empty.
+
+From v1.0.0 the provider follows semantic versioning. A minor release adds
+resources, data sources, and attributes; a breaking change needs a major
+release and a section in this guide. The Stability section of the
+[provider index](../) states the rules.
 
 ## Upgrade to v0.13
 

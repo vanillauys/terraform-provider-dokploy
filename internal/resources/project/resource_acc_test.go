@@ -153,3 +153,38 @@ resource "dokploy_project" "test" {
 		},
 	})
 }
+
+// v1.0.0 promises that a v0.13.0 state loads with an empty plan. Step 1
+// creates the project with v0.13.0 from the registry; step 2 plans the same
+// configuration with the local build and expects no change.
+func TestAccProject_upgradeFromV0_13(t *testing.T) {
+	name := acctest.RandomName("proj-up")
+	cfg := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name        = %q
+  description = "upgrade test"
+}
+`, name)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.13.0"},
+				},
+				Config: cfg,
+				Check:  resource.TestCheckResourceAttrSet("dokploy_project.test", "production_environment_id"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   cfg,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttrSet("dokploy_project.test", "production_environment_id"),
+			},
+		},
+	})
+}
