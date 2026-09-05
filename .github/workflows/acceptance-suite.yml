@@ -38,6 +38,22 @@ jobs:
       # No separate "wait for Dokploy" step: `GET /` answering is not a
       # readiness signal for the auth stack, which is what we actually need.
       # bootstrap.sh polls that condition itself.
+      # Dokploy v0.30.5 waits 45 seconds for a database service to converge
+      # and fails the deploy with "did not converge" when the container is
+      # still starting. On a fresh runner the image pull eats most of that
+      # window: TestAccLibsql_portMatrix failed that way on 2026-09-05 (run
+      # 33963429389, attempt 1). Pulling the images the suite deploys before
+      # the tests start takes the pull out of the window. The list mirrors the
+      # docker_image values in the acceptance tests plus the libsql default.
+      - name: Warm the image cache
+        run: |
+          set -euo pipefail
+          pids=()
+          for image in traefik/whoami:v1.10 postgres:16-alpine redis:8 mysql:8 mongo:7 mariadb:11.4 ghcr.io/tursodatabase/libsql-server:v0.24.32; do
+            docker pull -q "$image" &
+            pids+=("$!")
+          done
+          for pid in "${pids[@]}"; do wait "$pid"; done
       - name: Bootstrap admin and API key
         run: |
           set -euo pipefail
