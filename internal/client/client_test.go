@@ -166,3 +166,29 @@ func TestNewRejectsBadEndpoint(t *testing.T) {
 		t.Errorf("trailing slash not trimmed: %q", c.endpoint)
 	}
 }
+
+// TestDeployTimeoutOutlastsTheRequestTimeout pins the fix for a timed-out
+// libsql.deploy (Phase 3, 2026-09-05): the synchronous *.deploy endpoints
+// answer only after the server has pulled, built and waited for the swarm
+// service to converge, which ran past the old 60-second http.Client.Timeout
+// while the server finished the deploy. PostDeploy carries its own, longer
+// per-attempt deadline; every other call keeps the short one.
+func TestDeployTimeoutOutlastsTheRequestTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(80 * time.Millisecond)
+		_, _ = fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	c, err := New(srv.URL, "test-key", false, "test",
+		WithRequestTimeout(20*time.Millisecond), WithDeployTimeout(2*time.Second))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if err := c.Post(context.Background(), "/postgres.update", map[string]string{"postgresId": "p1"}, nil); err == nil {
+		t.Fatal("Post: want a deadline error from the 20ms request timeout, got nil")
+	}
+	if err := c.DeployPostgres(context.Background(), "p1"); err != nil {
+		t.Fatalf("DeployPostgres: %v; the deploy deadline must outlast the handler", err)
+	}
+}

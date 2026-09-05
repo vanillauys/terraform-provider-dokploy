@@ -1338,4 +1338,38 @@
 // send an update with only composeId and name: compose.one read both back
 // as true. Dialect B, like the rest of compose.update. v0.11.0 stopped
 // sending the two fields; the server keeps whatever a v0.10.x apply stored.
+//
+// # API key rate limits: the default budget is 10 requests per 24 hours (probed 2026-09-05)
+//
+// Phase 3 probe on the rig (v0.30.5). A key minted through the tRPC
+// user.createApiKey mutation with only name and metadata, the same mutation
+// the Settings > API/CLI page calls, came back with rateLimitEnabled true,
+// rateLimitMax 10 and rateLimitTimeWindow 86400000 (24 hours). Forty
+// sequential GET /api/project.all calls with that key: the first five
+// returned 200, every later call returned 401 with the body
+// {"message":"Unauthorized"}, and one more call after 65 seconds still
+// returned 401. Two counts per REST call fit the numbers: the plugin
+// verifies the key once in the REST middleware and once in the tRPC
+// context. A retry with backoff therefore cannot help: the window is a day,
+// and the status does not say "rate limited". A key generated in the UI
+// (Settings > Profile > API/CLI Keys > Generate New Key) with the "Enable
+// Rate Limiting" switch left at its default, off, answered twelve calls in a
+// row with 200: the UI sends rateLimitEnabled false, the raw mutation
+// without the field gets the plugin default. acceptance/bootstrap.sh mints
+// its key with rateLimitEnabled false for the same reason; the guide tells
+// users to leave the switch off.
+//
+// # The *.deploy endpoints can run past 60 seconds (probed 2026-09-05)
+//
+// A dokploy_libsql create on the rig (v0.30.5) failed with "POST
+// /libsql.deploy: context deadline exceeded (Client.Timeout exceeded while
+// awaiting headers)" while libsql.one read the service back as running: the
+// client gave up at 60 seconds, the server finished the deploy. A direct
+// curl of libsql.deploy on the same record answered after 85 seconds (an
+// HTTP 500, because the rig's Docker daemon could not reach ghcr.io for the
+// pull at that moment; the duration is the point). The deploy endpoints are
+// synchronous: pull, build, then the 45-second convergence wait of v0.30.5.
+// The client therefore carries two per-attempt deadlines: 60 seconds for
+// every call, 10 minutes for the eight *.deploy calls (PostDeploy). Both sit
+// on the request context, so Terraform's own cancellation still applies.
 package client

@@ -145,5 +145,5 @@ func (c *Client) SaveMariadbExternalPort(ctx context.Context, id string, port *i
 }
 
 func (c *Client) DeployMariadb(ctx context.Context, id string) error {
-	return c.Post(ctx, "/mariadb.deploy", map[string]string{"mariadbId": id}, nil)
+	return c.PostDeploy(ctx, "/mariadb.deploy", map[string]string{"mariadbId": id})
 }

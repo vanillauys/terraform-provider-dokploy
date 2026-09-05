@@ -25,6 +25,15 @@ type Client struct {
 	userAgent     string
 	retryAttempts int
 	retryBaseWait time.Duration
+	// requestTimeout bounds one attempt of every call except the deploys.
+	// deployTimeout bounds one attempt of the synchronous *.deploy endpoints:
+	// on Dokploy v0.30.5 the server pulls, builds, and then waits up to 45
+	// seconds for the swarm service to converge before it answers, so a
+	// libsql.deploy on the rig ran past a 60-second cap while the server
+	// finished the deploy (Phase 3 probe, 2026-09-05). The deadline lives on
+	// the request context, not on http.Client.Timeout, so the two can differ.
+	requestTimeout time.Duration
+	deployTimeout  time.Duration
 }
 
 type Option func(*Client)
@@ -32,6 +41,18 @@ type Option func(*Client)
 // WithRetryBaseWait overrides the retry backoff base; used by tests.
 func WithRetryBaseWait(d time.Duration) Option {
 	return func(c *Client) { c.retryBaseWait = d }
+}
+
+// WithRequestTimeout overrides the per-attempt deadline of every call except
+// the deploy endpoints; used by tests.
+func WithRequestTimeout(d time.Duration) Option {
+	return func(c *Client) { c.requestTimeout = d }
+}
+
+// WithDeployTimeout overrides the per-attempt deadline of the synchronous
+// *.deploy endpoints; used by tests.
+func WithDeployTimeout(d time.Duration) Option {
+	return func(c *Client) { c.deployTimeout = d }
 }
 
 func New(endpoint, apiKey string, insecure bool, version string, opts ...Option) (*Client, error) {
@@ -47,12 +68,14 @@ func New(endpoint, apiKey string, insecure bool, version string, opts ...Option)
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	c := &Client{
-		endpoint:      endpoint,
-		apiKey:        apiKey,
-		http:          &http.Client{Transport: transport, Timeout: 60 * time.Second},
-		userAgent:     "terraform-provider-dokploy/" + version,
-		retryAttempts: 3,
-		retryBaseWait: time.Second,
+		endpoint:       endpoint,
+		apiKey:         apiKey,
+		http:           &http.Client{Transport: transport},
+		userAgent:      "terraform-provider-dokploy/" + version,
+		retryAttempts:  3,
+		retryBaseWait:  time.Second,
+		requestTimeout: 60 * time.Second,
+		deployTimeout:  10 * time.Minute,
 	}
 	for _, o := range opts {
 		o(c)
@@ -63,16 +86,23 @@ func New(endpoint, apiKey string, insecure bool, version string, opts ...Option)
 // Get calls a tRPC query endpoint; inputs go in the query string.
 // Idempotent, so transient failures are retried.
 func (c *Client) Get(ctx context.Context, path string, query url.Values, out any) error {
-	return c.do(ctx, http.MethodGet, path, query, nil, out)
+	return c.do(ctx, http.MethodGet, path, query, nil, out, c.requestTimeout)
 }
 
 // Post calls a tRPC mutation endpoint; inputs go in the JSON body.
 // Never retried.
 func (c *Client) Post(ctx context.Context, path string, body, out any) error {
-	return c.do(ctx, http.MethodPost, path, nil, body, out)
+	return c.do(ctx, http.MethodPost, path, nil, body, out, c.requestTimeout)
 }
 
-func (c *Client) do(ctx context.Context, method, path string, query url.Values, body, out any) error {
+// PostDeploy calls one of the synchronous *.deploy mutations, which answer
+// only after the server has pulled, built, and waited for the swarm service
+// to converge. It uses the longer deployTimeout; see the Client field comment.
+func (c *Client) PostDeploy(ctx context.Context, path string, body any) error {
+	return c.do(ctx, http.MethodPost, path, nil, body, nil, c.deployTimeout)
+}
+
+func (c *Client) do(ctx context.Context, method, path string, query url.Values, body, out any, timeout time.Duration) error {
 	u := c.endpoint + basePath + path
 	if len(query) > 0 {
 		u += "?" + query.Encode()
@@ -98,7 +128,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 			}
 		}
 		var retryable bool
-		retryable, lastErr = c.attempt(ctx, method, u, path, payload, out)
+		retryable, lastErr = c.attempt(ctx, method, u, path, payload, out, timeout)
 		if lastErr == nil || !retryable {
 			return lastErr
 		}
@@ -108,7 +138,9 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 
 // attempt performs one round-trip and reports whether a failure is
 // retryable (network error or 5xx).
-func (c *Client) attempt(ctx context.Context, method, u, path string, payload []byte, out any) (bool, error) {
+func (c *Client) attempt(ctx context.Context, method, u, path string, payload []byte, out any, timeout time.Duration) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	var bodyReader io.Reader
 	if payload != nil {
 		bodyReader = bytes.NewReader(payload)
