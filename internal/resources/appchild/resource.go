@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
@@ -69,16 +71,23 @@ func (r *genericResource[M]) Create(ctx context.Context, req resource.CreateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	inUse := r.resolveSecrets(ctx, req.Config, &plan, nil, resp.Private, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	if err := r.kind.Create(ctx, r.client, &plan); err != nil {
 		resp.Diagnostics.AddError("Creating "+r.kind.Name, err.Error())
 		return
 	}
+	r.hideSecrets(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *genericResource[M]) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state M
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	inUse, flagDiags := tfutil.WriteOnlyFlags(ctx, req.Private, r.kind.Secrets)
+	resp.Diagnostics.Append(flagDiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -90,12 +99,18 @@ func (r *genericResource[M]) Read(ctx context.Context, req resource.ReadRequest,
 		resp.Diagnostics.AddError("Reading "+r.kind.Name, err.Error())
 		return
 	}
+	r.hideSecrets(&state, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *genericResource[M]) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan M
+	var plan, state M
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	inUse := r.resolveSecrets(ctx, req.Config, &plan, &state, resp.Private, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -110,7 +125,39 @@ func (r *genericResource[M]) Update(ctx context.Context, req resource.UpdateRequ
 		resp.Diagnostics.AddError("Reading "+r.kind.Name+" after update", err.Error())
 		return
 	}
+	r.hideSecrets(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// resolveSecrets is a no-op for a kind without Secrets. Otherwise it reads
+// the config, lets the kind write the value to send into plan, and records
+// in the private state which secrets the config sets through a companion.
+func (r *genericResource[M]) resolveSecrets(ctx context.Context, config tfsdk.Config, plan, prior *M, private tfutil.PrivateState, diags *diag.Diagnostics) map[string]bool {
+	if len(r.kind.Secrets) == 0 {
+		return nil
+	}
+	var cfg M
+	diags.Append(config.Get(ctx, &cfg)...)
+	if diags.HasError() {
+		return nil
+	}
+	inUse, err := r.kind.ResolveSecrets(ctx, r.client, plan, &cfg, prior)
+	if err != nil {
+		diags.AddError("Resolving "+r.kind.Name+" secrets", err.Error())
+		return nil
+	}
+	diags.Append(tfutil.SetWriteOnlyFlags(ctx, private, r.kind.Secrets, inUse)...)
+	return inUse
+}
+
+// hideSecrets nulls each secret whose companion is in use, so the state
+// never holds it. The client calls put the server's cleartext value in.
+func (r *genericResource[M]) hideSecrets(m *M, inUse map[string]bool) {
+	for name, on := range inUse {
+		if on {
+			r.kind.HideSecret(m, name)
+		}
+	}
 }
 
 func (r *genericResource[M]) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

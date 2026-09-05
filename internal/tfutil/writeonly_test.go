@@ -15,7 +15,7 @@ import (
 
 func TestWriteOnlyCompanions(t *testing.T) {
 	for _, exactlyOne := range []bool{true, false} {
-		attrs := WriteOnlyCompanions("database_password", exactlyOne, "A version change starts a redeploy.")
+		attrs := WriteOnlyCompanions("database_password", WriteOnlyOptions{ExactlyOne: exactlyOne, Effect: "A version change starts a redeploy."})
 		if len(attrs) != 2 {
 			t.Fatalf("exactlyOne=%v: got %d attributes, want 2", exactlyOne, len(attrs))
 		}
@@ -44,13 +44,42 @@ func TestWriteOnlyCompanions(t *testing.T) {
 		}
 	}
 
-	wo := WriteOnlyCompanions("database_password", true, "")["database_password_wo"].(schema.StringAttribute)
+	wo := WriteOnlyCompanions("database_password", WriteOnlyOptions{ExactlyOne: true})["database_password_wo"].(schema.StringAttribute)
 	if wo.Description != "Write-only form of `database_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `database_password` and `database_password_wo`. A new value reaches the server only when `database_password_wo_version` changes." {
 		t.Errorf("unexpected exactly-one description: %q", wo.Description)
 	}
-	wo = WriteOnlyCompanions("database_root_password", false, "")["database_root_password_wo"].(schema.StringAttribute)
+	wo = WriteOnlyCompanions("database_root_password", WriteOnlyOptions{})["database_root_password_wo"].(schema.StringAttribute)
 	if wo.Description != "Write-only form of `database_root_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Do not set it together with `database_root_password`. A new value reaches the server only when `database_root_password_wo_version` changes." {
 		t.Errorf("unexpected conflicts description: %q", wo.Description)
+	}
+
+	always := WriteOnlyCompanions("token", WriteOnlyOptions{ExactlyOne: true, Nested: true, SentOnEveryUpdate: true})
+	wo = always["token_wo"].(schema.StringAttribute)
+	if wo.Description != "Write-only form of `token`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `token` and `token_wo`. The server does not return the value, so every update sends it. Change `token_wo_version` to start an update when only this value changed." {
+		t.Errorf("unexpected sent-on-every-update description: %q", wo.Description)
+	}
+	version := always["token_wo_version"].(schema.Int64Attribute)
+	if version.Description != "Version of `token_wo`. Change it to start an update when only `token_wo` changed. It needs `token_wo`." {
+		t.Errorf("unexpected sent-on-every-update version description: %q", version.Description)
+	}
+}
+
+func TestWriteOnlyFlags(t *testing.T) {
+	ctx := context.Background()
+	p := &fakePrivate{data: map[string][]byte{}}
+	names := []string{"access_key", "secret_access_key"}
+	if diags := SetWriteOnlyFlags(ctx, p, names, map[string]bool{"secret_access_key": true}); diags.HasError() {
+		t.Fatalf("SetWriteOnlyFlags: %v", diags)
+	}
+	got, diags := WriteOnlyFlags(ctx, p, names)
+	if diags.HasError() {
+		t.Fatalf("WriteOnlyFlags: %v", diags)
+	}
+	if got["access_key"] || !got["secret_access_key"] {
+		t.Errorf("WriteOnlyFlags() = %v, want only secret_access_key", got)
+	}
+	if empty, _ := WriteOnlyFlags(ctx, p, nil); len(empty) != 0 {
+		t.Errorf("WriteOnlyFlags(nil names) = %v, want empty", empty)
 	}
 }
 

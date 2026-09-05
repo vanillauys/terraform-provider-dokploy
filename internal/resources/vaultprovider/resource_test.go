@@ -6,11 +6,137 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
+
+// blockSecrets names the secret field(s) of each config block.
+var blockSecrets = map[string][]string{
+	"hashicorp": {"token"},
+	"infisical": {"client_secret"},
+	"aws":       {"access_key_id", "secret_access_key"},
+	"doppler":   {"service_token"},
+	"azure":     {"client_secret"},
+	"scaleway":  {"secret_key"},
+}
+
+// TestSchema_WriteOnlyCompanions pins the D1(a) shape inside the six config
+// blocks, runs the framework's own schema checks (which only an acceptance
+// run reached before), and pins that each block's attribute-type map in
+// model.go agrees with the schema: a mismatch fails flattenConfig at apply.
+func TestSchema_WriteOnlyCompanions(t *testing.T) {
+	ctx := context.Background()
+	var resp resource.SchemaResponse
+	(&vaultProviderResource{}).Schema(ctx, resource.SchemaRequest{}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Schema(): %v", resp.Diagnostics)
+	}
+	if diags := resp.Schema.ValidateImplementation(ctx); diags.HasError() {
+		t.Errorf("ValidateImplementation(): %v", diags)
+	}
+	attrTypes := map[string]map[string]attr.Type{
+		"hashicorp": hashicorpAttrTypes(), "infisical": infisicalAttrTypes(), "aws": awsAttrTypes(),
+		"doppler": dopplerAttrTypes(), "azure": azureAttrTypes(), "scaleway": scalewayAttrTypes(),
+	}
+	for block, secrets := range blockSecrets {
+		nested, ok := resp.Schema.Attributes[block].(schema.SingleNestedAttribute)
+		if !ok {
+			t.Fatalf("%s is %T", block, resp.Schema.Attributes[block])
+		}
+		if want := (types.ObjectType{AttrTypes: attrTypes[block]}); !want.Equal(nested.GetType()) {
+			t.Errorf("%s: the model's attribute types %v differ from the schema's %v", block, want, nested.GetType())
+		}
+		for _, secret := range secrets {
+			plain, ok := nested.Attributes[secret].(schema.StringAttribute)
+			if !ok || plain.Required || !plain.Optional || !plain.Sensitive {
+				t.Errorf("%s.%s must be Optional+Sensitive, got %+v", block, secret, nested.Attributes[secret])
+			}
+			wo, ok := nested.Attributes[secret+"_wo"].(schema.StringAttribute)
+			if !ok || !wo.WriteOnly || !wo.Sensitive || !wo.Optional {
+				t.Errorf("%s.%s_wo must be Optional+WriteOnly+Sensitive, got %+v", block, secret, nested.Attributes[secret+"_wo"])
+			}
+			if _, ok := nested.Attributes[secret+"_wo_version"].(schema.Int64Attribute); !ok {
+				t.Errorf("%s.%s_wo_version is %T", block, secret, nested.Attributes[secret+"_wo_version"])
+			}
+		}
+	}
+}
+
+// TestExpandConfig_WriteOnlyToken pins that the config block's companion
+// supplies the wire secret when the plan's plain field is null, and that
+// flattenConfig then leaves the plain field null with the plan's version.
+func TestExpandConfig_WriteOnlyToken(t *testing.T) {
+	ctx := context.Background()
+	plan := resourceModel{
+		Hashicorp: types.ObjectValueMust(hashicorpAttrTypes(), map[string]attr.Value{
+			"url":              types.StringValue("https://vault.example.com:8200"),
+			"token":            types.StringNull(),
+			"token_wo":         types.StringNull(),
+			"token_wo_version": types.Int64Value(3),
+			"namespace":        types.StringNull(),
+			"mount":            types.StringValue("secret"),
+		}),
+		Infisical: types.ObjectNull(infisicalAttrTypes()),
+		AWS:       types.ObjectNull(awsAttrTypes()),
+		Doppler:   types.ObjectNull(dopplerAttrTypes()),
+		Azure:     types.ObjectNull(azureAttrTypes()),
+		Scaleway:  types.ObjectNull(scalewayAttrTypes()),
+	}
+	config := plan
+	config.Hashicorp = types.ObjectValueMust(hashicorpAttrTypes(), map[string]attr.Value{
+		"url":              types.StringValue("https://vault.example.com:8200"),
+		"token":            types.StringNull(),
+		"token_wo":         types.StringValue("s.write-only"),
+		"token_wo_version": types.Int64Value(3),
+		"namespace":        types.StringNull(),
+		"mount":            types.StringValue("secret"),
+	})
+	var diags diag.Diagnostics
+	cfg, _ := expandConfig(ctx, plan, config, &diags)
+	if diags.HasError() {
+		t.Fatalf("expandConfig: %v", diags)
+	}
+	c, ok := cfg.(*client.VaultHashicorpConfig)
+	if !ok || c.Token != "s.write-only" {
+		t.Fatalf("expanded = %+v, want the write-only token on the wire", cfg)
+	}
+
+	out := plan
+	flattenConfig(ctx, cfg, &out, &diags)
+	if diags.HasError() {
+		t.Fatalf("flattenConfig: %v", diags)
+	}
+	var got hashicorpModel
+	diags.Append(out.Hashicorp.As(ctx, &got, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		t.Fatalf("As: %v", diags)
+	}
+	if !got.Token.IsNull() || !got.TokenWo.IsNull() || got.TokenWoVersion.ValueInt64() != 3 {
+		t.Errorf("flattened = %+v, want token null, token_wo null, version 3", got)
+	}
+}
+
+// blockWithNullCompanions builds a config block from the plain fields only:
+// every write-only companion the block's attribute types declare is filled
+// with null, the value it holds in a plan and in the state.
+func blockWithNullCompanions(attrTypes map[string]attr.Type, values map[string]attr.Value) types.Object {
+	for name, typ := range attrTypes {
+		if _, ok := values[name]; ok {
+			continue
+		}
+		switch typ {
+		case types.StringType:
+			values[name] = types.StringNull()
+		case types.Int64Type:
+			values[name] = types.Int64Null()
+		}
+	}
+	return types.ObjectValueMust(attrTypes, values)
+}
 
 // TestExpandFlattenConfig_RoundTrip covers all six provider types: build a
 // resourceModel with exactly one block populated, expand it into the typed
@@ -21,7 +147,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("hashicorp", func(t *testing.T) {
-		obj := types.ObjectValueMust(hashicorpAttrTypes(), map[string]attr.Value{
+		obj := blockWithNullCompanions(hashicorpAttrTypes(), map[string]attr.Value{
 			"url":       types.StringValue("https://vault.example.com:8200"),
 			"token":     types.StringValue("s.faketoken"),
 			"namespace": types.StringValue("admin/"),
@@ -36,7 +162,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 			Scaleway:  types.ObjectNull(scalewayAttrTypes()),
 		}
 		var diags diag.Diagnostics
-		cfg, providerType := expandConfig(ctx, m, &diags)
+		cfg, providerType := expandConfig(ctx, m, resourceModel{}, &diags)
 		if diags.HasError() {
 			t.Fatalf("expandConfig diags = %v", diags)
 		}
@@ -53,7 +179,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		}
 
 		var out resourceModel
-		flattenConfig(cfg, &out, &diags)
+		flattenConfig(ctx, cfg, &out, &diags)
 		if diags.HasError() {
 			t.Fatalf("flattenConfig diags = %v", diags)
 		}
@@ -73,7 +199,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 	})
 
 	t.Run("hashicorp with namespace omitted flattens to null, not empty string", func(t *testing.T) {
-		obj := types.ObjectValueMust(hashicorpAttrTypes(), map[string]attr.Value{
+		obj := blockWithNullCompanions(hashicorpAttrTypes(), map[string]attr.Value{
 			"url":       types.StringValue("https://vault.example.com:8200"),
 			"token":     types.StringValue("s.faketoken"),
 			"namespace": types.StringNull(),
@@ -81,14 +207,14 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		})
 		m := resourceModel{Hashicorp: obj, Infisical: types.ObjectNull(infisicalAttrTypes()), AWS: types.ObjectNull(awsAttrTypes()), Doppler: types.ObjectNull(dopplerAttrTypes()), Azure: types.ObjectNull(azureAttrTypes()), Scaleway: types.ObjectNull(scalewayAttrTypes())}
 		var diags diag.Diagnostics
-		cfg, _ := expandConfig(ctx, m, &diags)
+		cfg, _ := expandConfig(ctx, m, resourceModel{}, &diags)
 		c := cfg.(*client.VaultHashicorpConfig)
 		if c.Namespace != "" {
 			t.Fatalf("expanded namespace = %q, want empty (omitempty on write)", c.Namespace)
 		}
 
 		var out resourceModel
-		flattenConfig(cfg, &out, &diags)
+		flattenConfig(ctx, cfg, &out, &diags)
 		var got hashicorpModel
 		diags.Append(out.Hashicorp.As(ctx, &got, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -100,7 +226,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 	})
 
 	t.Run("infisical", func(t *testing.T) {
-		obj := types.ObjectValueMust(infisicalAttrTypes(), map[string]attr.Value{
+		obj := blockWithNullCompanions(infisicalAttrTypes(), map[string]attr.Value{
 			"site_url":         types.StringValue("https://app.infisical.com"),
 			"client_id":        types.StringValue("client-id"),
 			"client_secret":    types.StringValue("client-secret"),
@@ -110,7 +236,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		})
 		m := resourceModel{Hashicorp: types.ObjectNull(hashicorpAttrTypes()), Infisical: obj, AWS: types.ObjectNull(awsAttrTypes()), Doppler: types.ObjectNull(dopplerAttrTypes()), Azure: types.ObjectNull(azureAttrTypes()), Scaleway: types.ObjectNull(scalewayAttrTypes())}
 		var diags diag.Diagnostics
-		cfg, providerType := expandConfig(ctx, m, &diags)
+		cfg, providerType := expandConfig(ctx, m, resourceModel{}, &diags)
 		if diags.HasError() {
 			t.Fatalf("diags = %v", diags)
 		}
@@ -127,12 +253,12 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		}
 
 		var out resourceModel
-		flattenConfig(cfg, &out, &diags)
+		flattenConfig(ctx, cfg, &out, &diags)
 		assertOnlyBlockSet(t, out, "infisical")
 	})
 
 	t.Run("aws", func(t *testing.T) {
-		obj := types.ObjectValueMust(awsAttrTypes(), map[string]attr.Value{
+		obj := blockWithNullCompanions(awsAttrTypes(), map[string]attr.Value{
 			"region":            types.StringValue("us-east-1"),
 			"access_key_id":     types.StringValue("AKIAFAKE"),
 			"secret_access_key": types.StringValue("fake-secret"),
@@ -140,7 +266,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		})
 		m := resourceModel{Hashicorp: types.ObjectNull(hashicorpAttrTypes()), Infisical: types.ObjectNull(infisicalAttrTypes()), AWS: obj, Doppler: types.ObjectNull(dopplerAttrTypes()), Azure: types.ObjectNull(azureAttrTypes()), Scaleway: types.ObjectNull(scalewayAttrTypes())}
 		var diags diag.Diagnostics
-		cfg, providerType := expandConfig(ctx, m, &diags)
+		cfg, providerType := expandConfig(ctx, m, resourceModel{}, &diags)
 		if diags.HasError() {
 			t.Fatalf("diags = %v", diags)
 		}
@@ -156,19 +282,19 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		}
 
 		var out resourceModel
-		flattenConfig(cfg, &out, &diags)
+		flattenConfig(ctx, cfg, &out, &diags)
 		assertOnlyBlockSet(t, out, "aws")
 	})
 
 	t.Run("doppler", func(t *testing.T) {
-		obj := types.ObjectValueMust(dopplerAttrTypes(), map[string]attr.Value{
+		obj := blockWithNullCompanions(dopplerAttrTypes(), map[string]attr.Value{
 			"service_token": types.StringValue("dp.st.fake"),
 			"project":       types.StringValue("my-project"),
 			"config":        types.StringValue("dev"),
 		})
 		m := resourceModel{Hashicorp: types.ObjectNull(hashicorpAttrTypes()), Infisical: types.ObjectNull(infisicalAttrTypes()), AWS: types.ObjectNull(awsAttrTypes()), Doppler: obj, Azure: types.ObjectNull(azureAttrTypes()), Scaleway: types.ObjectNull(scalewayAttrTypes())}
 		var diags diag.Diagnostics
-		cfg, providerType := expandConfig(ctx, m, &diags)
+		cfg, providerType := expandConfig(ctx, m, resourceModel{}, &diags)
 		if diags.HasError() {
 			t.Fatalf("diags = %v", diags)
 		}
@@ -184,12 +310,12 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		}
 
 		var out resourceModel
-		flattenConfig(cfg, &out, &diags)
+		flattenConfig(ctx, cfg, &out, &diags)
 		assertOnlyBlockSet(t, out, "doppler")
 	})
 
 	t.Run("azure", func(t *testing.T) {
-		obj := types.ObjectValueMust(azureAttrTypes(), map[string]attr.Value{
+		obj := blockWithNullCompanions(azureAttrTypes(), map[string]attr.Value{
 			"vault_uri":     types.StringValue("https://myvault.vault.azure.net/"),
 			"tenant_id":     types.StringValue("tenant-id"),
 			"client_id":     types.StringValue("client-id"),
@@ -197,7 +323,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		})
 		m := resourceModel{Hashicorp: types.ObjectNull(hashicorpAttrTypes()), Infisical: types.ObjectNull(infisicalAttrTypes()), AWS: types.ObjectNull(awsAttrTypes()), Doppler: types.ObjectNull(dopplerAttrTypes()), Azure: obj, Scaleway: types.ObjectNull(scalewayAttrTypes())}
 		var diags diag.Diagnostics
-		cfg, providerType := expandConfig(ctx, m, &diags)
+		cfg, providerType := expandConfig(ctx, m, resourceModel{}, &diags)
 		if diags.HasError() {
 			t.Fatalf("diags = %v", diags)
 		}
@@ -214,12 +340,12 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		}
 
 		var out resourceModel
-		flattenConfig(cfg, &out, &diags)
+		flattenConfig(ctx, cfg, &out, &diags)
 		assertOnlyBlockSet(t, out, "azure")
 	})
 
 	t.Run("scaleway", func(t *testing.T) {
-		obj := types.ObjectValueMust(scalewayAttrTypes(), map[string]attr.Value{
+		obj := blockWithNullCompanions(scalewayAttrTypes(), map[string]attr.Value{
 			"project_id": types.StringValue("proj-id"),
 			"secret_key": types.StringValue("fake-key"),
 			"region":     types.StringValue("fr-par"),
@@ -227,7 +353,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		})
 		m := resourceModel{Hashicorp: types.ObjectNull(hashicorpAttrTypes()), Infisical: types.ObjectNull(infisicalAttrTypes()), AWS: types.ObjectNull(awsAttrTypes()), Doppler: types.ObjectNull(dopplerAttrTypes()), Azure: types.ObjectNull(azureAttrTypes()), Scaleway: obj}
 		var diags diag.Diagnostics
-		cfg, providerType := expandConfig(ctx, m, &diags)
+		cfg, providerType := expandConfig(ctx, m, resourceModel{}, &diags)
 		if diags.HasError() {
 			t.Fatalf("diags = %v", diags)
 		}
@@ -243,7 +369,7 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 		}
 
 		var out resourceModel
-		flattenConfig(cfg, &out, &diags)
+		flattenConfig(ctx, cfg, &out, &diags)
 		assertOnlyBlockSet(t, out, "scaleway")
 	})
 }

@@ -4,14 +4,14 @@ page_title: "dokploy_destination Resource - dokploy"
 subcategory: ""
 description: |-
   An S3-compatible bucket that receives Dokploy backups.
-  ~> Dokploy stores and returns access_key and secret_access_key in cleartext. Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server can read them.
+  ~> Dokploy stores and returns access_key and secret_access_key in cleartext. Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server can read them. The access_key_wo and secret_access_key_wo companions keep them out of the Terraform state.
 ---
 
 # dokploy_destination (Resource)
 
 An S3-compatible bucket that receives Dokploy backups.
 
-~> Dokploy stores and returns `access_key` and `secret_access_key` in cleartext. Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server can read them.
+~> Dokploy stores and returns `access_key` and `secret_access_key` in cleartext. Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server can read them. The `access_key_wo` and `secret_access_key_wo` companions keep them out of the Terraform state.
 
 ## Example Usage
 
@@ -33,17 +33,23 @@ resource "dokploy_destination" "backups" {
 
 ### Required
 
-- `access_key` (String, Sensitive) S3 access key id.
 - `bucket` (String) Bucket name.
 - `endpoint` (String) S3 endpoint URL.
 - `name` (String) Display name.
 - `provider_name` (String) Storage provider label, for example `Cloudflare`, `AWS`, or `DigitalOcean`. Free text. Dokploy does not validate it.
 - `region` (String) Bucket region.
-- `secret_access_key` (String, Sensitive) S3 secret access key.
 
 ### Optional
 
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
+- `access_key` (String, Sensitive) S3 access key id. Set this attribute or `access_key_wo`.
+- `access_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `access_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `access_key` and `access_key_wo`. A new value reaches the server only when `access_key_wo_version` changes.
+- `access_key_wo_version` (Number) Version of `access_key_wo`. Change it to send the current `access_key_wo` value to the server. It needs `access_key_wo`.
 - `additional_flags` (List of String) Extra flags for the storage client. Defaults to an empty list. If you remove it from the configuration, the provider clears the flags.
+- `secret_access_key` (String, Sensitive) S3 secret access key. Set this attribute or `secret_access_key_wo`.
+- `secret_access_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `secret_access_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `secret_access_key` and `secret_access_key_wo`. A new value reaches the server only when `secret_access_key_wo_version` changes.
+- `secret_access_key_wo_version` (Number) Version of `secret_access_key_wo`. Change it to send the current `secret_access_key_wo` value to the server. It needs `secret_access_key_wo`.
 
 ### Read-Only
 
