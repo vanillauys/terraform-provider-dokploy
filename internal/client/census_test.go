@@ -92,6 +92,12 @@ var endpointStructs = map[string]any{
 	"ai.update":                      UpdateAIRequest{},
 	"registry.create":                CreateRegistryRequest{},
 	"registry.update":                UpdateRegistryRequest{},
+	"gitlab.create":                  CreateGitlabRequest{},
+	"gitlab.update":                  UpdateGitlabRequest{},
+	"bitbucket.create":               CreateBitbucketRequest{},
+	"bitbucket.update":               UpdateBitbucketRequest{},
+	"gitea.create":                   CreateGiteaRequest{},
+	"gitea.update":                   UpdateGiteaRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -280,6 +286,37 @@ var censusExempt = map[string]map[string]string{
 		"serverId":       "registry.one does not return it; a write-only field cannot round-trip",
 		"createdAt":      "server-generated; not user configuration",
 		"organizationId": "implied by the API key's organization",
+	},
+	// The git provider records. The OAuth handshake fields (accessToken,
+	// refreshToken, expiresAt, lastAuthenticatedAt, giteaUsername) are
+	// written by the browser flow, never by configuration.
+	"gitlab.create": {
+		"gitProviderId": "server-generated; the create endpoint assigns it",
+	},
+	"bitbucket.create": {
+		"bitbucketId":   "server-generated; the create endpoint assigns it",
+		"gitProviderId": "server-generated; the create endpoint assigns it",
+	},
+	"bitbucket.update": {
+		"organizationId": "implied by the API key's organization",
+	},
+	"gitea.create": {
+		"gitProviderId":       "server-generated; the create endpoint assigns it",
+		"giteaId":             "server-generated; the create endpoint assigns it",
+		"accessToken":         "written by the OAuth handshake in the browser, never by configuration",
+		"refreshToken":        "written by the OAuth handshake in the browser, never by configuration",
+		"expiresAt":           "written by the OAuth handshake in the browser, never by configuration",
+		"lastAuthenticatedAt": "written by the OAuth handshake in the browser, never by configuration",
+		"giteaUsername":       "written by the OAuth handshake in the browser, never by configuration",
+		"organizationName":    "gitea.one does not return it; a write-only field cannot round-trip",
+	},
+	"gitea.update": {
+		"accessToken":         "written by the OAuth handshake in the browser, never by configuration",
+		"refreshToken":        "written by the OAuth handshake in the browser, never by configuration",
+		"expiresAt":           "written by the OAuth handshake in the browser, never by configuration",
+		"lastAuthenticatedAt": "written by the OAuth handshake in the browser, never by configuration",
+		"giteaUsername":       "written by the OAuth handshake in the browser, never by configuration",
+		"organizationName":    "gitea.one does not return it; a write-only field cannot round-trip",
 	},
 }
 

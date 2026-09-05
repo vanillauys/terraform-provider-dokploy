@@ -16,6 +16,7 @@ import (
 	dsdestination "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/destination"
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
+	dsgitproviders "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitproviders"
 	libsqldatasource "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/libsql"
 	dsnetwork "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/network"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
@@ -25,12 +26,15 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/backup"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/bitbucketprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/certificate"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/compose"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/destination"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/giteaprovider"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/gitlabprovider"
 	libsqlresource "github.com/vanillauys/terraform-provider-dokploy/internal/resources/libsql"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/mount"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/network"
@@ -189,6 +193,9 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		certificate.NewResource,
 		ai.NewResource,
 		registry.NewResource,
+		gitlabprovider.NewResource,
+		bitbucketprovider.NewResource,
+		giteaprovider.NewResource,
 		network.NewResource,
 		schedule.NewResource,
 		vaultprovider.NewResource,
@@ -226,6 +233,9 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		func() datasource.DataSource { return dsdatabase.NewDataSource(database.MongoKind(p.client))() },
 		dsenvironment.NewDataSource,
 		dsgitprovider.NewDataSource,
+		dsgitproviders.NewGitlabDataSource,
+		dsgitproviders.NewBitbucketDataSource,
+		dsgitproviders.NewGiteaDataSource,
 		dsdestination.NewDataSource,
 		dssshkey.NewDataSource,
 		dsserver.NewDataSource,
