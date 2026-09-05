@@ -51,6 +51,8 @@ ONE = {
     "dokploy_backup": ("backup.one", "backupId"),
     "dokploy_schedule": ("schedule.one", "scheduleId"),
     "dokploy_volume_backup": ("volumeBackups.one", "volumeBackupId"),
+    "dokploy_compose": ("compose.one", "composeId"),
+    "dokploy_network": ("network.one", "networkId"),
 }
 
 # (environment.one's collection key, resource type, id field). Drives the
@@ -116,6 +118,29 @@ SCHEDULE_TYPES = {"application", "compose", "server", "dokploy-server"}
 VOLUME_BACKUP_TYPES = {
     "application", "postgres", "mysql", "mariadb", "mongo", "redis", "compose", "libsql",
 }
+
+
+def compose_source_gap(detail):
+    """Why a compose record cannot be imported, or None when it can.
+
+    dokploy_compose models the github, git and raw sources and requires
+    exactly one of them. A record whose source columns are still empty, or
+    whose sourceType this provider does not model, has no valid Terraform
+    configuration.
+    """
+    source = detail.get("sourceType")
+    if source == "github":
+        if not detail.get("repository"):
+            return "has sourceType github but no repository yet; configure the source in Dokploy first"
+    elif source == "git":
+        if not detail.get("customGitUrl"):
+            return "has sourceType git but no repository URL yet; configure the source in Dokploy first"
+    elif source == "raw":
+        if not detail.get("composeFile"):
+            return "has sourceType raw but an empty compose file; add the file in Dokploy first"
+    else:
+        return f"has sourceType {source}, which this provider does not model"
+    return None
 
 
 def emit_backup_plane(prefix, service_type, service_id, detail):
@@ -335,6 +360,30 @@ def main():
                             skip_data_mount=False)
                 emit_backup_plane(f"{pname}-{app['name']}", "application", aid, detail)
 
+            # compose.one embeds its domains, unlike application.one, so no
+            # domain.byComposeId call exists or is needed (checked on the
+            # rig, v0.30.5, 2026-09-05). A compose service has no
+            # auto-created data mount.
+            for comp in full.get("compose") or []:
+                cid = comp["composeId"]
+                detail = get("compose.one", composeId=cid)
+                reason = compose_source_gap(detail)
+                if reason:
+                    # dokploy_compose requires exactly one source block, so a
+                    # record without a usable source has no valid configuration:
+                    # `-generate-config-out` writes a block of null Required
+                    # attributes and the second plan errors (seen live,
+                    # v0.30.5, 2026-09-05, on a compose created through the API
+                    # and never configured).
+                    print(f"# skipped {cid}: dokploy_compose {label(pname, comp['name'], cid)} {reason}")
+                    continue
+                emit("dokploy_compose", label(pname, comp["name"], cid), cid)
+                for dom in detail.get("domains") or []:
+                    emit("dokploy_domain", label(pname, dom["host"], dom["domainId"]), dom["domainId"])
+                emit_mounts(f"{pname}-{comp['name']}", detail, detail.get("mounts"),
+                            skip_data_mount=False)
+                emit_backup_plane(f"{pname}-{comp['name']}", "compose", cid, detail)
+
             for collection_key, resource_type, id_key in DATABASE_ENGINES:
                 for db in full.get(collection_key) or []:
                     emit(resource_type, label(pname, db["name"], db[id_key]), db[id_key])
@@ -348,6 +397,25 @@ def main():
     for dest in get("destination.all") or []:
         did = dest["destinationId"]
         emit("dokploy_destination", label(dest["name"], did), did)
+
+    # Networks are global, like destinations.
+    for net in get("network.all") or []:
+        nid = net["networkId"]
+        emit("dokploy_network", label(net["name"], nid), nid)
+
+    # Vault providers are global too, but the server redacts every config
+    # secret on read, so `terraform import` leaves the config block null and
+    # the first apply after the import writes a full-body update. An import
+    # block here would therefore break dry-run.sh's empty second plan. The
+    # record is listed as a comment: import it by hand and supply the config
+    # block for its type, as the dokploy_vault_provider import notes say.
+    for vp in get("vaultProvider.all") or []:
+        vid = vp["vaultProviderId"]
+        print(
+            f"# not imported: dokploy_vault_provider {label(vp['name'], vid)} "
+            f'(id "{vid}", type {vp.get("providerType")}). The server redacts the config '
+            f"block, so import it by hand and supply the block for its type."
+        )
 
 
 if __name__ == "__main__":
