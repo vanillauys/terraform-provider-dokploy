@@ -67,7 +67,12 @@ type CredentialAttr struct {
 	Description     string
 	Required        bool
 	RequiresReplace bool
-	Sensitive       bool
+	// Sensitive also gives the attribute the two write-only companions
+	// `<TFName>_wo` and `<TFName>_wo_version` (schemaAttributes, through
+	// tfutil.WriteOnlyCompanions), and the generic engine then keeps the
+	// server's value out of the state whenever the config uses the
+	// companion (genericModel.writeOnly in model.go).
+	Sensitive bool
 	// Computed marks a server-generated credential attribute, modelled as
 	// Optional+Computed+UseStateForUnknown rather than Required — this is
 	// what mysql/mariadb's databaseRootPassword needs (doc.go: "server
@@ -131,7 +136,13 @@ func (ca CredentialAttr) schemaAttribute() schema.Attribute {
 	if ca.RequiresReplace {
 		mods = append(mods, stringplanmodifier.RequiresReplace())
 	}
-	if ca.Computed {
+	if ca.Computed && ca.Sensitive {
+		// A Computed secret has write-only companions, and its prior state
+		// is null while the companion is in use. UseStateForUnknown would
+		// copy that null forward as a known value, which breaks the switch
+		// back to the server-generated value; see tfutil.ComputedSecretPlan.
+		mods = append(mods, tfutil.ComputedSecretPlan(ca.TFName))
+	} else if ca.Computed {
 		// Mirrors docker_image/app_name below: a server-computed value that
 		// only ever changes through Terraform's own Update call, so
 		// carrying the prior state forward on an unrelated plan is safe
@@ -265,10 +276,14 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 			Description:   "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
+		// database_password is Optional, not Required, only because its
+		// write-only companion can replace it: the ExactlyOneOf validator on
+		// database_password_wo (tfutil.WriteOnlyCompanions) still demands one
+		// of the two. A config from before the companions is unchanged.
 		"database_password": schema.StringAttribute{
-			Required:    true,
+			Optional:    true,
 			Sensitive:   true,
-			Description: k.HumanName + " password. A change starts a redeploy.",
+			Description: k.HumanName + " password. A change starts a redeploy. Set this attribute or `database_password_wo`.",
 		},
 		"docker_image": schema.StringAttribute{
 			Optional:      true,
@@ -325,6 +340,23 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 	}
 	for _, ca := range k.CredentialAttrs {
 		attrs[ca.TFName] = ca.schemaAttribute()
+		if !ca.Sensitive {
+			continue
+		}
+		// Every Sensitive credential attribute gets the write-only pair
+		// (see the Sensitive field's doc comment). A Computed one keeps its
+		// "omit both and the server generates" shape, so the pair only
+		// conflicts with the plain attribute; it does not demand one.
+		note := ""
+		if ca.DeployTrigger {
+			note = "A version change starts a redeploy."
+		}
+		for name, attr := range tfutil.WriteOnlyCompanions(ca.TFName, false, note) {
+			attrs[name] = attr
+		}
+	}
+	for name, attr := range tfutil.WriteOnlyCompanions("database_password", true, "A version change starts a redeploy.") {
+		attrs[name] = attr
 	}
 	for name, attr := range tfutil.DeployAttributes() {
 		attrs[name] = attr

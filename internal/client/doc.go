@@ -1398,4 +1398,18 @@
 // applies a changed command on redeploy; when the new container fails,
 // swarm rolls the service back to the previous spec and the deploy still
 // reports done, which looks like "the redeploy ignored the change".
+//
+// # Write-only secrets: an absent databasePassword keeps the stored value (probed 2026-09-05)
+//
+// postgres.update, mysql.update and libsql.update without a databasePassword
+// key keep the stored password: postgres.one, mysql.one and libsql.one still
+// report it afterwards. An explicit "" stores "" on postgres and libsql. The
+// provider therefore never puts "" on the wire for this field: every
+// Update*Request carries databasePassword with omitempty, and a resource
+// hands it "" when it has nothing to send (tfutil.SecretToUpdate, the
+// write-only companion with an unchanged version). mysql.update and
+// mariadb.update keep their databaseRootPassword exception (an explicit ""
+// clears, an absent key keeps, a null 400s; see UpdateMysqlRequest): the
+// generic engine resends the server's value for it when the write-only
+// version did not change (resolveCredentials in internal/resources/database).
 package client

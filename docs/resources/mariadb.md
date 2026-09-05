@@ -33,15 +33,21 @@ resource "dokploy_mariadb" "example" {
 ### Required
 
 - `database_name` (String) Name of the MariaDB database.
-- `database_password` (String, Sensitive) MariaDB password. A change starts a redeploy.
 - `database_user` (String) MariaDB user.
 - `environment_id` (String) Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.
 - `name` (String) Display name of the database service.
 
 ### Optional
 
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
 - `app_name` (String) Internal Dokploy app name. If you omit it, the server generates one.
+- `database_password` (String, Sensitive) MariaDB password. A change starts a redeploy. Set this attribute or `database_password_wo`.
+- `database_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `database_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `database_password` and `database_password_wo`. A new value reaches the server only when `database_password_wo_version` changes.
+- `database_password_wo_version` (Number) Version of `database_password_wo`. Change it to send the current `database_password_wo` value to the server. A version change starts a redeploy. It needs `database_password_wo`.
 - `database_root_password` (String, Sensitive) MariaDB root password. If unset, the server generates one. A change starts a redeploy.
+- `database_root_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `database_root_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Do not set it together with `database_root_password`. A new value reaches the server only when `database_root_password_wo_version` changes.
+- `database_root_password_wo_version` (Number) Version of `database_root_password_wo`. Change it to send the current `database_root_password_wo` value to the server. A version change starts a redeploy. It needs `database_root_password_wo`.
 - `deploy_on_change` (Boolean) Deploy after a create, and after a change to an attribute that starts a deploy. Defaults to `true`.
 - `deployment_timeout` (String) The maximum wait for a deploy to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout, the apply fails, but the deploy continues on the server.
 - `description` (String) Free-form description.

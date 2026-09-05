@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -284,7 +285,7 @@ func TestResolveCredentials_NullComputedCredentialUsesServerValue(t *testing.T) 
 		}
 	})
 
-	got := resolveCredentials(k, plan, current)
+	got := resolveCredentials(k, plan, genericModel{}, current)
 	if got["database_root_password"] != "server-generated-secret" {
 		t.Errorf(`resolveCredentials()["database_root_password"] = %q, want "server-generated-secret" (a null planned value must fall back to the server's current value, never send "" and clear it)`, got["database_root_password"])
 	}
@@ -308,7 +309,7 @@ func TestResolveCredentials_UnknownComputedCredentialUsesServerValue(t *testing.
 			"database_root_password": "server-generated-secret",
 		},
 	}
-	got := resolveCredentials(k, plan, current)
+	got := resolveCredentials(k, plan, genericModel{}, current)
 	if got["database_root_password"] != "server-generated-secret" {
 		t.Errorf(`resolveCredentials()["database_root_password"] = %q, want "server-generated-secret"`, got["database_root_password"])
 	}
@@ -339,7 +340,7 @@ func TestResolveCredentials_KnownValueSentVerbatim(t *testing.T) {
 					"database_root_password": "server-generated-secret",
 				},
 			}
-			got := resolveCredentials(k, plan, current)
+			got := resolveCredentials(k, plan, genericModel{}, current)
 			if got["database_root_password"] != plannedValue {
 				t.Errorf("resolveCredentials()[\"database_root_password\"] = %q, want %q (a known planned value must never be overridden)", got["database_root_password"], plannedValue)
 			}
@@ -366,7 +367,7 @@ func TestResolveCredentials_NonComputedSentVerbatim(t *testing.T) {
 		"database_user":          "server-side-user",
 		"database_root_password": "server-generated-secret",
 	}}
-	got := resolveCredentials(k, plan, current)
+	got := resolveCredentials(k, plan, genericModel{}, current)
 	if got["database_name"] != "mydb" || got["database_user"] != "myuser" {
 		t.Errorf("non-Computed credentials were substituted: %+v", got)
 	}
@@ -426,7 +427,7 @@ func TestCredentialsNeedServerValue(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := credentialsNeedServerValue(k, tc.plan); got != tc.want {
+			if got := credentialsNeedServerValue(k, tc.plan, genericModel{}); got != tc.want {
 				t.Errorf("credentialsNeedServerValue() = %v, want %v", got, tc.want)
 			}
 		})
@@ -437,7 +438,7 @@ func TestCredentialsNeedServerValue(t *testing.T) {
 	// CredentialAttr to iterate at all.
 	zeroKind := Kind{Name: "redis"}
 	anyPlan := genericModel{Credentials: map[string]types.String{"leftover": types.StringNull()}}
-	if credentialsNeedServerValue(zeroKind, anyPlan) {
+	if credentialsNeedServerValue(zeroKind, anyPlan, genericModel{}) {
 		t.Error("a zero-CredentialAttr Kind must never need a server read")
 	}
 }
@@ -695,7 +696,7 @@ func TestSchemaAttributes_ZeroCredentialAttrs(t *testing.T) {
 	if !ok {
 		t.Fatalf("database_password is not a schema.StringAttribute: %T", attrs["database_password"])
 	}
-	if dbPassword.Description != "Redis password. A change starts a redeploy." {
+	if dbPassword.Description != "Redis password. A change starts a redeploy. Set this attribute or `database_password_wo`." {
 		t.Errorf("unexpected database_password description: %q", dbPassword.Description)
 	}
 }
@@ -773,5 +774,265 @@ func TestKindCredentialDescriptors(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// writeOnlyKind is a mysql-shaped Kind whose root password is Sensitive, so
+// schemaAttributes gives it the write-only pair and the engine treats it as
+// a secret.
+func writeOnlyKind() Kind {
+	k := mysqlLikeKind()
+	k.CredentialAttrs[2].Sensitive = true
+	k.CredentialAttrs[2].DeployTrigger = true
+	return k
+}
+
+// TestSchemaAttributes_WriteOnlyCompanions pins the D1(a) shape: every
+// engine gets database_password_wo and its version, database_password turns
+// Optional (the ExactlyOneOf validator on the companion still demands one
+// of the two), and only a Sensitive credential attribute gets a pair of its
+// own.
+func TestSchemaAttributes_WriteOnlyCompanions(t *testing.T) {
+	for _, k := range []Kind{PostgresKind(nil), MysqlKind(nil), MariadbKind(nil), MongoKind(nil), RedisKind(nil)} {
+		attrs := schemaAttributes(k)
+		password, ok := attrs["database_password"].(schema.StringAttribute)
+		if !ok {
+			t.Fatalf("%s: database_password is %T", k.Name, attrs["database_password"])
+		}
+		if password.Required || !password.Optional || password.Computed || !password.Sensitive {
+			t.Errorf("%s: database_password must be Optional+Sensitive and nothing else, got %+v", k.Name, password)
+		}
+		wo, ok := attrs["database_password_wo"].(schema.StringAttribute)
+		if !ok {
+			t.Fatalf("%s: database_password_wo is %T", k.Name, attrs["database_password_wo"])
+		}
+		if !wo.WriteOnly || !wo.Sensitive || !wo.Optional {
+			t.Errorf("%s: database_password_wo must be Optional+WriteOnly+Sensitive, got %+v", k.Name, wo)
+		}
+		if _, ok := attrs["database_password_wo_version"].(schema.Int64Attribute); !ok {
+			t.Errorf("%s: database_password_wo_version is %T", k.Name, attrs["database_password_wo_version"])
+		}
+		for _, name := range []string{"database_name_wo", "database_user_wo", "database_name_wo_version", "database_user_wo_version"} {
+			if _, ok := attrs[name]; ok {
+				t.Errorf("%s: a credential attribute that is not Sensitive must not get %q", k.Name, name)
+			}
+		}
+		_, hasRootWo := attrs["database_root_password_wo"]
+		_, hasRootVersion := attrs["database_root_password_wo_version"]
+		wantRoot := k.Name == "mysql" || k.Name == "mariadb"
+		if hasRootWo != wantRoot || hasRootVersion != wantRoot {
+			t.Errorf("%s: database_root_password companions present = (%v, %v), want %v", k.Name, hasRootWo, hasRootVersion, wantRoot)
+		}
+	}
+}
+
+// TestSecretNames pins which attributes carry the write-only flag.
+func TestSecretNames(t *testing.T) {
+	got := secretNames(writeOnlyKind())
+	if len(got) != 2 || got[0] != "database_password" || got[1] != "database_root_password" {
+		t.Errorf("secretNames() = %v, want [database_password database_root_password]", got)
+	}
+	if got := secretNames(PostgresKind(nil)); len(got) != 1 || got[0] != "database_password" {
+		t.Errorf("secretNames(postgres) = %v, want [database_password]", got)
+	}
+}
+
+// TestTakeSecrets pins that the plan model takes the write-only values from
+// the config model and marks each secret the config set that way.
+func TestTakeSecrets(t *testing.T) {
+	k := writeOnlyKind()
+	cfg := genericModel{
+		DatabasePasswordWo: types.StringValue("wo-password"),
+		CredentialsWo:      map[string]types.String{"database_root_password": types.StringNull()},
+	}
+	plan := genericModel{DatabasePassword: types.StringNull()}
+	plan.takeSecrets(k, cfg)
+	if plan.DatabasePasswordWo.ValueString() != "wo-password" {
+		t.Errorf("DatabasePasswordWo = %q, want wo-password", plan.DatabasePasswordWo.ValueString())
+	}
+	if !plan.writeOnly["database_password"] {
+		t.Error("database_password must be marked write-only when the config sets database_password_wo")
+	}
+	if plan.writeOnly["database_root_password"] {
+		t.Error("database_root_password must not be marked write-only when the config leaves its companion null")
+	}
+}
+
+// TestResolveCredentials_WriteOnly pins the two write-only routes of a
+// Sensitive Computed credential: a changed version sends the configured
+// write-only value, an unchanged one keeps the server's value, and the
+// plain attribute still wins when it is set.
+func TestResolveCredentials_WriteOnly(t *testing.T) {
+	k := writeOnlyKind()
+	current := &Object{Credentials: map[string]string{"database_root_password": "server-secret"}}
+	creds := func(plain string, planNull bool) map[string]types.String {
+		v := types.StringValue(plain)
+		if planNull {
+			v = types.StringNull()
+		}
+		return map[string]types.String{
+			"database_name":          types.StringValue("app"),
+			"database_user":          types.StringValue("app"),
+			"database_root_password": v,
+		}
+	}
+	cases := []struct {
+		name                 string
+		plan, state          genericModel
+		want                 string
+		wantNeedsServerValue bool
+	}{
+		{
+			name: "version changed sends the write-only value",
+			plan: genericModel{
+				Credentials:          creds("", true),
+				CredentialsWo:        map[string]types.String{"database_root_password": types.StringValue("wo-2")},
+				CredentialWoVersions: map[string]types.Int64{"database_root_password": types.Int64Value(2)},
+			},
+			state:                genericModel{CredentialWoVersions: map[string]types.Int64{"database_root_password": types.Int64Value(1)}},
+			want:                 "wo-2",
+			wantNeedsServerValue: false,
+		},
+		{
+			name: "version unchanged keeps the server value",
+			plan: genericModel{
+				Credentials:          creds("", true),
+				CredentialsWo:        map[string]types.String{"database_root_password": types.StringValue("changed-but-not-versioned")},
+				CredentialWoVersions: map[string]types.Int64{"database_root_password": types.Int64Value(1)},
+			},
+			state:                genericModel{CredentialWoVersions: map[string]types.Int64{"database_root_password": types.Int64Value(1)}},
+			want:                 "server-secret",
+			wantNeedsServerValue: true,
+		},
+		{
+			name: "plain value wins over the companion",
+			plan: genericModel{
+				Credentials:   creds("plain", false),
+				CredentialsWo: map[string]types.String{"database_root_password": types.StringNull()},
+			},
+			state:                genericModel{},
+			want:                 "plain",
+			wantNeedsServerValue: false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveCredentials(k, tc.plan, tc.state, current)
+			if got["database_root_password"] != tc.want {
+				t.Errorf("resolveCredentials()[database_root_password] = %q, want %q", got["database_root_password"], tc.want)
+			}
+			if need := credentialsNeedServerValue(k, tc.plan, tc.state); need != tc.wantNeedsServerValue {
+				t.Errorf("credentialsNeedServerValue() = %v, want %v", need, tc.wantNeedsServerValue)
+			}
+		})
+	}
+}
+
+// TestDeployNeeded_WriteOnlyVersion pins that a version companion change
+// triggers a deploy, both for database_password and for a DeployTrigger
+// credential attribute, while the secrets themselves stay null.
+func TestDeployNeeded_WriteOnlyVersion(t *testing.T) {
+	k := writeOnlyKind()
+	base := func() genericModel {
+		return genericModel{
+			DockerImage:          types.StringValue("mysql:8"),
+			DatabasePassword:     types.StringNull(),
+			NetworkIDs:           types.SetNull(types.StringType),
+			DetachDokployNetwork: types.BoolValue(false),
+			Credentials: map[string]types.String{
+				"database_root_password": types.StringNull(),
+			},
+			DatabasePasswordWoVersion: types.Int64Value(1),
+			CredentialWoVersions:      map[string]types.Int64{"database_root_password": types.Int64Value(1)},
+		}
+	}
+	state := base()
+	if deployNeeded(k, base(), state) {
+		t.Error("identical versions must not trigger a deploy")
+	}
+	plan := base()
+	plan.DatabasePasswordWoVersion = types.Int64Value(2)
+	if !deployNeeded(k, plan, state) {
+		t.Error("a database_password_wo_version change must trigger a deploy")
+	}
+	plan = base()
+	plan.CredentialWoVersions["database_root_password"] = types.Int64Value(2)
+	if !deployNeeded(k, plan, state) {
+		t.Error("a database_root_password_wo_version change must trigger a deploy")
+	}
+}
+
+// TestFlatten_WriteOnlyKeepsSecretsOutOfState pins the Read side: with the
+// flags set, flatten and setComputed leave both secrets null even though the
+// API object carries them; without the flags they refresh as before.
+func TestFlatten_WriteOnlyKeepsSecretsOutOfState(t *testing.T) {
+	k := writeOnlyKind()
+	obj := &Object{
+		ID:               "mysql-1",
+		DatabasePassword: "server-password",
+		Credentials: map[string]string{
+			"database_name":          "app",
+			"database_user":          "app",
+			"database_root_password": "server-root",
+		},
+	}
+	var diags diag.Diagnostics
+
+	m := genericModel{writeOnly: map[string]bool{"database_password": true, "database_root_password": true}}
+	flatten(context.Background(), k, obj, &m, &diags)
+	if !m.DatabasePassword.IsNull() || !m.Credentials["database_root_password"].IsNull() {
+		t.Errorf("flatten must keep write-only secrets null, got password=%v root=%v", m.DatabasePassword, m.Credentials["database_root_password"])
+	}
+	if m.Credentials["database_name"].ValueString() != "app" {
+		t.Errorf("flatten must still refresh the plain credentials, got %v", m.Credentials["database_name"])
+	}
+	m = genericModel{writeOnly: map[string]bool{"database_root_password": true}}
+	setComputed(k, obj, &m)
+	if !m.Credentials["database_root_password"].IsNull() {
+		t.Errorf("setComputed must keep a write-only Computed credential null, got %v", m.Credentials["database_root_password"])
+	}
+
+	plain := genericModel{}
+	flatten(context.Background(), k, obj, &plain, &diags)
+	if plain.DatabasePassword.ValueString() != "server-password" || plain.Credentials["database_root_password"].ValueString() != "server-root" {
+		t.Errorf("without the flags flatten must refresh the secrets, got password=%v root=%v", plain.DatabasePassword, plain.Credentials["database_root_password"])
+	}
+	if diags.HasError() {
+		t.Errorf("unexpected diagnostics: %v", diags)
+	}
+}
+
+// TestCheckCredentialsCreatable_WriteOnlyEmpty pins that the create-time
+// empty-string guard covers the write-only companion and names it.
+func TestCheckCredentialsCreatable_WriteOnlyEmpty(t *testing.T) {
+	k := writeOnlyKind()
+	plan := genericModel{
+		Credentials:   map[string]types.String{"database_root_password": types.StringUnknown()},
+		CredentialsWo: map[string]types.String{"database_root_password": types.StringValue("")},
+	}
+	resp := &resource.CreateResponse{}
+	if checkCredentialsCreatable(k, plan, resp) {
+		t.Fatal("an explicit empty database_root_password_wo must be rejected at create")
+	}
+	if got := resp.Diagnostics.Errors()[0].Summary(); got != "Invalid database_root_password_wo" {
+		t.Errorf("diagnostic summary = %q, want it to name the companion", got)
+	}
+}
+
+// TestSchema_ValidateImplementation runs the framework's own schema checks
+// on every engine, at zero rig cost. A WriteOnly attribute has rules of its
+// own (never Computed, never with a Default) that only the framework
+// enforces, and before this test only an acceptance run reached them.
+func TestSchema_ValidateImplementation(t *testing.T) {
+	ctx := context.Background()
+	for _, k := range []Kind{PostgresKind(nil), MysqlKind(nil), MariadbKind(nil), MongoKind(nil), RedisKind(nil)} {
+		var resp resource.SchemaResponse
+		NewResource(k)().Schema(ctx, resource.SchemaRequest{}, &resp)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("%s: Schema(): %v", k.Name, resp.Diagnostics)
+		}
+		if diags := resp.Schema.ValidateImplementation(ctx); diags.HasError() {
+			t.Errorf("%s: ValidateImplementation(): %v", k.Name, diags)
+		}
 	}
 }

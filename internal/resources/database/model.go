@@ -43,6 +43,27 @@ type genericModel struct {
 	DeploymentTimeout types.String
 	Credentials       map[string]types.String // keyed by CredentialAttr.TFName
 
+	// DatabasePasswordWo and DatabasePasswordWoVersion are the write-only
+	// companions of DatabasePassword (tfutil.WriteOnlyCompanions).
+	// CredentialsWo and CredentialWoVersions are the companions of every
+	// Sensitive CredentialAttr, keyed by the base TFName. Only the config
+	// carries a _wo value; the plan and the state hold null for it.
+	DatabasePasswordWo        types.String
+	DatabasePasswordWoVersion types.Int64
+	CredentialsWo             map[string]types.String
+	CredentialWoVersions      map[string]types.Int64
+
+	// writeOnly marks each secret that the config sets through its
+	// write-only companion, keyed by the base attribute name
+	// ("database_password" or a Sensitive CredentialAttr.TFName). Create and
+	// Update derive it from the config (takeSecrets) and record it in the
+	// private state (storeWriteOnlyFlags); Read loads it back
+	// (loadWriteOnlyFlags). flatten, setComputed and
+	// resolveUnknownComputedCredentials then keep the server's value of a
+	// marked secret out of the state: the Dokploy API returns every stored
+	// secret on a read, so a refresh would put it back otherwise.
+	writeOnly map[string]bool
+
 	// NetworkIDs and DetachDokployNetwork are the v0.30.0 network attachment
 	// attributes, uniform across every database engine (see kind.go's
 	// schemaAttributes).
@@ -71,9 +92,13 @@ type genericModel struct {
 // it). postgres's two CredentialAttrs are both RequiresReplace, so they
 // never reach here regardless (a change to either replaces the whole
 // resource), and simply leave DeployTrigger at its zero value (false).
+//
+// A change of a write-only version companion counts like a change of its
+// secret: in that mode the secret itself is null on both sides.
 func deployNeeded(k Kind, plan, state genericModel) bool {
 	if !plan.DockerImage.Equal(state.DockerImage) ||
 		!plan.DatabasePassword.Equal(state.DatabasePassword) ||
+		!plan.DatabasePasswordWoVersion.Equal(state.DatabasePasswordWoVersion) ||
 		!plan.Env.Equal(state.Env) ||
 		!plan.ExternalPort.Equal(state.ExternalPort) ||
 		!plan.NetworkIDs.Equal(state.NetworkIDs) ||
@@ -84,7 +109,8 @@ func deployNeeded(k Kind, plan, state genericModel) bool {
 		if !ca.DeployTrigger {
 			continue
 		}
-		if !plan.Credentials[ca.TFName].Equal(state.Credentials[ca.TFName]) {
+		if !plan.Credentials[ca.TFName].Equal(state.Credentials[ca.TFName]) ||
+			!plan.CredentialWoVersions[ca.TFName].Equal(state.CredentialWoVersions[ca.TFName]) {
 			return true
 		}
 	}
@@ -113,6 +139,10 @@ func setComputed(k Kind, obj *Object, m *genericModel) {
 	}
 	for _, ca := range k.CredentialAttrs {
 		if !ca.Computed {
+			continue
+		}
+		if m.writeOnly[ca.TFName] {
+			m.Credentials[ca.TFName] = types.StringNull()
 			continue
 		}
 		if v, ok := obj.Credentials[ca.TFName]; ok {
@@ -149,10 +179,24 @@ func setComputed(k Kind, obj *Object, m *genericModel) {
 // (postgres's database_name/database_user) never reach Update at all
 // (a change to either replaces the whole resource), so they are
 // structurally unaffected regardless of this function.
-func resolveCredentials(k Kind, plan genericModel, current *Object) map[string]string {
+//
+// A Sensitive credential attribute set through its write-only companion
+// takes the tfutil.SecretToUpdate route first: a changed version (or the
+// switch from the plain attribute) sends the configured value, an unchanged
+// one keeps the server value through the Computed branch. state supplies
+// the prior value and the prior version.
+func resolveCredentials(k Kind, plan, state genericModel, current *Object) map[string]string {
 	creds := make(map[string]string, len(k.CredentialAttrs))
 	for _, ca := range k.CredentialAttrs {
 		v := plan.Credentials[ca.TFName]
+		if ca.Sensitive {
+			// The write-only companion: a new version sends the configured
+			// value; an unchanged one falls through to the server's value.
+			if value, send := tfutil.SecretToUpdate(v, plan.CredentialsWo[ca.TFName], state.Credentials[ca.TFName], plan.CredentialWoVersions[ca.TFName], state.CredentialWoVersions[ca.TFName]); send {
+				creds[ca.TFName] = value
+				continue
+			}
+		}
 		if ca.Computed && (v.IsNull() || v.IsUnknown()) {
 			creds[ca.TFName] = current.Credentials[ca.TFName]
 			continue
@@ -164,7 +208,8 @@ func resolveCredentials(k Kind, plan genericModel, current *Object) map[string]s
 
 // credentialsNeedServerValue reports whether resolveCredentials above will
 // actually dereference `current` for this plan: true iff at least one
-// Computed CredentialAttr's planned value IsNull() or IsUnknown(). It exists
+// Computed CredentialAttr's planned value IsNull() or IsUnknown() and no new
+// write-only value replaces it (the same route resolveCredentials takes). It exists
 // so Update's pre-Update Get (resource.go) can be skipped entirely when the
 // answer is false — which is every Update call for a Kind with zero Computed
 // CredentialAttrs (postgres, mongo, redis all have none; see kind.go's
@@ -182,15 +227,21 @@ func resolveCredentials(k Kind, plan genericModel, current *Object) map[string]s
 // task 5's re-review and fixed here, first, in wave-2 task 6, before mariadb
 // and mongo would have copied the unconditional version a second and third
 // time.
-func credentialsNeedServerValue(k Kind, plan genericModel) bool {
+func credentialsNeedServerValue(k Kind, plan, state genericModel) bool {
 	for _, ca := range k.CredentialAttrs {
 		if !ca.Computed {
 			continue
 		}
 		v := plan.Credentials[ca.TFName]
-		if v.IsNull() || v.IsUnknown() {
-			return true
+		if !v.IsNull() && !v.IsUnknown() {
+			continue
 		}
+		if ca.Sensitive {
+			if _, send := tfutil.SecretToUpdate(v, plan.CredentialsWo[ca.TFName], state.Credentials[ca.TFName], plan.CredentialWoVersions[ca.TFName], state.CredentialWoVersions[ca.TFName]); send {
+				continue
+			}
+		}
+		return true
 	}
 	return false
 }
@@ -227,6 +278,10 @@ func resolveUnknownComputedCredentials(ctx context.Context, k Kind, id string, m
 		if !ca.Computed {
 			continue
 		}
+		if m.writeOnly[ca.TFName] {
+			m.Credentials[ca.TFName] = types.StringNull()
+			continue
+		}
 		if v, ok := current.Credentials[ca.TFName]; ok {
 			m.Credentials[ca.TFName] = types.StringValue(v)
 		} else {
@@ -242,6 +297,9 @@ func flatten(ctx context.Context, k Kind, obj *Object, m *genericModel, diags *d
 	m.Name = types.StringValue(obj.Name)
 	m.EnvironmentID = types.StringValue(obj.EnvironmentID)
 	m.DatabasePassword = types.StringValue(obj.DatabasePassword)
+	if m.writeOnly["database_password"] {
+		m.DatabasePassword = types.StringNull()
+	}
 	m.Description = tfutil.StringOrNull(obj.Description)
 	m.Env = tfutil.StringOrNull(obj.Env)
 	m.ExternalPort = types.Int64PointerValue(obj.ExternalPort)
@@ -252,6 +310,10 @@ func flatten(ctx context.Context, k Kind, obj *Object, m *genericModel, diags *d
 		m.Credentials = map[string]types.String{}
 	}
 	for _, ca := range k.CredentialAttrs {
+		if m.writeOnly[ca.TFName] {
+			m.Credentials[ca.TFName] = types.StringNull()
+			continue
+		}
 		if v, ok := obj.Credentials[ca.TFName]; ok {
 			m.Credentials[ca.TFName] = types.StringValue(v)
 		} else {
@@ -296,11 +358,20 @@ func getModel(ctx context.Context, k Kind, src getter) (genericModel, diag.Diagn
 		Credentials:       map[string]types.String{},
 		attrTypes:         obj.AttributeTypes(ctx),
 
+		DatabasePasswordWo:        a["database_password_wo"].(types.String),
+		DatabasePasswordWoVersion: a["database_password_wo_version"].(types.Int64),
+		CredentialsWo:             map[string]types.String{},
+		CredentialWoVersions:      map[string]types.Int64{},
+
 		NetworkIDs:           a["network_ids"].(types.Set),
 		DetachDokployNetwork: a["detach_dokploy_network"].(types.Bool),
 	}
 	for _, ca := range k.CredentialAttrs {
 		m.Credentials[ca.TFName] = a[ca.TFName].(types.String)
+		if ca.Sensitive {
+			m.CredentialsWo[ca.TFName] = a[ca.TFName+"_wo"].(types.String)
+			m.CredentialWoVersions[ca.TFName] = a[ca.TFName+"_wo_version"].(types.Int64)
+		}
 	}
 	return m, diags
 }
@@ -325,9 +396,20 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 
 		"network_ids":            m.NetworkIDs,
 		"detach_dokploy_network": m.DetachDokployNetwork,
+
+		// A write-only value never reaches the plan or the state. The
+		// framework nulls it there too; this only says so explicitly.
+		"database_password_wo":         types.StringNull(),
+		"database_password_wo_version": m.DatabasePasswordWoVersion,
 	}
 	for name, v := range m.Credentials {
 		values[name] = v
+	}
+	for name := range m.CredentialsWo {
+		values[name+"_wo"] = types.StringNull()
+	}
+	for name, v := range m.CredentialWoVersions {
+		values[name+"_wo_version"] = v
 	}
 	obj, diags := types.ObjectValue(m.attrTypes, values)
 	if diags.HasError() {
@@ -335,4 +417,56 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 	}
 	diags.Append(dst.Set(ctx, &obj)...)
 	return diags
+}
+
+// takeSecrets copies the write-only values from the config model into the
+// plan model and marks every secret that the config sets through its
+// companion. Only the config carries a write-only value: the framework
+// nulls it in the plan, so a plan model alone cannot see it.
+func (m *genericModel) takeSecrets(k Kind, cfg genericModel) {
+	m.DatabasePasswordWo = cfg.DatabasePasswordWo
+	m.CredentialsWo = cfg.CredentialsWo
+	m.writeOnly = map[string]bool{"database_password": !cfg.DatabasePasswordWo.IsNull()}
+	for _, ca := range k.CredentialAttrs {
+		if ca.Sensitive {
+			m.writeOnly[ca.TFName] = !cfg.CredentialsWo[ca.TFName].IsNull()
+		}
+	}
+}
+
+// storeWriteOnlyFlags records m.writeOnly in the private state, one key per
+// secret, so Read can tell a write-only secret from a plain one without the
+// config (tfutil.SetWriteOnlyFlag).
+func (m genericModel) storeWriteOnlyFlags(ctx context.Context, k Kind, p tfutil.PrivateState) diag.Diagnostics {
+	var diags diag.Diagnostics
+	for _, name := range secretNames(k) {
+		diags.Append(tfutil.SetWriteOnlyFlag(ctx, p, name, m.writeOnly[name])...)
+	}
+	return diags
+}
+
+// loadWriteOnlyFlags fills m.writeOnly from the private state (Read). A
+// state from a release before the companions has no flags: every secret
+// then reads as plain and keeps its refresh behavior.
+func (m *genericModel) loadWriteOnlyFlags(ctx context.Context, k Kind, p tfutil.PrivateState) diag.Diagnostics {
+	var diags diag.Diagnostics
+	m.writeOnly = map[string]bool{}
+	for _, name := range secretNames(k) {
+		on, d := tfutil.WriteOnlyFlag(ctx, p, name)
+		diags.Append(d...)
+		m.writeOnly[name] = on
+	}
+	return diags
+}
+
+// secretNames lists the attributes that have write-only companions:
+// database_password and every Sensitive CredentialAttr.
+func secretNames(k Kind) []string {
+	names := []string{"database_password"}
+	for _, ca := range k.CredentialAttrs {
+		if ca.Sensitive {
+			names = append(names, ca.TFName)
+		}
+	}
+	return names
 }

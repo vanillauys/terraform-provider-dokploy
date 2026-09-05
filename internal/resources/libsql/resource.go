@@ -87,10 +87,14 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			Required:    true,
 			Description: "LibSQL database user.",
 		},
+		// database_password is Optional, not Required, only because its
+		// write-only companion can replace it; the ExactlyOneOf validator on
+		// database_password_wo still demands one of the two (the same shape
+		// as internal/resources/database/kind.go).
 		"database_password": schema.StringAttribute{
-			Required:    true,
+			Optional:    true,
 			Sensitive:   true,
-			Description: "LibSQL database password.",
+			Description: "LibSQL database password. Set this attribute or `database_password_wo`.",
 		},
 		// sqld_node is Optional+Computed with a Default, not a plain
 		// Optional: libsql.create requires the field and the server's own
@@ -241,6 +245,9 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			Description:   "Creation timestamp from the server.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+	}
+	for name, attr := range tfutil.WriteOnlyCompanions("database_password", true, "A version change starts a redeploy.") {
+		attrs[name] = attr
 	}
 	for name, attr := range tfutil.DeployAttributes() {
 		attrs[name] = attr
@@ -435,13 +442,20 @@ func (r *libsqlResource) persistPartial(ctx context.Context, resp *resource.Crea
 }
 
 func (r *libsqlResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan resourceModel
+	var plan, cfg resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	// The config, not the plan, carries the write-only value: the framework
+	// nulls it in the plan (tfutil.WriteOnlyCompanions).
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	password := tfutil.SecretToCreate(plan.DatabasePassword, cfg.DatabasePasswordWo)
+	// Recorded before the first call, so a partial create (persistPartial)
+	// also leaves the flag behind for the next Read.
+	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlag(ctx, resp.Private, "database_password", !cfg.DatabasePasswordWo.IsNull())...)
 
-	created, err := r.client.CreateLibsql(ctx, expandCreate(&plan))
+	created, err := r.client.CreateLibsql(ctx, expandCreate(&plan, password))
 	if err != nil {
 		resp.Diagnostics.AddError("Creating libsql service", err.Error())
 		return
@@ -459,7 +473,7 @@ func (r *libsqlResource) Create(ctx context.Context, req resource.CreateRequest,
 	// carries neither - so this one follow-up call is also what applies a
 	// first-apply network attachment; no separate call is needed for it.
 	var updateDiags diag.Diagnostics
-	updateReq := expandUpdate(ctx, &plan, &updateDiags)
+	updateReq := expandUpdate(ctx, &plan, password, &updateDiags)
 	resp.Diagnostics.Append(updateDiags...)
 	if err := r.client.UpdateLibsql(ctx, updateReq); err != nil {
 		r.persistPartial(ctx, resp, plan, "applying the operational settings", err)
@@ -522,18 +536,32 @@ func (r *libsqlResource) Read(ctx context.Context, req resource.ReadRequest, res
 	var flattenDiags diag.Diagnostics
 	flatten(ctx, c, &state, &flattenDiags)
 	resp.Diagnostics.Append(flattenDiags...)
+	// A write-only password stays out of the state: the API returns it on
+	// every read, so a refresh would put it back otherwise.
+	writeOnly, flagDiags := tfutil.WriteOnlyFlag(ctx, req.Private, "database_password")
+	resp.Diagnostics.Append(flagDiags...)
+	if writeOnly {
+		state.DatabasePassword = types.StringNull()
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *libsqlResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, state resourceModel
+	var plan, state, cfg resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID
+	// "" when the write-only password has nothing new to send:
+	// UpdateLibsqlRequest drops an empty databasePassword (omitempty), and
+	// an absent key keeps the stored value (doc.go, probed 2026-09-05). An
+	// explicit "" on the wire would clear it.
+	password, _ := tfutil.SecretToUpdate(plan.DatabasePassword, cfg.DatabasePasswordWo, state.DatabasePassword, plan.DatabasePasswordWoVersion, state.DatabasePasswordWoVersion)
+	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlag(ctx, resp.Private, "database_password", !cfg.DatabasePasswordWo.IsNull())...)
 
 	// Ordering rule: a transition INTO "replica" must clear any external
 	// ports BEFORE UpdateLibsql flips sqldNode, not after. A replica
@@ -563,7 +591,7 @@ func (r *libsqlResource) Update(ctx context.Context, req resource.UpdateRequest,
 	// detach_dokploy_network: there is no separate network-attachment call
 	// to gate here, unlike the database package's conditional follow-up.
 	var updateDiags diag.Diagnostics
-	updateReq := expandUpdate(ctx, &plan, &updateDiags)
+	updateReq := expandUpdate(ctx, &plan, password, &updateDiags)
 	resp.Diagnostics.Append(updateDiags...)
 	if err := r.client.UpdateLibsql(ctx, updateReq); err != nil {
 		resp.Diagnostics.AddError("Updating libsql service", err.Error())

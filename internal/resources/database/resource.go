@@ -159,11 +159,15 @@ func checkCredentialsCreatable(k Kind, plan genericModel, resp *resource.CreateR
 		if !ca.Computed {
 			continue
 		}
-		v := plan.Credentials[ca.TFName]
+		name, v := ca.TFName, plan.Credentials[ca.TFName]
+		if v.IsNull() || v.IsUnknown() {
+			// The write-only companion has the same create-time trap.
+			name, v = ca.TFName+"_wo", plan.CredentialsWo[ca.TFName]
+		}
 		if !v.IsUnknown() && !v.IsNull() && v.ValueString() == "" {
 			resp.Diagnostics.AddError(
-				fmt.Sprintf("Invalid %s", ca.TFName),
-				fmt.Sprintf("%s cannot be set to an explicit empty string. That is wire-indistinguishable from omitting it entirely, so the server generates a real value while Terraform's plan promised \"\" — apply would fail with a confusing \"Provider produced inconsistent result after apply\" instead. Omit this attribute entirely to let the server generate one.", ca.TFName),
+				fmt.Sprintf("Invalid %s", name),
+				fmt.Sprintf("%s cannot be set to an explicit empty string. That is wire-indistinguishable from omitting it entirely, so the server generates a real value while Terraform's plan promised \"\" — apply would fail with a confusing \"Provider produced inconsistent result after apply\" instead. Omit this attribute entirely to let the server generate one.", name),
 			)
 			ok = false
 		}
@@ -174,17 +178,26 @@ func checkCredentialsCreatable(k Kind, plan genericModel, resp *resource.CreateR
 func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan, diags := getModel(ctx, r.kind, req.Plan)
 	resp.Diagnostics.Append(diags...)
+	// The config, not the plan, carries the write-only values: the
+	// framework nulls them in the plan (tfutil.WriteOnlyCompanions).
+	cfg, diags := getModel(ctx, r.kind, req.Config)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plan.takeSecrets(r.kind, cfg)
+	// Recorded before the first call, so a partial create (persistPartial)
+	// also leaves the flags behind for the next Read.
+	resp.Diagnostics.Append(plan.storeWriteOnlyFlags(ctx, r.kind, resp.Private)...)
 	if !checkCredentialsCreatable(r.kind, plan, resp) {
 		return
 	}
 
 	creds := make(map[string]string, len(r.kind.CredentialAttrs))
 	for _, ca := range r.kind.CredentialAttrs {
-		creds[ca.TFName] = plan.Credentials[ca.TFName].ValueString()
+		creds[ca.TFName] = tfutil.SecretToCreate(plan.Credentials[ca.TFName], plan.CredentialsWo[ca.TFName])
 	}
+	password := tfutil.SecretToCreate(plan.DatabasePassword, plan.DatabasePasswordWo)
 	created, err := r.kind.Client.Create(ctx, CreateSpec{
 		Name:             plan.Name.ValueString(),
 		AppName:          plan.AppName.ValueString(),
@@ -192,7 +205,7 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 		EnvironmentID:    plan.EnvironmentID.ValueString(),
 		Description:      plan.Description.ValueStringPointer(),
 		ServerID:         plan.ServerID.ValueStringPointer(),
-		DatabasePassword: plan.DatabasePassword.ValueString(),
+		DatabasePassword: password,
 		Credentials:      creds,
 	})
 	if err != nil {
@@ -239,8 +252,8 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 			// The server keeps the same image either way. This call exists only
 			// to apply the network fields, not to change the image.
 			DockerImage:          plan.DockerImage.ValueString(),
-			DatabasePassword:     plan.DatabasePassword.ValueString(),
-			Credentials:          resolveCredentials(r.kind, plan, current),
+			DatabasePassword:     password,
+			Credentials:          resolveCredentials(r.kind, plan, genericModel{}, current),
 			NetworkIDs:           tfutil.StringSetRequest(ctx, plan.NetworkIDs, &d),
 			DetachDokployNetwork: plan.DetachDokployNetwork.ValueBool(),
 		})
@@ -278,6 +291,7 @@ func (r *genericResource) deployAndWait(ctx context.Context, plan *genericModel)
 func (r *genericResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	state, diags := getModel(ctx, r.kind, req.State)
 	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(state.loadWriteOnlyFlags(ctx, r.kind, req.Private)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -303,11 +317,15 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 	resp.Diagnostics.Append(diags...)
 	state, diags := getModel(ctx, r.kind, req.State)
 	resp.Diagnostics.Append(diags...)
+	cfg, diags := getModel(ctx, r.kind, req.Config)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID
+	plan.takeSecrets(r.kind, cfg)
+	resp.Diagnostics.Append(plan.storeWriteOnlyFlags(ctx, r.kind, resp.Private)...)
 
 	// Fetched BEFORE the update call so resolveCredentials can substitute
 	// the server's real current value for any Computed credential
@@ -327,7 +345,7 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 	// credentialsNeedServerValue's doc comment in model.go.
 	var before *Object
 	var err error
-	if credentialsNeedServerValue(r.kind, plan) {
+	if credentialsNeedServerValue(r.kind, plan, state) {
 		before, err = r.kind.Client.Get(ctx, id)
 		if err != nil {
 			resp.Diagnostics.AddError(fmt.Sprintf("Reading %s before update", r.kind.Name), err.Error())
@@ -335,14 +353,19 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
+	// A write-only password with nothing new to send yields "": every
+	// engine's update request drops an empty databasePassword (omitempty),
+	// and an absent key keeps the stored value (doc.go, probed 2026-09-05).
+	// An explicit "" on the wire would clear it.
+	password, _ := tfutil.SecretToUpdate(plan.DatabasePassword, plan.DatabasePasswordWo, state.DatabasePassword, plan.DatabasePasswordWoVersion, state.DatabasePasswordWoVersion)
 	var updateDiags diag.Diagnostics
 	err = r.kind.Client.Update(ctx, UpdateSpec{
 		ID:                   id,
 		Name:                 plan.Name.ValueString(),
 		Description:          plan.Description.ValueStringPointer(),
 		DockerImage:          plan.DockerImage.ValueString(),
-		DatabasePassword:     plan.DatabasePassword.ValueString(),
-		Credentials:          resolveCredentials(r.kind, plan, before),
+		DatabasePassword:     password,
+		Credentials:          resolveCredentials(r.kind, plan, state, before),
 		NetworkIDs:           tfutil.StringSetRequest(ctx, plan.NetworkIDs, &updateDiags),
 		DetachDokployNetwork: plan.DetachDokployNetwork.ValueBool(),
 	})
