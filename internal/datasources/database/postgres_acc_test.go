@@ -16,6 +16,7 @@ package database_test
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -59,6 +60,58 @@ data "dokploy_postgres" "by_name" {
 						"data.dokploy_postgres.by_name", "id",
 						"dokploy_postgres.test", "id"),
 				),
+			},
+		},
+	})
+}
+
+// TestAccPostgresDataSource_ambiguousName pins that a name lookup errors on
+// multiple matches rather than silently taking the first (Dokploy does not
+// enforce unique service names within an environment - lookup.ByName's
+// contract, shared by every database engine's data source). The error text
+// is taken verbatim from lookup.ByName in internal/lookup/lookup.go, not
+// guessed: "multiple %s services named %q in this environment; look it up
+// by id instead", with kind="postgres" (genericDataSource.Read passes
+// d.kind.Name). Mirrors TestAccMariadbDataSource_ambiguousName; postgres was
+// the one engine without this test (Phase 3, P3-1).
+func TestAccPostgresDataSource_ambiguousName(t *testing.T) {
+	projectName := acctest.RandomName("proj")
+	config := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_postgres" "a" {
+  name              = "shared"
+  environment_id    = dokploy_project.test.production_environment_id
+  database_name     = "acc"
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  deploy_on_change  = false
+}
+
+resource "dokploy_postgres" "b" {
+  name              = "shared"
+  environment_id    = dokploy_project.test.production_environment_id
+  database_name     = "acc"
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  deploy_on_change  = false
+}
+
+data "dokploy_postgres" "ambiguous" {
+  environment_id = dokploy_project.test.production_environment_id
+  name           = "shared"
+  depends_on     = [dokploy_postgres.a, dokploy_postgres.b]
+}`, projectName)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config:      config,
+				ExpectError: regexp.MustCompile(`multiple postgres services named "shared"`),
 			},
 		},
 	})
