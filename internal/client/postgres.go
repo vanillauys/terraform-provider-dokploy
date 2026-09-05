@@ -118,5 +118,5 @@ func (c *Client) SavePostgresExternalPort(ctx context.Context, id string, port *
 }
 
 func (c *Client) DeployPostgres(ctx context.Context, id string) error {
-	return c.Post(ctx, "/postgres.deploy", map[string]string{"postgresId": id}, nil)
+	return c.PostDeploy(ctx, "/postgres.deploy", map[string]string{"postgresId": id})
 }

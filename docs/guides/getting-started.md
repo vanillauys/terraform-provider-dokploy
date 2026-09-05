@@ -20,20 +20,28 @@ You need:
 Read this section first. This problem is the most likely cause of a failed
 first apply, and the error does not describe the cause.
 
-Dokploy rate-limits API keys on the server, in its api-key plugin. When a key
-reaches the limit, **the API answers `401 Unauthorized`, not `429`**. An
+Dokploy can rate-limit an API key on the server, in its api-key plugin. When a
+key reaches the limit, **the API answers `401 Unauthorized`, not `429`**. An
 exhausted key therefore looks like an authentication failure. A key that works
 for one request can fail in the middle of a larger apply. The error then reads
 as "the credentials are wrong", but the credentials are correct.
 
-A large configuration can exhaust the limit. A configuration with long deploys
-can also exhaust it, because the provider polls the server while it waits for
-a deploy.
+Whether a key has a limit depends on how you made it. Both cases were probed
+on Dokploy v0.30.5 (2026-09-05):
+
+- A key from the Dokploy UI (**Settings > Profile > API/CLI Keys > Generate
+  New Key**) has no limit while the **Enable Rate Limiting** switch stays off,
+  which is its default. Such a key answered every request in the probe.
+- A key from the `user.createApiKey` API call without the `rateLimitEnabled`
+  field gets the plugin default: `rateLimitMax` 10 in a `rateLimitTimeWindow`
+  of 24 hours. Such a key answered five `project.all` requests, then `401` on
+  every request, and still `401` after a minute. One `terraform plan` of a
+  small configuration exceeds that budget.
 
 If an apply fails with an unexpected `401` on a key that works for single
-requests, you need a key with rate limiting disabled. The acceptance rig mints
-such a key in `acceptance/bootstrap.sh`. No test has shown whether keys from
-the Dokploy UI carry the same limit.
+requests, generate a new key in the UI and leave the switch off. A retry does
+not help: the window is a day. The acceptance rig mints its key with
+`rateLimitEnabled: false` in `acceptance/bootstrap.sh`.
 
 ## Configure the provider
 

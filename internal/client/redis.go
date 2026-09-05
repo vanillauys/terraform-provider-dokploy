@@ -145,5 +145,5 @@ func (c *Client) SaveRedisExternalPort(ctx context.Context, id string, port *int
 }
 
 func (c *Client) DeployRedis(ctx context.Context, id string) error {
-	return c.Post(ctx, "/redis.deploy", map[string]string{"redisId": id}, nil)
+	return c.PostDeploy(ctx, "/redis.deploy", map[string]string{"redisId": id})
 }

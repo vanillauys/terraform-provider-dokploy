@@ -152,5 +152,5 @@ func (c *Client) SaveMongoExternalPort(ctx context.Context, id string, port *int
 }
 
 func (c *Client) DeployMongo(ctx context.Context, id string) error {
-	return c.Post(ctx, "/mongo.deploy", map[string]string{"mongoId": id}, nil)
+	return c.PostDeploy(ctx, "/mongo.deploy", map[string]string{"mongoId": id})
 }

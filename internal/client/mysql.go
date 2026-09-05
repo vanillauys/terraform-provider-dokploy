@@ -177,5 +177,5 @@ func (c *Client) SaveMysqlExternalPort(ctx context.Context, id string, port *int
 }
 
 func (c *Client) DeployMysql(ctx context.Context, id string) error {
-	return c.Post(ctx, "/mysql.deploy", map[string]string{"mysqlId": id}, nil)
+	return c.PostDeploy(ctx, "/mysql.deploy", map[string]string{"mysqlId": id})
 }

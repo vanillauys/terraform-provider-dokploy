@@ -188,7 +188,7 @@ func (c *Client) SaveLibsqlEnvironment(ctx context.Context, id string, env *stri
 }
 
 func (c *Client) DeployLibsql(ctx context.Context, id string) error {
-	return c.Post(ctx, "/libsql.deploy", map[string]string{"libsqlId": id}, nil)
+	return c.PostDeploy(ctx, "/libsql.deploy", map[string]string{"libsqlId": id})
 }
 
 func (c *Client) DeleteLibsql(ctx context.Context, id string) error {

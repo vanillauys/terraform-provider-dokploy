@@ -201,7 +201,7 @@ func (c *Client) SaveComposeEnvironment(ctx context.Context, req SaveComposeEnvi
 }
 
 func (c *Client) DeployCompose(ctx context.Context, id string) error {
-	return c.Post(ctx, "/compose.deploy", map[string]string{"composeId": id}, nil)
+	return c.PostDeploy(ctx, "/compose.deploy", map[string]string{"composeId": id})
 }
 
 // DeleteCompose. deleteVolumes is sent by choice, not by requirement: the

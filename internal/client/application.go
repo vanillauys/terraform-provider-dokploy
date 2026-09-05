@@ -295,5 +295,5 @@ func (c *Client) SaveApplicationEnvironment(ctx context.Context, req SaveApplica
 }
 
 func (c *Client) DeployApplication(ctx context.Context, id string) error {
-	return c.Post(ctx, "/application.deploy", map[string]string{"applicationId": id}, nil)
+	return c.PostDeploy(ctx, "/application.deploy", map[string]string{"applicationId": id})
 }
