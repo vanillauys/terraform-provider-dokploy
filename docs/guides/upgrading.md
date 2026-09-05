@@ -2,10 +2,34 @@
 page_title: "Upgrade guide"
 subcategory: ""
 description: |-
-  What each release since v0.11.0 needs from your configuration: the write-only companions of v0.12, and the breaking changes of v0.11.
+  What each release since v0.11.0 needs from your configuration: the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
 ---
 
 # Upgrade guide
+
+## Upgrade to v0.13
+
+v0.13.0 has no breaking change. Every attribute from v0.12.0 keeps its shape,
+and the existing state loads with an empty plan.
+
+1. Update the version constraint to `~> 0.13`.
+2. Run `terraform init -upgrade`.
+3. Run `terraform plan`. The plan must be empty.
+
+v0.13.0 adds resources; nothing that exists changes. Two additions touch a
+resource you may already use:
+
+- `dokploy_application` and `dokploy_compose` accept three more source
+  blocks: `gitlab`, `bitbucket`, and `gitea`. A configuration with the
+  `github`, `git`, `docker`, or `raw` block keeps its behavior.
+- `dokploy_environment_variables` writes the `env` text of an application, a
+  compose, or an environment from a map. If you adopt it for a target that
+  already sets `env`, remove `env` from the target and add
+  `lifecycle { ignore_changes = [env] }` to it. The [Usage examples](usage-examples#environment-variables-as-a-map)
+  guide shows the shape.
+
+Every new secret attribute has a write-only companion, listed in the
+[Secrets guide](secrets#write-only-companions).
 
 ## Upgrade to v0.12
 

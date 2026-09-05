@@ -1412,4 +1412,66 @@
 // clears, an absent key keeps, a null 400s; see UpdateMysqlRequest): the
 // generic engine resends the server's value for it when the write-only
 // version did not change (resolveCredentials in internal/resources/database).
+//
+// # Phase 2 records: sshKey, server, certificates, ai, registry (probed 2026-09-05)
+//
+// Every finding below comes from the acceptance rig on Dokploy v0.30.5.
+//
+// ## Create bodies that carry nothing
+//
+// sshKey.create, every notification.create<Type>, gitlab.create and
+// bitbucket.create answer HTTP 200 with an EMPTY body. ai.create answers
+// with a literal []. None of these records has a unique name, so the client
+// recovers each new id with createAndLocate over the type's list endpoint,
+// the helper that backup.create needed first. gitea.create returns a partial
+// record ({giteaId, clientId, giteaUrl}). server.create, certificates.create,
+// registry.create and organization.create return the full record.
+//
+// ## Dialects
+//
+//	sshKey.update        dialect B: absent keeps; null clears description
+//	server.update        dialect A: every field required; command must be a
+//	                     string; sshKeyId null clears the key
+//	certificates.update  dialect B: {certificateId, name} keeps the PEM fields
+//	registry.update      dialect B: {registryId, registryName} keeps the rest;
+//	                     imagePrefix null stores null, "" stores ""
+//	ai.update            an upsert: a partial body is an HTTP 500 "Failed
+//	                     query: insert into ai ... default"; send every field
+//	notification.update* partial keeps; a null string is a 400; "" stores "";
+//	                     a body with only name is a 500 "No values to set"
+//	gitlab.update        partial keeps; null strings are a 400
+//
+// ## Secrets on the read path
+//
+// sshKey.one returns privateKey, certificates.one returns privateKey, ai.one
+// returns apiKey, gitlab.one returns secret, bitbucket.one returns
+// appPassword and apiToken, gitea.one returns clientSecret, and
+// notification.one returns every channel secret, all in cleartext.
+// registry.one is the exception: it omits password, while registry.create
+// and registry.all include it. A resource whose read path lacks the secret
+// keeps the configured value in the state (the vault provider pattern).
+//
+// ## Enums and required fields recovered from zod errors
+//
+//   - server.serverType: "deploy" | "build".
+//   - registry.registryType: "cloud" only; imagePrefix is required at
+//     create, and "" is accepted.
+//   - registry.registryUrl: a hostname or hostname:port, no scheme.
+//     registry.create runs `docker login` on the server before it stores
+//     the record: a registry that the Dokploy daemon cannot reach fails with
+//     an HTTP 400 "Command execution failed". The daemon performs the login,
+//     so the acceptance suite publishes a registry:2 container on the
+//     daemon's loopback and uses localhost:<port>, which the daemon treats
+//     as an insecure (plain HTTP) registry by default.
+//   - sshKey.create validates the private key format ("Invalid private key
+//     format"); sshKey.generate {type: rsa|ed25519} returns a valid pair.
+//   - sshKey.create and certificates.create require organizationId; the
+//     resources take it from organization.active.
+//
+// ## Not-found statuses
+//
+// sshKey.one, server.one, certificates.one, ai.one, registry.one,
+// notification.one, gitlab.one, bitbucket.one, gitea.one and user.one answer
+// 404 for an unknown id. organization.one answers 403 "You are not a member
+// of this organization" for an unknown id; it has no 404.
 package client

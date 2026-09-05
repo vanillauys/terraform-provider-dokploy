@@ -85,14 +85,14 @@ func createAndLocate(
 		return fresh[0], nil
 	case 0:
 		return "", fmt.Errorf(
-			"%s.create reported success but no new %s appeared on application %s",
+			"%s.create reported success but no new %s appeared in %s",
 			kind, kind, parentID)
 	default:
 		return "", fmt.Errorf(
-			"%d new %s records appeared on application %s while creating one, so the "+
+			"%d new %s records appeared in %s while creating one, so the "+
 				"created id cannot be identified. %s.create does not return the record "+
 				"it made, and Dokploy has no endpoint to look one up by its fields. "+
-				"Something outside this apply is modifying the application concurrently",
+				"Something outside this apply is modifying Dokploy concurrently",
 			len(fresh), kind, parentID, kind)
 	}
 }

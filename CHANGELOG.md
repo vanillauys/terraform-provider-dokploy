@@ -4,6 +4,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-09-05
+
+The coverage release before v1.0.0. It has no breaking change: every
+attribute from v0.12.0 keeps its shape, and a v0.12.0 state loads with an
+empty plan. It closes the gaps between this provider and the other Dokploy
+providers on the registry.
+
+### Added
+
+- Servers and keys: `dokploy_ssh_key` and `dokploy_server`, each with a
+  data source. The server resource stores the record; the setup that installs
+  Docker on the machine stays a step in the Dokploy UI.
+- `dokploy_registry` (a container registry login; Dokploy runs `docker
+  login` on create and update), `dokploy_certificate` (a TLS certificate for
+  Traefik), and `dokploy_ai` (an OpenAI-compatible endpoint for the AI
+  features).
+- Git providers: `dokploy_gitlab_provider`, `dokploy_bitbucket_provider`,
+  and `dokploy_gitea_provider`, each with a data source that reports
+  `is_configured`. `dokploy_application` and `dokploy_compose` gain the
+  `gitlab`, `bitbucket`, and `gitea` source blocks.
+- Twelve notification resources, one per channel: `dokploy_slack_notification`,
+  `dokploy_discord_notification`, `dokploy_telegram_notification`,
+  `dokploy_email_notification`, `dokploy_resend_notification`,
+  `dokploy_gotify_notification`, `dokploy_ntfy_notification`,
+  `dokploy_mattermost_notification`, `dokploy_lark_notification`,
+  `dokploy_teams_notification`, `dokploy_pushover_notification`, and
+  `dokploy_custom_notification`. They share the eight event flags.
+- Organization and access: `dokploy_organization` (with a data source that
+  also returns the active organization), `dokploy_user` (an account with an
+  initial password and a member role; with a data source), `dokploy_user_permissions`
+  (the full permission set of a member; destroy resets it), and
+  `dokploy_api_key` (the key is kept as a sensitive value; every input
+  replaces the key; no import).
+- `dokploy_environment_variables`: a map that owns the `env` text of an
+  application, a compose, or an environment.
+- Every new secret has a write-only companion (`<name>_wo` and
+  `<name>_wo_version`), listed in the secrets guide.
+- The Usage examples guide, with six complete configurations.
+
+### Changed
+
+- The client recovers the id of a record whose create endpoint returns no
+  body (SSH keys, notifications, AI settings, GitLab and Bitbucket providers)
+  from a list diff, and tells a concurrent sibling apart by the request
+  fields instead of failing.
+- The acceptance suite publishes a `registry:2` container on the Docker
+  daemon's loopback for the registry tests, and generates SSH key pairs
+  through `sshKey.generate`.
+
+### Known limits
+
+- A GitLab or Gitea connection needs one authorization in the Dokploy UI
+  before a deploy can clone from it.
+- `dokploy_user` cannot change a password: Dokploy has no reset endpoint
+  for another user, so a password change replaces the account.
+- `dogfood/generate_imports.py` does not enumerate the new resources.
+
 ## [0.12.0] - 2026-09-05
 
 The hardening release before v1.0.0. It has no breaking change: every

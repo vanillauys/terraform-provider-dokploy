@@ -35,6 +35,27 @@ type Application struct {
 	Username    *string `json:"username"`
 	Password    *string `json:"password"`
 	RegistryURL *string `json:"registryUrl"`
+	// gitlab, bitbucket and gitea sources (phase 2, probed 2026-09-05).
+	// gitlabProjectId is an integer column in Dokploy's schema; every other
+	// field is text. Each set has its own save* endpoint (dialect A).
+	GitlabID                *string `json:"gitlabId"`
+	GitlabOwner             *string `json:"gitlabOwner"`
+	GitlabRepository        *string `json:"gitlabRepository"`
+	GitlabBranch            *string `json:"gitlabBranch"`
+	GitlabBuildPath         *string `json:"gitlabBuildPath"`
+	GitlabProjectID         *int64  `json:"gitlabProjectId"`
+	GitlabPathNamespace     *string `json:"gitlabPathNamespace"`
+	BitbucketID             *string `json:"bitbucketId"`
+	BitbucketOwner          *string `json:"bitbucketOwner"`
+	BitbucketRepository     *string `json:"bitbucketRepository"`
+	BitbucketRepositorySlug *string `json:"bitbucketRepositorySlug"`
+	BitbucketBranch         *string `json:"bitbucketBranch"`
+	BitbucketBuildPath      *string `json:"bitbucketBuildPath"`
+	GiteaID                 *string `json:"giteaId"`
+	GiteaOwner              *string `json:"giteaOwner"`
+	GiteaRepository         *string `json:"giteaRepository"`
+	GiteaBranch             *string `json:"giteaBranch"`
+	GiteaBuildPath          *string `json:"giteaBuildPath"`
 	// build settings
 	BuildType         string  `json:"buildType"` // nixpacks | dockerfile | heroku_buildpacks | paketo_buildpacks | static | railpack
 	Dockerfile        *string `json:"dockerfile"`
@@ -260,6 +281,60 @@ func (c *Client) SaveGitProvider(ctx context.Context, req SaveGitProviderRequest
 
 func (c *Client) SaveDockerProvider(ctx context.Context, req SaveDockerProviderRequest) error {
 	return c.Post(ctx, "/application.saveDockerProvider", req, nil)
+}
+
+// SaveGitlabProviderRequest, SaveBitbucketProviderRequest and
+// SaveGiteaProviderRequest mirror SaveGithubProviderRequest: the zod
+// schemas pick the type's columns with .required(), so every field is sent
+// on every call (dialect A), and watchPaths / enableSubmodules ride along
+// exactly as they do on the github and git saves. gitlabProjectId is a
+// number on the wire.
+type SaveGitlabProviderRequest struct {
+	ApplicationID       string    `json:"applicationId"`
+	GitlabID            string    `json:"gitlabId"`
+	GitlabOwner         string    `json:"gitlabOwner"`
+	GitlabRepository    string    `json:"gitlabRepository"`
+	GitlabBranch        string    `json:"gitlabBranch"`
+	GitlabBuildPath     string    `json:"gitlabBuildPath"`
+	GitlabProjectID     int64     `json:"gitlabProjectId"`
+	GitlabPathNamespace string    `json:"gitlabPathNamespace"`
+	WatchPaths          *[]string `json:"watchPaths"`
+	EnableSubmodules    *bool     `json:"enableSubmodules"`
+}
+
+type SaveBitbucketProviderRequest struct {
+	ApplicationID           string    `json:"applicationId"`
+	BitbucketID             string    `json:"bitbucketId"`
+	BitbucketOwner          string    `json:"bitbucketOwner"`
+	BitbucketRepository     string    `json:"bitbucketRepository"`
+	BitbucketRepositorySlug string    `json:"bitbucketRepositorySlug"`
+	BitbucketBranch         string    `json:"bitbucketBranch"`
+	BitbucketBuildPath      string    `json:"bitbucketBuildPath"`
+	WatchPaths              *[]string `json:"watchPaths"`
+	EnableSubmodules        *bool     `json:"enableSubmodules"`
+}
+
+type SaveGiteaProviderRequest struct {
+	ApplicationID    string    `json:"applicationId"`
+	GiteaID          string    `json:"giteaId"`
+	GiteaOwner       string    `json:"giteaOwner"`
+	GiteaRepository  string    `json:"giteaRepository"`
+	GiteaBranch      string    `json:"giteaBranch"`
+	GiteaBuildPath   string    `json:"giteaBuildPath"`
+	WatchPaths       *[]string `json:"watchPaths"`
+	EnableSubmodules *bool     `json:"enableSubmodules"`
+}
+
+func (c *Client) SaveGitlabProvider(ctx context.Context, req SaveGitlabProviderRequest) error {
+	return c.Post(ctx, "/application.saveGitlabProvider", req, nil)
+}
+
+func (c *Client) SaveBitbucketProvider(ctx context.Context, req SaveBitbucketProviderRequest) error {
+	return c.Post(ctx, "/application.saveBitbucketProvider", req, nil)
+}
+
+func (c *Client) SaveGiteaProvider(ctx context.Context, req SaveGiteaProviderRequest) error {
+	return c.Post(ctx, "/application.saveGiteaProvider", req, nil)
 }
 
 func (c *Client) SaveBuildType(ctx context.Context, req SaveBuildTypeRequest) error {

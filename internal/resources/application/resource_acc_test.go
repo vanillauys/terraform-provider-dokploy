@@ -665,3 +665,128 @@ resource "dokploy_application" "test" {
 		},
 	})
 }
+
+// TestAccApplication_forgeSources creates the three provider records and
+// moves one application across the gitlab, bitbucket and gitea sources
+// with deploy_on_change = false: the save* endpoints store the coordinates
+// without contacting the forge, and every step asserts the server holds
+// them, because these are dialect A calls.
+func TestAccApplication_forgeSources(t *testing.T) {
+	name := acctest.RandomName("app-forge")
+	base := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %[1]q
+}
+
+resource "dokploy_gitlab_provider" "gl" {
+  name           = %[1]q
+  application_id = "oauth-app"
+  secret         = "s"
+}
+
+resource "dokploy_bitbucket_provider" "bb" {
+  name         = %[1]q
+  username     = "bbuser"
+  app_password = "p"
+}
+
+resource "dokploy_gitea_provider" "gt" {
+  name          = %[1]q
+  gitea_url     = "https://gitea.example.com"
+  client_id     = "cid"
+  client_secret = "s"
+}
+`, name)
+	app := func(source string) string {
+		return base + fmt.Sprintf(`
+resource "dokploy_application" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.production_environment_id
+  deploy_on_change = false
+%s
+}
+`, name, source)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkApplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: app(`
+  gitlab = {
+    gitlab_id      = dokploy_gitlab_provider.gl.id
+    owner          = "group"
+    repository     = "app"
+    branch         = "main"
+    project_id     = 42
+    path_namespace = "group/app"
+  }`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_application.test", "gitlab.build_path", "/"),
+					resource.TestCheckResourceAttr("dokploy_application.test", "gitlab.project_id", "42"),
+					checkApplicationServer("dokploy_application.test", func(a *client.Application) error {
+						if a.SourceType != "gitlab" || a.GitlabID == nil || a.GitlabProjectID == nil || *a.GitlabProjectID != 42 ||
+							a.GitlabPathNamespace == nil || *a.GitlabPathNamespace != "group/app" || a.GitlabBuildPath == nil || *a.GitlabBuildPath != "/" {
+							return fmt.Errorf("server gitlab source = type %q, project %v, namespace %v", a.SourceType, a.GitlabProjectID, a.GitlabPathNamespace)
+						}
+						return nil
+					}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				Config: app(`
+  bitbucket = {
+    bitbucket_id    = dokploy_bitbucket_provider.bb.id
+    owner           = "workspace"
+    repository      = "App"
+    repository_slug = "app"
+    branch          = "main"
+    build_path      = "/svc"
+  }`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "gitlab.owner"),
+					checkApplicationServer("dokploy_application.test", func(a *client.Application) error {
+						if a.SourceType != "bitbucket" || a.BitbucketRepositorySlug == nil || *a.BitbucketRepositorySlug != "app" ||
+							a.BitbucketBuildPath == nil || *a.BitbucketBuildPath != "/svc" {
+							return fmt.Errorf("server bitbucket source = type %q, slug %v, path %v", a.SourceType, a.BitbucketRepositorySlug, a.BitbucketBuildPath)
+						}
+						return nil
+					}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				Config: app(`
+  gitea = {
+    gitea_id   = dokploy_gitea_provider.gt.id
+    owner      = "org"
+    repository = "app"
+    branch     = "main"
+  }`),
+				Check: checkApplicationServer("dokploy_application.test", func(a *client.Application) error {
+					if a.SourceType != "gitea" || a.GiteaOwner == nil || *a.GiteaOwner != "org" || a.GiteaBuildPath == nil || *a.GiteaBuildPath != "/" {
+						return fmt.Errorf("server gitea source = type %q, owner %v", a.SourceType, a.GiteaOwner)
+					}
+					return nil
+				}),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// deploy_on_change is provider-only: the import seeds its
+				// default (true), and this config turns it off on purpose.
+				ResourceName:            "dokploy_application.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"deploy_on_change"},
+			},
+		},
+	})
+}

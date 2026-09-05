@@ -42,3 +42,54 @@ func (c *Client) ListGithubProviders(ctx context.Context) ([]GithubProvider, err
 	}
 	return ps, nil
 }
+
+// GitProviderSummary is one entry of gitProvider.getAll: the generic record
+// plus a summary of the type-specific record under its type name. It is the
+// one list that shows every provider of every type, configured or not.
+// gitlab.gitlabProviders, by contrast, hides a provider until the OAuth
+// handshake stored an access token (probed live, v0.30.5, 2026-09-05).
+type GitProviderSummary struct {
+	GitProvider
+	UserID    string            `json:"userId"`
+	IsOwner   bool              `json:"isOwner"`
+	Gitlab    *GitlabSummary    `json:"gitlab"`
+	Bitbucket *BitbucketSummary `json:"bitbucket"`
+	Gitea     *GiteaSummary     `json:"gitea"`
+}
+
+type GitlabSummary struct {
+	GitlabID      string `json:"gitlabId"`
+	ApplicationID string `json:"applicationId"`
+	GitlabURL     string `json:"gitlabUrl"`
+	IsConfigured  bool   `json:"isConfigured"`
+}
+
+type BitbucketSummary struct {
+	BitbucketID       string `json:"bitbucketId"`
+	BitbucketUsername string `json:"bitbucketUsername"`
+	IsConfigured      bool   `json:"isConfigured"`
+	IsDeprecated      bool   `json:"isDeprecated"`
+}
+
+type GiteaSummary struct {
+	GiteaID      string `json:"giteaId"`
+	GiteaURL     string `json:"giteaUrl"`
+	ClientID     string `json:"clientId"`
+	IsConfigured bool   `json:"isConfigured"`
+}
+
+// ListGitProviders returns every git provider of the organization, of every
+// type.
+func (c *Client) ListGitProviders(ctx context.Context) ([]GitProviderSummary, error) {
+	var ps []GitProviderSummary
+	if err := c.Get(ctx, "/gitProvider.getAll", nil, &ps); err != nil {
+		return nil, err
+	}
+	return ps, nil
+}
+
+// RemoveGitProvider deletes a provider of any type through its generic id.
+// The type-specific routers have no remove endpoint.
+func (c *Client) RemoveGitProvider(ctx context.Context, gitProviderID string) error {
+	return c.Post(ctx, "/gitProvider.remove", map[string]string{"gitProviderId": gitProviderID}, nil)
+}

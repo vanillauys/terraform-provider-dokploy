@@ -197,3 +197,8 @@ func apiError(method, path string, status int, raw []byte) error {
 		Path:       path,
 	}
 }
+
+// Endpoint returns the base URL the client was configured with, without a
+// trailing slash. The git provider resources derive the OAuth redirect URI
+// from it when the configuration leaves the attribute unset.
+func (c *Client) Endpoint() string { return strings.TrimRight(c.endpoint, "/") }

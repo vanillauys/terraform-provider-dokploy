@@ -16,22 +16,41 @@ import (
 	dsdestination "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/destination"
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
+	dsgitproviders "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitproviders"
 	libsqldatasource "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/libsql"
 	dsnetwork "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/network"
+	dsorganization "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/organization"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
+	dsserver "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/server"
+	dssshkey "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/sshkey"
+	dsuser "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/user"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/ai"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/apikey"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/backup"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/bitbucketprovider"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/certificate"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/compose"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/destination"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/envvars"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/giteaprovider"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/gitlabprovider"
 	libsqlresource "github.com/vanillauys/terraform-provider-dokploy/internal/resources/libsql"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/mount"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/network"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/notification"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/organization"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/registry"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/server"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/sshkey"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/user"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/userpermissions"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/volumebackup"
 )
@@ -177,6 +196,19 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		domain.NewResource,
 		mount.NewResource,
 		destination.NewResource,
+		sshkey.NewResource,
+		server.NewResource,
+		certificate.NewResource,
+		ai.NewResource,
+		registry.NewResource,
+		gitlabprovider.NewResource,
+		bitbucketprovider.NewResource,
+		giteaprovider.NewResource,
+		organization.NewResource,
+		user.NewResource,
+		userpermissions.NewResource,
+		apikey.NewResource,
+		envvars.NewResource,
 		network.NewResource,
 		schedule.NewResource,
 		vaultprovider.NewResource,
@@ -187,6 +219,18 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		appchild.NewResource(appchild.PortKind()),
 		appchild.NewResource(appchild.RedirectKind()),
 		appchild.NewResource(appchild.SecurityKind()),
+		notification.NewResource(notification.SlackKind()),
+		notification.NewResource(notification.DiscordKind()),
+		notification.NewResource(notification.TelegramKind()),
+		notification.NewResource(notification.EmailKind()),
+		notification.NewResource(notification.ResendKind()),
+		notification.NewResource(notification.GotifyKind()),
+		notification.NewResource(notification.NtfyKind()),
+		notification.NewResource(notification.MattermostKind()),
+		notification.NewResource(notification.LarkKind()),
+		notification.NewResource(notification.TeamsKind()),
+		notification.NewResource(notification.PushoverKind()),
+		notification.NewResource(notification.CustomKind()),
 	}
 }
 
@@ -214,7 +258,14 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		func() datasource.DataSource { return dsdatabase.NewDataSource(database.MongoKind(p.client))() },
 		dsenvironment.NewDataSource,
 		dsgitprovider.NewDataSource,
+		dsgitproviders.NewGitlabDataSource,
+		dsgitproviders.NewBitbucketDataSource,
+		dsgitproviders.NewGiteaDataSource,
 		dsdestination.NewDataSource,
+		dssshkey.NewDataSource,
+		dsserver.NewDataSource,
+		dsorganization.NewDataSource,
+		dsuser.NewDataSource,
 		libsqldatasource.NewDataSource,
 		dsnetwork.NewDataSource,
 	}

@@ -50,38 +50,86 @@ import (
 // belongs here. Adding an endpoint to the client without adding it here is
 // exactly the gap this table exists to close.
 var endpointStructs = map[string]any{
-	"application.saveGithubProvider": SaveGithubProviderRequest{},
-	"application.saveGitProvider":    SaveGitProviderRequest{},
-	"application.saveDockerProvider": SaveDockerProviderRequest{},
-	"application.saveBuildType":      SaveBuildTypeRequest{},
-	"application.saveEnvironment":    SaveApplicationEnvironmentRequest{},
-	"mounts.create":                  CreateMountRequest{},
-	"mounts.update":                  UpdateMountRequest{},
-	"port.create":                    CreatePortRequest{},
-	"port.update":                    UpdatePortRequest{},
-	"redirects.create":               CreateRedirectRequest{},
-	"redirects.update":               UpdateRedirectRequest{},
-	"security.create":                CreateSecurityRequest{},
-	"security.update":                UpdateSecurityRequest{},
-	"destination.create":             CreateDestinationRequest{},
-	"destination.update":             UpdateDestinationRequest{},
-	"schedule.create":                CreateScheduleRequest{},
-	"schedule.update":                UpdateScheduleRequest{},
-	"volumeBackups.create":           CreateVolumeBackupRequest{},
-	"volumeBackups.update":           UpdateVolumeBackupRequest{},
-	"backup.create":                  CreateBackupRequest{},
-	"backup.update":                  UpdateBackupRequest{},
-	"compose.create":                 CreateComposeRequest{},
-	"compose.update":                 UpdateComposeRequest{},
-	"compose.saveEnvironment":        SaveComposeEnvironmentRequest{},
-	"libsql.create":                  CreateLibsqlRequest{},
-	"libsql.update":                  UpdateLibsqlRequest{},
-	"libsql.saveExternalPorts":       saveLibsqlExternalPortsShape{},
-	"libsql.saveEnvironment":         saveLibsqlEnvironmentShape{},
-	"network.create":                 CreateNetworkRequest{},
-	"vaultProvider.create":           CreateVaultProviderRequest{},
-	"vaultProvider.update":           UpdateVaultProviderRequest{},
-	"vaultProvider.testConnection":   TestVaultConnectionRequest{},
+	"application.saveGithubProvider":    SaveGithubProviderRequest{},
+	"application.saveGitProvider":       SaveGitProviderRequest{},
+	"application.saveDockerProvider":    SaveDockerProviderRequest{},
+	"application.saveGitlabProvider":    SaveGitlabProviderRequest{},
+	"application.saveBitbucketProvider": SaveBitbucketProviderRequest{},
+	"application.saveGiteaProvider":     SaveGiteaProviderRequest{},
+	"application.saveBuildType":         SaveBuildTypeRequest{},
+	"application.saveEnvironment":       SaveApplicationEnvironmentRequest{},
+	"mounts.create":                     CreateMountRequest{},
+	"mounts.update":                     UpdateMountRequest{},
+	"port.create":                       CreatePortRequest{},
+	"port.update":                       UpdatePortRequest{},
+	"redirects.create":                  CreateRedirectRequest{},
+	"redirects.update":                  UpdateRedirectRequest{},
+	"security.create":                   CreateSecurityRequest{},
+	"security.update":                   UpdateSecurityRequest{},
+	"destination.create":                CreateDestinationRequest{},
+	"destination.update":                UpdateDestinationRequest{},
+	"schedule.create":                   CreateScheduleRequest{},
+	"schedule.update":                   UpdateScheduleRequest{},
+	"volumeBackups.create":              CreateVolumeBackupRequest{},
+	"volumeBackups.update":              UpdateVolumeBackupRequest{},
+	"backup.create":                     CreateBackupRequest{},
+	"backup.update":                     UpdateBackupRequest{},
+	"compose.create":                    CreateComposeRequest{},
+	"compose.update":                    UpdateComposeRequest{},
+	"compose.saveEnvironment":           SaveComposeEnvironmentRequest{},
+	"libsql.create":                     CreateLibsqlRequest{},
+	"libsql.update":                     UpdateLibsqlRequest{},
+	"libsql.saveExternalPorts":          saveLibsqlExternalPortsShape{},
+	"libsql.saveEnvironment":            saveLibsqlEnvironmentShape{},
+	"network.create":                    CreateNetworkRequest{},
+	"vaultProvider.create":              CreateVaultProviderRequest{},
+	"vaultProvider.update":              UpdateVaultProviderRequest{},
+	"vaultProvider.testConnection":      TestVaultConnectionRequest{},
+	"sshKey.create":                     CreateSSHKeyRequest{},
+	"sshKey.update":                     UpdateSSHKeyRequest{},
+	"server.create":                     CreateServerRequest{},
+	"server.update":                     UpdateServerRequest{},
+	"certificates.create":               CreateCertificateRequest{},
+	"certificates.update":               UpdateCertificateRequest{},
+	"ai.create":                         CreateAIRequest{},
+	"ai.update":                         UpdateAIRequest{},
+	"registry.create":                   CreateRegistryRequest{},
+	"registry.update":                   UpdateRegistryRequest{},
+	"gitlab.create":                     CreateGitlabRequest{},
+	"gitlab.update":                     UpdateGitlabRequest{},
+	"bitbucket.create":                  CreateBitbucketRequest{},
+	"bitbucket.update":                  UpdateBitbucketRequest{},
+	"gitea.create":                      CreateGiteaRequest{},
+	"gitea.update":                      UpdateGiteaRequest{},
+	"notification.createSlack":          CreateSlackNotificationRequest{},
+	"notification.updateSlack":          UpdateSlackNotificationRequest{},
+	"notification.createTelegram":       CreateTelegramNotificationRequest{},
+	"notification.updateTelegram":       UpdateTelegramNotificationRequest{},
+	"notification.createDiscord":        CreateDiscordNotificationRequest{},
+	"notification.updateDiscord":        UpdateDiscordNotificationRequest{},
+	"notification.createEmail":          CreateEmailNotificationRequest{},
+	"notification.updateEmail":          UpdateEmailNotificationRequest{},
+	"notification.createResend":         CreateResendNotificationRequest{},
+	"notification.updateResend":         UpdateResendNotificationRequest{},
+	"notification.createGotify":         CreateGotifyNotificationRequest{},
+	"notification.updateGotify":         UpdateGotifyNotificationRequest{},
+	"notification.createNtfy":           CreateNtfyNotificationRequest{},
+	"notification.updateNtfy":           UpdateNtfyNotificationRequest{},
+	"notification.createMattermost":     CreateMattermostNotificationRequest{},
+	"notification.updateMattermost":     UpdateMattermostNotificationRequest{},
+	"notification.createCustom":         CreateCustomNotificationRequest{},
+	"notification.updateCustom":         UpdateCustomNotificationRequest{},
+	"notification.createLark":           CreateLarkNotificationRequest{},
+	"notification.updateLark":           UpdateLarkNotificationRequest{},
+	"notification.createPushover":       CreatePushoverNotificationRequest{},
+	"notification.updatePushover":       UpdatePushoverNotificationRequest{},
+	"notification.createTeams":          CreateTeamsNotificationRequest{},
+	"notification.updateTeams":          UpdateTeamsNotificationRequest{},
+	"organization.create":               CreateOrganizationRequest{},
+	"organization.update":               UpdateOrganizationRequest{},
+	"user.createUserWithCredentials":    CreateUserRequest{},
+	"user.assignPermissions":            AssignPermissionsRequest{},
+	"user.createApiKey":                 CreateAPIKeyRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -176,36 +224,14 @@ var censusExempt = map[string]map[string]string{
 		"metadata": "schema is untyped (anyOf [{}, null]); reads back null on every observed record",
 		"userId":   "implied by the API key; the server assigns it",
 	},
-	// compose.update accepts the gitlab, bitbucket and gitea provider
-	// columns. None is modelled, for the same reason
-	// internal/datasources/gitprovider covers only GitHub: no instance
-	// available to develop against has one, so their shapes would be
-	// inferred rather than observed. dokploy_application has the identical
-	// gap. Note this endpoint is dialect B, not A, so an unmodelled field is
-	// merely unmanageable here - it is NOT reset on every apply, verified
-	// live (v0.29.13, 2026-07-29) by setting thirteen fields away from their
-	// defaults and issuing an update carrying only composeId and name.
+	// compose.update is dialect B, not A, so an unmodelled field is merely
+	// unmanageable here - it is NOT reset on every apply, verified live
+	// (v0.29.13, 2026-07-29) by setting thirteen fields away from their
+	// defaults and issuing an update carrying only composeId and name. The
+	// gitlab, bitbucket and gitea columns are modelled since phase 2.
 	"compose.update": {
 		"isolatedDeployment":        "deprecated upstream since v0.30.0; service_networks replaces it",
 		"isolatedDeploymentsVolume": "deprecated upstream since v0.30.0; service_networks replaces it",
-
-		"gitlabId":            "no gitlab provider observed live; shape would be inferred",
-		"gitlabProjectId":     "no gitlab provider observed live; shape would be inferred",
-		"gitlabRepository":    "no gitlab provider observed live; shape would be inferred",
-		"gitlabOwner":         "no gitlab provider observed live; shape would be inferred",
-		"gitlabBranch":        "no gitlab provider observed live; shape would be inferred",
-		"gitlabPathNamespace": "no gitlab provider observed live; shape would be inferred",
-
-		"bitbucketId":             "no bitbucket provider observed live; shape would be inferred",
-		"bitbucketRepository":     "no bitbucket provider observed live; shape would be inferred",
-		"bitbucketRepositorySlug": "no bitbucket provider observed live; shape would be inferred",
-		"bitbucketOwner":          "no bitbucket provider observed live; shape would be inferred",
-		"bitbucketBranch":         "no bitbucket provider observed live; shape would be inferred",
-
-		"giteaId":         "no gitea provider observed live; shape would be inferred",
-		"giteaRepository": "no gitea provider observed live; shape would be inferred",
-		"giteaOwner":      "no gitea provider observed live; shape would be inferred",
-		"giteaBranch":     "no gitea provider observed live; shape would be inferred",
 
 		"appName":       "server-generated; RequiresReplace on the resource, never updated",
 		"createdAt":     "server-generated; not user configuration",
@@ -248,6 +274,80 @@ var censusExempt = map[string]map[string]string{
 		"externalGRPCPort":     "managed through libsql.saveExternalPorts, not in the primary update endpoint",
 		"externalPort":         "managed through libsql.saveExternalPorts, not in the primary update endpoint",
 	},
+	// Phase 2 records (probed 2026-09-05; see doc.go "Phase 2 records").
+	"sshKey.update": {
+		"lastUsedAt": "server-managed; the server rewrites it whenever a remote server uses the key",
+	},
+	"certificates.create": {
+		"certificateId":   "server-generated; the create endpoint assigns it",
+		"certificatePath": "server-generated; not user configuration",
+	},
+	"ai.update": {
+		"createdAt": "server-generated; not user configuration",
+	},
+	// registry.create/update accept serverId, but registry.one and
+	// registry.all never return it (probed live, v0.30.5, 2026-09-05). A
+	// write-only field cannot round-trip, the same reasoning as
+	// destination.serverId.
+	"registry.create": {
+		"serverId": "registry.one does not return it; a write-only field cannot round-trip",
+	},
+	"registry.update": {
+		"serverId":       "registry.one does not return it; a write-only field cannot round-trip",
+		"createdAt":      "server-generated; not user configuration",
+		"organizationId": "implied by the API key's organization",
+	},
+	// The git provider records. The OAuth handshake fields (accessToken,
+	// refreshToken, expiresAt, lastAuthenticatedAt, giteaUsername) are
+	// written by the browser flow, never by configuration.
+	"gitlab.create": {
+		"gitProviderId": "server-generated; the create endpoint assigns it",
+	},
+	"bitbucket.create": {
+		"bitbucketId":   "server-generated; the create endpoint assigns it",
+		"gitProviderId": "server-generated; the create endpoint assigns it",
+	},
+	"bitbucket.update": {
+		"organizationId": "implied by the API key's organization",
+	},
+	"gitea.create": {
+		"gitProviderId":       "server-generated; the create endpoint assigns it",
+		"giteaId":             "server-generated; the create endpoint assigns it",
+		"accessToken":         "written by the OAuth handshake in the browser, never by configuration",
+		"refreshToken":        "written by the OAuth handshake in the browser, never by configuration",
+		"expiresAt":           "written by the OAuth handshake in the browser, never by configuration",
+		"lastAuthenticatedAt": "written by the OAuth handshake in the browser, never by configuration",
+		"giteaUsername":       "written by the OAuth handshake in the browser, never by configuration",
+		"organizationName":    "gitea.one does not return it; a write-only field cannot round-trip",
+	},
+	"gitea.update": {
+		"accessToken":         "written by the OAuth handshake in the browser, never by configuration",
+		"refreshToken":        "written by the OAuth handshake in the browser, never by configuration",
+		"expiresAt":           "written by the OAuth handshake in the browser, never by configuration",
+		"lastAuthenticatedAt": "written by the OAuth handshake in the browser, never by configuration",
+		"giteaUsername":       "written by the OAuth handshake in the browser, never by configuration",
+		"organizationName":    "gitea.one does not return it; a write-only field cannot round-trip",
+	},
+	// Every notification.update<Type> accepts organizationId.
+	"notification.updateSlack":      {"organizationId": "implied by the API key's organization"},
+	"notification.updateTelegram":   {"organizationId": "implied by the API key's organization"},
+	"notification.updateDiscord":    {"organizationId": "implied by the API key's organization"},
+	"notification.updateEmail":      {"organizationId": "implied by the API key's organization"},
+	"notification.updateResend":     {"organizationId": "implied by the API key's organization"},
+	"notification.updateGotify":     {"organizationId": "implied by the API key's organization"},
+	"notification.updateNtfy":       {"organizationId": "implied by the API key's organization"},
+	"notification.updateMattermost": {"organizationId": "implied by the API key's organization"},
+	"notification.updateCustom":     {"organizationId": "implied by the API key's organization"},
+	"notification.updateLark":       {"organizationId": "implied by the API key's organization"},
+	"notification.updatePushover":   {"organizationId": "implied by the API key's organization"},
+	"notification.updateTeams":      {"organizationId": "implied by the API key's organization"},
+	// better-auth's refill quota fields: not exposed in the Dokploy UI, and
+	// the resource models the rate limit through rateLimitMax and the window.
+	"user.createApiKey": {
+		"remaining":      "better-auth refill quota; not exposed in the Dokploy UI and not modelled",
+		"refillAmount":   "better-auth refill quota; not exposed in the Dokploy UI and not modelled",
+		"refillInterval": "better-auth refill quota; not exposed in the Dokploy UI and not modelled",
+	},
 }
 
 type endpointFields struct {
@@ -279,8 +379,8 @@ func TestEndpointFieldCensus(t *testing.T) {
 		}
 		typ := reflect.TypeOf(reqStruct)
 		have := make(map[string]bool, typ.NumField())
-		for i := 0; i < typ.NumField(); i++ {
-			if name := jsonName(typ.Field(i)); name != "" {
+		for _, f := range jsonFields(typ) {
+			if name := jsonName(f); name != "" {
 				have[name] = true
 			}
 		}

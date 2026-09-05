@@ -482,3 +482,122 @@ resource "dokploy_compose" "none" {
 		},
 	})
 }
+
+// TestAccCompose_forgeSources moves one compose across the gitlab,
+// bitbucket and gitea sources with deploy_on_change = false. compose.update
+// is dialect B, so every source column is sent on every call; each step
+// asserts the server's sourceType and the columns of the block in use.
+func TestAccCompose_forgeSources(t *testing.T) {
+	name := acctest.RandomName("compose-forge")
+	base := projectConfig(name) + fmt.Sprintf(`
+resource "dokploy_gitlab_provider" "gl" {
+  name           = %[1]q
+  application_id = "oauth-app"
+  secret         = "s"
+}
+
+resource "dokploy_bitbucket_provider" "bb" {
+  name         = %[1]q
+  username     = "bbuser"
+  app_password = "p"
+}
+
+resource "dokploy_gitea_provider" "gt" {
+  name          = %[1]q
+  gitea_url     = "https://gitea.example.com"
+  client_id     = "cid"
+  client_secret = "s"
+}
+`, name)
+	compose := func(source string) string {
+		return base + fmt.Sprintf(`
+resource "dokploy_compose" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.environments[0].id
+  deploy_on_change = false
+%s
+}
+`, name, source)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkComposeDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: compose(`
+  gitlab = {
+    gitlab_id      = dokploy_gitlab_provider.gl.id
+    owner          = "group"
+    repository     = "stack"
+    branch         = "main"
+    project_id     = 42
+    path_namespace = "group/stack"
+  }`),
+				Check: func(s *terraform.State) error {
+					c, err := getCompose(s, "dokploy_compose.test")
+					if err != nil {
+						return err
+					}
+					if c.SourceType != "gitlab" || c.GitlabProjectID == nil || *c.GitlabProjectID != 42 || c.GitlabPathNamespace == nil || *c.GitlabPathNamespace != "group/stack" {
+						return fmt.Errorf("server gitlab source = type %q, project %v", c.SourceType, c.GitlabProjectID)
+					}
+					return nil
+				},
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				Config: compose(`
+  bitbucket = {
+    bitbucket_id    = dokploy_bitbucket_provider.bb.id
+    owner           = "workspace"
+    repository      = "Stack"
+    repository_slug = "stack"
+    branch          = "main"
+  }`),
+				Check: func(s *terraform.State) error {
+					c, err := getCompose(s, "dokploy_compose.test")
+					if err != nil {
+						return err
+					}
+					if c.SourceType != "bitbucket" || c.BitbucketRepositorySlug == nil || *c.BitbucketRepositorySlug != "stack" {
+						return fmt.Errorf("server bitbucket source = type %q, slug %v", c.SourceType, c.BitbucketRepositorySlug)
+					}
+					// The gitlab columns clear on the switch: every source column
+					// is sent on every update.
+					if c.GitlabID != nil && *c.GitlabID != "" {
+						return fmt.Errorf("gitlabId = %q, want cleared after the switch to bitbucket", *c.GitlabID)
+					}
+					return nil
+				},
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				Config: compose(`
+  gitea = {
+    gitea_id   = dokploy_gitea_provider.gt.id
+    owner      = "org"
+    repository = "stack"
+    branch     = "main"
+  }`),
+				Check: func(s *terraform.State) error {
+					c, err := getCompose(s, "dokploy_compose.test")
+					if err != nil {
+						return err
+					}
+					if c.SourceType != "gitea" || c.GiteaOwner == nil || *c.GiteaOwner != "org" {
+						return fmt.Errorf("server gitea source = type %q, owner %v", c.SourceType, c.GiteaOwner)
+					}
+					return nil
+				},
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}

@@ -1,0 +1,1 @@
+terraform import dokploy_certificate.wildcard uxdzS4pe4_mMDIzGjwXY8

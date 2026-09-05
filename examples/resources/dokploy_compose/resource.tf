@@ -67,3 +67,33 @@ resource "dokploy_domain" "web" {
   port         = 80
   https        = true
 }
+
+# From a GitLab project, a Bitbucket repository, or a Gitea repository. Each
+# block names the provider record that holds the credentials.
+resource "dokploy_compose" "from_gitlab" {
+  name           = "gitlab-stack"
+  environment_id = dokploy_project.example.production_environment_id
+
+  gitlab = {
+    gitlab_id      = dokploy_gitlab_provider.main.id
+    owner          = "my-group"
+    repository     = "my-stack"
+    branch         = "main"
+    project_id     = 12345678
+    path_namespace = "my-group/my-stack"
+  }
+}
+
+resource "dokploy_compose" "from_gitea" {
+  name           = "gitea-stack"
+  environment_id = dokploy_project.example.production_environment_id
+
+  gitea = {
+    gitea_id   = dokploy_gitea_provider.main.id
+    owner      = "acme"
+    repository = "my-stack"
+    branch     = "main"
+  }
+
+  compose_path = "./compose/production.yml"
+}

@@ -44,12 +44,14 @@ jobs:
       # window: TestAccLibsql_portMatrix failed that way on 2026-09-05 (run
       # 33963429389, attempt 1). Pulling the images the suite deploys before
       # the tests start takes the pull out of the window. The list mirrors the
-      # docker_image values in the acceptance tests plus the libsql default.
+      # docker_image values in the acceptance tests plus the libsql default,
+      # and registry:2, which acctest.StartRigRegistry runs for the
+      # dokploy_registry tests.
       - name: Warm the image cache
         run: |
           set -euo pipefail
           pids=()
-          for image in traefik/whoami:v1.10 postgres:16-alpine redis:8 mysql:8 mongo:7 mariadb:11.4 ghcr.io/tursodatabase/libsql-server:v0.24.32; do
+          for image in traefik/whoami:v1.10 postgres:16-alpine redis:8 mysql:8 mongo:7 mariadb:11.4 ghcr.io/tursodatabase/libsql-server:v0.24.32 registry:2; do
             docker pull -q "$image" &
             pids+=("$!")
           done

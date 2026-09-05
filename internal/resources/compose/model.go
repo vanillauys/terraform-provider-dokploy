@@ -42,6 +42,33 @@ type rawSource struct {
 	ComposeFile types.String `tfsdk:"compose_file"`
 }
 
+// The gitlab, bitbucket and gitea sources (phase 2). compose_path serves
+// every source, so unlike dokploy_application there is no per-type build
+// path here.
+type gitlabSource struct {
+	GitlabID      types.String `tfsdk:"gitlab_id"`
+	Owner         types.String `tfsdk:"owner"`
+	Repository    types.String `tfsdk:"repository"`
+	Branch        types.String `tfsdk:"branch"`
+	ProjectID     types.Int64  `tfsdk:"project_id"`
+	PathNamespace types.String `tfsdk:"path_namespace"`
+}
+
+type bitbucketSource struct {
+	BitbucketID    types.String `tfsdk:"bitbucket_id"`
+	Owner          types.String `tfsdk:"owner"`
+	Repository     types.String `tfsdk:"repository"`
+	RepositorySlug types.String `tfsdk:"repository_slug"`
+	Branch         types.String `tfsdk:"branch"`
+}
+
+type giteaSource struct {
+	GiteaID    types.String `tfsdk:"gitea_id"`
+	Owner      types.String `tfsdk:"owner"`
+	Repository types.String `tfsdk:"repository"`
+	Branch     types.String `tfsdk:"branch"`
+}
+
 type resourceModel struct {
 	ID            types.String `tfsdk:"id"`
 	Name          types.String `tfsdk:"name"`
@@ -51,20 +78,23 @@ type resourceModel struct {
 	ServerID      types.String `tfsdk:"server_id"`
 	ComposeType   types.String `tfsdk:"compose_type"`
 
-	Github *githubSource `tfsdk:"github"`
-	Git    *gitSource    `tfsdk:"git"`
-	Raw    *rawSource    `tfsdk:"raw"`
+	Github    *githubSource    `tfsdk:"github"`
+	Git       *gitSource       `tfsdk:"git"`
+	Raw       *rawSource       `tfsdk:"raw"`
+	Gitlab    *gitlabSource    `tfsdk:"gitlab"`
+	Bitbucket *bitbucketSource `tfsdk:"bitbucket"`
+	Gitea     *giteaSource     `tfsdk:"gitea"`
 
 	ComposePath types.String `tfsdk:"compose_path"`
 	Command     types.String `tfsdk:"command"`
 	Suffix      types.String `tfsdk:"suffix"`
 	Env         types.String `tfsdk:"env"`
 
-	AutoDeploy                types.Bool   `tfsdk:"auto_deploy"`
-	TriggerType               types.String `tfsdk:"trigger_type"`
-	WatchPaths                types.List   `tfsdk:"watch_paths"`
-	EnableSubmodules          types.Bool   `tfsdk:"enable_submodules"`
-	Randomize                 types.Bool   `tfsdk:"randomize"`
+	AutoDeploy       types.Bool   `tfsdk:"auto_deploy"`
+	TriggerType      types.String `tfsdk:"trigger_type"`
+	WatchPaths       types.List   `tfsdk:"watch_paths"`
+	EnableSubmodules types.Bool   `tfsdk:"enable_submodules"`
+	Randomize        types.Bool   `tfsdk:"randomize"`
 
 	Status    types.String `tfsdk:"status"`
 	CreatedAt types.String `tfsdk:"created_at"`
@@ -134,8 +164,32 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 	// record retargeted from git to github keeps its stale customGitUrl,
 	// exactly as the mount, backup and schedule routers keep stale parent
 	// columns. The discriminator is the only trustworthy signal.
-	m.Github, m.Git, m.Raw = nil, nil, nil
+	m.Github, m.Git, m.Raw, m.Gitlab, m.Bitbucket, m.Gitea = nil, nil, nil, nil, nil, nil
 	switch c.SourceType {
+	case "gitlab":
+		m.Gitlab = &gitlabSource{
+			GitlabID:      tfutil.StringOrNull(c.GitlabID),
+			Owner:         tfutil.StringOrNull(c.GitlabOwner),
+			Repository:    tfutil.StringOrNull(c.GitlabRepository),
+			Branch:        tfutil.StringOrNull(c.GitlabBranch),
+			ProjectID:     types.Int64PointerValue(c.GitlabProjectID),
+			PathNamespace: tfutil.StringOrNull(c.GitlabPathNamespace),
+		}
+	case "bitbucket":
+		m.Bitbucket = &bitbucketSource{
+			BitbucketID:    tfutil.StringOrNull(c.BitbucketID),
+			Owner:          tfutil.StringOrNull(c.BitbucketOwner),
+			Repository:     tfutil.StringOrNull(c.BitbucketRepository),
+			RepositorySlug: tfutil.StringOrNull(c.BitbucketRepositorySlug),
+			Branch:         tfutil.StringOrNull(c.BitbucketBranch),
+		}
+	case "gitea":
+		m.Gitea = &giteaSource{
+			GiteaID:    tfutil.StringOrNull(c.GiteaID),
+			Owner:      tfutil.StringOrNull(c.GiteaOwner),
+			Repository: tfutil.StringOrNull(c.GiteaRepository),
+			Branch:     tfutil.StringOrNull(c.GiteaBranch),
+		}
 	case "github":
 		m.Github = &githubSource{
 			Repository: tfutil.StringOrNull(c.Repository),
@@ -197,18 +251,18 @@ func boolOrFalse(b *bool) types.Bool { return types.BoolValue(b != nil && *b) }
 // The schema does not accept source_type from config: its value is fully
 // determined by the block, so taking it from config would only create a way
 // to contradict yourself. Same reasoning as domain.go's domainTypeFor.
-//
-// The gitlab, bitbucket and gitea source types are reachable on the server
-// but have no block here, matching dokploy_application and
-// internal/datasources/gitprovider: no instance available to develop against
-// has one, so their shapes would be inferred rather than observed. They are
-// recorded in censusExempt with that reason.
 func sourceTypeFor(m *resourceModel) string {
 	switch {
 	case m.Git != nil:
 		return "git"
 	case m.Raw != nil:
 		return "raw"
+	case m.Gitlab != nil:
+		return "gitlab"
+	case m.Bitbucket != nil:
+		return "bitbucket"
+	case m.Gitea != nil:
+		return "gitea"
 	default:
 		return "github"
 	}
@@ -253,11 +307,11 @@ func expandUpdate(ctx context.Context, m *resourceModel) (client.UpdateComposeRe
 		ComposeType: m.ComposeType.ValueString(),
 		SourceType:  sourceTypeFor(m),
 
-		Description:               m.Description.ValueStringPointer(),
-		TriggerType:               m.TriggerType.ValueStringPointer(),
-		AutoDeploy:                m.AutoDeploy.ValueBoolPointer(),
-		EnableSubmodules:          m.EnableSubmodules.ValueBoolPointer(),
-		Randomize:                 m.Randomize.ValueBoolPointer(),
+		Description:      m.Description.ValueStringPointer(),
+		TriggerType:      m.TriggerType.ValueStringPointer(),
+		AutoDeploy:       m.AutoDeploy.ValueBoolPointer(),
+		EnableSubmodules: m.EnableSubmodules.ValueBoolPointer(),
+		Randomize:        m.Randomize.ValueBoolPointer(),
 	}
 
 	// Every source column is sent on every call, including the ones for the
@@ -279,6 +333,27 @@ func expandUpdate(ctx context.Context, m *resourceModel) (client.UpdateComposeRe
 	}
 	if m.Raw != nil {
 		req.ComposeFile = m.Raw.ComposeFile.ValueString()
+	}
+	if m.Gitlab != nil {
+		req.GitlabID = m.Gitlab.GitlabID.ValueStringPointer()
+		req.GitlabOwner = m.Gitlab.Owner.ValueStringPointer()
+		req.GitlabRepository = m.Gitlab.Repository.ValueStringPointer()
+		req.GitlabBranch = m.Gitlab.Branch.ValueStringPointer()
+		req.GitlabProjectID = m.Gitlab.ProjectID.ValueInt64Pointer()
+		req.GitlabPathNamespace = m.Gitlab.PathNamespace.ValueStringPointer()
+	}
+	if m.Bitbucket != nil {
+		req.BitbucketID = m.Bitbucket.BitbucketID.ValueStringPointer()
+		req.BitbucketOwner = m.Bitbucket.Owner.ValueStringPointer()
+		req.BitbucketRepository = m.Bitbucket.Repository.ValueStringPointer()
+		req.BitbucketRepositorySlug = m.Bitbucket.RepositorySlug.ValueStringPointer()
+		req.BitbucketBranch = m.Bitbucket.Branch.ValueStringPointer()
+	}
+	if m.Gitea != nil {
+		req.GiteaID = m.Gitea.GiteaID.ValueStringPointer()
+		req.GiteaOwner = m.Gitea.Owner.ValueStringPointer()
+		req.GiteaRepository = m.Gitea.Repository.ValueStringPointer()
+		req.GiteaBranch = m.Gitea.Branch.ValueStringPointer()
 	}
 
 	if m.WatchPaths.IsNull() || m.WatchPaths.IsUnknown() {
