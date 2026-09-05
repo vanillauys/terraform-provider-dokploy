@@ -1,6 +1,29 @@
 # terraform-provider-dokploy
 
-A Terraform and OpenTofu provider for [Dokploy](https://dokploy.com).
+[![Terraform Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.terraform.io%2Fv1%2Fproviders%2Fvanillauys%2Fdokploy&query=%24.version&prefix=v&label=registry&color=7B42BC&logo=terraform&logoColor=white)](https://registry.terraform.io/providers/vanillauys/dokploy/latest)
+[![Registry downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.terraform.io%2Fv2%2Fproviders%2Fvanillauys%2Fdokploy&query=%24.data.attributes.downloads&label=downloads&color=7B42BC)](https://registry.terraform.io/providers/vanillauys/dokploy/latest)
+[![test](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/test.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/test.yml)
+[![nightly acceptance](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/nightly.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/nightly.yml)
+[![release](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/release.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/release.yml)
+[![Go version](https://img.shields.io/github/go-mod/go-version/vanillauys/terraform-provider-dokploy?logo=go&logoColor=white)](go.mod)
+[![Dokploy v0.30.5](https://img.shields.io/badge/Dokploy-v0.30.5-0EA5E9)](https://github.com/Dokploy/dokploy/releases/tag/v0.30.5)
+[![Terraform 1.5+](https://img.shields.io/badge/Terraform-1.5%2B-7B42BC?logo=terraform&logoColor=white)](https://developer.hashicorp.com/terraform)
+[![OpenTofu 1.12](https://img.shields.io/badge/OpenTofu-1.12-FFDA18?logo=opentofu&logoColor=black)](https://opentofu.org)
+[![License: MIT](https://img.shields.io/github/license/vanillauys/terraform-provider-dokploy)](LICENSE)
+
+A Terraform and OpenTofu provider for [Dokploy](https://dokploy.com), the
+self-hosted PaaS. It manages projects, environments, applications, compose
+stacks, databases, domains, backups, servers, git providers, notifications,
+users, and API keys: 46 resources and 19 data sources, each with an
+acceptance test against a real Dokploy server.
+
+[Documentation](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs) ·
+[Get started](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/getting-started) ·
+[Usage examples](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/guides/usage-examples) ·
+[Changelog](CHANGELOG.md) ·
+[Contributing](CONTRIBUTING.md) ·
+[Security](SECURITY.md)
+
 The registry address is `vanillauys/dokploy`. The provider requires
 Terraform 1.5 or later. The write-only companions of the secret attributes
 (`<name>_wo`) need Terraform 1.11 or later; a configuration without them
@@ -180,3 +203,25 @@ the test layout, and the engineering rules. Quick reference:
 - `./acceptance/up.sh && eval "$(./acceptance/bootstrap.sh)" && make testacc`: run the acceptance tests against a disposable Dokploy server. Never point them at a real server.
 - `make docs`: regenerate the registry docs.
 - `make hooks`: enable the gitleaks pre-commit scan. `make build` enables it on the first run.
+
+## Contributing
+
+Open an [issue](https://github.com/vanillauys/terraform-provider-dokploy/issues/new/choose) for a bug or a Dokploy
+feature the provider does not model. A pull request follows
+[CONTRIBUTING.md](CONTRIBUTING.md); the pull request template lists the
+files a resource change touches. Every pull request runs the unit tests,
+the linter, `govulncheck`, the docs check, and the acceptance suite against
+a fresh Dokploy server.
+
+## Security
+
+Report a vulnerability through
+[GitHub private vulnerability reporting](https://github.com/vanillauys/terraform-provider-dokploy/security/advisories/new),
+not through a public issue. [SECURITY.md](SECURITY.md) states the scope
+and the supported versions. Each release is signed with GPG key
+`750EE4482941313E`, the key the Terraform registry verifies.
+
+## License
+
+[MIT](LICENSE).
+
