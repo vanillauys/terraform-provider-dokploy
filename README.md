@@ -5,6 +5,7 @@
 [![test](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/test.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/test.yml)
 [![nightly acceptance](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/nightly.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/nightly.yml)
 [![release](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/release.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/release.yml)
+[![CodeQL](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/dynamic/github-code-scanning/codeql/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/security/code-scanning)
 [![Go version](https://img.shields.io/github/go-mod/go-version/vanillauys/terraform-provider-dokploy?logo=go&logoColor=white)](go.mod)
 [![Dokploy v0.30.5](https://img.shields.io/badge/Dokploy-v0.30.5-0EA5E9)](https://github.com/Dokploy/dokploy/releases/tag/v0.30.5)
 [![Terraform 1.5+](https://img.shields.io/badge/Terraform-1.5%2B-7B42BC?logo=terraform&logoColor=white)](https://developer.hashicorp.com/terraform)
@@ -210,8 +211,8 @@ Open an [issue](https://github.com/vanillauys/terraform-provider-dokploy/issues/
 feature the provider does not model. A pull request follows
 [CONTRIBUTING.md](CONTRIBUTING.md); the pull request template lists the
 files a resource change touches. Every pull request runs the unit tests,
-the linter, `govulncheck`, the docs check, and the acceptance suite against
-a fresh Dokploy server.
+the linter, `govulncheck`, CodeQL, the docs check, and the acceptance suite
+against a fresh Dokploy server.
 
 ## Security
 
