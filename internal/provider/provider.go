@@ -19,9 +19,13 @@ import (
 	libsqldatasource "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/libsql"
 	dsnetwork "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/network"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
+	dsserver "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/server"
+	dssshkey "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/sshkey"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/ai"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/application"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/backup"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/certificate"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/compose"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/destination"
@@ -32,6 +36,8 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/network"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/server"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/sshkey"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/volumebackup"
 )
@@ -177,6 +183,10 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		domain.NewResource,
 		mount.NewResource,
 		destination.NewResource,
+		sshkey.NewResource,
+		server.NewResource,
+		certificate.NewResource,
+		ai.NewResource,
 		network.NewResource,
 		schedule.NewResource,
 		vaultprovider.NewResource,
@@ -215,6 +225,8 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsenvironment.NewDataSource,
 		dsgitprovider.NewDataSource,
 		dsdestination.NewDataSource,
+		dssshkey.NewDataSource,
+		dsserver.NewDataSource,
 		libsqldatasource.NewDataSource,
 		dsnetwork.NewDataSource,
 	}

@@ -82,6 +82,14 @@ var endpointStructs = map[string]any{
 	"vaultProvider.create":           CreateVaultProviderRequest{},
 	"vaultProvider.update":           UpdateVaultProviderRequest{},
 	"vaultProvider.testConnection":   TestVaultConnectionRequest{},
+	"sshKey.create":                  CreateSSHKeyRequest{},
+	"sshKey.update":                  UpdateSSHKeyRequest{},
+	"server.create":                  CreateServerRequest{},
+	"server.update":                  UpdateServerRequest{},
+	"certificates.create":            CreateCertificateRequest{},
+	"certificates.update":            UpdateCertificateRequest{},
+	"ai.create":                      CreateAIRequest{},
+	"ai.update":                      UpdateAIRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -247,6 +255,17 @@ var censusExempt = map[string]map[string]string{
 		"externalAdminPort":    "managed through libsql.saveExternalPorts, not in the primary update endpoint",
 		"externalGRPCPort":     "managed through libsql.saveExternalPorts, not in the primary update endpoint",
 		"externalPort":         "managed through libsql.saveExternalPorts, not in the primary update endpoint",
+	},
+	// Phase 2 records (probed 2026-09-05; see doc.go "Phase 2 records").
+	"sshKey.update": {
+		"lastUsedAt": "server-managed; the server rewrites it whenever a remote server uses the key",
+	},
+	"certificates.create": {
+		"certificateId":   "server-generated; the create endpoint assigns it",
+		"certificatePath": "server-generated; not user configuration",
+	},
+	"ai.update": {
+		"createdAt": "server-generated; not user configuration",
 	},
 }
 

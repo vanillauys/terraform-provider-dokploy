@@ -191,3 +191,25 @@ func StartRigVault(t *testing.T) (url, token string) {
 
 	return fmt.Sprintf("http://%s:8200", name), token
 }
+
+// GenerateSSHKey asks the rig for an ed25519 key pair through
+// sshKey.generate. sshKey.create validates the private key format, so a
+// placeholder string is rejected; the server's own generator is the simplest
+// source of a valid pair.
+func GenerateSSHKey(t *testing.T) (publicKey, privateKey string) {
+	t.Helper()
+	// The tests call this before resource.Test, so it must skip on its own
+	// when the acceptance flag is unset; resource.Test's own skip runs later.
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("TF_ACC is not set; acceptance tests are skipped")
+	}
+	c, err := ClientFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, err := c.GenerateSSHKey(context.Background(), "ed25519")
+	if err != nil {
+		t.Fatalf("generating an SSH key pair on the rig: %v", err)
+	}
+	return g.PublicKey, g.PrivateKey
+}

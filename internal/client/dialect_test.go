@@ -38,6 +38,15 @@ var mustAlwaysSend = []struct {
 	}},
 	{UpdateEnvironmentRequest{}, []string{"name", "description", "env"}},
 	{CreateEnvironmentRequest{}, []string{"description"}},
+	// Phase 2 records. sshKey.update is dialect B (null clears description);
+	// server.update is dialect A; the certificate and ai updates carry the
+	// full body because a partial one keeps (certificates) or fails (ai).
+	{UpdateSSHKeyRequest{}, []string{"description"}},
+	{CreateServerRequest{}, []string{"description", "sshKeyId", "enableDockerCleanup"}},
+	{UpdateServerRequest{}, []string{"description", "sshKeyId", "enableDockerCleanup", "command"}},
+	{CreateCertificateRequest{}, []string{"serverId", "autoRenew"}},
+	{UpdateCertificateRequest{}, []string{"name", "certificateData", "privateKey"}},
+	{UpdateAIRequest{}, []string{"name", "apiUrl", "apiKey", "model", "isEnabled"}},
 	// The dialect A application endpoints. Until wave 3 none of them was in
 	// this table at all: it held only dialect B Update* structs, so the
 	// endpoints where an absent key is a hard 400 were entirely unguarded.
