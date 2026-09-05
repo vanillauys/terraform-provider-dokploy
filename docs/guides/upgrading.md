@@ -1,11 +1,57 @@
 ---
-page_title: "Upgrade to v0.11"
+page_title: "Upgrade guide"
 subcategory: ""
 description: |-
-  The breaking changes in v0.11.0, the old and the new configuration for each, and what you must do.
+  What each release since v0.11.0 needs from your configuration: the write-only companions of v0.12, and the breaking changes of v0.11.
 ---
 
-# Upgrade to v0.11
+# Upgrade guide
+
+## Upgrade to v0.12
+
+v0.12.0 has no breaking change. Every attribute from v0.11.0 keeps its shape,
+and the existing state loads with an empty plan.
+
+1. Update the version constraint to `~> 0.12`.
+2. Run `terraform init -upgrade`.
+3. Run `terraform plan`. The plan must be empty.
+
+v0.12.0 adds a write-only companion to each secret attribute. The move to a
+companion is optional. It is an in-place update, and it removes the secret
+from the state. It needs Terraform 1.11 or later.
+
+Old:
+
+```hcl
+resource "dokploy_postgres" "db" {
+  name              = "db"
+  environment_id    = dokploy_project.example.production_environment_id
+  database_name     = "app"
+  database_user     = "app"
+  database_password = var.db_password
+}
+```
+
+New:
+
+```hcl
+resource "dokploy_postgres" "db" {
+  name                         = "db"
+  environment_id               = dokploy_project.example.production_environment_id
+  database_name                = "app"
+  database_user                = "app"
+  database_password_wo         = var.db_password
+  database_password_wo_version = 1
+}
+```
+
+The apply sends the value once and redeploys. After it, the state holds null
+for `database_password`, and `terraform show` prints no password. To rotate
+the password later, change the value and increase the version. See
+[Secrets and sensitive values](secrets#write-only-companions) for the full
+list of companions and the rules.
+
+## Upgrade to v0.11
 
 v0.11.0 is the last minor release with breaking changes before v1.0.0. It
 renames one attribute, removes three, and adds one. The existing state loads

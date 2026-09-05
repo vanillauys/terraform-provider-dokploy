@@ -22,9 +22,14 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 Each service resource deploys on change, and each resource supports
 `terraform import`.
 
-The provider works with Terraform 1.5 or later and with OpenTofu. It targets
-**Dokploy v0.30.5**. The acceptance suite tests each new Dokploy release when
-it ships. The suite does not test older releases.
+The provider works with Terraform 1.5 or later and with OpenTofu. The
+write-only companions of the secret attributes (`<name>_wo`) need Terraform
+1.11 or later; a configuration without them works on 1.5. The provider targets
+**Dokploy v0.30.5**. The acceptance suite tests the latest Dokploy release on
+every pull request and every night. The suite does not test older releases. A
+server older than the pinned version can reject a field that a newer Dokploy
+introduced. If your server is older, upgrade it to the pinned version or later
+before you apply.
 
 ## Guides
 
@@ -35,9 +40,11 @@ it ships. The suite does not test older releases.
 - [Deploy semantics](guides/deploy-semantics): `deploy_on_change`,
   `deployment_timeout`, and deploy failures.
 - [Secrets and sensitive values](guides/secrets): environment variables,
-  database passwords, and backup credentials.
-- [Upgrade to v0.11](guides/upgrading): the breaking changes in v0.11.0 and
-  the configuration edit for each.
+  database passwords, backup credentials, and the write-only companions
+  that keep a secret out of the state.
+- [Upgrade guide](guides/upgrading): what each release needs from your
+  configuration. v0.12 adds the write-only companions; v0.11 had the
+  breaking changes.
 
 ## Before you start
 
