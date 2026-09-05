@@ -15,6 +15,16 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+      # terraform-plugin-testing downloads a Terraform CLI in every test
+      # package through HashiCorp's checkpoint API unless TF_ACC_TERRAFORM_PATH
+      # names one. That download timed out on 2026-09-05 (run 33963126885) and
+      # failed ten packages in three seconds each before any test ran. One
+      # pinned install serves every package and takes the network out of the
+      # test binaries. The wrapper is off so the path is the real binary.
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.16.1"
+          terraform_wrapper: false
       # Every piped step below sets pipefail explicitly. GitHub's default shell
       # is `bash -e`, which inspects only the LAST command in a pipeline: a
       # failing curl or bootstrap.sh was reported as a green step, and the job
@@ -33,4 +43,4 @@ jobs:
           set -euo pipefail
           ./acceptance/bootstrap.sh | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Run acceptance tests
-        run: make testacc
+        run: TF_ACC_TERRAFORM_PATH="$(command -v terraform)" make testacc
