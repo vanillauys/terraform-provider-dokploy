@@ -34,6 +34,149 @@ resource "dokploy_application" "test" {
 `, name+"-proj", name)
 }
 
+// checkSecurityPassword reads the record back through the API and compares
+// the stored password. The write-only tests assert the server, not the
+// state: in that mode the state holds no secret.
+func checkSecurityPassword(want string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources["dokploy_security.test"]
+		if !ok {
+			return fmt.Errorf("dokploy_security.test not found in state")
+		}
+		c, err := acctest.ClientFromEnv()
+		if err != nil {
+			return err
+		}
+		sec, err := c.GetSecurity(context.Background(), rs.Primary.ID)
+		if err != nil {
+			return err
+		}
+		if sec.Password != want {
+			return fmt.Errorf("server password = %q, want %q", sec.Password, want)
+		}
+		return nil
+	}
+}
+
+// securityWriteOnlyConfig is the config of the two write-only tests; the
+// username and the password lines vary per step.
+func securityWriteOnlyConfig(name, username, password string) string {
+	return appBase(name) + fmt.Sprintf(`
+resource "dokploy_security" "test" {
+  application_id = dokploy_application.test.id
+  username       = %q
+%s
+}
+`, username, password)
+}
+
+var checkSecurityDestroy = checkChildDestroy("dokploy_security", func(c *client.Client, id string) error {
+	_, err := c.GetSecurity(context.Background(), id)
+	return err
+})
+
+// TestAccSecurity_writeOnlyPassword pins the companions on the appchild
+// engine: security.update carries the full body, so a write-only password
+// with nothing new to send is read back and resent, a new version sends the
+// new value, and the config moves between the two shapes in place.
+func TestAccSecurity_writeOnlyPassword(t *testing.T) {
+	name := acctest.RandomName("sec-wo")
+	noSecretInState := resource.ComposeAggregateTestCheckFunc(
+		resource.TestCheckNoResourceAttr("dokploy_security.test", "password"),
+		resource.TestCheckNoResourceAttr("dokploy_security.test", "password_wo"),
+	)
+	update := resource.ConfigPlanChecks{
+		PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_security.test", plancheck.ResourceActionUpdate)},
+		PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+	}
+	wo := func(password string, version int) string {
+		return fmt.Sprintf("  password_wo         = %q\n  password_wo_version = %d", password, version)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkSecurityDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: securityWriteOnlyConfig(name, "preview", wo("wo-pass-1", 1)),
+				Check:  resource.ComposeAggregateTestCheckFunc(noSecretInState, checkSecurityPassword("wo-pass-1")),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// A username change with the same version: the update must
+				// resend the stored password, not clear it.
+				Config:           securityWriteOnlyConfig(name, "preview2", wo("wo-pass-1", 1)),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_security.test", "username", "preview2"),
+					noSecretInState,
+					checkSecurityPassword("wo-pass-1"),
+				),
+			},
+			{
+				Config:           securityWriteOnlyConfig(name, "preview2", wo("wo-pass-2", 2)),
+				ConfigPlanChecks: update,
+				Check:            resource.ComposeAggregateTestCheckFunc(noSecretInState, checkSecurityPassword("wo-pass-2")),
+			},
+			{
+				Config:           securityWriteOnlyConfig(name, "preview2", "  password = \"plain-pass-3\""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_security.test", "password", "plain-pass-3"),
+					checkSecurityPassword("plain-pass-3"),
+				),
+			},
+			{
+				Config:           securityWriteOnlyConfig(name, "preview2", wo("wo-pass-4", 4)),
+				ConfigPlanChecks: update,
+				Check:            resource.ComposeAggregateTestCheckFunc(noSecretInState, checkSecurityPassword("wo-pass-4")),
+			},
+		},
+	})
+}
+
+// TestAccSecurity_upgradeFromV0_11 proves that a v0.11.0 state with the
+// password in it loads under the companions with an empty plan, and that
+// the move to the companion is an in-place update.
+func TestAccSecurity_upgradeFromV0_11(t *testing.T) {
+	name := acctest.RandomName("sec-up")
+	plain := "  password = \"acc-pass-12345\""
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkSecurityDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.11.0"},
+				},
+				Config: securityWriteOnlyConfig(name, "preview", plain),
+				Check:  resource.TestCheckResourceAttr("dokploy_security.test", "password", "acc-pass-12345"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   securityWriteOnlyConfig(name, "preview", plain),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_security.test", "password", "acc-pass-12345"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   securityWriteOnlyConfig(name, "preview", "  password_wo         = \"wo-pass-2\"\n  password_wo_version = 2"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_security.test", plancheck.ResourceActionUpdate)},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_security.test", "password"),
+					checkSecurityPassword("wo-pass-2"),
+				),
+			},
+		},
+	})
+}
+
 func checkChildDestroy(resourceType string, get func(*client.Client, string) error) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		c, err := acctest.ClientFromEnv()

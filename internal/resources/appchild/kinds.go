@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 // ---------------------------------------------------------------- port
@@ -181,6 +182,10 @@ type SecurityModel struct {
 	ApplicationID types.String `tfsdk:"application_id"`
 	Username      types.String `tfsdk:"username"`
 	Password      types.String `tfsdk:"password"`
+	// The write-only companions (tfutil.WriteOnlyCompanions). Only the
+	// config carries the _wo value; the plan and the state hold null for it.
+	PasswordWo        types.String `tfsdk:"password_wo"`
+	PasswordWoVersion types.Int64  `tfsdk:"password_wo_version"`
 }
 
 func flattenSecurity(s *client.Security, m *SecurityModel) {
@@ -191,25 +196,33 @@ func flattenSecurity(s *client.Security, m *SecurityModel) {
 }
 
 func SecurityKind() Kind[SecurityModel] {
+	attrs := map[string]schema.Attribute{
+		"username": schema.StringAttribute{
+			Required:    true,
+			Description: "Basic-auth username.",
+		},
+		// password is Optional, not Required, only because its write-only
+		// companion can replace it; the ExactlyOneOf validator on the
+		// companion still demands one of the two.
+		"password": schema.StringAttribute{
+			Optional:    true,
+			Sensitive:   true,
+			Description: "Basic-auth password. Set this attribute or `password_wo`.",
+		},
+	}
+	for name, attr := range tfutil.WriteOnlyCompanions("password", tfutil.WriteOnlyOptions{ExactlyOne: true}) {
+		attrs[name] = attr
+	}
 	return Kind[SecurityModel]{
 		Name: "security",
 		Description: "HTTP basic-auth credentials that protect a Dokploy application.\n\n" +
 			"~> Dokploy stores and returns `password` in cleartext. The attribute is sensitive, so " +
 			"Terraform does not print it, but anyone with API access to the server can read it, " +
-			"and the Terraform state holds it in cleartext like any other attribute.",
-		Attributes: map[string]schema.Attribute{
-			"username": schema.StringAttribute{
-				Required:    true,
-				Description: "Basic-auth username.",
-			},
-			"password": schema.StringAttribute{
-				Required:    true,
-				Sensitive:   true,
-				Description: "Basic-auth password.",
-			},
-		},
-		ID:    func(m *SecurityModel) string { return m.ID.ValueString() },
-		SetID: func(m *SecurityModel, id string) { m.ID = types.StringValue(id) },
+			"and the Terraform state holds it in cleartext like any other attribute. " +
+			"The `password_wo` companion keeps it out of the state.",
+		Attributes: attrs,
+		ID:         func(m *SecurityModel) string { return m.ID.ValueString() },
+		SetID:      func(m *SecurityModel, id string) { m.ID = types.StringValue(id) },
 		Create: func(ctx context.Context, c *client.Client, m *SecurityModel) error {
 			s, err := c.CreateSecurity(ctx, client.CreateSecurityRequest{
 				ApplicationID: m.ApplicationID.ValueString(),
@@ -240,5 +253,31 @@ func SecurityKind() Kind[SecurityModel] {
 		Delete: func(ctx context.Context, c *client.Client, id string) error {
 			return c.DeleteSecurity(ctx, id)
 		},
+		Secrets: []string{"password"},
+		// ResolveSecrets leaves the value to send in m.Password: Create and
+		// Update above read it from there. HideSecret nulls it again after
+		// the call, whenever the companion is in use.
+		ResolveSecrets: func(ctx context.Context, c *client.Client, plan, cfg, prior *SecurityModel) (map[string]bool, error) {
+			inUse := map[string]bool{"password": !cfg.PasswordWo.IsNull()}
+			if prior == nil {
+				plan.Password = types.StringValue(tfutil.SecretToCreate(plan.Password, cfg.PasswordWo))
+				return inUse, nil
+			}
+			value, send := tfutil.SecretToUpdate(plan.Password, cfg.PasswordWo, prior.Password, plan.PasswordWoVersion, prior.PasswordWoVersion)
+			if !send {
+				// security.update needs the full field set (client/
+				// security.go), so a write-only password with nothing new
+				// to send resends the stored one, which the API returns in
+				// cleartext.
+				s, err := c.GetSecurity(ctx, plan.ID.ValueString())
+				if err != nil {
+					return nil, err
+				}
+				value = s.Password
+			}
+			plan.Password = types.StringValue(value)
+			return inUse, nil
+		},
+		HideSecret: func(m *SecurityModel, _ string) { m.Password = types.StringNull() },
 	}
 }

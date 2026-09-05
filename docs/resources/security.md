@@ -4,14 +4,14 @@ page_title: "dokploy_security Resource - dokploy"
 subcategory: ""
 description: |-
   HTTP basic-auth credentials that protect a Dokploy application.
-  ~> Dokploy stores and returns password in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it, and the Terraform state holds it in cleartext like any other attribute.
+  ~> Dokploy stores and returns password in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it, and the Terraform state holds it in cleartext like any other attribute. The password_wo companion keeps it out of the state.
 ---
 
 # dokploy_security (Resource)
 
 HTTP basic-auth credentials that protect a Dokploy application.
 
-~> Dokploy stores and returns `password` in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it, and the Terraform state holds it in cleartext like any other attribute.
+~> Dokploy stores and returns `password` in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it, and the Terraform state holds it in cleartext like any other attribute. The `password_wo` companion keeps it out of the state.
 
 ## Example Usage
 
@@ -30,8 +30,15 @@ resource "dokploy_security" "staging_gate" {
 ### Required
 
 - `application_id` (String) Id of the application that owns this record. A change forces a replacement: the Dokploy update endpoint for this record type has no parent field, so a record cannot move between applications.
-- `password` (String, Sensitive) Basic-auth password.
 - `username` (String) Basic-auth username.
+
+### Optional
+
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
+- `password` (String, Sensitive) Basic-auth password. Set this attribute or `password_wo`.
+- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `password` and `password_wo`. A new value reaches the server only when `password_wo_version` changes.
+- `password_wo_version` (Number) Version of `password_wo`. Change it to send the current `password_wo` value to the server. It needs `password_wo`.
 
 ### Read-Only
 

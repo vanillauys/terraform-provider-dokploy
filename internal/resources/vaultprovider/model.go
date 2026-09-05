@@ -27,47 +27,65 @@ type resourceModel struct {
 	CreatedAt        types.String `tfsdk:"created_at"`
 }
 
+// Each secret field of a config block has its write-only companions
+// (tfutil.WriteOnlyCompanions): `<x>_wo`, which only the config carries, and
+// `<x>_wo_version`. The plan and the state hold null for `<x>_wo`.
+
 type hashicorpModel struct {
-	URL       types.String `tfsdk:"url"`
-	Token     types.String `tfsdk:"token"`
-	Namespace types.String `tfsdk:"namespace"`
-	Mount     types.String `tfsdk:"mount"`
+	URL            types.String `tfsdk:"url"`
+	Token          types.String `tfsdk:"token"`
+	TokenWo        types.String `tfsdk:"token_wo"`
+	TokenWoVersion types.Int64  `tfsdk:"token_wo_version"`
+	Namespace      types.String `tfsdk:"namespace"`
+	Mount          types.String `tfsdk:"mount"`
 }
 
 type infisicalModel struct {
-	SiteURL         types.String `tfsdk:"site_url"`
-	ClientID        types.String `tfsdk:"client_id"`
-	ClientSecret    types.String `tfsdk:"client_secret"`
-	ProjectID       types.String `tfsdk:"project_id"`
-	EnvironmentSlug types.String `tfsdk:"environment_slug"`
-	SecretPath      types.String `tfsdk:"secret_path"`
+	SiteURL               types.String `tfsdk:"site_url"`
+	ClientID              types.String `tfsdk:"client_id"`
+	ClientSecret          types.String `tfsdk:"client_secret"`
+	ClientSecretWo        types.String `tfsdk:"client_secret_wo"`
+	ClientSecretWoVersion types.Int64  `tfsdk:"client_secret_wo_version"`
+	ProjectID             types.String `tfsdk:"project_id"`
+	EnvironmentSlug       types.String `tfsdk:"environment_slug"`
+	SecretPath            types.String `tfsdk:"secret_path"`
 }
 
 type awsModel struct {
-	Region          types.String `tfsdk:"region"`
-	AccessKeyID     types.String `tfsdk:"access_key_id"`
-	SecretAccessKey types.String `tfsdk:"secret_access_key"`
-	Endpoint        types.String `tfsdk:"endpoint"`
+	Region                   types.String `tfsdk:"region"`
+	AccessKeyID              types.String `tfsdk:"access_key_id"`
+	AccessKeyIDWo            types.String `tfsdk:"access_key_id_wo"`
+	AccessKeyIDWoVersion     types.Int64  `tfsdk:"access_key_id_wo_version"`
+	SecretAccessKey          types.String `tfsdk:"secret_access_key"`
+	SecretAccessKeyWo        types.String `tfsdk:"secret_access_key_wo"`
+	SecretAccessKeyWoVersion types.Int64  `tfsdk:"secret_access_key_wo_version"`
+	Endpoint                 types.String `tfsdk:"endpoint"`
 }
 
 type dopplerModel struct {
-	ServiceToken types.String `tfsdk:"service_token"`
-	Project      types.String `tfsdk:"project"`
-	Config       types.String `tfsdk:"config"`
+	ServiceToken          types.String `tfsdk:"service_token"`
+	ServiceTokenWo        types.String `tfsdk:"service_token_wo"`
+	ServiceTokenWoVersion types.Int64  `tfsdk:"service_token_wo_version"`
+	Project               types.String `tfsdk:"project"`
+	Config                types.String `tfsdk:"config"`
 }
 
 type azureModel struct {
-	VaultURI     types.String `tfsdk:"vault_uri"`
-	TenantID     types.String `tfsdk:"tenant_id"`
-	ClientID     types.String `tfsdk:"client_id"`
-	ClientSecret types.String `tfsdk:"client_secret"`
+	VaultURI              types.String `tfsdk:"vault_uri"`
+	TenantID              types.String `tfsdk:"tenant_id"`
+	ClientID              types.String `tfsdk:"client_id"`
+	ClientSecret          types.String `tfsdk:"client_secret"`
+	ClientSecretWo        types.String `tfsdk:"client_secret_wo"`
+	ClientSecretWoVersion types.Int64  `tfsdk:"client_secret_wo_version"`
 }
 
 type scalewayModel struct {
-	ProjectID types.String `tfsdk:"project_id"`
-	SecretKey types.String `tfsdk:"secret_key"`
-	Region    types.String `tfsdk:"region"`
-	APIURL    types.String `tfsdk:"api_url"`
+	ProjectID          types.String `tfsdk:"project_id"`
+	SecretKey          types.String `tfsdk:"secret_key"`
+	SecretKeyWo        types.String `tfsdk:"secret_key_wo"`
+	SecretKeyWoVersion types.Int64  `tfsdk:"secret_key_wo_version"`
+	Region             types.String `tfsdk:"region"`
+	APIURL             types.String `tfsdk:"api_url"`
 }
 
 type assignmentModel struct {
@@ -77,56 +95,70 @@ type assignmentModel struct {
 
 func hashicorpAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"url":       types.StringType,
-		"token":     types.StringType,
-		"namespace": types.StringType,
-		"mount":     types.StringType,
+		"url":              types.StringType,
+		"token":            types.StringType,
+		"token_wo":         types.StringType,
+		"token_wo_version": types.Int64Type,
+		"namespace":        types.StringType,
+		"mount":            types.StringType,
 	}
 }
 
 func infisicalAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"site_url":         types.StringType,
-		"client_id":        types.StringType,
-		"client_secret":    types.StringType,
-		"project_id":       types.StringType,
-		"environment_slug": types.StringType,
-		"secret_path":      types.StringType,
+		"site_url":                 types.StringType,
+		"client_id":                types.StringType,
+		"client_secret":            types.StringType,
+		"client_secret_wo":         types.StringType,
+		"client_secret_wo_version": types.Int64Type,
+		"project_id":               types.StringType,
+		"environment_slug":         types.StringType,
+		"secret_path":              types.StringType,
 	}
 }
 
 func awsAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"region":            types.StringType,
-		"access_key_id":     types.StringType,
-		"secret_access_key": types.StringType,
-		"endpoint":          types.StringType,
+		"region":                       types.StringType,
+		"access_key_id":                types.StringType,
+		"access_key_id_wo":             types.StringType,
+		"access_key_id_wo_version":     types.Int64Type,
+		"secret_access_key":            types.StringType,
+		"secret_access_key_wo":         types.StringType,
+		"secret_access_key_wo_version": types.Int64Type,
+		"endpoint":                     types.StringType,
 	}
 }
 
 func dopplerAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"service_token": types.StringType,
-		"project":       types.StringType,
-		"config":        types.StringType,
+		"service_token":            types.StringType,
+		"service_token_wo":         types.StringType,
+		"service_token_wo_version": types.Int64Type,
+		"project":                  types.StringType,
+		"config":                   types.StringType,
 	}
 }
 
 func azureAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"vault_uri":     types.StringType,
-		"tenant_id":     types.StringType,
-		"client_id":     types.StringType,
-		"client_secret": types.StringType,
+		"vault_uri":                types.StringType,
+		"tenant_id":                types.StringType,
+		"client_id":                types.StringType,
+		"client_secret":            types.StringType,
+		"client_secret_wo":         types.StringType,
+		"client_secret_wo_version": types.Int64Type,
 	}
 }
 
 func scalewayAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"project_id": types.StringType,
-		"secret_key": types.StringType,
-		"region":     types.StringType,
-		"api_url":    types.StringType,
+		"project_id":            types.StringType,
+		"secret_key":            types.StringType,
+		"secret_key_wo":         types.StringType,
+		"secret_key_wo_version": types.Int64Type,
+		"region":                types.StringType,
+		"api_url":               types.StringType,
 	}
 }
 
@@ -137,32 +169,52 @@ func assignmentAttrTypes() map[string]attr.Type {
 	}
 }
 
-// --- expand: model block -> typed client config struct ---
+// decodeBlock reads a config block into target and reports whether the
+// block was present. A null or unknown block leaves target at its zero
+// value: every companion then reads as null, the plain-attribute case.
+func decodeBlock(ctx context.Context, obj types.Object, target any, diags *diag.Diagnostics) bool {
+	if obj.IsNull() || obj.IsUnknown() {
+		return false
+	}
+	diags.Append(obj.As(ctx, target, basetypes.ObjectAsOptions{})...)
+	return true
+}
 
-func expandHashicorpConfig(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *client.VaultHashicorpConfig {
+// --- expand: model block -> typed client config struct ---
+//
+// Each expand takes the plan block and the config block: only the config
+// carries a write-only secret (the framework nulls it in the plan), so the
+// secret comes from tfutil.SecretToCreate over the two. The vault provider
+// sends the configured value on create and on every update alike: the server
+// masks each secret on read (internal/client/doc.go, gate R), so an update
+// can never resend a stored value, and each update carries the full body.
+
+func expandHashicorpConfig(ctx context.Context, obj, cfgObj types.Object, diags *diag.Diagnostics) *client.VaultHashicorpConfig {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
-	var m hashicorpModel
+	var m, wo hashicorpModel
 	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	decodeBlock(ctx, cfgObj, &wo, diags)
 	if diags.HasError() {
 		return nil
 	}
 	return &client.VaultHashicorpConfig{
 		ProviderType: client.VaultProviderTypeHashicorp,
 		URL:          m.URL.ValueString(),
-		Token:        m.Token.ValueString(),
+		Token:        tfutil.SecretToCreate(m.Token, wo.TokenWo),
 		Namespace:    m.Namespace.ValueString(),
 		Mount:        m.Mount.ValueString(),
 	}
 }
 
-func expandInfisicalConfig(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *client.VaultInfisicalConfig {
+func expandInfisicalConfig(ctx context.Context, obj, cfgObj types.Object, diags *diag.Diagnostics) *client.VaultInfisicalConfig {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
-	var m infisicalModel
+	var m, wo infisicalModel
 	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	decodeBlock(ctx, cfgObj, &wo, diags)
 	if diags.HasError() {
 		return nil
 	}
@@ -170,54 +222,57 @@ func expandInfisicalConfig(ctx context.Context, obj types.Object, diags *diag.Di
 		ProviderType:    client.VaultProviderTypeInfisical,
 		SiteURL:         m.SiteURL.ValueString(),
 		ClientID:        m.ClientID.ValueString(),
-		ClientSecret:    m.ClientSecret.ValueString(),
+		ClientSecret:    tfutil.SecretToCreate(m.ClientSecret, wo.ClientSecretWo),
 		ProjectID:       m.ProjectID.ValueString(),
 		EnvironmentSlug: m.EnvironmentSlug.ValueString(),
 		SecretPath:      m.SecretPath.ValueString(),
 	}
 }
 
-func expandAWSConfig(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *client.VaultAWSConfig {
+func expandAWSConfig(ctx context.Context, obj, cfgObj types.Object, diags *diag.Diagnostics) *client.VaultAWSConfig {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
-	var m awsModel
+	var m, wo awsModel
 	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	decodeBlock(ctx, cfgObj, &wo, diags)
 	if diags.HasError() {
 		return nil
 	}
 	return &client.VaultAWSConfig{
 		ProviderType:    client.VaultProviderTypeAWS,
 		Region:          m.Region.ValueString(),
-		AccessKeyID:     m.AccessKeyID.ValueString(),
-		SecretAccessKey: m.SecretAccessKey.ValueString(),
+		AccessKeyID:     tfutil.SecretToCreate(m.AccessKeyID, wo.AccessKeyIDWo),
+		SecretAccessKey: tfutil.SecretToCreate(m.SecretAccessKey, wo.SecretAccessKeyWo),
 		Endpoint:        m.Endpoint.ValueString(),
 	}
 }
 
-func expandDopplerConfig(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *client.VaultDopplerConfig {
+func expandDopplerConfig(ctx context.Context, obj, cfgObj types.Object, diags *diag.Diagnostics) *client.VaultDopplerConfig {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
-	var m dopplerModel
+	var m, wo dopplerModel
 	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	decodeBlock(ctx, cfgObj, &wo, diags)
 	if diags.HasError() {
 		return nil
 	}
 	return &client.VaultDopplerConfig{
 		ProviderType: client.VaultProviderTypeDoppler,
-		ServiceToken: m.ServiceToken.ValueString(),
+		ServiceToken: tfutil.SecretToCreate(m.ServiceToken, wo.ServiceTokenWo),
 		Project:      m.Project.ValueString(),
 		Config:       m.Config.ValueString(),
 	}
 }
 
-func expandAzureConfig(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *client.VaultAzureConfig {
+func expandAzureConfig(ctx context.Context, obj, cfgObj types.Object, diags *diag.Diagnostics) *client.VaultAzureConfig {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
-	var m azureModel
+	var m, wo azureModel
 	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	decodeBlock(ctx, cfgObj, &wo, diags)
 	if diags.HasError() {
 		return nil
 	}
@@ -226,16 +281,17 @@ func expandAzureConfig(ctx context.Context, obj types.Object, diags *diag.Diagno
 		VaultURI:     m.VaultURI.ValueString(),
 		TenantID:     m.TenantID.ValueString(),
 		ClientID:     m.ClientID.ValueString(),
-		ClientSecret: m.ClientSecret.ValueString(),
+		ClientSecret: tfutil.SecretToCreate(m.ClientSecret, wo.ClientSecretWo),
 	}
 }
 
-func expandScalewayConfig(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *client.VaultScalewayConfig {
+func expandScalewayConfig(ctx context.Context, obj, cfgObj types.Object, diags *diag.Diagnostics) *client.VaultScalewayConfig {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
-	var m scalewayModel
+	var m, wo scalewayModel
 	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	decodeBlock(ctx, cfgObj, &wo, diags)
 	if diags.HasError() {
 		return nil
 	}
@@ -243,7 +299,7 @@ func expandScalewayConfig(ctx context.Context, obj types.Object, diags *diag.Dia
 		ProviderType: client.VaultProviderTypeScaleway,
 		Region:       m.Region.ValueString(),
 		ProjectID:    m.ProjectID.ValueString(),
-		SecretKey:    m.SecretKey.ValueString(),
+		SecretKey:    tfutil.SecretToCreate(m.SecretKey, wo.SecretKeyWo),
 		APIURL:       m.APIURL.ValueString(),
 	}
 }
@@ -251,21 +307,23 @@ func expandScalewayConfig(ctx context.Context, obj types.Object, diags *diag.Dia
 // expandConfig picks the one populated config block out of m (the
 // ConfigValidators ExactlyOneOf on the resource guarantees exactly one is
 // set by the time Create/Update run) and returns the built client struct
-// together with its wire discriminator.
-func expandConfig(ctx context.Context, m resourceModel, diags *diag.Diagnostics) (any, string) {
+// together with its wire discriminator. cfg is the config model, the only
+// carrier of the write-only secrets; the round-trip unit tests pass a zero
+// resourceModel for it.
+func expandConfig(ctx context.Context, m, cfg resourceModel, diags *diag.Diagnostics) (any, string) {
 	switch {
 	case !m.Hashicorp.IsNull():
-		return expandHashicorpConfig(ctx, m.Hashicorp, diags), client.VaultProviderTypeHashicorp
+		return expandHashicorpConfig(ctx, m.Hashicorp, cfg.Hashicorp, diags), client.VaultProviderTypeHashicorp
 	case !m.Infisical.IsNull():
-		return expandInfisicalConfig(ctx, m.Infisical, diags), client.VaultProviderTypeInfisical
+		return expandInfisicalConfig(ctx, m.Infisical, cfg.Infisical, diags), client.VaultProviderTypeInfisical
 	case !m.AWS.IsNull():
-		return expandAWSConfig(ctx, m.AWS, diags), client.VaultProviderTypeAWS
+		return expandAWSConfig(ctx, m.AWS, cfg.AWS, diags), client.VaultProviderTypeAWS
 	case !m.Doppler.IsNull():
-		return expandDopplerConfig(ctx, m.Doppler, diags), client.VaultProviderTypeDoppler
+		return expandDopplerConfig(ctx, m.Doppler, cfg.Doppler, diags), client.VaultProviderTypeDoppler
 	case !m.Azure.IsNull():
-		return expandAzureConfig(ctx, m.Azure, diags), client.VaultProviderTypeAzure
+		return expandAzureConfig(ctx, m.Azure, cfg.Azure, diags), client.VaultProviderTypeAzure
 	case !m.Scaleway.IsNull():
-		return expandScalewayConfig(ctx, m.Scaleway, diags), client.VaultProviderTypeScaleway
+		return expandScalewayConfig(ctx, m.Scaleway, cfg.Scaleway, diags), client.VaultProviderTypeScaleway
 	default:
 		diags.AddError(
 			"Building vault provider config",
@@ -287,87 +345,128 @@ func expandConfig(ctx context.Context, m resourceModel, diags *diag.Diagnostics)
 // null so a config that omits the field round-trips to the same null it
 // started from - the "documented omitempty exception" internal/client/
 // vaultprovider.go's struct comments describe.
+//
+// Each flatten also takes the plan block, for the write-only companions: a
+// secret whose plain attribute is null in the plan is in write-only mode,
+// so the state holds null for it and the plan's version companion. Without
+// a plan block (the round-trip unit tests) the wire value is the state.
 
-func flattenHashicorpConfig(c *client.VaultHashicorpConfig, diags *diag.Diagnostics) types.Object {
+// secretState returns the state value of a secret after a write: null when
+// the plan block has no plain value (the companion is in use), else the
+// wire value.
+func secretState(hasPlan bool, plan types.String, wire string) types.String {
+	if hasPlan && plan.IsNull() {
+		return types.StringNull()
+	}
+	return types.StringValue(wire)
+}
+
+func flattenHashicorpConfig(ctx context.Context, c *client.VaultHashicorpConfig, planObj types.Object, diags *diag.Diagnostics) types.Object {
 	if c == nil {
 		return types.ObjectNull(hashicorpAttrTypes())
 	}
+	var p hashicorpModel
+	hasPlan := decodeBlock(ctx, planObj, &p, diags)
 	obj, d := types.ObjectValue(hashicorpAttrTypes(), map[string]attr.Value{
-		"url":       types.StringValue(c.URL),
-		"token":     types.StringValue(c.Token),
-		"namespace": tfutil.StringOrNull(&c.Namespace),
-		"mount":     types.StringValue(c.Mount),
+		"url":              types.StringValue(c.URL),
+		"token":            secretState(hasPlan, p.Token, c.Token),
+		"token_wo":         types.StringNull(),
+		"token_wo_version": p.TokenWoVersion,
+		"namespace":        tfutil.StringOrNull(&c.Namespace),
+		"mount":            types.StringValue(c.Mount),
 	})
 	diags.Append(d...)
 	return obj
 }
 
-func flattenInfisicalConfig(c *client.VaultInfisicalConfig, diags *diag.Diagnostics) types.Object {
+func flattenInfisicalConfig(ctx context.Context, c *client.VaultInfisicalConfig, planObj types.Object, diags *diag.Diagnostics) types.Object {
 	if c == nil {
 		return types.ObjectNull(infisicalAttrTypes())
 	}
+	var p infisicalModel
+	hasPlan := decodeBlock(ctx, planObj, &p, diags)
 	obj, d := types.ObjectValue(infisicalAttrTypes(), map[string]attr.Value{
-		"site_url":         types.StringValue(c.SiteURL),
-		"client_id":        types.StringValue(c.ClientID),
-		"client_secret":    types.StringValue(c.ClientSecret),
-		"project_id":       types.StringValue(c.ProjectID),
-		"environment_slug": types.StringValue(c.EnvironmentSlug),
-		"secret_path":      types.StringValue(c.SecretPath),
+		"site_url":                 types.StringValue(c.SiteURL),
+		"client_id":                types.StringValue(c.ClientID),
+		"client_secret":            secretState(hasPlan, p.ClientSecret, c.ClientSecret),
+		"client_secret_wo":         types.StringNull(),
+		"client_secret_wo_version": p.ClientSecretWoVersion,
+		"project_id":               types.StringValue(c.ProjectID),
+		"environment_slug":         types.StringValue(c.EnvironmentSlug),
+		"secret_path":              types.StringValue(c.SecretPath),
 	})
 	diags.Append(d...)
 	return obj
 }
 
-func flattenAWSConfig(c *client.VaultAWSConfig, diags *diag.Diagnostics) types.Object {
+func flattenAWSConfig(ctx context.Context, c *client.VaultAWSConfig, planObj types.Object, diags *diag.Diagnostics) types.Object {
 	if c == nil {
 		return types.ObjectNull(awsAttrTypes())
 	}
+	var p awsModel
+	hasPlan := decodeBlock(ctx, planObj, &p, diags)
 	obj, d := types.ObjectValue(awsAttrTypes(), map[string]attr.Value{
-		"region":            types.StringValue(c.Region),
-		"access_key_id":     types.StringValue(c.AccessKeyID),
-		"secret_access_key": types.StringValue(c.SecretAccessKey),
-		"endpoint":          tfutil.StringOrNull(&c.Endpoint),
+		"region":                       types.StringValue(c.Region),
+		"access_key_id":                secretState(hasPlan, p.AccessKeyID, c.AccessKeyID),
+		"access_key_id_wo":             types.StringNull(),
+		"access_key_id_wo_version":     p.AccessKeyIDWoVersion,
+		"secret_access_key":            secretState(hasPlan, p.SecretAccessKey, c.SecretAccessKey),
+		"secret_access_key_wo":         types.StringNull(),
+		"secret_access_key_wo_version": p.SecretAccessKeyWoVersion,
+		"endpoint":                     tfutil.StringOrNull(&c.Endpoint),
 	})
 	diags.Append(d...)
 	return obj
 }
 
-func flattenDopplerConfig(c *client.VaultDopplerConfig, diags *diag.Diagnostics) types.Object {
+func flattenDopplerConfig(ctx context.Context, c *client.VaultDopplerConfig, planObj types.Object, diags *diag.Diagnostics) types.Object {
 	if c == nil {
 		return types.ObjectNull(dopplerAttrTypes())
 	}
+	var p dopplerModel
+	hasPlan := decodeBlock(ctx, planObj, &p, diags)
 	obj, d := types.ObjectValue(dopplerAttrTypes(), map[string]attr.Value{
-		"service_token": types.StringValue(c.ServiceToken),
-		"project":       tfutil.StringOrNull(&c.Project),
-		"config":        tfutil.StringOrNull(&c.Config),
+		"service_token":            secretState(hasPlan, p.ServiceToken, c.ServiceToken),
+		"service_token_wo":         types.StringNull(),
+		"service_token_wo_version": p.ServiceTokenWoVersion,
+		"project":                  tfutil.StringOrNull(&c.Project),
+		"config":                   tfutil.StringOrNull(&c.Config),
 	})
 	diags.Append(d...)
 	return obj
 }
 
-func flattenAzureConfig(c *client.VaultAzureConfig, diags *diag.Diagnostics) types.Object {
+func flattenAzureConfig(ctx context.Context, c *client.VaultAzureConfig, planObj types.Object, diags *diag.Diagnostics) types.Object {
 	if c == nil {
 		return types.ObjectNull(azureAttrTypes())
 	}
+	var p azureModel
+	hasPlan := decodeBlock(ctx, planObj, &p, diags)
 	obj, d := types.ObjectValue(azureAttrTypes(), map[string]attr.Value{
-		"vault_uri":     types.StringValue(c.VaultURI),
-		"tenant_id":     types.StringValue(c.TenantID),
-		"client_id":     types.StringValue(c.ClientID),
-		"client_secret": types.StringValue(c.ClientSecret),
+		"vault_uri":                types.StringValue(c.VaultURI),
+		"tenant_id":                types.StringValue(c.TenantID),
+		"client_id":                types.StringValue(c.ClientID),
+		"client_secret":            secretState(hasPlan, p.ClientSecret, c.ClientSecret),
+		"client_secret_wo":         types.StringNull(),
+		"client_secret_wo_version": p.ClientSecretWoVersion,
 	})
 	diags.Append(d...)
 	return obj
 }
 
-func flattenScalewayConfig(c *client.VaultScalewayConfig, diags *diag.Diagnostics) types.Object {
+func flattenScalewayConfig(ctx context.Context, c *client.VaultScalewayConfig, planObj types.Object, diags *diag.Diagnostics) types.Object {
 	if c == nil {
 		return types.ObjectNull(scalewayAttrTypes())
 	}
+	var p scalewayModel
+	hasPlan := decodeBlock(ctx, planObj, &p, diags)
 	obj, d := types.ObjectValue(scalewayAttrTypes(), map[string]attr.Value{
-		"project_id": types.StringValue(c.ProjectID),
-		"secret_key": types.StringValue(c.SecretKey),
-		"region":     types.StringValue(c.Region),
-		"api_url":    types.StringValue(c.APIURL),
+		"project_id":            types.StringValue(c.ProjectID),
+		"secret_key":            secretState(hasPlan, p.SecretKey, c.SecretKey),
+		"secret_key_wo":         types.StringNull(),
+		"secret_key_wo_version": p.SecretKeyWoVersion,
+		"region":                types.StringValue(c.Region),
+		"api_url":               types.StringValue(c.APIURL),
 	})
 	diags.Append(d...)
 	return obj
@@ -377,8 +476,10 @@ func flattenScalewayConfig(c *client.VaultScalewayConfig, diags *diag.Diagnostic
 // matches cfg's concrete type - the union round-trip's inverse of
 // expandConfig. Create and Update call it on the very struct they just sent
 // the server, to normalize state to a byte-perfect reflection of what was
-// actually written rather than trust the plan object as-is.
-func flattenConfig(cfg any, m *resourceModel, diags *diag.Diagnostics) {
+// actually written rather than trust the plan object as-is. The plan blocks
+// that m carries on entry supply the write-only companions.
+func flattenConfig(ctx context.Context, cfg any, m *resourceModel, diags *diag.Diagnostics) {
+	plan := *m
 	m.Hashicorp = types.ObjectNull(hashicorpAttrTypes())
 	m.Infisical = types.ObjectNull(infisicalAttrTypes())
 	m.AWS = types.ObjectNull(awsAttrTypes())
@@ -388,17 +489,17 @@ func flattenConfig(cfg any, m *resourceModel, diags *diag.Diagnostics) {
 
 	switch c := cfg.(type) {
 	case *client.VaultHashicorpConfig:
-		m.Hashicorp = flattenHashicorpConfig(c, diags)
+		m.Hashicorp = flattenHashicorpConfig(ctx, c, plan.Hashicorp, diags)
 	case *client.VaultInfisicalConfig:
-		m.Infisical = flattenInfisicalConfig(c, diags)
+		m.Infisical = flattenInfisicalConfig(ctx, c, plan.Infisical, diags)
 	case *client.VaultAWSConfig:
-		m.AWS = flattenAWSConfig(c, diags)
+		m.AWS = flattenAWSConfig(ctx, c, plan.AWS, diags)
 	case *client.VaultDopplerConfig:
-		m.Doppler = flattenDopplerConfig(c, diags)
+		m.Doppler = flattenDopplerConfig(ctx, c, plan.Doppler, diags)
 	case *client.VaultAzureConfig:
-		m.Azure = flattenAzureConfig(c, diags)
+		m.Azure = flattenAzureConfig(ctx, c, plan.Azure, diags)
 	case *client.VaultScalewayConfig:
-		m.Scaleway = flattenScalewayConfig(c, diags)
+		m.Scaleway = flattenScalewayConfig(ctx, c, plan.Scaleway, diags)
 	}
 }
 

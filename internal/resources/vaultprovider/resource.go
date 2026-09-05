@@ -113,6 +113,9 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			"and non-secret fields alike. Manage the config of a vault provider only through Terraform. An edit in the UI stays " +
 			"undetected until the next apply that modifies this resource. That apply writes the full body and overwrites the edit " +
 			"with the Terraform config.\n\n" +
+			"~> **Each secret field has a write-only companion**, for example `hashicorp.token_wo` with `hashicorp.token_wo_version`. " +
+			"Terraform keeps the companion out of the plan and the state. The server does not return the secret, so the provider " +
+			"sends the companion's value on every update. Change the version to start an update when only the secret changed.\n\n" +
 			"~> **`terraform import` cannot recover a config block.** The import leaves the config blocks null. " +
 			"Supply the block that matches the actual provider type in the configuration. The first `terraform apply` then writes it " +
 			"as a full-body update, not as a partial patch.\n\n" +
@@ -141,7 +144,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 				Description: "HashiCorp Vault or OpenBao connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
 				Attributes: map[string]schema.Attribute{
 					"url":   schema.StringAttribute{Required: true, Description: "Vault or OpenBao server URL, for example `https://vault.example.com:8200`."},
-					"token": schema.StringAttribute{Required: true, Sensitive: true, Description: "Vault authentication token."},
+					"token": schema.StringAttribute{Optional: true, Sensitive: true, Description: "Vault authentication token. Set this attribute or `token_wo`."},
 					"namespace": schema.StringAttribute{
 						Optional:    true,
 						Description: "Vault Enterprise namespace. Omit it for open-source Vault or OpenBao. The server has no default for this field.",
@@ -167,7 +170,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 						Description: "Infisical instance URL. Defaults to the Infisical Cloud URL.",
 					},
 					"client_id":     schema.StringAttribute{Required: true, Description: "Infisical machine identity client id."},
-					"client_secret": schema.StringAttribute{Required: true, Sensitive: true, Description: "Infisical machine identity client secret."},
+					"client_secret": schema.StringAttribute{Optional: true, Sensitive: true, Description: "Infisical machine identity client secret. Set this attribute or `client_secret_wo`."},
 					"project_id":    schema.StringAttribute{Required: true, Description: "Infisical project id."},
 					"environment_slug": schema.StringAttribute{
 						Required:    true,
@@ -187,8 +190,8 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 					"The acceptance tests of this resource are the first live confirmation of it.",
 				Attributes: map[string]schema.Attribute{
 					"region":            schema.StringAttribute{Required: true, Description: "AWS region for Secrets Manager, for example `us-east-1`."},
-					"access_key_id":     schema.StringAttribute{Required: true, Sensitive: true, Description: "AWS access key id."},
-					"secret_access_key": schema.StringAttribute{Required: true, Sensitive: true, Description: "AWS secret access key."},
+					"access_key_id":     schema.StringAttribute{Optional: true, Sensitive: true, Description: "AWS access key id. Set this attribute or `access_key_id_wo`."},
+					"secret_access_key": schema.StringAttribute{Optional: true, Sensitive: true, Description: "AWS secret access key. Set this attribute or `secret_access_key_wo`."},
 					"endpoint": schema.StringAttribute{
 						Optional:    true,
 						Description: "Custom Secrets Manager endpoint, for a compatible service or a VPC endpoint. Omit it to use the default AWS endpoint. The server has no default for this field.",
@@ -201,7 +204,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 				Optional:    true,
 				Description: "Doppler connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
 				Attributes: map[string]schema.Attribute{
-					"service_token": schema.StringAttribute{Required: true, Sensitive: true, Description: "Doppler service token."},
+					"service_token": schema.StringAttribute{Optional: true, Sensitive: true, Description: "Doppler service token. Set this attribute or `service_token_wo`."},
 					"project": schema.StringAttribute{
 						Optional:    true,
 						Description: "Doppler project slug. Omit it, and Doppler infers it from the service token. The server has no default for this field.",
@@ -225,7 +228,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 					"vault_uri":     schema.StringAttribute{Required: true, Description: "Azure Key Vault URI, for example `https://myvault.vault.azure.net/`."},
 					"tenant_id":     schema.StringAttribute{Required: true, Description: "Azure AD tenant id."},
 					"client_id":     schema.StringAttribute{Required: true, Description: "Azure AD application client id."},
-					"client_secret": schema.StringAttribute{Required: true, Sensitive: true, Description: "Azure AD application client secret."},
+					"client_secret": schema.StringAttribute{Optional: true, Sensitive: true, Description: "Azure AD application client secret. Set this attribute or `client_secret_wo`."},
 				},
 			},
 			"scaleway": schema.SingleNestedAttribute{
@@ -233,7 +236,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 				Description: "Scaleway Secret Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
 				Attributes: map[string]schema.Attribute{
 					"project_id": schema.StringAttribute{Required: true, Description: "Scaleway project id."},
-					"secret_key": schema.StringAttribute{Required: true, Sensitive: true, Description: "Scaleway API secret key."},
+					"secret_key": schema.StringAttribute{Optional: true, Sensitive: true, Description: "Scaleway API secret key. Set this attribute or `secret_key_wo`."},
 					"region": schema.StringAttribute{
 						Optional: true, Computed: true,
 						Default:     stringdefault.StaticString("fr-par"),
@@ -277,6 +280,25 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},
+	}
+	// Every secret field gets its write-only pair inside its block. The
+	// server masks each secret on read, so the resource sends the configured
+	// value on every update; SentOnEveryUpdate words the descriptions so.
+	for block, secrets := range map[string][]string{
+		"hashicorp": {"token"},
+		"infisical": {"client_secret"},
+		"aws":       {"access_key_id", "secret_access_key"},
+		"doppler":   {"service_token"},
+		"azure":     {"client_secret"},
+		"scaleway":  {"secret_key"},
+	} {
+		nested := resp.Schema.Attributes[block].(schema.SingleNestedAttribute)
+		for _, secret := range secrets {
+			for name, attr := range tfutil.WriteOnlyCompanions(secret, tfutil.WriteOnlyOptions{ExactlyOne: true, Nested: true, SentOnEveryUpdate: true}) {
+				nested.Attributes[name] = attr
+			}
+		}
+		resp.Schema.Attributes[block] = nested
 	}
 }
 
@@ -348,13 +370,16 @@ func refreshComputed(ctx context.Context, v *client.VaultProvider, m *resourceMo
 // comment). verify_connection, when set, runs before CreateVaultProvider;
 // a failed test leaves nothing created.
 func (r *vaultProviderResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan resourceModel
+	var plan, config resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	// The config, not the plan, carries the write-only secrets: the
+	// framework nulls them in the plan (tfutil.WriteOnlyCompanions).
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	cfg, _ := expandConfig(ctx, plan, &resp.Diagnostics)
+	cfg, _ := expandConfig(ctx, plan, config, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -396,7 +421,7 @@ func (r *vaultProviderResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	refreshComputed(ctx, created, &plan, &resp.Diagnostics)
-	flattenConfig(cfg, &plan, &resp.Diagnostics)
+	flattenConfig(ctx, cfg, &plan, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -427,13 +452,16 @@ func (r *vaultProviderResource) Read(ctx context.Context, req resource.ReadReque
 // verify_connection, when set, runs first; a failed test leaves the prior
 // record untouched server-side.
 func (r *vaultProviderResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan resourceModel
+	var plan, config resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	// The config, not the plan, carries the write-only secrets: the
+	// framework nulls them in the plan (tfutil.WriteOnlyCompanions).
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	cfg, _ := expandConfig(ctx, plan, &resp.Diagnostics)
+	cfg, _ := expandConfig(ctx, plan, config, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -467,7 +495,7 @@ func (r *vaultProviderResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 	refreshComputed(ctx, v, &plan, &resp.Diagnostics)
-	flattenConfig(cfg, &plan, &resp.Diagnostics)
+	flattenConfig(ctx, cfg, &plan, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

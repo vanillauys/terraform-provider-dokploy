@@ -60,4 +60,20 @@ type Kind[M any] struct {
 	Read   func(context.Context, *client.Client, *M) error
 	Update func(context.Context, *client.Client, *M) error
 	Delete func(context.Context, *client.Client, string) error
+
+	// Secrets, when set, names the attributes that carry write-only
+	// companions (tfutil.WriteOnlyCompanions). The engine then also reads
+	// the config and the prior state, calls ResolveSecrets before Create
+	// and Update, records in the private state which secrets the config
+	// sets through a companion, and calls HideSecret for each of those
+	// after every client call, so the state never holds the secret. Read
+	// consults the same private-state flags.
+	Secrets []string
+	// ResolveSecrets writes into plan the value that the next client call
+	// must send for each secret, from the plan, the config (the only
+	// carrier of a write-only value) and the prior state (nil on create).
+	// It returns, per secret, whether the config uses the companion.
+	ResolveSecrets func(ctx context.Context, c *client.Client, plan, cfg, prior *M) (map[string]bool, error)
+	// HideSecret nulls one secret in the model.
+	HideSecret func(m *M, name string)
 }
