@@ -73,6 +73,138 @@ func getLibsql(s *terraform.State, addr string) (*client.Libsql, error) {
 	return c.GetLibsql(context.Background(), rs.Primary.ID)
 }
 
+// checkLibsqlPassword reads the service back through the API and compares
+// the stored password. The write-only tests below assert the server, not the
+// state: in that mode the state holds no secret.
+func checkLibsqlPassword(want string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		c, err := getLibsql(s, "dokploy_libsql.test")
+		if err != nil {
+			return err
+		}
+		if c.DatabasePassword != want {
+			return fmt.Errorf("server databasePassword = %q, want %q", c.DatabasePassword, want)
+		}
+		return nil
+	}
+}
+
+// libsqlWriteOnlyConfig is the config of the two write-only tests; the
+// password lines vary per step. deploy_on_change is false throughout: the
+// claim under test is what the record holds, and a libsql deploy pulls from
+// ghcr.io, which the rig reaches only some of the time.
+func libsqlWriteOnlyConfig(name, password string) string {
+	return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_libsql" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.production_environment_id
+  database_user    = "acc"
+  deploy_on_change = false
+%s
+}`, name+"-proj", name, password)
+}
+
+// TestAccLibsql_writeOnlyPassword mirrors TestAccPostgres_writeOnlyPassword
+// on the libsql resource, which has its own model: the companion sets the
+// password on the server and keeps it out of the state, a new value reaches
+// the server only with a new version, and the config moves between the two
+// shapes with an in-place update.
+func TestAccLibsql_writeOnlyPassword(t *testing.T) {
+	name := acctest.RandomName("ls-wo")
+	noSecretInState := resource.ComposeAggregateTestCheckFunc(
+		resource.TestCheckNoResourceAttr("dokploy_libsql.test", "database_password"),
+		resource.TestCheckNoResourceAttr("dokploy_libsql.test", "database_password_wo"),
+	)
+	update := resource.ConfigPlanChecks{
+		PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_libsql.test", plancheck.ResourceActionUpdate)},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkLibsqlDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: libsqlWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-1\"\n  database_password_wo_version = 1"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "database_password_wo_version", "1"),
+					noSecretInState,
+					checkLibsqlPassword("wo-password-1"),
+				),
+			},
+			{
+				Config: libsqlWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-ignored\"\n  database_password_wo_version = 1"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(noSecretInState, checkLibsqlPassword("wo-password-1")),
+			},
+			{
+				Config:           libsqlWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-2\"\n  database_password_wo_version = 2"),
+				ConfigPlanChecks: update,
+				Check:            resource.ComposeAggregateTestCheckFunc(noSecretInState, checkLibsqlPassword("wo-password-2")),
+			},
+			{
+				Config:           libsqlWriteOnlyConfig(name, "  database_password = \"plain-password-3\""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "database_password", "plain-password-3"),
+					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "database_password_wo_version"),
+					checkLibsqlPassword("plain-password-3"),
+				),
+			},
+			{
+				Config:           libsqlWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-4\"\n  database_password_wo_version = 4"),
+				ConfigPlanChecks: update,
+				Check:            resource.ComposeAggregateTestCheckFunc(noSecretInState, checkLibsqlPassword("wo-password-4")),
+			},
+		},
+	})
+}
+
+// TestAccLibsql_upgradeFromV0_11 proves that a v0.11.0 state with the
+// password in it loads under the companions with an empty plan, and that the
+// move to the companion is an in-place update.
+func TestAccLibsql_upgradeFromV0_11(t *testing.T) {
+	name := acctest.RandomName("ls-up")
+	plain := "  database_password = \"acc-password-1\""
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkLibsqlDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.11.0"},
+				},
+				Config: libsqlWriteOnlyConfig(name, plain),
+				Check:  resource.TestCheckResourceAttr("dokploy_libsql.test", "database_password", "acc-password-1"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   libsqlWriteOnlyConfig(name, plain),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_libsql.test", "database_password", "acc-password-1"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   libsqlWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-2\"\n  database_password_wo_version = 2"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_libsql.test", plancheck.ResourceActionUpdate)},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_libsql.test", "database_password"),
+					checkLibsqlPassword("wo-password-2"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccLibsqlReplicaRequiresPrimaryURL(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },

@@ -40,6 +40,150 @@ func getAccPostgres(s *terraform.State) (*client.Postgres, error) {
 	})
 }
 
+// checkPostgresPassword reads the service back through the API and compares
+// the stored password. The write-only tests below assert the server, not the
+// state: in that mode the state holds no secret.
+func checkPostgresPassword(want string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		pg, err := getAccPostgres(s)
+		if err != nil {
+			return err
+		}
+		if pg.DatabasePassword != want {
+			return fmt.Errorf("server databasePassword = %q, want %q", pg.DatabasePassword, want)
+		}
+		return nil
+	}
+}
+
+// postgresWriteOnlyConfig is the config of the two write-only tests; the
+// password lines vary per step.
+func postgresWriteOnlyConfig(name, password string) string {
+	return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_postgres" "test" {
+  name           = %q
+  environment_id = dokploy_project.test.production_environment_id
+  database_name  = "acc"
+  database_user  = "acc"
+  docker_image   = "postgres:16-alpine"
+%s
+}`, name+"-proj", name, password)
+}
+
+// TestAccPostgres_writeOnlyPassword pins P3-4 on the shared engine: the
+// write-only companion sets the password on the server and keeps it out of
+// the state, a new value reaches the server only with a new version, and the
+// config moves between the two shapes with an in-place update.
+func TestAccPostgres_writeOnlyPassword(t *testing.T) {
+	name := acctest.RandomName("pg-wo")
+	noSecretInState := resource.ComposeAggregateTestCheckFunc(
+		resource.TestCheckNoResourceAttr("dokploy_postgres.test", "database_password"),
+		resource.TestCheckNoResourceAttr("dokploy_postgres.test", "database_password_wo"),
+	)
+	update := resource.ConfigPlanChecks{
+		PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_postgres.test", plancheck.ResourceActionUpdate)},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkPostgresDestroy,
+		Steps: []resource.TestStep{
+			{
+				// Create through the companion. The deploy proves that the
+				// value reached the container, not only the record.
+				Config: postgresWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-1\"\n  database_password_wo_version = 1"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "database_password_wo_version", "1"),
+					noSecretInState,
+					checkPostgresPassword("wo-password-1"),
+				),
+			},
+			{
+				// A new value with the same version is not a change: the
+				// plan is empty and the server keeps the old password.
+				Config: postgresWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-ignored\"\n  database_password_wo_version = 1"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(noSecretInState, checkPostgresPassword("wo-password-1")),
+			},
+			{
+				// A new version sends the new value and redeploys.
+				Config:           postgresWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-2\"\n  database_password_wo_version = 2"),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "status", "done"),
+					noSecretInState,
+					checkPostgresPassword("wo-password-2"),
+				),
+			},
+			{
+				// Back to the plain attribute: an in-place update, and the
+				// state holds the password again.
+				Config:           postgresWriteOnlyConfig(name, "  database_password = \"plain-password-3\""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "database_password", "plain-password-3"),
+					resource.TestCheckNoResourceAttr("dokploy_postgres.test", "database_password_wo_version"),
+					checkPostgresPassword("plain-password-3"),
+				),
+			},
+			{
+				// And to the companion again: the state loses the secret.
+				Config:           postgresWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-4\"\n  database_password_wo_version = 4"),
+				ConfigPlanChecks: update,
+				Check:            resource.ComposeAggregateTestCheckFunc(noSecretInState, checkPostgresPassword("wo-password-4")),
+			},
+		},
+	})
+}
+
+// TestAccPostgres_upgradeFromV0_11 proves that a state written by v0.11.0,
+// with the password in it, loads under the companions with an empty plan,
+// and that the move to the companion is an in-place update. The pattern is
+// TestAccBackup_upgradeFromV0's.
+func TestAccPostgres_upgradeFromV0_11(t *testing.T) {
+	name := acctest.RandomName("pg-up")
+	plain := "  database_password = \"acc-password-1\"\n  deploy_on_change  = false"
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkPostgresDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.11.0"},
+				},
+				Config: postgresWriteOnlyConfig(name, plain),
+				Check:  resource.TestCheckResourceAttr("dokploy_postgres.test", "database_password", "acc-password-1"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   postgresWriteOnlyConfig(name, plain),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_postgres.test", "database_password", "acc-password-1"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   postgresWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-2\"\n  database_password_wo_version = 2\n  deploy_on_change             = false"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_postgres.test", plancheck.ResourceActionUpdate)},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_postgres.test", "database_password"),
+					checkPostgresPassword("wo-password-2"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccPostgres_lifecycle(t *testing.T) {
 	name := acctest.RandomName("pg")
 	// optionals is spliced in verbatim so a step can drop previously-set

@@ -11,32 +11,37 @@ import (
 )
 
 type resourceModel struct {
-	ID                types.String `tfsdk:"id"`
-	Name              types.String `tfsdk:"name"`
-	AppName           types.String `tfsdk:"app_name"`
-	EnvironmentID     types.String `tfsdk:"environment_id"`
-	Description       types.String `tfsdk:"description"`
-	DatabaseUser      types.String `tfsdk:"database_user"`
-	DatabasePassword  types.String `tfsdk:"database_password"`
-	SqldNode          types.String `tfsdk:"sqld_node"`
-	SqldPrimaryURL    types.String `tfsdk:"sqld_primary_url"`
-	EnableNamespaces  types.Bool   `tfsdk:"enable_namespaces"`
-	DockerImage       types.String `tfsdk:"docker_image"`
-	Env               types.String `tfsdk:"env"`
-	ExternalPort      types.Int64  `tfsdk:"external_port"`
-	ExternalAdminPort types.Int64  `tfsdk:"external_admin_port"`
-	ExternalGRPCPort  types.Int64  `tfsdk:"external_grpc_port"`
-	Command           types.String `tfsdk:"command"`
-	CPULimit          types.String `tfsdk:"cpu_limit"`
-	CPUReservation    types.String `tfsdk:"cpu_reservation"`
-	MemoryLimit       types.String `tfsdk:"memory_limit"`
-	MemoryReservation types.String `tfsdk:"memory_reservation"`
-	Replicas          types.Int64  `tfsdk:"replicas"`
-	ServerID          types.String `tfsdk:"server_id"`
-	Status            types.String `tfsdk:"status"`
-	CreatedAt         types.String `tfsdk:"created_at"`
-	DeployOnChange    types.Bool   `tfsdk:"deploy_on_change"`
-	DeploymentTimeout types.String `tfsdk:"deployment_timeout"`
+	ID               types.String `tfsdk:"id"`
+	Name             types.String `tfsdk:"name"`
+	AppName          types.String `tfsdk:"app_name"`
+	EnvironmentID    types.String `tfsdk:"environment_id"`
+	Description      types.String `tfsdk:"description"`
+	DatabaseUser     types.String `tfsdk:"database_user"`
+	DatabasePassword types.String `tfsdk:"database_password"`
+	// DatabasePasswordWo and DatabasePasswordWoVersion are the write-only
+	// companions (tfutil.WriteOnlyCompanions). Only the config carries the
+	// _wo value; the plan and the state hold null for it.
+	DatabasePasswordWo        types.String `tfsdk:"database_password_wo"`
+	DatabasePasswordWoVersion types.Int64  `tfsdk:"database_password_wo_version"`
+	SqldNode                  types.String `tfsdk:"sqld_node"`
+	SqldPrimaryURL            types.String `tfsdk:"sqld_primary_url"`
+	EnableNamespaces          types.Bool   `tfsdk:"enable_namespaces"`
+	DockerImage               types.String `tfsdk:"docker_image"`
+	Env                       types.String `tfsdk:"env"`
+	ExternalPort              types.Int64  `tfsdk:"external_port"`
+	ExternalAdminPort         types.Int64  `tfsdk:"external_admin_port"`
+	ExternalGRPCPort          types.Int64  `tfsdk:"external_grpc_port"`
+	Command                   types.String `tfsdk:"command"`
+	CPULimit                  types.String `tfsdk:"cpu_limit"`
+	CPUReservation            types.String `tfsdk:"cpu_reservation"`
+	MemoryLimit               types.String `tfsdk:"memory_limit"`
+	MemoryReservation         types.String `tfsdk:"memory_reservation"`
+	Replicas                  types.Int64  `tfsdk:"replicas"`
+	ServerID                  types.String `tfsdk:"server_id"`
+	Status                    types.String `tfsdk:"status"`
+	CreatedAt                 types.String `tfsdk:"created_at"`
+	DeployOnChange            types.Bool   `tfsdk:"deploy_on_change"`
+	DeploymentTimeout         types.String `tfsdk:"deployment_timeout"`
 
 	// NetworkIDs and DetachDokployNetwork are the v0.30.0 network attachment
 	// attributes (Task 2's client.Libsql.NetworkIDs/.DetachDokployNetwork and
@@ -95,7 +100,11 @@ func strPtr(v types.String) *string {
 	return &s
 }
 
-func expandCreate(m *resourceModel) client.CreateLibsqlRequest {
+// expandCreate builds the libsql.create request body. password is the value
+// that tfutil.SecretToCreate resolved from the plain attribute or its
+// write-only companion; the model's own DatabasePassword is null in the
+// write-only case.
+func expandCreate(m *resourceModel, password string) client.CreateLibsqlRequest {
 	return client.CreateLibsqlRequest{
 		Name: m.Name.ValueString(),
 		// AppName always carries a name-derived value, never m.AppName: the
@@ -111,7 +120,7 @@ func expandCreate(m *resourceModel) client.CreateLibsqlRequest {
 		EnvironmentID:    m.EnvironmentID.ValueString(),
 		Description:      strPtr(m.Description),
 		DatabaseUser:     m.DatabaseUser.ValueString(),
-		DatabasePassword: m.DatabasePassword.ValueString(),
+		DatabasePassword: password,
 		SqldNode:         m.SqldNode.ValueString(),
 		SqldPrimaryURL:   strPtr(m.SqldPrimaryURL),
 		ServerID:         strPtr(m.ServerID),
@@ -126,7 +135,9 @@ func expandCreate(m *resourceModel) client.CreateLibsqlRequest {
 // expandUpdate builds the libsql.update request body. It takes ctx and diags
 // - unlike expandCreate - only because tfutil.StringSetRequest needs both to
 // read the network_ids set; every other field here is a plain scalar read.
-func expandUpdate(ctx context.Context, m *resourceModel, diags *diag.Diagnostics) client.UpdateLibsqlRequest {
+// password comes from tfutil.SecretToUpdate; "" means "nothing to send", and
+// the request's omitempty then drops the key, which keeps the stored value.
+func expandUpdate(ctx context.Context, m *resourceModel, password string, diags *diag.Diagnostics) client.UpdateLibsqlRequest {
 	enable := m.EnableNamespaces.ValueBool()
 	replicas := m.Replicas.ValueInt64()
 	return client.UpdateLibsqlRequest{
@@ -134,7 +145,7 @@ func expandUpdate(ctx context.Context, m *resourceModel, diags *diag.Diagnostics
 		Name:                 m.Name.ValueString(),
 		Description:          strPtr(m.Description),
 		DatabaseUser:         m.DatabaseUser.ValueString(),
-		DatabasePassword:     m.DatabasePassword.ValueString(),
+		DatabasePassword:     password,
 		SqldNode:             m.SqldNode.ValueString(),
 		SqldPrimaryURL:       strPtr(m.SqldPrimaryURL),
 		EnableNamespaces:     &enable,

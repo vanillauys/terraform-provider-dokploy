@@ -39,6 +39,161 @@ func getAccMysql(s *terraform.State) (*client.Mysql, error) {
 	})
 }
 
+// checkMysqlRootPassword reads the service back through the API and compares
+// the stored root password. The write-only tests below assert the server,
+// not the state: in that mode the state holds no secret.
+func checkMysqlRootPassword(want string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		my, err := getAccMysql(s)
+		if err != nil {
+			return err
+		}
+		if my.DatabaseRootPassword != want {
+			return fmt.Errorf("server databaseRootPassword = %q, want %q", my.DatabaseRootPassword, want)
+		}
+		return nil
+	}
+}
+
+// mysqlWriteOnlyConfig is the config of the two write-only tests; the root
+// password lines vary per step.
+func mysqlWriteOnlyConfig(name, root string) string {
+	return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_mysql" "test" {
+  name              = %q
+  environment_id    = dokploy_project.test.production_environment_id
+  database_name     = "acc"
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  docker_image      = "mysql:8"
+%s
+}`, name+"-proj", name, root)
+}
+
+// TestAccMysql_writeOnlyRootPassword pins the companions on a Computed
+// credential attribute, the server-generated root password. The step that
+// drops both companions is the one tfutil.ComputedSecretPlan exists for: the
+// state then takes the server's value back, as a plain Optional+Computed
+// attribute does, instead of failing the apply on a known null plan.
+func TestAccMysql_writeOnlyRootPassword(t *testing.T) {
+	name := acctest.RandomName("my-wo")
+	noRootInState := resource.ComposeAggregateTestCheckFunc(
+		resource.TestCheckNoResourceAttr("dokploy_mysql.test", "database_root_password"),
+		resource.TestCheckNoResourceAttr("dokploy_mysql.test", "database_root_password_wo"),
+	)
+	update := resource.ConfigPlanChecks{
+		PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_mysql.test", plancheck.ResourceActionUpdate)},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkMysqlDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: mysqlWriteOnlyConfig(name, "  database_root_password_wo         = \"root-wo-1\"\n  database_root_password_wo_version = 1"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_mysql.test", "status", "done"),
+					resource.TestCheckResourceAttr("dokploy_mysql.test", "database_root_password_wo_version", "1"),
+					noRootInState,
+					checkMysqlRootPassword("root-wo-1"),
+				),
+			},
+			{
+				// A new version sends the new value and redeploys: the root
+				// password is a deploy trigger.
+				Config:           mysqlWriteOnlyConfig(name, "  database_root_password_wo         = \"root-wo-2\"\n  database_root_password_wo_version = 2"),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_mysql.test", "status", "done"),
+					noRootInState,
+					checkMysqlRootPassword("root-wo-2"),
+				),
+			},
+			{
+				// Both companions dropped: the server keeps its value and
+				// the state takes it, the Optional+Computed revert shape.
+				Config:           mysqlWriteOnlyConfig(name, ""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_mysql.test", "database_root_password", "root-wo-2"),
+					resource.TestCheckNoResourceAttr("dokploy_mysql.test", "database_root_password_wo_version"),
+					checkMysqlRootPassword("root-wo-2"),
+				),
+			},
+			{
+				// The same config again must plan nothing: the state and the
+				// server agree.
+				Config: mysqlWriteOnlyConfig(name, ""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: checkMysqlRootPassword("root-wo-2"),
+			},
+			{
+				// The plain attribute still works after the companions.
+				Config:           mysqlWriteOnlyConfig(name, "  database_root_password = \"root-plain-4\""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_mysql.test", "status", "done"),
+					resource.TestCheckResourceAttr("dokploy_mysql.test", "database_root_password", "root-plain-4"),
+					checkMysqlRootPassword("root-plain-4"),
+				),
+			},
+			{
+				// And from the plain attribute to the companion: the state
+				// loses the secret.
+				Config:           mysqlWriteOnlyConfig(name, "  database_root_password_wo         = \"root-wo-5\"\n  database_root_password_wo_version = 5"),
+				ConfigPlanChecks: update,
+				Check:            resource.ComposeAggregateTestCheckFunc(noRootInState, checkMysqlRootPassword("root-wo-5")),
+			},
+		},
+	})
+}
+
+// TestAccMysql_upgradeFromV0_11 proves that a v0.11.0 state with the root
+// password in it loads under the companions with an empty plan, and that the
+// move to the companion is an in-place update.
+func TestAccMysql_upgradeFromV0_11(t *testing.T) {
+	name := acctest.RandomName("my-up")
+	plain := "  database_root_password = \"root-password-1\"\n  deploy_on_change       = false"
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkMysqlDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "0.11.0"},
+				},
+				Config: mysqlWriteOnlyConfig(name, plain),
+				Check:  resource.TestCheckResourceAttr("dokploy_mysql.test", "database_root_password", "root-password-1"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   mysqlWriteOnlyConfig(name, plain),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_mysql.test", "database_root_password", "root-password-1"),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   mysqlWriteOnlyConfig(name, "  database_root_password_wo         = \"root-wo-2\"\n  database_root_password_wo_version = 2\n  deploy_on_change                  = false"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_mysql.test", plancheck.ResourceActionUpdate)},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_mysql.test", "database_root_password"),
+					checkMysqlRootPassword("root-wo-2"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccMysql_lifecycle(t *testing.T) {
 	name := acctest.RandomName("mysql")
 	// optionals is spliced in verbatim so a step can drop previously-set

@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
@@ -116,7 +118,7 @@ func TestExpandUpdateNetworkFields(t *testing.T) {
 		DetachDokployNetwork: types.BoolValue(true),
 	}
 	var diags diag.Diagnostics
-	req := expandUpdate(ctx, m, &diags)
+	req := expandUpdate(ctx, m, m.DatabasePassword.ValueString(), &diags)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -137,12 +139,40 @@ func TestExpandUpdateNetworkFieldsNullMeansNil(t *testing.T) {
 	ctx := context.Background()
 	m := &resourceModel{NetworkIDs: types.SetNull(types.StringType)}
 	var diags diag.Diagnostics
-	req := expandUpdate(ctx, m, &diags)
+	req := expandUpdate(ctx, m, m.DatabasePassword.ValueString(), &diags)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
 
 	if req.NetworkIDs != nil {
 		t.Errorf("NetworkIDs = %v, want nil", req.NetworkIDs)
+	}
+}
+
+// TestSchema_WriteOnlyCompanions pins the D1(a) shape on libsql and runs the
+// framework's own schema checks, which only an acceptance run reached
+// before: a WriteOnly attribute has rules of its own (never Computed, never
+// with a Default).
+func TestSchema_WriteOnlyCompanions(t *testing.T) {
+	ctx := context.Background()
+	var resp resource.SchemaResponse
+	(&libsqlResource{}).Schema(ctx, resource.SchemaRequest{}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Schema(): %v", resp.Diagnostics)
+	}
+	if diags := resp.Schema.ValidateImplementation(ctx); diags.HasError() {
+		t.Errorf("ValidateImplementation(): %v", diags)
+	}
+	attrs := resp.Schema.Attributes
+	password, ok := attrs["database_password"].(schema.StringAttribute)
+	if !ok || password.Required || !password.Optional || !password.Sensitive {
+		t.Errorf("database_password must be Optional+Sensitive, got %+v", attrs["database_password"])
+	}
+	wo, ok := attrs["database_password_wo"].(schema.StringAttribute)
+	if !ok || !wo.WriteOnly || !wo.Sensitive || !wo.Optional {
+		t.Errorf("database_password_wo must be Optional+WriteOnly+Sensitive, got %+v", attrs["database_password_wo"])
+	}
+	if _, ok := attrs["database_password_wo_version"].(schema.Int64Attribute); !ok {
+		t.Errorf("database_password_wo_version is %T", attrs["database_password_wo_version"])
 	}
 }

@@ -22,10 +22,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -191,4 +194,162 @@ func (durationString) ValidateString(_ context.Context, req validator.StringRequ
 	if _, err := time.ParseDuration(req.ConfigValue.ValueString()); err != nil {
 		resp.Diagnostics.AddAttributeError(req.Path, "Invalid duration", err.Error())
 	}
+}
+
+// WriteOnlyCompanions returns the two companions of the Sensitive attribute
+// name: `<name>_wo`, the write-only form, and `<name>_wo_version`, the
+// version that gates a new write-only value. The framework keeps a
+// write-only value out of the plan and the state, so the version is the only
+// signal that tells Update that the value changed (the HashiCorp convention,
+// for example aws_db_instance.password_wo_version). exactlyOne is true when
+// the base attribute is Optional only because the write-only form can
+// replace it: the pair then needs exactly one value. Otherwise the two only
+// conflict. note is an optional sentence for the effect of a version change,
+// for example "A version change starts a redeploy."
+//
+// A Terraform CLI before 1.11 rejects a non-null write-only value at
+// validation with a message that names the version (the framework's own
+// check). It accepts the schema, and a config that leaves the companions
+// unset behaves as before.
+func WriteOnlyCompanions(name string, exactlyOne bool, note string) map[string]schema.Attribute {
+	wo := name + "_wo"
+	version := wo + "_version"
+	pick := stringvalidator.ConflictsWith(path.MatchRoot(name))
+	rule := "Do not set it together with `" + name + "`."
+	if exactlyOne {
+		pick = stringvalidator.ExactlyOneOf(path.MatchRoot(name))
+		rule = "Set exactly one of `" + name + "` and `" + wo + "`."
+	}
+	if note != "" {
+		note = " " + note
+	}
+	return map[string]schema.Attribute{
+		wo: schema.StringAttribute{
+			Optional:  true,
+			WriteOnly: true,
+			Sensitive: true,
+			Description: "Write-only form of `" + name + "`. Terraform keeps it out of the plan and the state. " +
+				"It needs Terraform 1.11 or later. " + rule +
+				" A new value reaches the server only when `" + version + "` changes.",
+			Validators: []validator.String{pick},
+		},
+		version: schema.Int64Attribute{
+			Optional: true,
+			Description: "Version of `" + wo + "`. Change it to send the current `" + wo + "` value to the server." + note +
+				" It needs `" + wo + "`.",
+			Validators: []validator.Int64{int64validator.AlsoRequires(path.MatchRoot(wo))},
+		},
+	}
+}
+
+// SecretToCreate returns the value that a Create call sends for a secret
+// with write-only companions: the plain attribute when the plan has it, else
+// the configured write-only value. Only the config carries a write-only
+// value; the plan and the state hold null for it. "" means that neither is
+// set, which a Computed secret leaves to the server.
+func SecretToCreate(plain, wo types.String) string {
+	if !plain.IsNull() && !plain.IsUnknown() {
+		return plain.ValueString()
+	}
+	return wo.ValueString()
+}
+
+// SecretToUpdate returns the value that an Update call sends for a secret
+// with write-only companions, and whether to send it at all. priorPlain is
+// the plain attribute's prior state; version and priorVersion are the
+// planned and the prior value of the version companion.
+//   - the plain attribute is in the plan: send it.
+//   - the config has no write-only value: send nothing. A Computed secret
+//     then keeps the server's value, a plain one is left alone.
+//   - the plain attribute just left the state (the config switched to the
+//     companion), or the version changed: send the write-only value.
+//   - otherwise: send nothing. The server keeps the value it holds.
+func SecretToUpdate(plain, wo, priorPlain types.String, version, priorVersion types.Int64) (string, bool) {
+	if !plain.IsNull() && !plain.IsUnknown() {
+		return plain.ValueString(), true
+	}
+	if wo.IsNull() || wo.IsUnknown() {
+		return "", false
+	}
+	if !priorPlain.IsNull() || !version.Equal(priorVersion) {
+		return wo.ValueString(), true
+	}
+	return "", false
+}
+
+// ComputedSecretPlan returns the plan modifier of a Computed secret that has
+// write-only companions. It replaces UseStateForUnknown, which copies a null
+// prior state forward as a KNOWN null; Terraform then refuses an apply that
+// fills the value in ("Provider produced inconsistent result after apply").
+// The modifier keeps that behavior for a known prior value, and adds two
+// cases for the companion:
+//   - the config sets `<name>_wo`: the state will hold null, so the plan
+//     says null now instead of "known after apply".
+//   - the prior state holds null and the config sets neither: the plan stays
+//     unknown, and the apply fills in the server's value. This is the
+//     switch back from the companion to the server-generated value.
+func ComputedSecretPlan(name string) planmodifier.String {
+	return computedSecretPlan{wo: path.Root(name + "_wo")}
+}
+
+type computedSecretPlan struct{ wo path.Path }
+
+func (computedSecretPlan) Description(ctx context.Context) string {
+	return "Keeps the prior state value for an unknown plan value. The plan is null when the write-only companion is set, and stays unknown when the prior value is null."
+}
+
+func (m computedSecretPlan) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (m computedSecretPlan) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	// Do nothing on create, for a known planned value, or for an unknown
+	// configuration value (the three UseStateForUnknown guards).
+	if req.State.Raw.IsNull() || !req.PlanValue.IsUnknown() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	var wo types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, m.wo, &wo)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !wo.IsNull() {
+		resp.PlanValue = types.StringNull()
+		return
+	}
+	if req.StateValue.IsNull() {
+		return
+	}
+	resp.PlanValue = req.StateValue
+}
+
+// PrivateState is the part of the framework's resource private state that
+// the write-only flag uses. The framework declares the concrete type in an
+// internal package, so the Private field of every resource request and
+// response satisfies this interface instead.
+type PrivateState interface {
+	GetKey(ctx context.Context, key string) ([]byte, diag.Diagnostics)
+	SetKey(ctx context.Context, key string, value []byte) diag.Diagnostics
+}
+
+func writeOnlyKey(name string) string { return "write_only:" + name }
+
+// SetWriteOnlyFlag records in the private state whether the secret name came
+// from its write-only companion. Read consults the flag with WriteOnlyFlag
+// and then keeps the server's value out of the state. The Dokploy API
+// returns every stored secret on a read, so without the flag a refresh would
+// put the secret back into the state. A false flag removes the key.
+func SetWriteOnlyFlag(ctx context.Context, p PrivateState, name string, on bool) diag.Diagnostics {
+	if !on {
+		return p.SetKey(ctx, writeOnlyKey(name), nil)
+	}
+	return p.SetKey(ctx, writeOnlyKey(name), []byte("true"))
+}
+
+// WriteOnlyFlag reports the flag that SetWriteOnlyFlag stored. A state from
+// a release before the companions has no key and reads false, so the plain
+// attribute keeps its refresh behavior.
+func WriteOnlyFlag(ctx context.Context, p PrivateState, name string) (bool, diag.Diagnostics) {
+	v, diags := p.GetKey(ctx, writeOnlyKey(name))
+	return string(v) == "true", diags
 }
