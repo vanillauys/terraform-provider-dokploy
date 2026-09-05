@@ -36,6 +36,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/destination"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/domain"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/environment"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/envvars"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/giteaprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/gitlabprovider"
 	libsqlresource "github.com/vanillauys/terraform-provider-dokploy/internal/resources/libsql"
@@ -207,6 +208,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		user.NewResource,
 		userpermissions.NewResource,
 		apikey.NewResource,
+		envvars.NewResource,
 		network.NewResource,
 		schedule.NewResource,
 		vaultprovider.NewResource,
