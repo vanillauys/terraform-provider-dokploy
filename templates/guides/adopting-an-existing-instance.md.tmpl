@@ -71,9 +71,10 @@ child resources. It reports each secret as a length and never prints the
 value.
 
 `generate_imports.py` then writes Terraform `import` blocks for the live
-resources that this provider supports. It does not enumerate
-`dokploy_compose`, `dokploy_network`, or `dokploy_vault_provider` yet. Import
-those by hand. It also skips one record on purpose: the auto-created
+resources that this provider supports. It lists each `dokploy_vault_provider`
+as a comment instead of an `import` block: the server redacts the config
+block, so you import a vault provider by hand and supply the block for its
+type. It also skips one record on purpose: the auto-created
 data-volume mount of each database engine (`type == "volume"` and
 `volumeName == appName + "-data"`). It marks that mount with a
 `# skipped <id>: ...` comment in `imports.tf` instead of a silent omission. An
