@@ -1372,4 +1372,30 @@
 // The client therefore carries two per-attempt deadlines: 60 seconds for
 // every call, 10 minutes for the eight *.deploy calls (PostDeploy). Both sit
 // on the request context, so Terraform's own cancellation still applies.
+//
+// # libsql replica: stored, passed to the container, and ignored by sqld (probed 2026-09-05)
+//
+// A primary and a replica (sqldNode replica, sqldPrimaryUrl
+// http://<primary appName>:5001) both deployed to done on the rig
+// (v0.30.5, image ghcr.io/tursodatabase/libsql-server:v0.24.32). The
+// replica's swarm service carried SQLD_NODE=replica and
+// SQLD_PRIMARY_URL=<url> in its environment, and the fixed command
+// "/bin/sh -c sqld --db-path iku.db --http-listen-addr 0.0.0.0:8080
+// --grpc-listen-addr 0.0.0.0:5001 --admin-listen-addr 0.0.0.0:5000". That
+// command bypasses the image's docker-wrapper.sh, the only place that turns
+// SQLD_NODE and SQLD_PRIMARY_URL into --primary-grpc-url, and sqld itself
+// reads SQLD_PRIMARY_GRPC_URL, not SQLD_PRIMARY_URL. So the replica ran as
+// a second primary: a row inserted through the primary's HTTP API was "no
+// such table" on the replica.
+//
+// Two workarounds probed. SQLD_PRIMARY_GRPC_URL in env alone fails: sqld
+// rejects --grpc-listen-addr next to --primary-grpc-url, the container
+// exits, and the deploy reports "did not converge". A command override
+// works: "sqld --db-path iku.db --http-listen-addr 0.0.0.0:8080
+// --admin-listen-addr 0.0.0.0:5000 --primary-grpc-url http://<primary
+// appName>:5001" (no --grpc-listen-addr). With it the replica answered
+// count(*) = 1 for the primary's row at replication_index 2. libsql.deploy
+// applies a changed command on redeploy; when the new container fails,
+// swarm rolls the service back to the previous spec and the deploy still
+// reports done, which looks like "the redeploy ignored the change".
 package client

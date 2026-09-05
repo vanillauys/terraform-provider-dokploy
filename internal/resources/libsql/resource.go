@@ -107,11 +107,14 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				stringvalidator.OneOf("primary", "replica"),
 			},
 			Description: "Topology role: `primary` or `replica`. A replica requires " +
-				"`sqld_primary_url`, and cannot have any external port.",
+				"`sqld_primary_url`, and cannot have any external port. On Dokploy v0.30.5 the stored role alone " +
+				"does not make the container replicate; set `command` as the resource note describes.",
 		},
 		"sqld_primary_url": schema.StringAttribute{
-			Optional:    true,
-			Description: "URL of the primary sqld node. Required when `sqld_node` is `replica`. The server rejects it when `sqld_node` is not `replica`, which includes the default `primary`.",
+			Optional: true,
+			Description: "URL of the primary sqld node, for example `http://<primary app_name>:5001`. Required when `sqld_node` is `replica`. " +
+				"The server rejects it when `sqld_node` is not `replica`, which includes the default `primary`. " +
+				"Dokploy passes it to the container as `SQLD_PRIMARY_URL`, which `sqld` does not read; see `command`.",
 		},
 		// enable_namespaces has a Default, not a plain Optional: the wire
 		// field (client.Libsql.EnableNamespaces) is a plain bool, never
@@ -180,8 +183,10 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			Description: "Host port for the libsql gRPC replication interface. Not permitted when `sqld_node` is `replica`.",
 		},
 		"command": schema.StringAttribute{
-			Optional:    true,
-			Description: "Override the container command.",
+			Optional: true,
+			Description: "Override the container command. A replica needs it on Dokploy v0.30.5: " +
+				"`sqld --db-path iku.db --http-listen-addr 0.0.0.0:8080 --admin-listen-addr 0.0.0.0:5000 --primary-grpc-url http://<primary app_name>:5001`. " +
+				"Do not add `--grpc-listen-addr` to a replica command; `sqld` rejects it next to `--primary-grpc-url`.",
 		},
 		"cpu_limit": schema.StringAttribute{
 			Optional:    true,
@@ -245,7 +250,13 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		Description: "A Dokploy libsql service: a distributed SQLite (`sqld`) database.\n\n" +
 			"~> A replica (`sqld_node = \"replica\"`) requires `sqld_primary_url` and cannot set an external port. " +
 			"A primary (`sqld_node` unset or `\"primary\"`) must not set `sqld_primary_url`. " +
-			"Dokploy rejects all three violations at apply time. The provider rejects them earlier, at plan time.",
+			"Dokploy rejects all three violations at apply time. The provider rejects them earlier, at plan time.\n\n" +
+			"~> **A replica does not replicate without `command` on Dokploy v0.30.5.** Dokploy stores the role and the URL " +
+			"and passes them to the container as `SQLD_NODE` and `SQLD_PRIMARY_URL`. It also starts `sqld` with a fixed " +
+			"command that bypasses the image entrypoint, and `sqld` reads neither variable. The container then runs as a " +
+			"second primary. Set `command` to `sqld --db-path iku.db --http-listen-addr 0.0.0.0:8080 --admin-listen-addr 0.0.0.0:5000 " +
+			"--primary-grpc-url http://<primary app_name>:5001`. Verified on the rig (2026-09-05): with that command, a row " +
+			"written on the primary reads back from the replica.",
 		Attributes: attrs,
 	}
 }

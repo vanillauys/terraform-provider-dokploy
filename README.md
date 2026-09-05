@@ -88,11 +88,15 @@ The provider does not model these Dokploy features yet.
   also has a `replicaSets` option for MongoDB, for a replica-set topology.
   The provider does not expose it. Each `dokploy_mongo` instance uses the
   default standalone mode of the server.
-- **The replica mode of `dokploy_libsql` is accepted but not verified.** The
-  provider models `sqld_node = "replica"` and `sqld_primary_url`, and it
-  applies the Dokploy validation rules at plan time. No test has deployed a
-  replica against a real primary. A replica also cannot have an external
-  port: Dokploy rejects each `saveExternalPorts` call while `sqld_node` is
+- **A `dokploy_libsql` replica needs a `command` override on Dokploy
+  v0.30.5.** Dokploy stores `sqld_node = "replica"` and `sqld_primary_url`
+  and passes them to the container as `SQLD_NODE` and `SQLD_PRIMARY_URL`.
+  It also starts `sqld` with a fixed command that bypasses the image
+  entrypoint, and `sqld` reads neither variable, so the container runs as a
+  second primary. The resource page shows the `command` that makes it
+  replicate; a row written on the primary then reads back from the replica
+  (verified 2026-09-05). A replica also cannot have an external port:
+  Dokploy rejects each `saveExternalPorts` call while `sqld_node` is
   `replica`.
 - **Names are not unique in Dokploy.** Each data source that looks up a
   record by name errors when more than one record matches. This applies to
