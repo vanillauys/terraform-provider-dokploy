@@ -51,6 +51,14 @@ var mustAlwaysSend = []struct {
 	{UpdateGitlabRequest{}, []string{"name", "gitlabUrl", "applicationId", "secret", "groupName", "redirectUri", "gitlabInternalUrl"}},
 	{UpdateBitbucketRequest{}, []string{"name", "bitbucketUsername", "appPassword", "apiToken", "bitbucketWorkspaceName"}},
 	{UpdateGiteaRequest{}, []string{"name", "giteaUrl", "clientId", "clientSecret", "redirectUri", "scopes", "giteaInternalUrl"}},
+	// The notification updates keep an absent key and reject a null string,
+	// so the resource sends the full body; "" clears an optional string.
+	{UpdateSlackNotificationRequest{}, []string{"name", "appDeploy", "serverThreshold", "webhookUrl", "channel"}},
+	{UpdateTelegramNotificationRequest{}, []string{"botToken", "chatId", "messageThreadId"}},
+	{UpdateMattermostNotificationRequest{}, []string{"webhookUrl", "channel", "username"}},
+	{UpdateNtfyNotificationRequest{}, []string{"serverUrl", "topic", "accessToken", "priority"}},
+	{UpdatePushoverNotificationRequest{}, []string{"userKey", "apiToken", "priority", "retry", "expire"}},
+	{UpdateCustomNotificationRequest{}, []string{"endpoint", "headers"}},
 	// The dialect A application endpoints. Until wave 3 none of them was in
 	// this table at all: it held only dialect B Update* structs, so the
 	// endpoints where an absent key is a hard 400 were entirely unguarded.
@@ -143,9 +151,25 @@ func TestRequestStructsNeverOmitMustSendFields(t *testing.T) {
 	}
 }
 
-func fieldByJSONName(t reflect.Type, name string) (reflect.StructField, bool) {
+// jsonFields lists the fields a struct marshals, descending into an
+// embedded struct the way encoding/json flattens it (NotificationBase in
+// the notification requests). An embedded struct with its own json tag is
+// a nested object, not a flattening, and is returned as one field.
+func jsonFields(t reflect.Type) []reflect.StructField {
+	var out []reflect.StructField
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
+		if f.Anonymous && f.Type.Kind() == reflect.Struct && f.Tag.Get("json") == "" {
+			out = append(out, jsonFields(f.Type)...)
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+func fieldByJSONName(t reflect.Type, name string) (reflect.StructField, bool) {
+	for _, f := range jsonFields(t) {
 		if jsonName(f) == name {
 			return f, true
 		}

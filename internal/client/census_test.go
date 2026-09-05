@@ -101,6 +101,30 @@ var endpointStructs = map[string]any{
 	"bitbucket.update":                  UpdateBitbucketRequest{},
 	"gitea.create":                      CreateGiteaRequest{},
 	"gitea.update":                      UpdateGiteaRequest{},
+	"notification.createSlack":          CreateSlackNotificationRequest{},
+	"notification.updateSlack":          UpdateSlackNotificationRequest{},
+	"notification.createTelegram":       CreateTelegramNotificationRequest{},
+	"notification.updateTelegram":       UpdateTelegramNotificationRequest{},
+	"notification.createDiscord":        CreateDiscordNotificationRequest{},
+	"notification.updateDiscord":        UpdateDiscordNotificationRequest{},
+	"notification.createEmail":          CreateEmailNotificationRequest{},
+	"notification.updateEmail":          UpdateEmailNotificationRequest{},
+	"notification.createResend":         CreateResendNotificationRequest{},
+	"notification.updateResend":         UpdateResendNotificationRequest{},
+	"notification.createGotify":         CreateGotifyNotificationRequest{},
+	"notification.updateGotify":         UpdateGotifyNotificationRequest{},
+	"notification.createNtfy":           CreateNtfyNotificationRequest{},
+	"notification.updateNtfy":           UpdateNtfyNotificationRequest{},
+	"notification.createMattermost":     CreateMattermostNotificationRequest{},
+	"notification.updateMattermost":     UpdateMattermostNotificationRequest{},
+	"notification.createCustom":         CreateCustomNotificationRequest{},
+	"notification.updateCustom":         UpdateCustomNotificationRequest{},
+	"notification.createLark":           CreateLarkNotificationRequest{},
+	"notification.updateLark":           UpdateLarkNotificationRequest{},
+	"notification.createPushover":       CreatePushoverNotificationRequest{},
+	"notification.updatePushover":       UpdatePushoverNotificationRequest{},
+	"notification.createTeams":          CreateTeamsNotificationRequest{},
+	"notification.updateTeams":          UpdateTeamsNotificationRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -299,6 +323,19 @@ var censusExempt = map[string]map[string]string{
 		"giteaUsername":       "written by the OAuth handshake in the browser, never by configuration",
 		"organizationName":    "gitea.one does not return it; a write-only field cannot round-trip",
 	},
+	// Every notification.update<Type> accepts organizationId.
+	"notification.updateSlack":      {"organizationId": "implied by the API key's organization"},
+	"notification.updateTelegram":   {"organizationId": "implied by the API key's organization"},
+	"notification.updateDiscord":    {"organizationId": "implied by the API key's organization"},
+	"notification.updateEmail":      {"organizationId": "implied by the API key's organization"},
+	"notification.updateResend":     {"organizationId": "implied by the API key's organization"},
+	"notification.updateGotify":     {"organizationId": "implied by the API key's organization"},
+	"notification.updateNtfy":       {"organizationId": "implied by the API key's organization"},
+	"notification.updateMattermost": {"organizationId": "implied by the API key's organization"},
+	"notification.updateCustom":     {"organizationId": "implied by the API key's organization"},
+	"notification.updateLark":       {"organizationId": "implied by the API key's organization"},
+	"notification.updatePushover":   {"organizationId": "implied by the API key's organization"},
+	"notification.updateTeams":      {"organizationId": "implied by the API key's organization"},
 }
 
 type endpointFields struct {
@@ -330,8 +367,8 @@ func TestEndpointFieldCensus(t *testing.T) {
 		}
 		typ := reflect.TypeOf(reqStruct)
 		have := make(map[string]bool, typ.NumField())
-		for i := 0; i < typ.NumField(); i++ {
-			if name := jsonName(typ.Field(i)); name != "" {
+		for _, f := range jsonFields(typ) {
+			if name := jsonName(f); name != "" {
 				have[name] = true
 			}
 		}

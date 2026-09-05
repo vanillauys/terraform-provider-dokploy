@@ -38,6 +38,7 @@ import (
 	libsqlresource "github.com/vanillauys/terraform-provider-dokploy/internal/resources/libsql"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/mount"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/network"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/notification"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/registry"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
@@ -206,6 +207,18 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		appchild.NewResource(appchild.PortKind()),
 		appchild.NewResource(appchild.RedirectKind()),
 		appchild.NewResource(appchild.SecurityKind()),
+		notification.NewResource(notification.SlackKind()),
+		notification.NewResource(notification.DiscordKind()),
+		notification.NewResource(notification.TelegramKind()),
+		notification.NewResource(notification.EmailKind()),
+		notification.NewResource(notification.ResendKind()),
+		notification.NewResource(notification.GotifyKind()),
+		notification.NewResource(notification.NtfyKind()),
+		notification.NewResource(notification.MattermostKind()),
+		notification.NewResource(notification.LarkKind()),
+		notification.NewResource(notification.TeamsKind()),
+		notification.NewResource(notification.PushoverKind()),
+		notification.NewResource(notification.CustomKind()),
 	}
 }
 
