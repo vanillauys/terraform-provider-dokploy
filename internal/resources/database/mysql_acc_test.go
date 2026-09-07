@@ -89,6 +89,7 @@ func TestAccMysql_writeOnlyRootPassword(t *testing.T) {
 		PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_mysql.test", plancheck.ResourceActionUpdate)},
 	}
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkMysqlDestroy,
@@ -158,11 +159,13 @@ func TestAccMysql_writeOnlyRootPassword(t *testing.T) {
 // password in it loads under the companions with an empty plan, and that the
 // move to the companion is an in-place update.
 func TestAccMysql_upgradeFromV0_11(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("my-up")
 	plain := "  database_root_password = \"root-password-1\"\n  deploy_on_change       = false"
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { acctest.PreCheck(t) },
-		CheckDestroy: checkMysqlDestroy,
+		TerraformVersionChecks: acctest.WriteOnlyVersionChecks(),
+		PreCheck:               func() { acctest.PreCheck(t) },
+		CheckDestroy:           checkMysqlDestroy,
 		Steps: []resource.TestStep{
 			{
 				ExternalProviders: map[string]resource.ExternalProvider{

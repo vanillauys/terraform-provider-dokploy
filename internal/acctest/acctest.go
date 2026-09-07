@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	sdkacctest "github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/provider"
@@ -28,6 +29,31 @@ func PreCheck(t *testing.T) {
 			t.Fatalf("%s must be set for acceptance tests (run acceptance/up.sh, then eval \"$(acceptance/bootstrap.sh)\")", v)
 		}
 	}
+}
+
+// OpenTofu reports whether OpenTofu drives this run. The OpenTofu leg of the
+// nightly suite sets TF_ACC_PROVIDER_HOST to registry.opentofu.org, because
+// the OpenTofu CLI looks for the provider under test on that host.
+func OpenTofu() bool {
+	return os.Getenv("TF_ACC_PROVIDER_HOST") == "registry.opentofu.org"
+}
+
+// SkipWithoutTerraformRegistry skips a test that installs a released
+// vanillauys/dokploy through ExternalProviders. OpenTofu resolves that
+// source on registry.opentofu.org, where the provider is not published.
+func SkipWithoutTerraformRegistry(t *testing.T) {
+	t.Helper()
+	if OpenTofu() {
+		t.Skip("vanillauys/dokploy is not on registry.opentofu.org, so OpenTofu cannot install the released provider")
+	}
+}
+
+// WriteOnlyVersionChecks skips a test whose configuration sets a write-only
+// attribute (a `<name>_wo` companion) on a CLI older than Terraform 1.11,
+// the first version with write-only attributes. The README states the
+// same minimum.
+func WriteOnlyVersionChecks() []tfversion.TerraformVersionCheck {
+	return []tfversion.TerraformVersionCheck{tfversion.SkipBelow(tfversion.Version1_11_0)}
 }
 
 func ProviderFactories() map[string]func() (tfprotov6.ProviderServer, error) {

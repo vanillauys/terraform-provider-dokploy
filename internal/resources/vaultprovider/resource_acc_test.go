@@ -188,6 +188,7 @@ resource "dokploy_vault_provider" "test" {
 	}
 
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkVaultProviderDestroy,
@@ -242,6 +243,7 @@ resource "dokploy_vault_provider" "test" {
 // plan, and that the move to the companion is an in-place update. Fake
 // credentials, no verification: the claim is about the state shape.
 func TestAccVaultProvider_upgradeFromV0_11(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("vault-up")
 	cfg := func(tokenLines string) string {
 		return fmt.Sprintf(`
@@ -258,8 +260,9 @@ resource "dokploy_vault_provider" "test" {
 `, name, tokenLines)
 	}
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { acctest.PreCheck(t) },
-		CheckDestroy: checkVaultProviderDestroy,
+		TerraformVersionChecks: acctest.WriteOnlyVersionChecks(),
+		PreCheck:               func() { acctest.PreCheck(t) },
+		CheckDestroy:           checkVaultProviderDestroy,
 		Steps: []resource.TestStep{
 			{
 				ExternalProviders: map[string]resource.ExternalProvider{

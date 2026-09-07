@@ -14,6 +14,12 @@ different files on each run.
   `max-same-issues` is 0, so one run shows every finding.
 - `make docs`: regenerate the registry docs. CI fails when the regenerated
   docs differ from the committed docs.
+- `go test ./internal/provider -run TestSchemaSnapshot -update`: regenerate
+  `internal/provider/testdata/schema.json`, the pinned provider schema. The
+  unit tests fail when the schema differs from the snapshot. Review the diff
+  of that file in the pull request: a removed attribute, a type change, or an
+  optional attribute that became required is a breaking change and needs a
+  major version.
 - `./acceptance/up.sh && eval "$(./acceptance/bootstrap.sh)" && make testacc`:
   run the acceptance tests against a disposable Dokploy server. **Never point
   them at a real server.** If the container `dokploy-acc` has only stopped,

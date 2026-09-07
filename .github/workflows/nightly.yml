@@ -9,6 +9,21 @@ jobs:
   # The suite itself lives in acceptance-suite.yml, shared with acceptance.yml
   # so the two can never drift apart. The nightly run exists because up.sh and
   # the CI installer track the latest Dokploy release: a new Dokploy can break
-  # us with no change on our side.
+  # us with no change on our side. It runs the suite once per CLI the README
+  # promises: the oldest supported Terraform, the latest Terraform, and the
+  # latest OpenTofu. The pull request run covers the pinned Terraform only.
   acceptance:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tool: terraform
+            version: "1.5.7"
+          - tool: terraform
+            version: latest
+          - tool: opentofu
+            version: latest
     uses: ./.github/workflows/acceptance-suite.yml
+    with:
+      tool: ${{ matrix.tool }}
+      version: ${{ matrix.version }}
