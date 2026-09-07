@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
@@ -175,5 +177,27 @@ func TestStringOrNull(t *testing.T) {
 				t.Errorf("ValueString() = %q, want %q", got.ValueString(), tc.want)
 			}
 		})
+	}
+}
+
+func TestServerGeneratedAppName(t *testing.T) {
+	v := ServerGeneratedAppName()
+	for name, value := range map[string]types.String{
+		"null":    types.StringNull(),
+		"unknown": types.StringUnknown(),
+	} {
+		resp := &validator.StringResponse{}
+		v.ValidateString(context.Background(), validator.StringRequest{Path: path.Root("app_name"), ConfigValue: value}, resp)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("%s: unexpected error: %v", name, resp.Diagnostics)
+		}
+	}
+	resp := &validator.StringResponse{}
+	v.ValidateString(context.Background(), validator.StringRequest{Path: path.Root("app_name"), ConfigValue: types.StringValue("glitchtip")}, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a configured app_name must be rejected")
+	}
+	if got := resp.Diagnostics[0].Summary(); got != "Dokploy generates app_name" {
+		t.Errorf("summary = %q", got)
 	}
 }

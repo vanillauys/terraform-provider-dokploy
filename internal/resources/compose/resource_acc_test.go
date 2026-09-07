@@ -602,3 +602,27 @@ resource "dokploy_compose" "test" {
 		},
 	})
 }
+
+// TestAccCompose_appNameIsServerGenerated covers issue #39. Dokploy appends a
+// random suffix to any appName it receives on create and drops appName on
+// update (v0.30.5), so a configured app_name can never equal the stored
+// value. Step 1 expects the plan-time error. Step 2 shows that the generated
+// value starts with the service name, the closest result Dokploy can give.
+func TestAccCompose_appNameIsServerGenerated(t *testing.T) {
+	name := acctest.RandomName("compose-app")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkComposeDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      rawConfig(name+"-proj", name, fmt.Sprintf("  app_name = %q", name)),
+				ExpectError: regexp.MustCompile(`Dokploy generates app_name`),
+			},
+			{
+				Config: rawConfig(name+"-proj", name, ""),
+				Check:  resource.TestMatchResourceAttr("dokploy_compose.test", "app_name", regexp.MustCompile(`^`+regexp.QuoteMeta(name)+`-[a-z0-9]+$`)),
+			},
+		},
+	})
+}

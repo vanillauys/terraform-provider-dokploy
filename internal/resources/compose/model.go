@@ -274,8 +274,11 @@ func sourceTypeFor(m *resourceModel) string {
 // unreachable at create and gets set by the follow-up update in resource.go.
 func expandCreate(m *resourceModel) client.CreateComposeRequest {
 	req := client.CreateComposeRequest{
-		Name:          m.Name.ValueString(),
-		AppName:       m.AppName.ValueString(),
+		Name: m.Name.ValueString(),
+		// AppName seeds the server's generator with the service name, so the
+		// stored app name reads "<name>-<suffix>" like one made in the UI.
+		// m.AppName is never set in config (tfutil.ServerGeneratedAppName).
+		AppName:       m.Name.ValueString(),
 		Description:   m.Description.ValueStringPointer(),
 		EnvironmentID: m.EnvironmentID.ValueString(),
 		ComposeType:   m.ComposeType.ValueString(),

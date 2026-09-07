@@ -303,7 +303,8 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 		"app_name": schema.StringAttribute{
 			Optional:      true,
 			Computed:      true,
-			Description:   "Internal Dokploy app name. If you omit it, the server generates one.",
+			Description:   "Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it; the provider rejects a configured value.",
+			Validators:    []validator.String{tfutil.ServerGeneratedAppName()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
 		},
 		"server_id": schema.StringAttribute{

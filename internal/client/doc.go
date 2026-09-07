@@ -728,6 +728,20 @@
 // suffix is what makes the result unique; UseStateForUnknown then pins
 // whatever the server actually returns.
 //
+// Issue #39 (2026-09-07, provider v1.0.0, Dokploy v0.30.5): a user set
+// app_name on dokploy_compose, hit the inconsistent-result failure above,
+// and the resource stayed tainted. compose, application, and the six
+// engines still carried app_name as Optional+Computed, and no acceptance
+// test ever set it. v1.0.1 keeps the attribute shape (a removal is a v2
+// change) but rejects a configured value at plan time with
+// tfutil.ServerGeneratedAppName, and seeds the create request with name as
+// libsql already did, so a generated app name reads "<name>-<suffix>"
+// instead of Dokploy's faker phrase ("compose-<verb>-<adjective>-<noun>-
+// <id>", generateAppName in the same utils.ts). No rename path exists
+// either: compose.update and application.update drop appName
+// (`const { appName, ...rest } = ...` in services/compose.ts and
+// services/application.ts).
+//
 // ## libsql.deploy is synchronous, like postgres.deploy
 //
 // Task 5 needs fetchStatus to poll applicationStatus with no
