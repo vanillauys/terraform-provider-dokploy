@@ -43,7 +43,7 @@ echo "==> writing import blocks"
 python3 "$REPO_ROOT/dogfood/generate_imports.py" > "$SCRATCH/imports.tf"
 import_count="$(grep -c '^import' "$SCRATCH/imports.tf" || true)"
 echo "    import blocks: $import_count"
-if [ "${import_count:-0}" -eq 0 ]; then
+if [[ "${import_count:-0}" -eq 0 ]]; then
   echo
   echo "FAIL: nothing to import (empty stack or generator bug)"
   exit 1
@@ -94,12 +94,12 @@ set +e
 terraform -chdir="$SCRATCH" plan -generate-config-out=generated.tf -input=false
 generate_status=$?
 set -e
-if [ ! -s "$SCRATCH/generated.tf" ]; then
+if [[ ! -s "$SCRATCH/generated.tf" ]]; then
   echo
   echo "FAIL: terraform did not produce a generated.tf to patch (exit $generate_status)."
   exit 1
 fi
-if [ "$generate_status" -ne 0 ]; then
+if [[ "$generate_status" -ne 0 ]]; then
   echo "    (plan -generate-config-out exited $generate_status, generated.tf was still written -- patching Required+Sensitive attributes below before continuing)"
 fi
 
@@ -142,13 +142,13 @@ terraform -chdir="$SCRATCH" plan -input=false -detailed-exitcode
 status=$?
 set -e
 
-if [ "$status" -eq 0 ]; then
+if [[ "$status" -eq 0 ]]; then
   echo
   echo "PASS: the live stack round-trips with an empty plan."
   cleanup
   exit 0
 fi
-if [ "$status" -eq 2 ]; then
+if [[ "$status" -eq 2 ]]; then
   echo
   echo "FAIL: the second plan is not empty — the provider cannot round-trip"
   echo "      the live stack. The generated config is at $SCRATCH/generated.tf."

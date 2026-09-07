@@ -5,16 +5,25 @@
 # invocations outside make still need the prefix on such machines.
 export CGO_ENABLED = 0
 
+# When COVERDIR is set, every test binary writes binary coverage data to
+# that directory, and `go tool covdata textfmt -i=$COVERDIR -o=coverage.out`
+# merges the files into one profile. acceptance.yml sets it for the
+# SonarQube Cloud analysis. The path must be absolute: each test binary
+# runs in its own package directory.
+ifdef COVERDIR
+COVERFLAGS = -cover -coverpkg=./internal/... -args -test.gocoverdir=$(COVERDIR)
+endif
+
 default: build
 
 build: hooks
 	go build ./...
 
 test:
-	go test ./... -count=1
+	go test ./... -count=1 $(COVERFLAGS)
 
 testacc:
-	TF_ACC=1 go test ./internal/... -run 'TestAcc' -v -timeout 60m
+	TF_ACC=1 go test ./internal/... -run 'TestAcc' -v -timeout 60m $(COVERFLAGS)
 
 lint:
 	golangci-lint run

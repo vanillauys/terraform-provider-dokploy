@@ -69,7 +69,7 @@ while :; do
     -c "$COOKIES" -b "$COOKIES" -H 'Content-Type: application/json' \
     -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}")"
   case "$SIGNIN_STATUS" in 2??) break ;; esac
-  if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+  if [[ "$(date +%s)" -ge "$DEADLINE" ]]; then
     echo "bootstrap: the auth stack at ${ENDPOINT} never accepted a sign-in within ${READY_TIMEOUT}s (last sign-up HTTP ${SIGNUP_STATUS}, last sign-in HTTP ${SIGNIN_STATUS}). The instance is serving HTTP but refusing authentication; response bodies are withheld because they carry session tokens." >&2
     exit 1
   fi
@@ -85,7 +85,7 @@ case "$ORG_STATUS" in
 esac
 ORG_RESPONSE="$(cat "$BODY")"
 ORG_ID="$(printf '%s' "$ORG_RESPONSE" | grep -oE '"organizationId":"[^"]*"' | head -1 | cut -d'"' -f4)"
-if [ -z "$ORG_ID" ]; then
+if [[ -z "$ORG_ID" ]]; then
   # Never print the raw response: even though org ids aren't secrets, the
   # response also carries account/session details we have no reason to log.
   echo "failed to resolve an organization id: organization.all returned ${#ORG_RESPONSE} bytes (HTTP call succeeded) but no \"organizationId\" field was found; the response shape may have changed" >&2
@@ -119,7 +119,7 @@ esac
 RESPONSE="$(cat "$BODY")"
 API_KEY="$(printf '%s' "$RESPONSE" | grep -oE '"key":"[^"]*"' | head -1 | cut -d'"' -f4)"
 
-if [ -z "$API_KEY" ]; then
+if [[ -z "$API_KEY" ]]; then
   # Never print $RESPONSE: on a real Dokploy install this body is the
   # createApiKey response and contains the actual secret key, even when
   # our "key" field match fails for shape reasons (renamed field, wrapped
@@ -144,7 +144,7 @@ fi
 #     left attached to the step, and the runner scans it for workflow commands
 #     too.
 # Guarded on GITHUB_ACTIONS so a local run doesn't print a stray directive.
-if [ -n "${GITHUB_ACTIONS:-}" ]; then
+if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
   echo "::add-mask::${API_KEY}" >&2
 fi
 

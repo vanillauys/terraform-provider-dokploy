@@ -1,11 +1,43 @@
 name: acceptance
 on:
+  push:
+    branches: [master]
   pull_request:
     branches: [master]
 permissions:
   contents: read
 jobs:
   # The suite itself lives in acceptance-suite.yml, shared with nightly.yml so
-  # the two can never drift apart.
+  # the two can never drift apart. It runs on every push to master as well,
+  # so the SonarQube Cloud analysis of master carries the coverage of the
+  # merged commit.
   acceptance:
     uses: ./.github/workflows/acceptance-suite.yml
+  # SonarQube Cloud analysis. It runs after the suite, because the suite is
+  # what covers the provider: the unit tests alone cover the resource
+  # packages at 2% to 38%. The job merges the coverage data of the suite
+  # with the unit coverage into one profile and runs the scanner. The
+  # SonarQube Cloud GitHub App then posts the result as a comment on the
+  # pull request. A pull request from a fork has no SONAR_TOKEN, so the job
+  # skips it. sonar-project.properties holds the scanner configuration.
+  sonar:
+    needs: acceptance
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The scanner needs the full history to find the new code.
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: acceptance-coverage
+          path: coverage
+      - run: COVERDIR="$GITHUB_WORKSPACE/coverage" make test
+      - run: go tool covdata textfmt -i=coverage -o=coverage.out
+      - uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
