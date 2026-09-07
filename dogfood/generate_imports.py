@@ -24,6 +24,7 @@ import re
 import sys
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 ENDPOINT = os.environ["DOKPLOY_ENDPOINT"].rstrip("/")
 API_KEY = os.environ["DOKPLOY_API_KEY"]
@@ -511,6 +512,17 @@ def main():
         emit("dokploy_user_permissions", label(who, uid), uid)
 
 
+def scratch_file(arg):
+    """Resolve a --patch-sensitive argument and make sure it is an existing
+    file inside dogfood/scratch, the directory dry-run.sh owns. A path that
+    resolves anywhere else is a usage error, not a file to read or write."""
+    scratch = (Path(__file__).resolve().parent / "scratch").resolve()
+    path = Path(arg).resolve()
+    if not path.is_relative_to(scratch) or not path.is_file():
+        sys.exit(f"{arg}: expected an existing file inside {scratch}")
+    return path
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--patch-sensitive":
         # Not reachable via dry-run.sh's own (fixed) invocation; guarded so a
@@ -518,6 +530,6 @@ if __name__ == "__main__":
         # unhandled IndexError (wave-2 task 9 carry item C18).
         if len(sys.argv) != 4:
             sys.exit("usage: generate_imports.py --patch-sensitive <imports.tf> <generated.tf>")
-        patch_sensitive(sys.argv[2], sys.argv[3])
+        patch_sensitive(scratch_file(sys.argv[2]), scratch_file(sys.argv[3]))
     else:
         main()

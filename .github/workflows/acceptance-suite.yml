@@ -1,7 +1,10 @@
 name: acceptance-suite
-# The shared acceptance job, called by acceptance.yml (pull requests) and
-# nightly.yml (cron + manual). It exists so a fix to the suite cannot land in
-# one caller and silently miss the other — which has happened before.
+# The shared acceptance job, called by acceptance.yml (pull requests and
+# pushes to master) and nightly.yml (cron + manual). It exists so a fix to
+# the suite cannot land in one caller and silently miss the other — which
+# has happened before. The job uploads the coverage data of the suite as the
+# `acceptance-coverage` artifact; the sonar job in acceptance.yml merges it
+# with the unit coverage for SonarQube Cloud.
 on:
   workflow_call:
 permissions:
@@ -31,10 +34,18 @@ jobs:
       # went on to run the whole suite with no credentials — surfacing as nine
       # baffling 0.00s test failures instead of "bootstrap failed" (observed
       # for real in nightly run 30190067403).
+      # The installer is downloaded to a file and checked against a pinned
+      # SHA-256 before it runs as root, so a changed script fails here with a
+      # clear message instead of running unseen. The pinned script still
+      # installs the latest Dokploy release: it resolves the version at run
+      # time. To move the pin, review the new script and paste its
+      # `sha256sum` below. --proto '=https' refuses a plain-HTTP redirect.
       - name: Install Dokploy on the runner
         run: |
           set -euo pipefail
-          curl -sSL https://dokploy.com/install.sh | sudo bash
+          curl --proto '=https' --tlsv1.2 -sSf -o "$RUNNER_TEMP/install.sh" https://dokploy.com/install.sh
+          echo "aa317e0cc1098029e771a544f9c955c3e50ec558e9ea1c0c5b3734f6fc8893e4  $RUNNER_TEMP/install.sh" | sha256sum -c -
+          sudo bash "$RUNNER_TEMP/install.sh"
       # No separate "wait for Dokploy" step: `GET /` answering is not a
       # readiness signal for the auth stack, which is what we actually need.
       # bootstrap.sh polls that condition itself.
@@ -61,4 +72,11 @@ jobs:
           set -euo pipefail
           ./acceptance/bootstrap.sh | sed 's/^export //' >> "$GITHUB_ENV"
       - name: Run acceptance tests
-        run: TF_ACC_TERRAFORM_PATH="$(command -v terraform)" make testacc
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/coverage"
+          COVERDIR="$GITHUB_WORKSPACE/coverage" TF_ACC_TERRAFORM_PATH="$(command -v terraform)" make testacc
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: acceptance-coverage
+          path: coverage

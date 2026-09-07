@@ -52,13 +52,13 @@ REMEDIATED_PG=0
 REMEDIATED_APP=0
 for _ in $(seq 1 300); do
   kill -0 "$INSTALL_PID" 2>/dev/null || break
-  if [ "$REMEDIATED_PG" -eq 0 ] && docker exec "$NAME" docker service inspect dokploy-postgres >/dev/null 2>&1; then
+  if [[ "$REMEDIATED_PG" -eq 0 ]] && docker exec "$NAME" docker service inspect dokploy-postgres >/dev/null 2>&1; then
     docker exec "$NAME" docker service update --endpoint-mode dnsrr dokploy-postgres >/dev/null 2>&1 && REMEDIATED_PG=1
   fi
-  if [ "$REMEDIATED_APP" -eq 0 ] && docker exec "$NAME" docker service inspect dokploy >/dev/null 2>&1; then
+  if [[ "$REMEDIATED_APP" -eq 0 ]] && docker exec "$NAME" docker service inspect dokploy >/dev/null 2>&1; then
     docker exec "$NAME" docker service update --endpoint-mode dnsrr dokploy >/dev/null 2>&1 && REMEDIATED_APP=1
   fi
-  [ "$REMEDIATED_PG" -eq 1 ] && [ "$REMEDIATED_APP" -eq 1 ] && break
+  [[ "$REMEDIATED_PG" -eq 1 ]] && [[ "$REMEDIATED_APP" -eq 1 ]] && break
   sleep 2
 done
 
