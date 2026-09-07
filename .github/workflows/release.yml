@@ -3,14 +3,17 @@ on:
   push:
     tags: ['v*']
 permissions:
-  contents: write
-  # id-token and attestations let the last step sign a build provenance
-  # attestation for the release archives.
-  id-token: write
-  attestations: write
+  contents: read
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    # The write scopes sit on the job, not on the workflow: contents publishes
+    # the release, id-token and attestations sign the build provenance
+    # attestation of the release archives.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     # Every action here is pinned to a full commit SHA, not a moving major-version
     # tag. This job holds the GPG identity the Terraform Registry trusts for the
     # `vanillauys` namespace: anyone who can move a `v6` tag in a third-party

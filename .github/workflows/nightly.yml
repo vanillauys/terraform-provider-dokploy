@@ -27,3 +27,17 @@ jobs:
     with:
       tool: ${{ matrix.tool }}
       version: ${{ matrix.version }}
+  # Native Go fuzzing of the two parsers that read input from outside: the
+  # .env codec of dokploy_environment_variables and the API error decoder.
+  # The unit job runs their seed corpus on every pull request; this job
+  # explores new inputs for a minute each.
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go test ./internal/resources/envvars -run='^$' -fuzz=FuzzParseEnv -fuzztime=60s
+      - run: go test ./internal/client -run='^$' -fuzz=FuzzAPIError -fuzztime=60s
