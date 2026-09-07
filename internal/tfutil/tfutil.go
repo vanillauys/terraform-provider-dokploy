@@ -196,6 +196,36 @@ func (durationString) ValidateString(_ context.Context, req validator.StringRequ
 	}
 }
 
+// ServerGeneratedAppName validates an `app_name` attribute that only Dokploy
+// can set. On create, Dokploy appends a random six-character suffix to any
+// appName it receives (buildAppName in packages/server/src/db/schema/utils.ts,
+// v0.30.5), and compose.update and application.update drop appName from the
+// request. A configured value therefore never equals the stored one, and
+// Terraform fails the apply with "Provider produced inconsistent result after
+// apply" (issue #39). The validator turns that into a plan-time error that
+// says why.
+func ServerGeneratedAppName() validator.String { return serverGeneratedAppName{} }
+
+type serverGeneratedAppName struct{}
+
+func (serverGeneratedAppName) Description(context.Context) string {
+	return "must stay unset: Dokploy generates the app name"
+}
+
+func (v serverGeneratedAppName) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (serverGeneratedAppName) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	resp.Diagnostics.AddAttributeError(req.Path, "Dokploy generates app_name",
+		"Dokploy derives app_name from name and appends a random suffix on create, and it ignores app_name on update. "+
+			"A value that you set can never match the stored value, so the apply would fail. "+
+			"Remove app_name from the configuration and read the generated value from the state.")
+}
+
 // WriteOnlyOptions tunes WriteOnlyCompanions.
 type WriteOnlyOptions struct {
 	// ExactlyOne is true when the base attribute is Optional only because

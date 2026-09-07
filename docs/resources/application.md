@@ -94,7 +94,7 @@ resource "dokploy_application" "from_gitea" {
 
 ### Optional
 
-- `app_name` (String) Internal Dokploy app name. If you omit it, the server generates one.
+- `app_name` (String) Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it; the provider rejects a configured value.
 - `args` (List of String) Arguments for the container command.
 - `auto_deploy` (Boolean) Redeploy automatically when Dokploy receives a webhook for the configured branch or tag.
 - `bitbucket` (Attributes) Bitbucket source, through a `dokploy_bitbucket_provider`. Set exactly one of `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `docker`. (see [below for nested schema](#nestedatt--bitbucket))

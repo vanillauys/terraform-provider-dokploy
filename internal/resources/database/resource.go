@@ -199,8 +199,11 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 	password := tfutil.SecretToCreate(plan.DatabasePassword, plan.DatabasePasswordWo)
 	created, err := r.kind.Client.Create(ctx, CreateSpec{
-		Name:             plan.Name.ValueString(),
-		AppName:          plan.AppName.ValueString(),
+		Name: plan.Name.ValueString(),
+		// AppName seeds the server's generator with the service name, so the
+		// stored app name reads "<name>-<suffix>" like one made in the UI.
+		// plan.AppName is never set in config (tfutil.ServerGeneratedAppName).
+		AppName:          plan.Name.ValueString(),
 		DockerImage:      plan.DockerImage.ValueString(),
 		EnvironmentID:    plan.EnvironmentID.ValueString(),
 		Description:      plan.Description.ValueStringPointer(),

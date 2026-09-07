@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-09-08
+
+### Fixed
+
+- `app_name` on `dokploy_compose`, `dokploy_application`, and the six
+  database engines (#39). Dokploy appends a random suffix to any app name
+  it receives on create and ignores the field on update, so a configured
+  value could never match the stored one. The apply failed with "Provider
+  produced inconsistent result after apply" and left the resource tainted.
+  The provider now rejects a configured `app_name` at plan time with a
+  message that says why. The attribute keeps its shape. When you omit it,
+  the create request seeds the server with `name`, so a generated app name
+  reads `<name>-<suffix>` instead of a random phrase, as `dokploy_libsql`
+  already did. A resource that the failure left tainted: remove `app_name`
+  from the configuration, then run `terraform untaint <address>`; the next
+  plan is empty.
+
 ## [1.0.0] - 2026-09-05
 
 The first stable release. It has no configuration change: every attribute

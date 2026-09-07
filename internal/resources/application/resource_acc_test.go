@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -833,6 +834,44 @@ resource "dokploy_application" "test" {
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 				Check: resource.TestCheckResourceAttr("dokploy_application.test", "description", "upgrade test"),
+			},
+		},
+	})
+}
+
+// TestAccApplication_appNameIsServerGenerated is the application half of
+// issue #39: see TestAccCompose_appNameIsServerGenerated.
+func TestAccApplication_appNameIsServerGenerated(t *testing.T) {
+	name := acctest.RandomName("app-name")
+	config := func(body string) string {
+		return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_application" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.environments[0].id
+  deploy_on_change = false
+
+  docker = {
+    image = "traefik/whoami:v1.10"
+  }
+%s
+}`, name+"-proj", name, body)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkApplicationDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      config(fmt.Sprintf("  app_name = %q", name)),
+				ExpectError: regexp.MustCompile(`Dokploy generates app_name`),
+			},
+			{
+				Config: config(""),
+				Check:  resource.TestMatchResourceAttr("dokploy_application.test", "app_name", regexp.MustCompile(`^`+regexp.QuoteMeta(name)+`-[a-z0-9]+$`)),
 			},
 		},
 	})

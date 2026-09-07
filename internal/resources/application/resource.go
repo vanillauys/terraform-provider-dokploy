@@ -78,7 +78,8 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		"app_name": schema.StringAttribute{
 			Optional:      true,
 			Computed:      true,
-			Description:   "Internal Dokploy app name. If you omit it, the server generates one.",
+			Description:   "Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it; the provider rejects a configured value.",
+			Validators:    []validator.String{tfutil.ServerGeneratedAppName()},
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
 		},
 		"server_id": schema.StringAttribute{
@@ -547,8 +548,11 @@ func (r *applicationResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 	created, err := r.client.CreateApplication(ctx, client.CreateApplicationRequest{
-		Name:          plan.Name.ValueString(),
-		AppName:       plan.AppName.ValueString(),
+		Name: plan.Name.ValueString(),
+		// AppName seeds the server's generator with the application name, so
+		// the stored app name reads "<name>-<suffix>" like one made in the
+		// UI. plan.AppName is never set in config (tfutil.ServerGeneratedAppName).
+		AppName:       plan.Name.ValueString(),
 		Description:   plan.Description.ValueStringPointer(),
 		EnvironmentID: plan.EnvironmentID.ValueString(),
 		ServerID:      plan.ServerID.ValueStringPointer(),

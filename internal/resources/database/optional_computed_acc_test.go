@@ -24,10 +24,11 @@
 //     with an explicit appName does NOT reject it, but does not store it
 //     verbatim either — the server appends a random suffix
 //     ("my-custom-app-name" came back as "my-custom-app-name-2czzou").
-//     Setting it from Terraform config would therefore make apply fail with
+//     Setting it from Terraform config therefore made apply fail with
 //     "Provider produced inconsistent result after apply" (the planned,
 //     config-supplied value can never equal what the server actually
-//     stores) — a framework-level failure, not a meaningful assertion.
+//     stores) until v1.0.1 (issue #39), which rejects a configured value at
+//     plan time; TestAccDatabase_appNameIsServerGenerated below pins that.
 //     Per the ledger's instruction, this covers only the direction
 //     UseStateForUnknown actually governs: a config that never mentions
 //     app_name at all must still see it stay non-null and unchanged across
@@ -64,6 +65,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -381,6 +383,45 @@ resource "dokploy_postgres" "test" {
 						return nil
 					},
 				),
+			},
+		},
+	})
+}
+
+// TestAccDatabase_appNameIsServerGenerated is the engine half of issue #39,
+// proven once on postgres because kind.go defines app_name once for every
+// engine: see TestAccCompose_appNameIsServerGenerated.
+func TestAccDatabase_appNameIsServerGenerated(t *testing.T) {
+	name := acctest.RandomName("pg-app")
+	config := func(body string) string {
+		return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_postgres" "test" {
+  name               = %q
+  environment_id     = dokploy_project.test.environments[0].id
+  database_name      = "acc"
+  database_user      = "acc"
+  database_password  = "acc-password-1"
+  docker_image       = "postgres:16-alpine"
+  deploy_on_change   = false
+%s
+}`, name+"-proj", name, body)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkPostgresDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      config(fmt.Sprintf("  app_name = %q", name)),
+				ExpectError: regexp.MustCompile(`Dokploy generates app_name`),
+			},
+			{
+				Config: config(""),
+				Check:  resource.TestMatchResourceAttr("dokploy_postgres.test", "app_name", regexp.MustCompile(`^`+regexp.QuoteMeta(name)+`-[a-z0-9]+$`)),
 			},
 		},
 	})
