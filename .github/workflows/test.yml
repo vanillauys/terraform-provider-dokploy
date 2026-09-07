@@ -59,3 +59,24 @@ jobs:
           go-version-file: go.mod
       - run: make docs
       - run: git diff --exit-code
+  # SonarQube Cloud analysis. The SonarQube Cloud GitHub App posts the result
+  # as a comment on the pull request after each push. The job runs the unit
+  # tests with a coverage profile first, because SonarQube Cloud counts a Go
+  # file without coverage data as 0% covered. A pull request from a fork has
+  # no SONAR_TOKEN, so the job skips it. sonar-project.properties holds the
+  # scanner configuration.
+  sonar:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The scanner needs the full history to find the new code.
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go test ./... -count=1 -coverprofile=coverage.out
+      - uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
