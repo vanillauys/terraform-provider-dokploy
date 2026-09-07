@@ -1,0 +1,6 @@
+# OSV-Scanner and the OpenSSF Scorecard Vulnerabilities check read this file
+# next to go.mod. List an advisory here only with a reason a reviewer can
+# check.
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+reason = "The advisory marks golang.org/x/crypto/openpgp as unmaintained and has no fixed version. Nothing in this module graph imports openpgp: `go mod why golang.org/x/crypto/openpgp` reports that the main module does not need it. The module stays because golang.org/x/crypto/ssh generates the SSH keys of the acceptance tests and terraform-plugin-testing requires it."
