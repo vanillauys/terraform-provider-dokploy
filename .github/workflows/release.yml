@@ -4,6 +4,10 @@ on:
     tags: ['v*']
 permissions:
   contents: write
+  # id-token and attestations let the last step sign a build provenance
+  # attestation for the release archives.
+  id-token: write
+  attestations: write
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
@@ -28,7 +32,16 @@ jobs:
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
+          # The GoReleaser binary is pinned too: the action's default is the
+          # newest v2 at run time. Dependabot does not move this line; bump it
+          # by hand with the action.
+          version: v2.18.1
           args: release --clean
         env:
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # A signed provenance attestation for every release archive, verifiable
+      # with `gh attestation verify <archive> --owner vanillauys`.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.zip

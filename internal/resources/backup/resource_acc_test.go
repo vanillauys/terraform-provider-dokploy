@@ -175,6 +175,7 @@ resource "dokploy_backup" "test" {
 // against that state with the new name. The state upgrader must load the
 // version 0 state, and the plan must be empty (D6 in the Phase 1 brief).
 func TestAccBackup_upgradeFromV0(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("bk-up")
 	cfg := func(attr string) string {
 		return base(name) + fmt.Sprintf(`

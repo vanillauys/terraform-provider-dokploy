@@ -123,6 +123,7 @@ func TestAccGiteaProvider_writeOnlyClientSecret(t *testing.T) {
 		PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 	}
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkDestroy,

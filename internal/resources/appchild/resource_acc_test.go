@@ -93,6 +93,7 @@ func TestAccSecurity_writeOnlyPassword(t *testing.T) {
 		return fmt.Sprintf("  password_wo         = %q\n  password_wo_version = %d", password, version)
 	}
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkSecurityDestroy,
@@ -141,11 +142,13 @@ func TestAccSecurity_writeOnlyPassword(t *testing.T) {
 // password in it loads under the companions with an empty plan, and that
 // the move to the companion is an in-place update.
 func TestAccSecurity_upgradeFromV0_11(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("sec-up")
 	plain := "  password = \"acc-pass-12345\""
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { acctest.PreCheck(t) },
-		CheckDestroy: checkSecurityDestroy,
+		TerraformVersionChecks: acctest.WriteOnlyVersionChecks(),
+		PreCheck:               func() { acctest.PreCheck(t) },
+		CheckDestroy:           checkSecurityDestroy,
 		Steps: []resource.TestStep{
 			{
 				ExternalProviders: map[string]resource.ExternalProvider{

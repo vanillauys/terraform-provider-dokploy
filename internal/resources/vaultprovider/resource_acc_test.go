@@ -242,6 +242,7 @@ resource "dokploy_vault_provider" "test" {
 // plan, and that the move to the companion is an in-place update. Fake
 // credentials, no verification: the claim is about the state shape.
 func TestAccVaultProvider_upgradeFromV0_11(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("vault-up")
 	cfg := func(tokenLines string) string {
 		return fmt.Sprintf(`

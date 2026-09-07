@@ -123,6 +123,7 @@ func TestAccLibsql_writeOnlyPassword(t *testing.T) {
 		PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_libsql.test", plancheck.ResourceActionUpdate)},
 	}
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkLibsqlDestroy,
@@ -169,11 +170,13 @@ func TestAccLibsql_writeOnlyPassword(t *testing.T) {
 // password in it loads under the companions with an empty plan, and that the
 // move to the companion is an in-place update.
 func TestAccLibsql_upgradeFromV0_11(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("ls-up")
 	plain := "  database_password = \"acc-password-1\""
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { acctest.PreCheck(t) },
-		CheckDestroy: checkLibsqlDestroy,
+		TerraformVersionChecks: acctest.WriteOnlyVersionChecks(),
+		PreCheck:               func() { acctest.PreCheck(t) },
+		CheckDestroy:           checkLibsqlDestroy,
 		Steps: []resource.TestStep{
 			{
 				ExternalProviders: map[string]resource.ExternalProvider{

@@ -7,12 +7,27 @@ name: acceptance-suite
 # with the unit coverage for SonarQube Cloud.
 on:
   workflow_call:
+    inputs:
+      # The CLI that drives the suite: `terraform` or `opentofu`, and its
+      # version. The pull request run uses the defaults; nightly.yml runs
+      # the matrix that backs the compatibility claim of the README.
+      tool:
+        type: string
+        default: terraform
+      version:
+        type: string
+        default: "1.16.1"
+    outputs:
+      coverage-artifact:
+        value: ${{ jobs.acceptance.outputs.coverage-artifact }}
 permissions:
   contents: read
 jobs:
   acceptance:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    outputs:
+      coverage-artifact: ${{ steps.artifact.outputs.name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -25,9 +40,15 @@ jobs:
       # pinned install serves every package and takes the network out of the
       # test binaries. The wrapper is off so the path is the real binary.
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        if: inputs.tool == 'terraform'
         with:
-          terraform_version: "1.16.1"
+          terraform_version: ${{ inputs.version }}
           terraform_wrapper: false
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        if: inputs.tool == 'opentofu'
+        with:
+          tofu_version: ${{ inputs.version }}
+          tofu_wrapper: false
       # Every piped step below sets pipefail explicitly. GitHub's default shell
       # is `bash -e`, which inspects only the LAST command in a pipeline: a
       # failing curl or bootstrap.sh was reported as a green step, and the job
@@ -71,12 +92,29 @@ jobs:
         run: |
           set -euo pipefail
           ./acceptance/bootstrap.sh | sed 's/^export //' >> "$GITHUB_ENV"
+      # OpenTofu looks for the provider under test on registry.opentofu.org,
+      # so the test framework must register it there (TF_ACC_PROVIDER_HOST).
+      # The tests that install a released provider from the registry skip on
+      # OpenTofu: vanillauys/dokploy is not on that registry yet.
       - name: Run acceptance tests
+        env:
+          TOOL: ${{ inputs.tool }}
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/coverage"
-          COVERDIR="$GITHUB_WORKSPACE/coverage" TF_ACC_TERRAFORM_PATH="$(command -v terraform)" make testacc
+          if [[ "$TOOL" == opentofu ]]; then
+            export TF_ACC_PROVIDER_HOST=registry.opentofu.org
+            cli="$(command -v tofu)"
+          else
+            cli="$(command -v terraform)"
+          fi
+          COVERDIR="$GITHUB_WORKSPACE/coverage" TF_ACC_TERRAFORM_PATH="$cli" make testacc
+      - id: artifact
+        env:
+          TOOL: ${{ inputs.tool }}
+          VERSION: ${{ inputs.version }}
+        run: echo "name=acceptance-coverage-${TOOL}-${VERSION}" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: acceptance-coverage
+          name: ${{ steps.artifact.outputs.name }}
           path: coverage

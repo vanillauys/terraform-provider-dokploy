@@ -132,6 +132,7 @@ func TestAccSSHKey_writeOnlyPrivateKey(t *testing.T) {
 		resource.TestCheckNoResourceAttr("dokploy_ssh_key.test", "private_key_wo"),
 	)
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkSSHKeyDestroy,

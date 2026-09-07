@@ -88,6 +88,7 @@ func TestAccPostgres_writeOnlyPassword(t *testing.T) {
 		PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_postgres.test", plancheck.ResourceActionUpdate)},
 	}
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkPostgresDestroy,
@@ -148,11 +149,13 @@ func TestAccPostgres_writeOnlyPassword(t *testing.T) {
 // and that the move to the companion is an in-place update. The pattern is
 // TestAccBackup_upgradeFromV0's.
 func TestAccPostgres_upgradeFromV0_11(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("pg-up")
 	plain := "  database_password = \"acc-password-1\"\n  deploy_on_change  = false"
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { acctest.PreCheck(t) },
-		CheckDestroy: checkPostgresDestroy,
+		TerraformVersionChecks: acctest.WriteOnlyVersionChecks(),
+		PreCheck:               func() { acctest.PreCheck(t) },
+		CheckDestroy:           checkPostgresDestroy,
 		Steps: []resource.TestStep{
 			{
 				ExternalProviders: map[string]resource.ExternalProvider{

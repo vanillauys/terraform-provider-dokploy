@@ -250,6 +250,7 @@ func TestAccCompose_optionalAttributesRevert(t *testing.T) {
 // dialect B, an omitted key keeps the stored value, verified live on
 // v0.30.5 (2026-09-05).
 func TestAccCompose_upgradeFromV0(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	projectName := acctest.RandomName("compose-proj")
 	name := acctest.RandomName("compose-up")
 

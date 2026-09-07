@@ -64,6 +64,7 @@ func TestAccUser_lifecycle(t *testing.T) {
 	email := acctest.RandomName("user") + "@example.com"
 	plain := "  password = \"acceptance-only-pass\""
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkDestroy,

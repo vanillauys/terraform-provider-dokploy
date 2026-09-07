@@ -92,6 +92,7 @@ func TestAccDestination_writeOnlyKeys(t *testing.T) {
 		return fmt.Sprintf("  access_key_wo                = %q\n  access_key_wo_version        = %d\n  secret_access_key_wo         = %q\n  secret_access_key_wo_version = %d", key, version, secret, version)
 	}
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkDestinationDestroy,
@@ -143,11 +144,13 @@ func TestAccDestination_writeOnlyKeys(t *testing.T) {
 // credentials in it loads under the companions with an empty plan, and that
 // the move to the companions is an in-place update.
 func TestAccDestination_upgradeFromV0_11(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("dest-up")
 	plain := "  access_key        = \"AKIAACCEPTANCEONLY\"\n  secret_access_key = \"acceptance-only-not-a-real-secret\""
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { acctest.PreCheck(t) },
-		CheckDestroy: checkDestinationDestroy,
+		TerraformVersionChecks: acctest.WriteOnlyVersionChecks(),
+		PreCheck:               func() { acctest.PreCheck(t) },
+		CheckDestroy:           checkDestinationDestroy,
 		Steps: []resource.TestStep{
 			{
 				ExternalProviders: map[string]resource.ExternalProvider{

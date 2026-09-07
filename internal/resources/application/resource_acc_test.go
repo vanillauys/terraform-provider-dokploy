@@ -795,6 +795,7 @@ resource "dokploy_application" "test" {
 // creates the application with v0.13.0 from the registry; step 2 plans the
 // same configuration with the local build and expects no change.
 func TestAccApplication_upgradeFromV0_13(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("app-up")
 	cfg := fmt.Sprintf(`
 resource "dokploy_project" "test" {

@@ -1,12 +1,16 @@
 # Dependabot keeps the Go modules and the SHA-pinned actions current. An
 # action update moves the SHA and its version comment together, so the
 # pin policy in release.yml holds.
+# The cooldown holds a new version back for seven days, so a release that
+# is pulled or found malicious within days never reaches a pull request.
 version: 2
 updates:
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       go-modules:
         patterns: ["*"]
@@ -16,5 +20,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "ci"
