@@ -188,6 +188,7 @@ resource "dokploy_vault_provider" "test" {
 	}
 
 	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
 		CheckDestroy:             checkVaultProviderDestroy,
@@ -259,8 +260,9 @@ resource "dokploy_vault_provider" "test" {
 `, name, tokenLines)
 	}
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { acctest.PreCheck(t) },
-		CheckDestroy: checkVaultProviderDestroy,
+		TerraformVersionChecks: acctest.WriteOnlyVersionChecks(),
+		PreCheck:               func() { acctest.PreCheck(t) },
+		CheckDestroy:           checkVaultProviderDestroy,
 		Steps: []resource.TestStep{
 			{
 				ExternalProviders: map[string]resource.ExternalProvider{
