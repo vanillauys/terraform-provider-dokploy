@@ -255,6 +255,14 @@ func TestExpandCreateCarriesOnlyTheSevenAcceptedFields(t *testing.T) {
 	if req.ComposeFile != "" {
 		t.Errorf("composeFile = %q, want \"\" for a github source", req.ComposeFile)
 	}
+	// name seeds appName until the plan carries a prefix.
+	if req.AppName != "web" {
+		t.Errorf("appName = %q, want the name as the seed", req.AppName)
+	}
+	m.AppNamePrefix = types.StringValue("web-app03")
+	if got := expandCreate(&m).AppName; got != "web-app03" {
+		t.Errorf("appName = %q, want the prefix as the seed", got)
+	}
 }
 
 func TestExpandCreateCarriesTheRawComposeFile(t *testing.T) {

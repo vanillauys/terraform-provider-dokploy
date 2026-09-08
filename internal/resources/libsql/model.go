@@ -14,6 +14,7 @@ type resourceModel struct {
 	ID               types.String `tfsdk:"id"`
 	Name             types.String `tfsdk:"name"`
 	AppName          types.String `tfsdk:"app_name"`
+	AppNamePrefix    types.String `tfsdk:"app_name_prefix"`
 	EnvironmentID    types.String `tfsdk:"environment_id"`
 	Description      types.String `tfsdk:"description"`
 	DatabaseUser     types.String `tfsdk:"database_user"`
@@ -60,6 +61,7 @@ func flatten(ctx context.Context, c *client.Libsql, m *resourceModel, diags *dia
 	m.ID = types.StringValue(c.LibsqlID)
 	m.Name = types.StringValue(c.Name)
 	m.AppName = types.StringValue(c.AppName)
+	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(c.AppName))
 	m.EnvironmentID = types.StringValue(c.EnvironmentID)
 	m.Description = tfutil.StringOrNull(c.Description)
 	m.DatabaseUser = types.StringValue(c.DatabaseUser)
@@ -107,16 +109,16 @@ func strPtr(v types.String) *string {
 func expandCreate(m *resourceModel, password string) client.CreateLibsqlRequest {
 	return client.CreateLibsqlRequest{
 		Name: m.Name.ValueString(),
-		// AppName always carries a name-derived value, never m.AppName: the
-		// server rejects both an absent and an empty appName key (verified
-		// live, v0.29.13, 2026-08-12 - see internal/client/libsql.go's
-		// CreateLibsqlRequest doc comment), and it appends a random suffix to
-		// whatever value it receives, even a caller-supplied one. So the
-		// resource never lets the config set app_name at all - it is
-		// Computed-only in resource.go's schema - and this seed value is only
-		// ever a starting point for the server's own uniqueness suffix, never
-		// the value that ends up stored.
-		AppName:          m.Name.ValueString(),
+		// AppName carries the seed, never m.AppName: the server rejects both
+		// an absent and an empty appName key (verified live, v0.29.13,
+		// 2026-08-12 - see internal/client/libsql.go's CreateLibsqlRequest
+		// doc comment), and it appends a random suffix to whatever value it
+		// receives, even a caller-supplied one. So the resource never lets
+		// the config set app_name at all - it is Computed-only in
+		// resource.go's schema - and this seed value (app_name_prefix, else
+		// name) is only ever a starting point for the server's own
+		// uniqueness suffix, never the value that ends up stored.
+		AppName:          tfutil.AppNameSeed(m.AppNamePrefix, m.Name),
 		EnvironmentID:    m.EnvironmentID.ValueString(),
 		Description:      strPtr(m.Description),
 		DatabaseUser:     m.DatabaseUser.ValueString(),

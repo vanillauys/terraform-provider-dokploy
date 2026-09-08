@@ -34,8 +34,13 @@ vuln:
 acc-up:
 	./acceptance/up.sh
 
+# The Changelog guide is CHANGELOG.md behind a registry front matter. It is
+# written after tfplugindocs because generate empties docs/guides/ first, and
+# no template function includes a file as markdown.
 docs:
 	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name dokploy
+	printf -- '---\npage_title: "Changelog"\nsubcategory: ""\ndescription: |-\n  Every release of the provider, newest first. Generated from CHANGELOG.md.\n---\n\n' > docs/guides/changelog.md
+	cat CHANGELOG.md >> docs/guides/changelog.md
 
 # Point git at the version-controlled hooks in .githooks/ so every clone gets
 # the gitleaks pre-commit secret scan without a manual step. Idempotent; no-op

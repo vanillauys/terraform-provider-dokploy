@@ -2,6 +2,7 @@ package tfutil
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -199,5 +200,56 @@ func TestServerGeneratedAppName(t *testing.T) {
 	}
 	if got := resp.Diagnostics[0].Summary(); got != "Dokploy generates app_name" {
 		t.Errorf("summary = %q", got)
+	}
+}
+
+func TestAppNamePrefix(t *testing.T) {
+	for in, want := range map[string]string{
+		"glitchtip-app03-dfw-wr2oq7": "glitchtip-app03-dfw",
+		"glitchtip-nffunj":           "glitchtip",
+		"glitchtip":                  "glitchtip",
+		"glitchtip-app03":            "glitchtip-app03",  // a five-character tail is not a suffix
+		"glitchtip-ABCDEF":           "glitchtip-ABCDEF", // the server lowercases its suffix
+		"compose-app-x7k2m9-abc123":  "compose-app-x7k2m9",
+	} {
+		if got := AppNamePrefix(in); got != want {
+			t.Errorf("AppNamePrefix(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestAppNamePrefixValidators(t *testing.T) {
+	for value, ok := range map[string]bool{
+		"glitchtip-app03-dfw":   true,
+		"a.b_c-d1":              true,
+		strings.Repeat("a", 56): true,
+		"GlitchTip":             false,
+		"bad prefix":            false,
+		"":                      false,
+		strings.Repeat("a", 57): false,
+	} {
+		resp := &validator.StringResponse{}
+		for _, v := range AppNamePrefixValidators() {
+			v.ValidateString(context.Background(), validator.StringRequest{Path: path.Root("app_name_prefix"), ConfigValue: types.StringValue(value)}, resp)
+		}
+		if resp.Diagnostics.HasError() == ok {
+			t.Errorf("%q: valid = %v, want %v: %v", value, !resp.Diagnostics.HasError(), ok, resp.Diagnostics)
+		}
+	}
+}
+
+func TestAppNameSeed(t *testing.T) {
+	name := types.StringValue("glitchtip")
+	for label, tc := range map[string]struct {
+		prefix types.String
+		want   string
+	}{
+		"null":    {types.StringNull(), "glitchtip"},
+		"unknown": {types.StringUnknown(), "glitchtip"},
+		"set":     {types.StringValue("glitchtip-app03-dfw"), "glitchtip-app03-dfw"},
+	} {
+		if got := AppNameSeed(tc.prefix, name); got != tc.want {
+			t.Errorf("%s: AppNameSeed = %q, want %q", label, got, tc.want)
+		}
 	}
 }

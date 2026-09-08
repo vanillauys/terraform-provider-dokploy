@@ -54,7 +54,8 @@ The provider follows [semantic versioning](https://semver.org) from v1.0.0:
 - The Dokploy compatibility pin moves in minor releases.
 
 Pin the minor version, `~> 1.0`, to get fixes and additions without a
-breaking change.
+breaking change. The [changelog](guides/changelog) names every change in
+each release.
 
 ## Guides
 
@@ -74,6 +75,8 @@ breaking change.
 - [Upgrade guide](guides/upgrading): what each release needs from your
   configuration. v1.0 has no change; v0.13 adds the coverage of this page;
   v0.12 adds the write-only companions; v0.11 had the breaking changes.
+- [Changelog](guides/changelog): every release, newest first, with the
+  attributes it added, changed, or fixed.
 
 ## Before you start
 

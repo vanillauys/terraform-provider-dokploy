@@ -10,12 +10,15 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	sdkacctest "github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
@@ -303,4 +306,25 @@ func ClientWithKey(apiKey string) (*client.Client, error) {
 		return nil, fmt.Errorf("DOKPLOY_ENDPOINT must be set")
 	}
 	return client.New(endpoint, apiKey, false, "acctest")
+}
+
+// AppNameFor matches the app name that Dokploy builds from prefix at create:
+// the prefix, "-", and six lowercase characters (buildAppName, v0.30.5).
+func AppNameFor(prefix string) *regexp.Regexp {
+	return regexp.MustCompile(`^` + regexp.QuoteMeta(prefix) + `-[a-z0-9]{6}$`)
+}
+
+// ImportStateAttr checks one attribute of the single imported instance. Use
+// it instead of ImportStateVerify when the config pins a provider-only
+// attribute (deploy_on_change) that an import can only seed with its default.
+func ImportStateAttr(name, want string) resource.ImportStateCheckFunc {
+	return func(states []*terraform.InstanceState) error {
+		if len(states) != 1 {
+			return fmt.Errorf("expected 1 imported instance, got %d", len(states))
+		}
+		if got := states[0].Attributes[name]; got != want {
+			return fmt.Errorf("imported %s = %q, want %q", name, got, want)
+		}
+		return nil
+	}
 }

@@ -20,6 +20,7 @@ package tfutil
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -221,9 +222,46 @@ func (serverGeneratedAppName) ValidateString(_ context.Context, req validator.St
 		return
 	}
 	resp.Diagnostics.AddAttributeError(req.Path, "Dokploy generates app_name",
-		"Dokploy derives app_name from name and appends a random suffix on create, and it ignores app_name on update. "+
+		"Dokploy derives app_name from app_name_prefix (default: name) and appends a random suffix on create, and it ignores app_name on update. "+
 			"A value that you set can never match the stored value, so the apply would fail. "+
-			"Remove app_name from the configuration and read the generated value from the state.")
+			"Remove app_name from the configuration, set app_name_prefix to choose the part before the suffix, "+
+			"and read the generated value from the state.")
+}
+
+var (
+	appNamePrefixPattern = regexp.MustCompile(`^[a-z0-9._-]+$`)
+	appNameSuffix        = regexp.MustCompile(`-[a-z0-9]{6}$`)
+)
+
+// AppNamePrefixValidators bound an `app_name_prefix` attribute to the values
+// that Dokploy stores unchanged. The server accepts ^[a-zA-Z0-9._-]+$ up to 63
+// characters (APP_NAME_REGEX in the same utils.ts), then cleanAppName
+// lowercases the seed and buildAppName appends "-<six characters>". Lowercase
+// only keeps the configured value equal to the derived one (AppNamePrefix);
+// 56 keeps the whole app name inside the 63-character DNS label that a Docker
+// service name needs.
+func AppNamePrefixValidators() []validator.String {
+	return []validator.String{
+		stringvalidator.RegexMatches(appNamePrefixPattern, "must use only lowercase letters, digits, dots, underscores, and hyphens"),
+		stringvalidator.LengthBetween(1, 56),
+	}
+}
+
+// AppNamePrefix returns the part of a stored app name before the suffix that
+// buildAppName appended: one trailing "-" and six lowercase characters
+// (generatePassword(6) in packages/server/src/templates/index.ts). A value
+// without that tail comes back unchanged.
+func AppNamePrefix(appName string) string {
+	return appNameSuffix.ReplaceAllString(appName, "")
+}
+
+// AppNameSeed picks the value that seeds Dokploy's app-name generator at
+// create: app_name_prefix when the plan has one, else name.
+func AppNameSeed(prefix, name types.String) string {
+	if prefix.IsNull() || prefix.IsUnknown() {
+		return name.ValueString()
+	}
+	return prefix.ValueString()
 }
 
 // WriteOnlyOptions tunes WriteOnlyCompanions.

@@ -28,7 +28,8 @@
 //     "Provider produced inconsistent result after apply" (the planned,
 //     config-supplied value can never equal what the server actually
 //     stores) until v1.0.1 (issue #39), which rejects a configured value at
-//     plan time; TestAccDatabase_appNameIsServerGenerated below pins that.
+//     plan time; TestAccDatabase_appNamePrefix below pins that, and the
+//     v1.1.0 app_name_prefix that seeds the part before the suffix.
 //     Per the ledger's instruction, this covers only the direction
 //     UseStateForUnknown actually governs: a config that never mentions
 //     app_name at all must still see it stay non-null and unchanged across
@@ -388,12 +389,14 @@ resource "dokploy_postgres" "test" {
 	})
 }
 
-// TestAccDatabase_appNameIsServerGenerated is the engine half of issue #39,
-// proven once on postgres because kind.go defines app_name once for every
-// engine: see TestAccCompose_appNameIsServerGenerated.
-func TestAccDatabase_appNameIsServerGenerated(t *testing.T) {
+// TestAccDatabase_appNamePrefix is the engine half of issue #39 and the
+// v1.1.0 prefix (#41), proven once on postgres because kind.go defines
+// app_name and app_name_prefix once for every engine: see
+// TestAccCompose_appNamePrefix for the steps.
+func TestAccDatabase_appNamePrefix(t *testing.T) {
 	name := acctest.RandomName("pg-app")
-	config := func(body string) string {
+	prefix := name + "-app03-dfw"
+	config := func(svcName, body string) string {
 		return fmt.Sprintf(`
 resource "dokploy_project" "test" {
   name = %q
@@ -408,7 +411,7 @@ resource "dokploy_postgres" "test" {
   docker_image       = "postgres:16-alpine"
   deploy_on_change   = false
 %s
-}`, name+"-proj", name, body)
+}`, name+"-proj", svcName, body)
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -416,12 +419,44 @@ resource "dokploy_postgres" "test" {
 		CheckDestroy:             checkPostgresDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config:      config(fmt.Sprintf("  app_name = %q", name)),
+				Config:      config(name, fmt.Sprintf("  app_name = %q", name)),
 				ExpectError: regexp.MustCompile(`Dokploy generates app_name`),
 			},
 			{
-				Config: config(""),
-				Check:  resource.TestMatchResourceAttr("dokploy_postgres.test", "app_name", regexp.MustCompile(`^`+regexp.QuoteMeta(name)+`-[a-z0-9]+$`)),
+				Config: config(name, ""),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestMatchResourceAttr("dokploy_postgres.test", "app_name", acctest.AppNameFor(name)),
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "app_name_prefix", name),
+				),
+			},
+			{
+				Config:      config(name, `  app_name_prefix = "Bad Prefix"`),
+				ExpectError: regexp.MustCompile(`(?s)must use only\s+lowercase`),
+			},
+			{
+				Config: config(name, fmt.Sprintf("  app_name_prefix = %q", prefix)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_postgres.test", plancheck.ResourceActionReplace)},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestMatchResourceAttr("dokploy_postgres.test", "app_name", acctest.AppNameFor(prefix)),
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "app_name_prefix", prefix),
+				),
+			},
+			{
+				Config: config(name+"-renamed", fmt.Sprintf("  app_name_prefix = %q", prefix)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_postgres.test", plancheck.ResourceActionUpdate)},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_postgres.test", "name", name+"-renamed"),
+					resource.TestMatchResourceAttr("dokploy_postgres.test", "app_name", acctest.AppNameFor(prefix)),
+				),
+			},
+			{
+				ResourceName:     "dokploy_postgres.test",
+				ImportState:      true,
+				ImportStateCheck: acctest.ImportStateAttr("app_name_prefix", prefix),
 			},
 		},
 	})

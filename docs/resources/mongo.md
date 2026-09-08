@@ -39,7 +39,8 @@ resource "dokploy_mongo" "example" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `app_name` (String) Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it; the provider rejects a configured value.
+- `app_name` (String) Internal Dokploy app name, `<app_name_prefix>-<suffix>`. The server generates it at create. You cannot set it; set `app_name_prefix` instead.
+- `app_name_prefix` (String) Prefix of the Dokploy app name. Dokploy appends `-<suffix>` (six random lowercase characters) at create and never changes the app name afterwards. Defaults to `name`. Use lowercase letters, digits, dots, underscores, and hyphens; 56 characters at most. A change replaces the resource. After an import the provider derives the value from `app_name`.
 - `database_password` (String, Sensitive) MongoDB password. A change starts a redeploy. Set this attribute or `database_password_wo`.
 - `database_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `database_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `database_password` and `database_password_wo`. A new value reaches the server only when `database_password_wo_version` changes.
 - `database_password_wo_version` (Number) Version of `database_password_wo`. Change it to send the current `database_password_wo` value to the server. A version change starts a redeploy. It needs `database_password_wo`.

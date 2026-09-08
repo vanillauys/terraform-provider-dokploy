@@ -58,6 +58,7 @@ resource "dokploy_libsql" "replica" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
+- `app_name_prefix` (String) Prefix of the Dokploy app name. Dokploy appends `-<suffix>` (six random lowercase characters) at create and never changes the app name afterwards. Defaults to `name`. Use lowercase letters, digits, dots, underscores, and hyphens; 56 characters at most. A change replaces the resource. After an import the provider derives the value from `app_name`.
 - `command` (String) Override the container command. A replica needs it on Dokploy v0.30.5: `sqld --db-path iku.db --http-listen-addr 0.0.0.0:8080 --admin-listen-addr 0.0.0.0:5000 --primary-grpc-url http://<primary app_name>:5001`. Do not add `--grpc-listen-addr` to a replica command; `sqld` rejects it next to `--primary-grpc-url`.
 - `cpu_limit` (String) Hard CPU limit in Docker notation, for example `"0.5"`. A string, not a number.
 - `cpu_reservation` (String) Reserved CPU in Docker notation, for example `"0.25"`.
@@ -84,7 +85,7 @@ resource "dokploy_libsql" "replica" {
 
 ### Read-Only
 
-- `app_name` (String) Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it.
+- `app_name` (String) Internal Dokploy app name, `<app_name_prefix>-<suffix>`. The server generates it at create. You cannot set it; set `app_name_prefix` instead.
 - `created_at` (String) Creation timestamp from the server.
 - `id` (String) LibSQL service id.
 - `status` (String) Service status from Dokploy.

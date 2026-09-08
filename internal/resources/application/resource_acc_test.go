@@ -839,11 +839,12 @@ resource "dokploy_application" "test" {
 	})
 }
 
-// TestAccApplication_appNameIsServerGenerated is the application half of
-// issue #39: see TestAccCompose_appNameIsServerGenerated.
-func TestAccApplication_appNameIsServerGenerated(t *testing.T) {
+// TestAccApplication_appNamePrefix is the application half of issue #39 and
+// the v1.1.0 prefix (#41): see TestAccCompose_appNamePrefix for the steps.
+func TestAccApplication_appNamePrefix(t *testing.T) {
 	name := acctest.RandomName("app-name")
-	config := func(body string) string {
+	prefix := name + "-app03-dfw"
+	config := func(svcName, body string) string {
 		return fmt.Sprintf(`
 resource "dokploy_project" "test" {
   name = %q
@@ -858,7 +859,7 @@ resource "dokploy_application" "test" {
     image = "traefik/whoami:v1.10"
   }
 %s
-}`, name+"-proj", name, body)
+}`, name+"-proj", svcName, body)
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -866,12 +867,44 @@ resource "dokploy_application" "test" {
 		CheckDestroy:             checkApplicationDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config:      config(fmt.Sprintf("  app_name = %q", name)),
+				Config:      config(name, fmt.Sprintf("  app_name = %q", name)),
 				ExpectError: regexp.MustCompile(`Dokploy generates app_name`),
 			},
 			{
-				Config: config(""),
-				Check:  resource.TestMatchResourceAttr("dokploy_application.test", "app_name", regexp.MustCompile(`^`+regexp.QuoteMeta(name)+`-[a-z0-9]+$`)),
+				Config: config(name, ""),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestMatchResourceAttr("dokploy_application.test", "app_name", acctest.AppNameFor(name)),
+					resource.TestCheckResourceAttr("dokploy_application.test", "app_name_prefix", name),
+				),
+			},
+			{
+				Config:      config(name, `  app_name_prefix = "Bad Prefix"`),
+				ExpectError: regexp.MustCompile(`(?s)must use only\s+lowercase`),
+			},
+			{
+				Config: config(name, fmt.Sprintf("  app_name_prefix = %q", prefix)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_application.test", plancheck.ResourceActionReplace)},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestMatchResourceAttr("dokploy_application.test", "app_name", acctest.AppNameFor(prefix)),
+					resource.TestCheckResourceAttr("dokploy_application.test", "app_name_prefix", prefix),
+				),
+			},
+			{
+				Config: config(name+"-renamed", fmt.Sprintf("  app_name_prefix = %q", prefix)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_application.test", plancheck.ResourceActionUpdate)},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_application.test", "name", name+"-renamed"),
+					resource.TestMatchResourceAttr("dokploy_application.test", "app_name", acctest.AppNameFor(prefix)),
+				),
+			},
+			{
+				ResourceName:     "dokploy_application.test",
+				ImportState:      true,
+				ImportStateCheck: acctest.ImportStateAttr("app_name_prefix", prefix),
 			},
 		},
 	})
