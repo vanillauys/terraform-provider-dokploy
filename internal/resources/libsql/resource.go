@@ -150,13 +150,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			Description:   "Internal Dokploy app name, `<app_name_prefix>-<suffix>`. The server generates it at create. You cannot set it; set `app_name_prefix` instead.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
-		"app_name_prefix": schema.StringAttribute{
-			Optional:      true,
-			Computed:      true,
-			Description:   "Prefix of the Dokploy app name. Dokploy appends `-<suffix>` (six random lowercase characters) at create and never changes the app name afterwards. Defaults to `name`. Use lowercase letters, digits, dots, underscores, and hyphens; 56 characters at most. A change replaces the resource. After an import the provider derives the value from `app_name`.",
-			Validators:    tfutil.AppNamePrefixValidators(),
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
-		},
+		"app_name_prefix": tfutil.AppNamePrefixAttribute(),
 		// docker_image has no Default either, the same "server decides" shape
 		// as app_name above - but it stays Optional+Computed, unlike app_name:
 		// the server accepts an omitted dockerImage key AND a caller-supplied

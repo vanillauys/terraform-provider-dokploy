@@ -31,6 +31,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -244,6 +245,32 @@ func AppNamePrefixValidators() []validator.String {
 	return []validator.String{
 		stringvalidator.RegexMatches(appNamePrefixPattern, "must use only lowercase letters, digits, dots, underscores, and hyphens"),
 		stringvalidator.LengthBetween(1, 56),
+	}
+}
+
+// AppNameAttribute is the `app_name` attribute that compose, application, and
+// the database engines share: Optional+Computed so a v1.0 state loads, with
+// ServerGeneratedAppName so a configured value fails at plan time. libsql
+// keeps its own Computed-only shape.
+func AppNameAttribute() schema.StringAttribute {
+	return schema.StringAttribute{
+		Optional:      true,
+		Computed:      true,
+		Description:   "Internal Dokploy app name, `<app_name_prefix>-<suffix>`. The server generates it at create. You cannot set it; set `app_name_prefix` instead.",
+		Validators:    []validator.String{ServerGeneratedAppName()},
+		PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
+	}
+}
+
+// AppNamePrefixAttribute is the `app_name_prefix` attribute on every resource
+// that seeds appName at create (AppNameSeed).
+func AppNamePrefixAttribute() schema.StringAttribute {
+	return schema.StringAttribute{
+		Optional:      true,
+		Computed:      true,
+		Description:   "Prefix of the Dokploy app name. Dokploy appends `-<suffix>` (six random lowercase characters) at create and never changes the app name afterwards. Defaults to `name`. Use lowercase letters, digits, dots, underscores, and hyphens; 56 characters at most. A change replaces the resource. After an import the provider derives the value from `app_name`.",
+		Validators:    AppNamePrefixValidators(),
+		PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
 	}
 }
 
