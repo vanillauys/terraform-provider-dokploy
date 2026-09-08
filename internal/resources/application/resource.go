@@ -75,13 +75,8 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			Description:   "Id of the environment that holds this application. Use `dokploy_project.production_environment_id` for the default environment.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
-		"app_name": schema.StringAttribute{
-			Optional:      true,
-			Computed:      true,
-			Description:   "Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it; the provider rejects a configured value.",
-			Validators:    []validator.String{tfutil.ServerGeneratedAppName()},
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
-		},
+		"app_name":        tfutil.AppNameAttribute(),
+		"app_name_prefix": tfutil.AppNamePrefixAttribute(),
 		"server_id": schema.StringAttribute{
 			Optional:      true,
 			Description:   "Id of the remote server that runs the application. Defaults to the Dokploy host.",
@@ -380,6 +375,9 @@ func (r *applicationResource) persistPartial(ctx context.Context, resp *resource
 	if m.AppName.IsUnknown() {
 		m.AppName = types.StringNull()
 	}
+	if m.AppNamePrefix.IsUnknown() {
+		m.AppNamePrefix = types.StringNull()
+	}
 	if m.Build.IsUnknown() {
 		m.Build = types.ObjectNull(buildAttrTypes)
 	}
@@ -549,10 +547,10 @@ func (r *applicationResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	created, err := r.client.CreateApplication(ctx, client.CreateApplicationRequest{
 		Name: plan.Name.ValueString(),
-		// AppName seeds the server's generator with the application name, so
-		// the stored app name reads "<name>-<suffix>" like one made in the
-		// UI. plan.AppName is never set in config (tfutil.ServerGeneratedAppName).
-		AppName:       plan.Name.ValueString(),
+		// AppName seeds the server's generator, which appends its own suffix,
+		// so the stored app name reads "<prefix>-<suffix>" like one made in
+		// the UI. plan.AppName is never set in config (tfutil.ServerGeneratedAppName).
+		AppName:       tfutil.AppNameSeed(plan.AppNamePrefix, plan.Name),
 		Description:   plan.Description.ValueStringPointer(),
 		EnvironmentID: plan.EnvironmentID.ValueString(),
 		ServerID:      plan.ServerID.ValueStringPointer(),

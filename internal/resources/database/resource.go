@@ -87,6 +87,9 @@ func (r *genericResource) persistPartial(ctx context.Context, resp *resource.Cre
 	if m.AppName.IsUnknown() {
 		m.AppName = types.StringNull()
 	}
+	if m.AppNamePrefix.IsUnknown() {
+		m.AppNamePrefix = types.StringNull()
+	}
 	m.Status = types.StringNull()
 	m.CreatedAt = types.StringNull()
 	resolveUnknownComputedCredentials(ctx, r.kind, m.ID.ValueString(), &m)
@@ -200,10 +203,10 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 	password := tfutil.SecretToCreate(plan.DatabasePassword, plan.DatabasePasswordWo)
 	created, err := r.kind.Client.Create(ctx, CreateSpec{
 		Name: plan.Name.ValueString(),
-		// AppName seeds the server's generator with the service name, so the
-		// stored app name reads "<name>-<suffix>" like one made in the UI.
-		// plan.AppName is never set in config (tfutil.ServerGeneratedAppName).
-		AppName:          plan.Name.ValueString(),
+		// AppName seeds the server's generator, which appends its own suffix,
+		// so the stored app name reads "<prefix>-<suffix>" like one made in
+		// the UI. plan.AppName is never set in config (tfutil.ServerGeneratedAppName).
+		AppName:          tfutil.AppNameSeed(plan.AppNamePrefix, plan.Name),
 		DockerImage:      plan.DockerImage.ValueString(),
 		EnvironmentID:    plan.EnvironmentID.ValueString(),
 		Description:      plan.Description.ValueStringPointer(),

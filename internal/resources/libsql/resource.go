@@ -147,9 +147,10 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		// replace.
 		"app_name": schema.StringAttribute{
 			Computed:      true,
-			Description:   "Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it.",
+			Description:   "Internal Dokploy app name, `<app_name_prefix>-<suffix>`. The server generates it at create. You cannot set it; set `app_name_prefix` instead.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+		"app_name_prefix": tfutil.AppNamePrefixAttribute(),
 		// docker_image has no Default either, the same "server decides" shape
 		// as app_name above - but it stays Optional+Computed, unlike app_name:
 		// the server accepts an omitted dockerImage key AND a caller-supplied
@@ -359,6 +360,7 @@ func (r *libsqlResource) ValidateConfig(ctx context.Context, req resource.Valida
 func setComputed(c *client.Libsql, m *resourceModel) {
 	m.ID = types.StringValue(c.LibsqlID)
 	m.AppName = types.StringValue(c.AppName)
+	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(c.AppName))
 	m.DockerImage = types.StringValue(c.DockerImage)
 	m.Status = types.StringValue(c.ApplicationStatus)
 	m.CreatedAt = types.StringValue(c.CreatedAt)
@@ -428,6 +430,9 @@ func (r *libsqlResource) syncPorts(ctx context.Context, plan, state resourceMode
 func (r *libsqlResource) persistPartial(ctx context.Context, resp *resource.CreateResponse, m resourceModel, step string, err error) {
 	if m.AppName.IsUnknown() {
 		m.AppName = types.StringNull()
+	}
+	if m.AppNamePrefix.IsUnknown() {
+		m.AppNamePrefix = types.StringNull()
 	}
 	if m.DockerImage.IsUnknown() {
 		m.DockerImage = types.StringNull()

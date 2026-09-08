@@ -133,7 +133,8 @@ resource "dokploy_compose" "from_gitea" {
 
 ### Optional
 
-- `app_name` (String) Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it; the provider rejects a configured value.
+- `app_name` (String) Internal Dokploy app name, `<app_name_prefix>-<suffix>`. The server generates it at create. You cannot set it; set `app_name_prefix` instead.
+- `app_name_prefix` (String) Prefix of the Dokploy app name. Dokploy appends `-<suffix>` (six random lowercase characters) at create and never changes the app name afterwards. Defaults to `name`. Use lowercase letters, digits, dots, underscores, and hyphens; 56 characters at most. A change replaces the resource. After an import the provider derives the value from `app_name`.
 - `auto_deploy` (Boolean) Redeploy automatically when the source repository changes. The server sets `true` on a new service. An explicit null is a valid stored state.
 - `bitbucket` (Attributes) Source the compose file from a Bitbucket repository, through a `dokploy_bitbucket_provider`. (see [below for nested schema](#nestedatt--bitbucket))
 - `command` (String) Replaces the command that Dokploy runs to deploy this stack, normally `docker compose up`. It is a substitute, not an addition. If the command does not deploy the stack itself, each deploy fails. Leave it unset unless you must replace the deploy command.

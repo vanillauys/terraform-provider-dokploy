@@ -1,3 +1,10 @@
+---
+page_title: "Changelog"
+subcategory: ""
+description: |-
+  Every release of the provider, newest first. Generated from CHANGELOG.md.
+---
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

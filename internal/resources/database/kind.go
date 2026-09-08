@@ -300,13 +300,8 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 			Optional:    true,
 			Description: "Host port for " + k.HumanName + ". If unset, the database stays internal.",
 		},
-		"app_name": schema.StringAttribute{
-			Optional:      true,
-			Computed:      true,
-			Description:   "Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it; the provider rejects a configured value.",
-			Validators:    []validator.String{tfutil.ServerGeneratedAppName()},
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
-		},
+		"app_name":        tfutil.AppNameAttribute(),
+		"app_name_prefix": tfutil.AppNamePrefixAttribute(),
 		"server_id": schema.StringAttribute{
 			Optional:      true,
 			Description:   "Id of the remote server that runs the service. Defaults to the Dokploy host.",

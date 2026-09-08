@@ -75,6 +75,7 @@ type resourceModel struct {
 	Description   types.String `tfsdk:"description"`
 	EnvironmentID types.String `tfsdk:"environment_id"`
 	AppName       types.String `tfsdk:"app_name"`
+	AppNamePrefix types.String `tfsdk:"app_name_prefix"`
 	ServerID      types.String `tfsdk:"server_id"`
 	ComposeType   types.String `tfsdk:"compose_type"`
 
@@ -125,6 +126,7 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 	m.Description = tfutil.StringOrNull(c.Description)
 	m.EnvironmentID = types.StringValue(c.EnvironmentID)
 	m.AppName = types.StringValue(c.AppName)
+	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(c.AppName))
 	m.ServerID = tfutil.StringOrNull(c.ServerID)
 	m.ComposeType = types.StringValue(c.ComposeType)
 
@@ -275,10 +277,10 @@ func sourceTypeFor(m *resourceModel) string {
 func expandCreate(m *resourceModel) client.CreateComposeRequest {
 	req := client.CreateComposeRequest{
 		Name: m.Name.ValueString(),
-		// AppName seeds the server's generator with the service name, so the
-		// stored app name reads "<name>-<suffix>" like one made in the UI.
-		// m.AppName is never set in config (tfutil.ServerGeneratedAppName).
-		AppName:       m.Name.ValueString(),
+		// AppName seeds the server's generator, which appends its own suffix,
+		// so the stored app name reads "<prefix>-<suffix>" like one made in
+		// the UI. m.AppName is never set in config (tfutil.ServerGeneratedAppName).
+		AppName:       tfutil.AppNameSeed(m.AppNamePrefix, m.Name),
 		Description:   m.Description.ValueStringPointer(),
 		EnvironmentID: m.EnvironmentID.ValueString(),
 		ComposeType:   m.ComposeType.ValueString(),

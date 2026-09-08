@@ -12,8 +12,9 @@ different files on each run.
 - `make test`: run the unit tests.
 - `make lint`: run golangci-lint. The configuration is in `.golangci.yml`.
   `max-same-issues` is 0, so one run shows every finding.
-- `make docs`: regenerate the registry docs. CI fails when the regenerated
-  docs differ from the committed docs.
+- `make docs`: regenerate the registry docs, and the Changelog guide from
+  `CHANGELOG.md`. CI fails when the regenerated docs differ from the
+  committed docs.
 - `go test ./internal/provider -run TestSchemaSnapshot -update`: regenerate
   `internal/provider/testdata/schema.json`, the pinned provider schema. The
   unit tests fail when the schema differs from the snapshot. Review the diff

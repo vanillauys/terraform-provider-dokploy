@@ -154,6 +154,12 @@
             "computed": true
           },
           {
+            "name": "app_name_prefix",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "args",
             "type": "tftypes.List[tftypes.String]",
             "optional": true
@@ -780,6 +786,12 @@
         "attributes": [
           {
             "name": "app_name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "app_name_prefix",
             "type": "tftypes.String",
             "optional": true,
             "computed": true
@@ -1991,6 +2003,12 @@
             "computed": true
           },
           {
+            "name": "app_name_prefix",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "command",
             "type": "tftypes.String",
             "optional": true
@@ -2154,6 +2172,12 @@
         "attributes": [
           {
             "name": "app_name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "app_name_prefix",
             "type": "tftypes.String",
             "optional": true,
             "computed": true
@@ -2391,6 +2415,12 @@
             "computed": true
           },
           {
+            "name": "app_name_prefix",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -2548,6 +2578,12 @@
         "attributes": [
           {
             "name": "app_name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "app_name_prefix",
             "type": "tftypes.String",
             "optional": true,
             "computed": true
@@ -2973,6 +3009,12 @@
             "computed": true
           },
           {
+            "name": "app_name_prefix",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -3289,6 +3331,12 @@
         "attributes": [
           {
             "name": "app_name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "app_name_prefix",
             "type": "tftypes.String",
             "optional": true,
             "computed": true

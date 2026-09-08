@@ -81,13 +81,8 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			Description:   "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		},
-		"app_name": schema.StringAttribute{
-			Optional:      true,
-			Computed:      true,
-			Description:   "Internal Dokploy app name. The server always generates it: it derives the name from `name` and appends a random suffix for uniqueness. You cannot set it; the provider rejects a configured value.",
-			Validators:    []validator.String{tfutil.ServerGeneratedAppName()},
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
-		},
+		"app_name":        tfutil.AppNameAttribute(),
+		"app_name_prefix": tfutil.AppNamePrefixAttribute(),
 		"server_id": schema.StringAttribute{
 			Optional:      true,
 			Description:   "Id of the remote server that runs the service. Defaults to the Dokploy host.",
@@ -331,6 +326,7 @@ func (r *composeResource) Configure(_ context.Context, req resource.ConfigureReq
 func setComputed(c *client.Compose, m *resourceModel) {
 	m.ID = types.StringValue(c.ComposeID)
 	m.AppName = types.StringValue(c.AppName)
+	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(c.AppName))
 	m.Status = types.StringValue(c.ComposeStatus)
 	m.CreatedAt = types.StringValue(c.CreatedAt)
 }
@@ -398,6 +394,9 @@ func (r *composeResource) deployAndWait(ctx context.Context, m *resourceModel) e
 func (r *composeResource) persistPartial(ctx context.Context, resp *resource.CreateResponse, m resourceModel, step string, err error) {
 	if m.AppName.IsUnknown() {
 		m.AppName = types.StringNull()
+	}
+	if m.AppNamePrefix.IsUnknown() {
+		m.AppNamePrefix = types.StringNull()
 	}
 	m.Status = types.StringNull()
 	m.CreatedAt = types.StringNull()

@@ -1175,3 +1175,74 @@ resource "dokploy_libsql" "test" {
 		},
 	})
 }
+
+// TestAccLibsql_appNamePrefix is the libsql half of the v1.1.0 prefix (#41):
+// see TestAccCompose_appNamePrefix for the steps. Step 1 differs: app_name is
+// Computed-only here, so a configured value fails as a read-only attribute
+// before any provider validator runs.
+func TestAccLibsql_appNamePrefix(t *testing.T) {
+	name := acctest.RandomName("libsql-app")
+	prefix := name + "-app03-dfw"
+	config := func(svcName, body string) string {
+		return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_libsql" "test" {
+  name              = %q
+  environment_id    = dokploy_project.test.environments[0].id
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  deploy_on_change  = false
+%s
+}`, name+"-proj", svcName, body)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkLibsqlDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config:      config(name, fmt.Sprintf("  app_name = %q", name)),
+				ExpectError: regexp.MustCompile(`read-only`),
+			},
+			{
+				Config: config(name, ""),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestMatchResourceAttr("dokploy_libsql.test", "app_name", acctest.AppNameFor(name)),
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "app_name_prefix", name),
+				),
+			},
+			{
+				Config:      config(name, `  app_name_prefix = "Bad Prefix"`),
+				ExpectError: regexp.MustCompile(`(?s)must use only\s+lowercase`),
+			},
+			{
+				Config: config(name, fmt.Sprintf("  app_name_prefix = %q", prefix)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_libsql.test", plancheck.ResourceActionReplace)},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestMatchResourceAttr("dokploy_libsql.test", "app_name", acctest.AppNameFor(prefix)),
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "app_name_prefix", prefix),
+				),
+			},
+			{
+				Config: config(name+"-renamed", fmt.Sprintf("  app_name_prefix = %q", prefix)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_libsql.test", plancheck.ResourceActionUpdate)},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_libsql.test", "name", name+"-renamed"),
+					resource.TestMatchResourceAttr("dokploy_libsql.test", "app_name", acctest.AppNameFor(prefix)),
+				),
+			},
+			{
+				ResourceName:     "dokploy_libsql.test",
+				ImportState:      true,
+				ImportStateCheck: acctest.ImportStateAttr("app_name_prefix", prefix),
+			},
+		},
+	})
+}

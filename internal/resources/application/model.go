@@ -20,6 +20,7 @@ type resourceModel struct {
 	Description       types.String `tfsdk:"description"`
 	EnvironmentID     types.String `tfsdk:"environment_id"`
 	AppName           types.String `tfsdk:"app_name"`
+	AppNamePrefix     types.String `tfsdk:"app_name_prefix"`
 	ServerID          types.String `tfsdk:"server_id"`
 	Github            types.Object `tfsdk:"github"`
 	Git               types.Object `tfsdk:"git"`
@@ -192,6 +193,7 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.Description.Equal(state.Description) &&
 		plan.EnvironmentID.Equal(state.EnvironmentID) &&
 		plan.AppName.Equal(state.AppName) &&
+		plan.AppNamePrefix.Equal(state.AppNamePrefix) &&
 		plan.ServerID.Equal(state.ServerID) &&
 		plan.Github.Equal(state.Github) &&
 		plan.Git.Equal(state.Git) &&
@@ -455,6 +457,7 @@ func setComputed(ctx context.Context, app *client.Application, m *resourceModel)
 	var diags diag.Diagnostics
 	m.ID = types.StringValue(app.ApplicationID)
 	m.AppName = types.StringValue(app.AppName)
+	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(app.AppName))
 	m.Status = types.StringValue(app.ApplicationStatus)
 	m.CreatedAt = types.StringValue(app.CreatedAt)
 	// build is optional+computed: fill it from the server when the plan
@@ -489,6 +492,7 @@ func flatten(ctx context.Context, app *client.Application, m *resourceModel) dia
 	m.Description = strOrNull(app.Description)
 	m.EnvironmentID = types.StringValue(app.EnvironmentID)
 	m.AppName = types.StringValue(app.AppName)
+	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(app.AppName))
 	m.ServerID = strOrNull(app.ServerID)
 	m.Env = strOrNull(app.Env)
 	m.BuildArgs = strOrNull(app.BuildArgs)

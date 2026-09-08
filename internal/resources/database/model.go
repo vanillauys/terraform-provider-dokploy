@@ -36,6 +36,7 @@ type genericModel struct {
 	Env               types.String
 	ExternalPort      types.Int64
 	AppName           types.String
+	AppNamePrefix     types.String
 	ServerID          types.String
 	Status            types.String
 	CreatedAt         types.String
@@ -131,6 +132,7 @@ func deployNeeded(k Kind, plan, state genericModel) bool {
 func setComputed(k Kind, obj *Object, m *genericModel) {
 	m.ID = types.StringValue(obj.ID)
 	m.AppName = types.StringValue(obj.AppName)
+	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(obj.AppName))
 	m.DockerImage = types.StringValue(obj.DockerImage)
 	m.Status = types.StringValue(obj.ApplicationStatus)
 	m.CreatedAt = types.StringValue(obj.CreatedAt)
@@ -350,6 +352,7 @@ func getModel(ctx context.Context, k Kind, src getter) (genericModel, diag.Diagn
 		Env:               a["env"].(types.String),
 		ExternalPort:      a["external_port"].(types.Int64),
 		AppName:           a["app_name"].(types.String),
+		AppNamePrefix:     a["app_name_prefix"].(types.String),
 		ServerID:          a["server_id"].(types.String),
 		Status:            a["status"].(types.String),
 		CreatedAt:         a["created_at"].(types.String),
@@ -388,6 +391,7 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 		"env":                m.Env,
 		"external_port":      m.ExternalPort,
 		"app_name":           m.AppName,
+		"app_name_prefix":    m.AppNamePrefix,
 		"server_id":          m.ServerID,
 		"status":             m.Status,
 		"created_at":         m.CreatedAt,

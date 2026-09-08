@@ -742,6 +742,14 @@
 // (`const { appName, ...rest } = ...` in services/compose.ts and
 // services/application.ts).
 //
+// v1.1.0 (#41) adds app_name_prefix on the eight resources that seed
+// appName: the create request sends the prefix when the plan has one, else
+// name (tfutil.AppNameSeed), and every read derives the state value from the
+// stored app name by stripping one trailing "-<six characters>"
+// (tfutil.AppNamePrefix). The validator allows only what cleanAppName keeps
+// (lowercase, no spaces), so a configured prefix equals the derived one and
+// an import shows no diff.
+//
 // ## libsql.deploy is synchronous, like postgres.deploy
 //
 // Task 5 needs fetchStatus to poll applicationStatus with no
