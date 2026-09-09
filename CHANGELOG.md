@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.30.5 to v0.30.6
+  (README, the badge, and the provider index page). The endpoint census
+  snapshot was regenerated from a fresh v0.30.6 install (2026-09-10) and
+  is identical to the v0.30.5 snapshot: no endpoint gained or lost a
+  request field. The upstream v0.30.5...v0.30.6 diff agrees. Three
+  changes sit below the request schema and were probed live:
+  `organization.create` and `organization.update` reject an empty name
+  with an HTTP 400, so `dokploy_organization` reports an empty `name` at
+  apply; `vaultProvider` gains an eighth type, `aws-parameter-store` (AWS
+  Systems Manager Parameter Store), which `dokploy_vault_provider` does
+  not model yet, like `phase`; and a Dockerfile build with no
+  `build.context_path` now uses the directory of the Dockerfile as the
+  build context, where v0.30.5 used the repository root. The
+  `context_path` description on `dokploy_application` records that
+  change; set `.` to keep the repository root on every release. The
+  `dnsProvider` surface gains the `infomaniak` and `ovh` types and stays
+  unmodeled. The acceptance suite for this release ran against a fresh
+  v0.30.6 install.
+
 ## [1.1.0] - 2026-09-08
 
 ### Added

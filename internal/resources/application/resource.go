@@ -191,8 +191,14 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 						stringvalidator.OneOf("nixpacks", "dockerfile", "heroku_buildpacks", "paketo_buildpacks", "static", "railpack"),
 					},
 				},
-				"dockerfile":        schema.StringAttribute{Optional: true, Description: "Dockerfile path, for build type `dockerfile`."},
-				"context_path":      schema.StringAttribute{Optional: true, Description: "Docker build context path."},
+				"dockerfile": schema.StringAttribute{Optional: true, Description: "Dockerfile path, for build type `dockerfile`."},
+				"context_path": schema.StringAttribute{
+					Optional: true,
+					Description: "Docker build context path, relative to the repository root. If you leave it unset, " +
+						"Dokploy v0.30.6 and later build from the directory that holds the Dockerfile. Dokploy v0.30.5 " +
+						"and earlier build from the repository root. Set it to `.` to keep the repository root as the " +
+						"context on every release.",
+				},
 				"build_stage":       schema.StringAttribute{Optional: true, Description: "Target stage for multi-stage builds."},
 				"publish_directory": schema.StringAttribute{Optional: true, Description: "Publish directory, for build type `static`."},
 				"is_static_spa": schema.BoolAttribute{

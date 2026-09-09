@@ -32,7 +32,7 @@ once.
 The provider works with Terraform 1.5 or later and with OpenTofu. The
 write-only companions of the secret attributes (`<name>_wo`) need Terraform
 1.11 or later; a configuration without them works on 1.5. The provider targets
-**Dokploy v0.30.5**. The acceptance suite tests the latest Dokploy release on
+**Dokploy v0.30.6**. The acceptance suite tests the latest Dokploy release on
 every pull request and every night. The suite does not test older releases. A
 server older than the pinned version can reject a field that a newer Dokploy
 introduced. If your server is older, upgrade it to the pinned version or later

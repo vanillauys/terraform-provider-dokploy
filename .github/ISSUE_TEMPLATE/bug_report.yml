@@ -21,7 +21,7 @@ body:
     attributes:
       label: Dokploy version
       description: Settings > Server in the Dokploy UI.
-      placeholder: "v0.30.5"
+      placeholder: "v0.30.6"
     validations:
       required: true
   - type: textarea

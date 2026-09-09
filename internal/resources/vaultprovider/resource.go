@@ -106,7 +106,8 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			"`env` attribute as `${{vault.<name>.<key>}}`, a plain string that this provider does not parse or validate. " +
 			"The resource models six provider types: `hashicorp` (also OpenBao, which uses the same wire protocol), " +
 			"`infisical`, `aws`, `doppler`, `azure`, and `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), " +
-			"which this resource does not model yet.\n\n" +
+			"and v0.30.6 an eighth, `aws-parameter-store` (AWS Systems Manager Parameter Store). This resource does not " +
+			"model these two types yet.\n\n" +
 			"~> **Dokploy masks each secret on each read.** Dokploy returns each secret field in the config blocks of this resource " +
 			"as the literal string `********`, on create, read, and update alike. The provider therefore cannot detect a " +
 			"config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret " +

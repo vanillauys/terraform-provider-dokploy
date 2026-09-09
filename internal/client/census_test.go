@@ -42,7 +42,9 @@ import (
 //	json.dump(dict(sorted(out.items())),sys.stdout,indent=1)
 //	' > internal/client/testdata/endpoint-fields.json
 //
-// Snapshot taken against Dokploy v0.30.5 on 2026-09-04.
+// Snapshot taken against Dokploy v0.30.6 on 2026-09-10. It is byte-identical
+// to the v0.30.5 snapshot of 2026-09-04: the v0.30.5...v0.30.6 release changed
+// no request body on any endpoint.
 
 // endpointStructs maps a Dokploy write endpoint to the request struct this
 // package sends to it. Every endpoint whose absent keys are load-bearing —

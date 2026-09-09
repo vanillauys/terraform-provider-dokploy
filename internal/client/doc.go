@@ -1343,6 +1343,63 @@
 // cloud mode replaces the repeatable job instead of adding one; the
 // self-hosted path is unchanged.
 //
+// # v0.30.6 census (probed 2026-09-10)
+//
+// The pin moved from v0.30.5 to v0.30.6 against a fresh v0.30.6 rig. The
+// regenerated endpoint census is byte-identical to the v0.30.5 snapshot: no
+// endpoint gained or lost a request field. The upstream v0.30.5...v0.30.6
+// diff agrees. Its only router input change is a min(1) on the organization
+// name, and every other change lives below the request schema.
+//
+// ## organization.create and organization.update reject an empty name
+//
+// Both procedures now validate name with min(1). Probed live: a create with
+// name "" returns HTTP 400 with the zod field error "Too small: expected
+// string to have >=1 characters" on name. v0.30.5 accepted it.
+// dokploy_organization has no length validator, so an empty name now fails
+// at apply with that message instead of at plan.
+//
+// ## vaultProvider: an eighth type, aws-parameter-store
+//
+// The discriminated union gains providerType "aws-parameter-store" (AWS
+// Systems Manager Parameter Store): required region, accessKeyId, and
+// secretAccessKey; optional endpoint (a URL) and parameterPath, which must
+// be empty or start with "/". Probed live: a create with fake credentials
+// returned HTTP 200 and the full record. secretAccessKey reads back as
+// "********" on the create response and on vaultProvider.one, the same
+// REDACT shape as the other types; region, accessKeyId, and parameterPath
+// read back in cleartext. A parameterPath without the leading slash is an
+// HTTP 400 zod error on config.parameterPath ("Parameter discovery path
+// must start with /"). A create without parameterPath stores no such key.
+// testConnection against the fake credentials fails with HTTP 400 "The
+// security token included in the request is invalid." Like phase, the type
+// stays unmodeled: VaultProvider.Config is a json.RawMessage, so an import
+// decodes, and dokploy_vault_provider can neither create nor update one.
+//
+// ## Dockerfile builds default to the directory of the Dockerfile
+//
+// getDockerCommand (packages/server/src/utils/builders/docker-file.ts)
+// changed its build context. v0.30.5 ran `cd <code>/<dockerContextPath or
+// .>` and then `docker build -f <dockerfile> .`, so an unset
+// dockerContextPath meant the repository root. v0.30.6 passes the context
+// explicitly: the configured path when set, else the directory that holds
+// the Dockerfile. A set path behaves as before. This is server-side build
+// behavior with no API shape; the context_path description on
+// dokploy_application records it.
+//
+// ## Other v0.30.6 changes, checked and not relevant
+//
+// dnsProvider gains the infomaniak and ovh types; the dnsProvider surface
+// stays unmodeled by decision. The whitelabeling config replaces metaTitle
+// with ogImageUrl, and ssoProvider gains domainVerified; neither surface is
+// modeled. The auth layer blocks password, social, and passkey sign-in when
+// enforceSSO is set; the rig bootstrap signs in with a password, and
+// enforceSSO defaults to false. domain.validateDomain now also accepts the
+// interface addresses of the server and IPv6 records; this client never
+// calls it. server-health reads the docker default-address-pools over the
+// socket instead of daemon.json. The Infisical vault client expands secret
+// references and accepts a folder in a reference; both sit below the API.
+//
 // # project.one and project.all: isDefault on the nested environments (probed 2026-09-05)
 //
 // Both endpoints return each nested environment with an isDefault boolean

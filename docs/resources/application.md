@@ -157,7 +157,7 @@ Required:
 Optional:
 
 - `build_stage` (String) Target stage for multi-stage builds.
-- `context_path` (String) Docker build context path.
+- `context_path` (String) Docker build context path, relative to the repository root. If you leave it unset, Dokploy v0.30.6 and later build from the directory that holds the Dockerfile. Dokploy v0.30.5 and earlier build from the repository root. Set it to `.` to keep the repository root as the context on every release.
 - `dockerfile` (String) Dockerfile path, for build type `dockerfile`.
 - `heroku_version` (String) Builder version for build type `heroku_buildpacks`. Omit it to use the server default.
 - `is_static_spa` (Boolean) Serve the build output as a single-page application. Unknown paths go to the index document.
