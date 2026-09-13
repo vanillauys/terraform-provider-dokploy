@@ -212,6 +212,149 @@ resource "dokploy_backup" "test" {
 	})
 }
 
+// TestAccBackup_composeParent covers issue #45: a dokploy_backup targeting a
+// database running inside a dokploy_compose service. service_type is
+// "compose" and compose_database_type carries the real engine; the server
+// record must show databaseType as that real engine, backupType as
+// "compose", and the parent id under composeId, not under mariadbId (the
+// column named by service_type before this fix, and never the column
+// Dokploy actually populates for a compose parent).
+func TestAccBackup_composeParent(t *testing.T) {
+	name := acctest.RandomName("bk-compose")
+	cfg := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_destination" "test" {
+  name              = %q
+  provider_name     = "Cloudflare"
+  endpoint          = "https://example.r2.cloudflarestorage.com"
+  bucket            = "acc"
+  region            = "auto"
+  access_key        = "AKIAACCEPTANCEONLY"
+  secret_access_key = "acceptance-only-not-a-real-secret"
+}
+
+resource "dokploy_compose" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.environments[0].id
+  deploy_on_change = false
+
+  raw = {
+    compose_file = "services:\n  db:\n    image: mariadb:11\n"
+  }
+}
+
+resource "dokploy_backup" "test" {
+  service_id             = dokploy_compose.test.id
+  service_type           = "compose"
+  compose_database_type  = "mariadb"
+  service_name           = "db"
+  database               = "app"
+  prefix                 = "backups/acc/"
+  cron_expression        = "0 3 * * *"
+  destination_id         = dokploy_destination.test.id
+}
+`, name+"-proj", name+"-dest", name+"-compose")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("dokploy_backup.test", "id"),
+					resource.TestCheckResourceAttr("dokploy_backup.test", "service_type", "compose"),
+					resource.TestCheckResourceAttr("dokploy_backup.test", "compose_database_type", "mariadb"),
+					resource.TestCheckResourceAttrPair(
+						"dokploy_backup.test", "service_id", "dokploy_compose.test", "id"),
+					checkServer("dokploy_backup.test", func(b *client.Backup) error {
+						if b.DatabaseType != "mariadb" {
+							return fmt.Errorf("server databaseType = %q, want mariadb (the real engine, "+
+								"not the literal service_type)", b.DatabaseType)
+						}
+						if b.BackupType != "compose" {
+							return fmt.Errorf("server backupType = %q, want compose", b.BackupType)
+						}
+						if b.ComposeID == nil {
+							return errors.New("server composeId is unset")
+						}
+						if b.MariadbID != nil {
+							return fmt.Errorf("server mariadbId = %q, want unset: the compose id must not "+
+								"land in the engine's own column", *b.MariadbID)
+						}
+						return nil
+					}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				ResourceName:      "dokploy_backup.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// compose_database_type is required for a compose parent, and rejected at
+// PLAN time when it's missing or set for a non-compose parent — the same
+// pattern as the Redis rejection below.
+func TestAccBackup_rejectsMissingComposeDatabaseTypeAtPlanTime(t *testing.T) {
+	name := acctest.RandomName("bk-compose-missing")
+	cfg := fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_destination" "test" {
+  name              = %q
+  provider_name     = "Cloudflare"
+  endpoint          = "https://example.r2.cloudflarestorage.com"
+  bucket            = "acc"
+  region            = "auto"
+  access_key        = "AKIAACCEPTANCEONLY"
+  secret_access_key = "acceptance-only-not-a-real-secret"
+}
+
+resource "dokploy_compose" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.environments[0].id
+  deploy_on_change = false
+
+  raw = {
+    compose_file = "services:\n  db:\n    image: mariadb:11\n"
+  }
+}
+
+resource "dokploy_backup" "nope" {
+  service_id      = dokploy_compose.test.id
+  service_type    = "compose"
+  database        = "app"
+  prefix          = "backups/acc/"
+  cron_expression = "0 3 * * *"
+  destination_id  = dokploy_destination.test.id
+}
+`, name+"-proj", name+"-dest", name+"-compose")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config:      cfg,
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`(?s)compose_database_type.*required`),
+			},
+		},
+	})
+}
+
 // Redis must be rejected at PLAN time with a message naming the alternative,
 // not at apply with a zod "invalid option".
 func TestAccBackup_rejectsRedisAtPlanTime(t *testing.T) {

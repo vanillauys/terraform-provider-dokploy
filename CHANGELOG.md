@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `dokploy_backup`: a backup targeting a database running inside a
+  `dokploy_compose` service now actually works. Issue #45: `service_type`
+  collapsed two pieces of information Dokploy's `backup.create` needs
+  separately — "the parent is a compose service" (`backupType`) and "the
+  engine running inside it" (`databaseType`, which never accepts a literal
+  `"compose"`, verified against `packages/server/src/db/schema/backups.ts`
+  and the `runComposeBackup` compose-dump path, v0.30.6). `service_type =
+  "compose"` sent `databaseType: "compose"` and 400'd; `service_type` set to
+  the real engine instead sent the correct `databaseType` but pointed the
+  engine's own id column (e.g. `mariadbId`) at the compose resource's id,
+  and the next read 404'd against the real `mariadbId` table.
+  `compose_database_type` is a new attribute that carries the real engine
+  when `service_type` is `compose`; it's required in that case and rejected
+  otherwise, both at plan time. Schema version 2; a version 0 or version 1
+  state upgrades with an empty plan, since no live state could have used the
+  broken compose path successfully. `client.Backup.ParentRef` also read the
+  parent id off the wrong column for a compose parent for the same reason —
+  fixed alongside, though it was unreachable before this release since no
+  compose-parented backup could previously be created.
+
 ## [1.0.0] - 2026-09-05
 
 The first stable release. It has no configuration change: every attribute

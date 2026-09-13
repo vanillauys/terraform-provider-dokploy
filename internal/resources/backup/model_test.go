@@ -64,3 +64,122 @@ func TestFlattenEmptyParentColumnBecomesNullServiceID(t *testing.T) {
 		t.Errorf("service_id = %q, want null: an empty parent column means unset", out.ServiceID.ValueString())
 	}
 }
+
+// TestCreateRequestComposeParentSendsRealEngineAsDatabaseType pins the fix
+// for issue #45: a compose-parented backup must send the real database
+// engine as databaseType (Dokploy's backup.create schema never accepts a
+// literal "compose" there — see databaseTypeFor), "compose" as backupType,
+// and the parent id under composeId, with every other per-type id column
+// left nil.
+func TestCreateRequestComposeParentSendsRealEngineAsDatabaseType(t *testing.T) {
+	m := resourceModel{
+		ServiceID:            types.StringValue("compose1"),
+		ServiceType:          types.StringValue("compose"),
+		ComposeDatabaseType:  types.StringValue("mariadb"),
+		Database:             types.StringValue("app"),
+		Prefix:               types.StringValue("backups/app/"),
+		CronExpression:       types.StringValue("0 3 * * *"),
+		DestinationID:        types.StringValue("d1"),
+		Enabled:              types.BoolValue(true),
+		IncludeEncryptionKey: types.BoolValue(true),
+	}
+
+	req := createRequest(m)
+
+	if req.DatabaseType != "mariadb" {
+		t.Errorf("DatabaseType = %q, want %q: the real engine, not the literal service_type", req.DatabaseType, "mariadb")
+	}
+	if req.BackupType != "compose" {
+		t.Errorf("BackupType = %q, want %q", req.BackupType, "compose")
+	}
+	if req.ComposeID == nil || *req.ComposeID != "compose1" {
+		t.Errorf("ComposeID = %v, want a pointer to %q", req.ComposeID, "compose1")
+	}
+	for name, col := range map[string]*string{
+		"PostgresID": req.PostgresID,
+		"MysqlID":    req.MysqlID,
+		"MariadbID":  req.MariadbID,
+		"MongoID":    req.MongoID,
+		"LibsqlID":   req.LibsqlID,
+	} {
+		if col != nil {
+			t.Errorf("%s = %q, want nil: only composeId may be populated for a compose parent", name, *col)
+		}
+	}
+}
+
+// TestCreateRequestDatabaseParentUnchanged pins the non-compose case exactly
+// as it worked before this fix: databaseType is service_type verbatim, and
+// compose_database_type plays no part.
+func TestCreateRequestDatabaseParentUnchanged(t *testing.T) {
+	m := resourceModel{
+		ServiceID:      types.StringValue("pg1"),
+		ServiceType:    types.StringValue("postgres"),
+		Database:       types.StringValue("app"),
+		Prefix:         types.StringValue("backups/app/"),
+		CronExpression: types.StringValue("0 3 * * *"),
+		DestinationID:  types.StringValue("d1"),
+	}
+
+	req := createRequest(m)
+
+	if req.DatabaseType != "postgres" {
+		t.Errorf("DatabaseType = %q, want %q", req.DatabaseType, "postgres")
+	}
+	if req.BackupType != "database" {
+		t.Errorf("BackupType = %q, want %q", req.BackupType, "database")
+	}
+	if req.PostgresID == nil || *req.PostgresID != "pg1" {
+		t.Errorf("PostgresID = %v, want a pointer to %q", req.PostgresID, "pg1")
+	}
+	if req.ComposeID != nil {
+		t.Errorf("ComposeID = %q, want nil", *req.ComposeID)
+	}
+}
+
+// TestFlattenComposeParentSplitsServiceTypeAndEngine pins the read side: a
+// wire record whose backupType is "compose" must read back service_type as
+// "compose" with the real engine moved to compose_database_type, not
+// service_type holding the engine directly.
+func TestFlattenComposeParentSplitsServiceTypeAndEngine(t *testing.T) {
+	b := &client.Backup{
+		BackupID: "b1", Schedule: "0 3 * * *", Database: "app",
+		Prefix: "app/", DestinationID: "dest1",
+		DatabaseType: "mariadb", BackupType: "compose",
+		ComposeID: strPtr("compose1"),
+	}
+
+	var out resourceModel
+	flatten(b, &out)
+
+	if out.ServiceType.ValueString() != "compose" {
+		t.Errorf("service_type = %q, want %q", out.ServiceType.ValueString(), "compose")
+	}
+	if out.ComposeDatabaseType.ValueString() != "mariadb" {
+		t.Errorf("compose_database_type = %q, want %q", out.ComposeDatabaseType.ValueString(), "mariadb")
+	}
+	if out.ServiceID.ValueString() != "compose1" {
+		t.Errorf("service_id = %q, want %q", out.ServiceID.ValueString(), "compose1")
+	}
+}
+
+// TestFlattenDatabaseParentLeavesComposeDatabaseTypeNull pins the unchanged
+// case: a database-parented record reads compose_database_type as null.
+func TestFlattenDatabaseParentLeavesComposeDatabaseTypeNull(t *testing.T) {
+	b := &client.Backup{
+		BackupID: "b1", Schedule: "0 3 * * *", Database: "app",
+		Prefix: "app/", DestinationID: "dest1",
+		DatabaseType: "postgres", BackupType: "database",
+		PostgresID: strPtr("pg1"),
+	}
+
+	var out resourceModel
+	flatten(b, &out)
+
+	if out.ServiceType.ValueString() != "postgres" {
+		t.Errorf("service_type = %q, want %q", out.ServiceType.ValueString(), "postgres")
+	}
+	if !out.ComposeDatabaseType.IsNull() {
+		t.Errorf("compose_database_type = %v, want null", out.ComposeDatabaseType)
+	}
+}
