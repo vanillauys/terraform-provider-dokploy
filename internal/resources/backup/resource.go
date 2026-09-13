@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	_ resource.Resource                 = (*backupResource)(nil)
-	_ resource.ResourceWithConfigure    = (*backupResource)(nil)
-	_ resource.ResourceWithImportState  = (*backupResource)(nil)
-	_ resource.ResourceWithUpgradeState = (*backupResource)(nil)
+	_ resource.Resource                   = (*backupResource)(nil)
+	_ resource.ResourceWithConfigure      = (*backupResource)(nil)
+	_ resource.ResourceWithImportState    = (*backupResource)(nil)
+	_ resource.ResourceWithUpgradeState   = (*backupResource)(nil)
+	_ resource.ResourceWithValidateConfig = (*backupResource)(nil)
 )
 
 type backupResource struct{ client *client.Client }
@@ -46,9 +47,9 @@ var serviceTypes = append([]string{"compose"}, client.BackupDatabaseTypes...)
 func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	requiresReplace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		// Version 1 (v0.11.0) renamed `schedule` to `cron_expression`; see
-		// UpgradeState.
-		Version: 1,
+		// Version 1 (v0.11.0) renamed `schedule` to `cron_expression`.
+		// Version 2 added `compose_database_type`. See UpgradeState.
+		Version: 2,
 		Description: "A scheduled logical dump of a database to an S3-compatible destination.\n\n" +
 			"~> **This resource does not support Redis.** Dokploy has no logical dump for Redis. Use " +
 			"`dokploy_volume_backup`, which archives the volume and accepts a Redis parent.\n\n" +
@@ -69,11 +70,24 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"service_type": schema.StringAttribute{
 				Required: true,
 				Description: "Kind of service that `service_id` refers to: one of `postgres`, `mysql`, `mariadb`, " +
-					"`mongo`, `libsql`, `compose`. A change forces a replacement. The provider derives the Dokploy `databaseType` " +
-					"and `backupType` fields from this attribute. Independent values would allow a " +
+					"`mongo`, `libsql`, `compose`. A change forces a replacement. The provider derives the Dokploy `backupType` " +
+					"field from this attribute, and the `databaseType` field from it too, except when it is `compose` — " +
+					"see `compose_database_type` for that case. Independent values would allow a " +
 					"record whose type and parent disagree, so the provider does not expose them.",
 				PlanModifiers: requiresReplace,
 				Validators:    []validator.String{stringvalidator.OneOf(serviceTypes...)},
+			},
+			"compose_database_type": schema.StringAttribute{
+				Optional: true,
+				Description: "Real database engine running inside the compose service that `service_id` refers to: " +
+					"one of `postgres`, `mysql`, `mariadb`, `mongo`, `libsql`. Required when `service_type` is " +
+					"`compose`, and invalid otherwise. Dokploy's `backup.create` never accepts `compose` as a " +
+					"`databaseType` — even for a compose-parented backup it must be the actual engine, because that " +
+					"is what the server uses to build the dump command. `service_type` alone cannot describe both " +
+					"the backup's parent kind and the underlying engine for a compose parent, so this attribute " +
+					"carries the engine in that case. A change forces a replacement.",
+				PlanModifiers: requiresReplace,
+				Validators:    []validator.String{stringvalidator.OneOf(client.BackupDatabaseTypes...)},
 			},
 			"database": schema.StringAttribute{
 				Required:    true,
@@ -145,6 +159,50 @@ func validateServiceType(m resourceModel) error {
 	return nil
 }
 
+// validateComposeDatabaseType enforces the pairing between service_type and
+// compose_database_type: the latter is required exactly when the former is
+// "compose", and invalid otherwise. This is the belt-and-braces path for a
+// value that reaches Create some other way; ValidateConfig is where a plan
+// normally catches it, with an attribute-level diagnostic.
+func validateComposeDatabaseType(m resourceModel) error {
+	isCompose := m.ServiceType.ValueString() == "compose"
+	hasComposeType := !m.ComposeDatabaseType.IsNull() && m.ComposeDatabaseType.ValueString() != ""
+	switch {
+	case isCompose && !hasComposeType:
+		return fmt.Errorf(
+			"`compose_database_type` is required when `service_type` is `compose`: Dokploy's `backup.create` " +
+				"always needs the real database engine running inside the compose service, because `databaseType` " +
+				"never accepts `compose` as a value")
+	case !isCompose && hasComposeType:
+		return fmt.Errorf(
+			"`compose_database_type` is only valid when `service_type` is `compose`; it must be omitted for a %q parent",
+			m.ServiceType.ValueString())
+	}
+	return nil
+}
+
+// ValidateConfig catches a service_type/compose_database_type mismatch at
+// plan time, with an attribute-level diagnostic, rather than surfacing it
+// only once Create runs validateComposeDatabaseType.
+//
+// Unknown values (e.g. service_type derived from a resource attribute not
+// yet known during plan) are skipped: there is nothing to validate against
+// yet, and Create's belt-and-braces check still applies once both values are
+// known.
+func (r *backupResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var cfg resourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if cfg.ServiceType.IsUnknown() || cfg.ComposeDatabaseType.IsUnknown() {
+		return
+	}
+	if err := validateComposeDatabaseType(cfg); err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root("compose_database_type"), "Invalid backup configuration", err.Error())
+	}
+}
+
 func (r *backupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -152,6 +210,10 @@ func (r *backupResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	if err := validateServiceType(plan); err != nil {
+		resp.Diagnostics.AddError("Invalid backup configuration", err.Error())
+		return
+	}
+	if err := validateComposeDatabaseType(plan); err != nil {
 		resp.Diagnostics.AddError("Invalid backup configuration", err.Error())
 		return
 	}
@@ -217,34 +279,72 @@ func (r *backupResource) ImportState(ctx context.Context, req resource.ImportSta
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// UpgradeState moves a version 0 state to the current schema. Version 0
-// named the cron attribute `schedule`. v0.11.0 renamed it to
+// UpgradeState moves a version 0 or version 1 state to the current schema.
+//
+// Version 0 named the cron attribute `schedule`. v0.11.0 renamed it to
 // `cron_expression`, the name that dokploy_schedule and dokploy_volume_backup
 // already use (D1 in the Phase 1 brief). The wire field stays `schedule`.
+//
+// Version 1 lacked `compose_database_type`, added in this release to let a
+// dokploy_backup target a database running inside a dokploy_compose service
+// (see databaseTypeFor in model.go).
 func (r *backupResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
-	prior := schemaV0(ctx)
+	v0 := schemaV0(ctx)
+	v1 := schemaV1(ctx)
 	return map[int64]resource.StateUpgrader{
 		0: {
-			PriorSchema:   &prior,
+			PriorSchema:   &v0,
 			StateUpgrader: upgradeStateV0,
+		},
+		1: {
+			PriorSchema:   &v1,
+			StateUpgrader: upgradeStateV1,
 		},
 	}
 }
 
-// schemaV0 derives the version 0 schema from the current one. The two differ
-// only in the name of the cron attribute, so a full copy would drift.
-func schemaV0(ctx context.Context) schema.Schema {
+// currentSchema returns the schema this resource reports today, for the
+// version 0 and version 1 derivations below to start from.
+func currentSchema(ctx context.Context) schema.Schema {
 	var resp resource.SchemaResponse
 	(&backupResource{}).Schema(ctx, resource.SchemaRequest{}, &resp)
-	attrs := resp.Schema.Attributes
+	return resp.Schema
+}
+
+// schemaV0 derives the version 0 schema from the current one: the cron
+// attribute is named `schedule`, and `compose_database_type` does not exist
+// yet. Deriving rather than duplicating keeps every other attribute from
+// drifting out of sync with the current schema.
+func schemaV0(ctx context.Context) schema.Schema {
+	s := currentSchema(ctx)
+	attrs := s.Attributes
+	delete(attrs, "compose_database_type")
 	attrs["schedule"] = attrs["cron_expression"]
 	delete(attrs, "cron_expression")
-	resp.Schema.Version = 0
-	return resp.Schema
+	s.Version = 0
+	return s
+}
+
+// schemaV1 derives the version 1 schema from the current one: identical
+// except `compose_database_type` does not exist yet.
+func schemaV1(ctx context.Context) schema.Schema {
+	s := currentSchema(ctx)
+	delete(s.Attributes, "compose_database_type")
+	s.Version = 1
+	return s
 }
 
 func upgradeStateV0(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
 	var prior resourceModelV0
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, prior.upgrade())...)
+}
+
+func upgradeStateV1(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+	var prior resourceModelV1
 	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 	if resp.Diagnostics.HasError() {
 		return
