@@ -57,7 +57,15 @@ func (b *Backup) BackupParentColumns() map[string]*string {
 	}
 }
 
-// ParentRef resolves the parent: the column named by databaseType.
+// ParentRef resolves the parent: the column named by the discriminator.
+//
+// The discriminator is backupType, not databaseType, when the parent is a
+// compose service. databaseType always names the real database engine
+// running inside the parent (see CreateBackupRequest.DatabaseType) — even
+// for a compose parent, where the populated column is composeId rather than
+// the engine's own column. Consulting databaseType directly there would look
+// up, say, mariadbId on a record whose mariadbId is unset and whose parent
+// id lives in composeId instead.
 //
 // Load-bearing here in a way it is not elsewhere. backup.update accepts
 // databaseType while carrying NO parent field, so it can change the
@@ -66,6 +74,9 @@ func (b *Backup) BackupParentColumns() map[string]*string {
 // set and left mysqlId null. Reading "whichever column is non-nil" would
 // report postgres for a record the server now calls mysql.
 func (b *Backup) ParentRef() ParentRef {
+	if b.BackupType == "compose" {
+		return ParentRefFrom("compose", b.BackupParentColumns())
+	}
 	return ParentRefFrom(b.DatabaseType, b.BackupParentColumns())
 }
 
