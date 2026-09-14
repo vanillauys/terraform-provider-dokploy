@@ -573,13 +573,18 @@
       }
     },
     "dokploy_backup": {
-      "version": 1,
+      "version": 2,
       "block": {
         "attributes": [
           {
             "name": "app_name",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "compose_database_type",
+            "type": "tftypes.String",
+            "optional": true
           },
           {
             "name": "cron_expression",

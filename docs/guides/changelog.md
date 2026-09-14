@@ -11,6 +11,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `dokploy_backup` with `service_type = "compose"` (#45, fix by
+  @brennanneoh in #46). Dokploy needs two separate facts for a backup of a
+  database inside a compose service: `backupType = "compose"` names the
+  parent kind, and `databaseType` names the real engine, one of
+  `postgres`, `mysql`, `mariadb`, `mongo`, `libsql`. The provider sent
+  `databaseType = "compose"`, which `backup.create` rejects with an HTTP
+  400. The other option, `service_type` set to the engine, put the compose
+  id in the engine's own id column, and the next read failed with a 404.
+  The new attribute `compose_database_type` carries the engine. It is
+  required when `service_type` is `compose` and rejected otherwise, at plan
+  time. The read side now derives `service_type` from `backupType` and
+  reads the engine back into `compose_database_type`. The client also
+  resolves the parent of a compose-backed record from `composeId` instead
+  of the column that `databaseType` names. The schema version moves to 2;
+  a version 0 or version 1 state upgrades with an empty plan.
+
 ## [1.1.1] - 2026-09-10
 
 ### Changed
