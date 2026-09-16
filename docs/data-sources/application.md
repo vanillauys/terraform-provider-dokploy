@@ -36,8 +36,43 @@ data "dokploy_application" "by_name" {
 ### Read-Only
 
 - `app_name` (String) Internal Dokploy app name.
+- `build_registry_id` (String) Id of the registry that hands the image from a build server to the application server, or null.
+- `build_server_id` (String) Id of the build server, or null.
+- `clean_cache` (Boolean) Whether Dokploy builds without the Docker layer cache.
 - `created_at` (String) Creation timestamp.
 - `description` (String) Description.
+- `drop_build_path` (String) Path where Dokploy drops an uploaded build archive, or null.
 - `env` (String, Sensitive) Environment variables as multiline `KEY=value` lines, exactly as Dokploy stores them. The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.
+- `preview_deployments` (Attributes) Preview deployment settings. The build secrets are not part of the data source. (see [below for nested schema](#nestedatt--preview_deployments))
+- `rollback` (Attributes) Rollback settings. (see [below for nested schema](#nestedatt--rollback))
 - `source_type` (String) Configured source type: `github`, `git`, or `docker`.
 - `status` (String) Application status.
+- `subtitle` (String) Display subtitle in the Dokploy UI, or null.
+- `title` (String) Display title in the Dokploy UI, or null.
+
+<a id="nestedatt--preview_deployments"></a>
+### Nested Schema for `preview_deployments`
+
+Read-Only:
+
+- `build_args` (String) Build-time arguments for the preview deployments, or null.
+- `certificate_type` (String) Certificate strategy for the preview domains: `letsencrypt`, `none`, or `custom`.
+- `custom_cert_resolver` (String) Traefik certificate resolver name, or null.
+- `enabled` (Boolean) Whether Dokploy creates a preview deployment for each pull request.
+- `env` (String) Environment variables for the preview deployments, or null.
+- `https` (Boolean) Whether the preview domains are served over HTTPS.
+- `labels` (List of String) Docker labels for the preview containers, or null.
+- `limit` (Number) Maximum number of preview deployments that exist at once.
+- `path` (String) External path that the preview domains match.
+- `port` (Number) Container port that the preview domains forward to.
+- `require_collaborator_permissions` (Boolean) Whether only pull requests from collaborators get a preview.
+- `wildcard` (String) Wildcard host for the preview domains, or null.
+
+
+<a id="nestedatt--rollback"></a>
+### Nested Schema for `rollback`
+
+Read-Only:
+
+- `enabled` (Boolean) Whether Dokploy keeps the image of each successful deploy for a rollback.
+- `registry_id` (String) Id of the registry that stores the rollback images, or null.

@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `title`, `subtitle`, `preview_deployments`, `rollback`, `build_server_id`,
+  `build_registry_id`, `clean_cache`, and `drop_build_path` on
+  `dokploy_application`, and the same fields on its data source (#52).
+  `preview_deployments` holds the settings of the pull-request previews
+  (`enabled`, `env`, `build_args`, `build_secrets` with a `build_secrets_wo`
+  companion, `certificate_type`, `custom_cert_resolver`, `https`, `labels`,
+  `limit`, `path`, `port`, `require_collaborator_permissions`, `wildcard`);
+  `rollback` holds `enabled` and `registry_id`. Both blocks are optional:
+  an omitted block writes the Dokploy defaults, because `application.update`
+  keeps a value that the request leaves out. The preview deployment records
+  and the rollback itself stay imperative operations of the Dokploy UI. The
+  data source leaves out the preview build secrets.
 - Data sources `dokploy_domain`, `dokploy_compose`, `dokploy_certificate`,
   `dokploy_registry`, and `dokploy_vault_provider` (#53). Each one looks a
   record up by `id` or by name, and errors when more than one record

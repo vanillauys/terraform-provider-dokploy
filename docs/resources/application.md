@@ -34,6 +34,37 @@ resource "dokploy_application" "example" {
   # network_ids = ["<dokploy-network-id>"]
 }
 
+# Preview deployments for each pull request of a GitHub source, a rollback
+# image per deploy, and a build on a separate build server.
+resource "dokploy_application" "with_previews" {
+  name           = "web"
+  environment_id = dokploy_project.example.production_environment_id
+  title          = "wihan.dev"
+  subtitle       = "Astro site"
+
+  github = {
+    owner      = "vanillauys"
+    repository = "wihan-dev-app"
+    branch     = "master"
+    github_id  = data.dokploy_github_provider.main.id
+  }
+
+  preview_deployments = {
+    enabled  = true
+    limit    = 3
+    port     = 4321
+    https    = true
+    wildcard = "*.preview.example.com"
+  }
+
+  rollback = {
+    enabled = true
+  }
+
+  build_server_id = dokploy_server.build.id
+  clean_cache     = true
+}
+
 # From a GitLab project. The provider record holds the OAuth application;
 # project_id and path_namespace come from the project's settings page.
 resource "dokploy_application" "from_gitlab" {
@@ -101,7 +132,10 @@ resource "dokploy_application" "from_gitea" {
 - `bitbucket` (Attributes) Bitbucket source, through a `dokploy_bitbucket_provider`. Set exactly one of `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `docker`. (see [below for nested schema](#nestedatt--bitbucket))
 - `build` (Attributes) Build settings. The server default is `nixpacks`. (see [below for nested schema](#nestedatt--build))
 - `build_args` (String) Build-time arguments in the same multiline format.
+- `build_registry_id` (String) Id of the `dokploy_registry` through which a build server hands the image to the application server. Omit it for the local Docker image store.
 - `build_secrets` (String, Sensitive) Build-time secrets in the same multiline `KEY=value` format. Docker mounts them during the build and does not store them in the image. If you omit this attribute, the provider clears any value from the Dokploy UI. An omitted value and `""` read back the same, so omit the attribute to clear it.
+- `build_server_id` (String) Id of the `dokploy_server` with `server_type = "build"` that builds the image. Omit it to build on the server that runs the application.
+- `clean_cache` (Boolean) Build without the Docker layer cache. Defaults to `false`.
 - `command` (String) Override the container entrypoint command.
 - `cpu_limit` (String) Hard CPU limit in nano-CPUs, as a whole number in a string: `"1000000000"` is one CPU, `"500000000"` half a CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
 - `cpu_reservation` (String) Reserved CPU in nano-CPUs, as a whole number in a string: `"250000000"` is a quarter CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
@@ -111,6 +145,7 @@ resource "dokploy_application" "from_gitea" {
 - `description` (String) Free-form description.
 - `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this application. Defaults to `false`. It has an effect only together with `network_ids`, and it applies on the next deploy.
 - `docker` (Attributes) Docker image source. (see [below for nested schema](#nestedatt--docker))
+- `drop_build_path` (String) Path inside the container where Dokploy drops the uploaded build archive, for the drag-and-drop source of the UI. Omit it for the Dokploy default.
 - `enable_submodules` (Boolean) Check out git submodules with the clone. Applies to the `github` and `git` sources. Dokploy ignores it for `docker`.
 - `env` (String) Environment variables in the native Dokploy multiline `KEY=value` format. Use Terraform sensitive variables for secret values. The provider writes `build_secrets` in the same request, so an omitted `build_secrets` clears the value on the server. Set `build_secrets` explicitly to keep it.
 - `git` (Attributes) Plain git source: any repository that the server can reach over HTTPS or SSH. Set exactly one of `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `docker`. (see [below for nested schema](#nestedatt--git))
@@ -120,9 +155,13 @@ resource "dokploy_application" "from_gitea" {
 - `memory_limit` (String) Hard memory limit in bytes, as a whole number in a string: `"536870912"` is 512 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
 - `memory_reservation` (String) Reserved memory in bytes, as a whole number in a string: `"268435456"` is 256 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
 - `network_ids` (Set of String) Ids of the Dokploy network records to attach this application to. The attachment applies on the next deploy. Omit it to keep only the default `dokploy-network`. An empty set is not valid. Omit the attribute instead.
+- `preview_deployments` (Attributes) Preview deployments: Dokploy deploys each pull request of a GitHub source to its own URL under `wildcard`. The block holds the settings; the preview deployment records themselves are imperative, and this provider does not manage them. Omit the block to write the Dokploy defaults, which keep previews off. (see [below for nested schema](#nestedatt--preview_deployments))
 - `registry_id` (String) Id of the Dokploy registry that receives the built images. Use the `id` of a `dokploy_registry` resource.
 - `replicas` (Number) Number of container replicas. The Dokploy schema has no null variant for this field, so it always has a value.
+- `rollback` (Attributes) Rollback settings: Dokploy keeps the image of each successful deploy, so that the UI can roll the application back to it. The rollback itself is imperative, and this provider does not manage it. Omit the block to write the Dokploy defaults, which keep rollbacks off. (see [below for nested schema](#nestedatt--rollback))
 - `server_id` (String) Id of the remote server that runs the application. Defaults to the Dokploy host.
+- `subtitle` (String) Display subtitle in the Dokploy UI.
+- `title` (String) Display title in the Dokploy UI. Omit it to show the name.
 - `watch_paths` (List of String) Glob paths that start an auto-deploy when they change. Applies to the `github` and `git` sources. Dokploy ignores it for `docker`. If you omit it, the provider clears any value from the Dokploy UI.
 
 ### Read-Only
@@ -239,6 +278,37 @@ Required:
 Optional:
 
 - `build_path` (String) Path inside the repository to build from.
+
+
+<a id="nestedatt--preview_deployments"></a>
+### Nested Schema for `preview_deployments`
+
+Optional:
+
+- `build_args` (String) Build-time arguments for the preview deployments, in the same multiline format.
+- `build_secrets` (String, Sensitive) Build-time secrets for the preview deployments, in the same multiline format. Set this attribute or `build_secrets_wo`. If you omit both, the provider clears any value from the Dokploy UI.
+- `build_secrets_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `build_secrets`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Do not set it together with `build_secrets`. The server does not return the value, so every update sends it. Change `build_secrets_wo_version` to start an update when only this value changed.
+- `build_secrets_wo_version` (Number) Version of `build_secrets_wo`. Change it to start an update when only `build_secrets_wo` changed. It needs `build_secrets_wo`.
+- `certificate_type` (String) Certificate strategy for the preview domains: `letsencrypt`, `none`, or `custom`. Defaults to `"none"`.
+- `custom_cert_resolver` (String) Traefik certificate resolver name, for `certificate_type = "custom"`.
+- `enabled` (Boolean) Create a preview deployment for each pull request. Defaults to `false`.
+- `env` (String) Environment variables for the preview deployments, in the native Dokploy multiline `KEY=value` format.
+- `https` (Boolean) Serve the preview domains over HTTPS. Defaults to `false`.
+- `labels` (List of String) Docker labels for the preview containers, as `key=value` strings. An empty list is not valid. Omit the attribute instead.
+- `limit` (Number) Maximum number of preview deployments that exist at once. Defaults to `3`.
+- `path` (String) External path that the preview domains match. Defaults to `"/"`.
+- `port` (Number) Container port that the preview domains forward to. Defaults to `3000`.
+- `require_collaborator_permissions` (Boolean) Deploy a preview only for pull requests from repository collaborators. Defaults to `true`.
+- `wildcard` (String) Wildcard host for the preview domains, for example `*.preview.example.com`. Dokploy generates one host per pull request under it.
+
+
+<a id="nestedatt--rollback"></a>
+### Nested Schema for `rollback`
+
+Optional:
+
+- `enabled` (Boolean) Keep the image of each successful deploy for a rollback. Defaults to `false`.
+- `registry_id` (String) Id of the `dokploy_registry` that stores the rollback images. Omit it for the local Docker image store.
 
 ## Import
 

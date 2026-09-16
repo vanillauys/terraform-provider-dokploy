@@ -32,7 +32,15 @@ var mustAlwaysSend = []struct {
 	{UpdateMariadbRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
 	{UpdateRedisRequest{}, []string{"description", "networkIds", "detachDokployNetwork", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
 	{UpdateMongoRequest{}, []string{"description", "networkIds", "detachDokployNetwork", "replicaSets", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
-	{UpdateApplicationRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
+	{UpdateApplicationRequest{}, []string{
+		"description", "networkIds", "detachDokployNetwork",
+		"title", "subtitle",
+		"isPreviewDeploymentsActive", "previewEnv", "previewBuildArgs", "previewBuildSecrets",
+		"previewCertificateType", "previewCustomCertResolver", "previewHttps", "previewLabels",
+		"previewLimit", "previewPath", "previewPort", "previewRequireCollaboratorPermissions", "previewWildcard",
+		"rollbackActive", "rollbackRegistryId",
+		"buildServerId", "buildRegistryId", "cleanCache", "dropBuildPath",
+	}},
 	{UpdateDomainRequest{}, []string{
 		"host", "path", "internalPath", "port", "https", "stripPath",
 		"certificateType", "customCertResolver", "customEntrypoint",

@@ -221,6 +221,14 @@ func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
 		// True, like the other bools in this fixture, so the mutation sweep
 		// below (which sets every types.Bool to false) produces a real change.
 		DetachDokployNetwork: types.BoolValue(true),
+		Title:                types.StringValue("Web"),
+		Subtitle:             types.StringValue("Site"),
+		PreviewDeployments:   types.ObjectNull(previewAttrTypes),
+		Rollback:             types.ObjectNull(rollbackAttrTypes),
+		BuildServerID:        types.StringValue("srv"),
+		BuildRegistryID:      types.StringValue("reg"),
+		CleanCache:           types.BoolValue(true),
+		DropBuildPath:        types.StringValue("/drop"),
 	}
 	if !unchangedExceptStatus(base, base) {
 		t.Fatal("identical models must compare equal")

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -33,6 +34,28 @@ type dataSourceModel struct {
 	Status        types.String `tfsdk:"status"`
 	CreatedAt     types.String `tfsdk:"created_at"`
 	Env           types.String `tfsdk:"env"`
+
+	// v1.4.0 (#52). preview_deployments leaves out build_secrets: the data
+	// source exposes no secret that this provider did not write.
+	Title              types.String `tfsdk:"title"`
+	Subtitle           types.String `tfsdk:"subtitle"`
+	PreviewDeployments types.Object `tfsdk:"preview_deployments"`
+	Rollback           types.Object `tfsdk:"rollback"`
+	BuildServerID      types.String `tfsdk:"build_server_id"`
+	BuildRegistryID    types.String `tfsdk:"build_registry_id"`
+	CleanCache         types.Bool   `tfsdk:"clean_cache"`
+	DropBuildPath      types.String `tfsdk:"drop_build_path"`
+}
+
+var previewAttrTypes = map[string]attr.Type{
+	"enabled": types.BoolType, "env": types.StringType, "build_args": types.StringType,
+	"certificate_type": types.StringType, "custom_cert_resolver": types.StringType, "https": types.BoolType,
+	"labels": types.ListType{ElemType: types.StringType}, "limit": types.Int64Type, "path": types.StringType,
+	"port": types.Int64Type, "require_collaborator_permissions": types.BoolType, "wildcard": types.StringType,
+}
+
+var rollbackAttrTypes = map[string]attr.Type{
+	"enabled": types.BoolType, "registry_id": types.StringType,
 }
 
 func NewDataSource() datasource.DataSource { return &applicationDataSource{} }
@@ -80,6 +103,38 @@ func (d *applicationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				Description: "Environment variables as multiline `KEY=value` lines, exactly as Dokploy stores them. " +
 					"The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.",
 			},
+			"title":    schema.StringAttribute{Computed: true, Description: "Display title in the Dokploy UI, or null."},
+			"subtitle": schema.StringAttribute{Computed: true, Description: "Display subtitle in the Dokploy UI, or null."},
+			"preview_deployments": schema.SingleNestedAttribute{
+				Computed:    true,
+				Description: "Preview deployment settings. The build secrets are not part of the data source.",
+				Attributes: map[string]schema.Attribute{
+					"enabled":                          schema.BoolAttribute{Computed: true, Description: "Whether Dokploy creates a preview deployment for each pull request."},
+					"env":                              schema.StringAttribute{Computed: true, Description: "Environment variables for the preview deployments, or null."},
+					"build_args":                       schema.StringAttribute{Computed: true, Description: "Build-time arguments for the preview deployments, or null."},
+					"certificate_type":                 schema.StringAttribute{Computed: true, Description: "Certificate strategy for the preview domains: `letsencrypt`, `none`, or `custom`."},
+					"custom_cert_resolver":             schema.StringAttribute{Computed: true, Description: "Traefik certificate resolver name, or null."},
+					"https":                            schema.BoolAttribute{Computed: true, Description: "Whether the preview domains are served over HTTPS."},
+					"labels":                           schema.ListAttribute{Computed: true, ElementType: types.StringType, Description: "Docker labels for the preview containers, or null."},
+					"limit":                            schema.Int64Attribute{Computed: true, Description: "Maximum number of preview deployments that exist at once."},
+					"path":                             schema.StringAttribute{Computed: true, Description: "External path that the preview domains match."},
+					"port":                             schema.Int64Attribute{Computed: true, Description: "Container port that the preview domains forward to."},
+					"require_collaborator_permissions": schema.BoolAttribute{Computed: true, Description: "Whether only pull requests from collaborators get a preview."},
+					"wildcard":                         schema.StringAttribute{Computed: true, Description: "Wildcard host for the preview domains, or null."},
+				},
+			},
+			"rollback": schema.SingleNestedAttribute{
+				Computed:    true,
+				Description: "Rollback settings.",
+				Attributes: map[string]schema.Attribute{
+					"enabled":     schema.BoolAttribute{Computed: true, Description: "Whether Dokploy keeps the image of each successful deploy for a rollback."},
+					"registry_id": schema.StringAttribute{Computed: true, Description: "Id of the registry that stores the rollback images, or null."},
+				},
+			},
+			"build_server_id":   schema.StringAttribute{Computed: true, Description: "Id of the build server, or null."},
+			"build_registry_id": schema.StringAttribute{Computed: true, Description: "Id of the registry that hands the image from a build server to the application server, or null."},
+			"clean_cache":       schema.BoolAttribute{Computed: true, Description: "Whether Dokploy builds without the Docker layer cache."},
+			"drop_build_path":   schema.StringAttribute{Computed: true, Description: "Path where Dokploy drops an uploaded build archive, or null."},
 		},
 	}
 }
@@ -134,5 +189,38 @@ func (d *applicationDataSource) Read(ctx context.Context, req datasource.ReadReq
 	config.Status = types.StringValue(app.ApplicationStatus)
 	config.CreatedAt = types.StringValue(app.CreatedAt)
 	config.Env = tfutil.StringOrNull(app.Env)
+	config.Title = tfutil.StringOrNull(app.Title)
+	config.Subtitle = tfutil.StringOrNull(app.Subtitle)
+	config.BuildServerID = tfutil.StringOrNull(app.BuildServerID)
+	config.BuildRegistryID = tfutil.StringOrNull(app.BuildRegistryID)
+	config.CleanCache = types.BoolValue(app.CleanCache)
+	config.DropBuildPath = tfutil.StringOrNull(app.DropBuildPath)
+
+	labels := tfutil.StringListOrNull(ctx, app.PreviewLabels, &resp.Diagnostics)
+	preview, diags := types.ObjectValue(previewAttrTypes, map[string]attr.Value{
+		"enabled":                          types.BoolValue(app.IsPreviewDeploymentsActive),
+		"env":                              tfutil.StringOrNull(app.PreviewEnv),
+		"build_args":                       tfutil.StringOrNull(app.PreviewBuildArgs),
+		"certificate_type":                 types.StringValue(app.PreviewCertificateType),
+		"custom_cert_resolver":             tfutil.StringOrNull(app.PreviewCustomCertResolver),
+		"https":                            types.BoolValue(app.PreviewHTTPS),
+		"labels":                           labels,
+		"limit":                            types.Int64Value(app.PreviewLimit),
+		"path":                             types.StringValue(app.PreviewPath),
+		"port":                             types.Int64Value(app.PreviewPort),
+		"require_collaborator_permissions": types.BoolValue(app.PreviewRequireCollaboratorPermissions),
+		"wildcard":                         tfutil.StringOrNull(app.PreviewWildcard),
+	})
+	resp.Diagnostics.Append(diags...)
+	config.PreviewDeployments = preview
+	rollback, diags := types.ObjectValue(rollbackAttrTypes, map[string]attr.Value{
+		"enabled":     types.BoolValue(app.RollbackActive),
+		"registry_id": tfutil.StringOrNull(app.RollbackRegistryID),
+	})
+	resp.Diagnostics.Append(diags...)
+	config.Rollback = rollback
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

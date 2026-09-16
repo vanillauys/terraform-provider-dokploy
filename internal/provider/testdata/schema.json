@@ -267,10 +267,26 @@
             "optional": true
           },
           {
+            "name": "build_registry_id",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "build_secrets",
             "type": "tftypes.String",
             "optional": true,
             "sensitive": true
+          },
+          {
+            "name": "build_server_id",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "clean_cache",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "command",
@@ -349,6 +365,11 @@
                 }
               ]
             },
+            "optional": true
+          },
+          {
+            "name": "drop_build_path",
+            "type": "tftypes.String",
             "optional": true
           },
           {
@@ -544,6 +565,100 @@
             "optional": true
           },
           {
+            "name": "preview_deployments",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "build_args",
+                  "type": "tftypes.String",
+                  "optional": true
+                },
+                {
+                  "name": "build_secrets",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "sensitive": true
+                },
+                {
+                  "name": "build_secrets_wo",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "sensitive": true,
+                  "write_only": true
+                },
+                {
+                  "name": "build_secrets_wo_version",
+                  "type": "tftypes.Number",
+                  "optional": true
+                },
+                {
+                  "name": "certificate_type",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "custom_cert_resolver",
+                  "type": "tftypes.String",
+                  "optional": true
+                },
+                {
+                  "name": "enabled",
+                  "type": "tftypes.Bool",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "env",
+                  "type": "tftypes.String",
+                  "optional": true
+                },
+                {
+                  "name": "https",
+                  "type": "tftypes.Bool",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.List[tftypes.String]",
+                  "optional": true
+                },
+                {
+                  "name": "limit",
+                  "type": "tftypes.Number",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "path",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "port",
+                  "type": "tftypes.Number",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "require_collaborator_permissions",
+                  "type": "tftypes.Bool",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "wildcard",
+                  "type": "tftypes.String",
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
+          },
+          {
             "name": "registry_id",
             "type": "tftypes.String",
             "optional": true
@@ -555,6 +670,26 @@
             "computed": true
           },
           {
+            "name": "rollback",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "enabled",
+                  "type": "tftypes.Bool",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "registry_id",
+                  "type": "tftypes.String",
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
+          },
+          {
             "name": "server_id",
             "type": "tftypes.String",
             "optional": true
@@ -563,6 +698,16 @@
             "name": "status",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "subtitle",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "title",
+            "type": "tftypes.String",
+            "optional": true
           },
           {
             "name": "watch_paths",
@@ -4998,12 +5143,32 @@
             "computed": true
           },
           {
+            "name": "build_registry_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "build_server_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "clean_cache",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
           },
           {
             "name": "description",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "drop_build_path",
             "type": "tftypes.String",
             "computed": true
           },
@@ -5032,12 +5197,110 @@
             "computed": true
           },
           {
+            "name": "preview_deployments",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "build_args",
+                  "type": "tftypes.String",
+                  "computed": true
+                },
+                {
+                  "name": "certificate_type",
+                  "type": "tftypes.String",
+                  "computed": true
+                },
+                {
+                  "name": "custom_cert_resolver",
+                  "type": "tftypes.String",
+                  "computed": true
+                },
+                {
+                  "name": "enabled",
+                  "type": "tftypes.Bool",
+                  "computed": true
+                },
+                {
+                  "name": "env",
+                  "type": "tftypes.String",
+                  "computed": true
+                },
+                {
+                  "name": "https",
+                  "type": "tftypes.Bool",
+                  "computed": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.List[tftypes.String]",
+                  "computed": true
+                },
+                {
+                  "name": "limit",
+                  "type": "tftypes.Number",
+                  "computed": true
+                },
+                {
+                  "name": "path",
+                  "type": "tftypes.String",
+                  "computed": true
+                },
+                {
+                  "name": "port",
+                  "type": "tftypes.Number",
+                  "computed": true
+                },
+                {
+                  "name": "require_collaborator_permissions",
+                  "type": "tftypes.Bool",
+                  "computed": true
+                },
+                {
+                  "name": "wildcard",
+                  "type": "tftypes.String",
+                  "computed": true
+                }
+              ]
+            },
+            "computed": true
+          },
+          {
+            "name": "rollback",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "enabled",
+                  "type": "tftypes.Bool",
+                  "computed": true
+                },
+                {
+                  "name": "registry_id",
+                  "type": "tftypes.String",
+                  "computed": true
+                }
+              ]
+            },
+            "computed": true
+          },
+          {
             "name": "source_type",
             "type": "tftypes.String",
             "computed": true
           },
           {
             "name": "status",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "subtitle",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "title",
             "type": "tftypes.String",
             "computed": true
           }

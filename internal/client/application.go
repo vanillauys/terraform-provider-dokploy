@@ -95,6 +95,14 @@ type Application struct {
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
 
+	// Display fields (v0.29.x), and the three application.update blocks of
+	// v1.4.0 (#52). See application_settings.go.
+	Title    *string `json:"title"`
+	Subtitle *string `json:"subtitle"`
+	ApplicationPreview
+	ApplicationRollback
+	ApplicationBuildSettings
+
 	// Embedded child collections. redirects.create and security.create
 	// return `true` rather than the record, so these arrays are the only
 	// way to discover a newly created id (see createAndLocate); there is no
@@ -152,6 +160,15 @@ type UpdateApplicationRequest struct {
 	// always sends a concrete value - the Replicas pattern.
 	NetworkIDs           *[]string `json:"networkIds"`
 	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
+
+	// Display fields and the v1.4.0 blocks (#52), all dialect B like the
+	// rest of this struct. See application_settings.go for the null and
+	// default semantics of each column.
+	Title    *string `json:"title"`
+	Subtitle *string `json:"subtitle"`
+	ApplicationPreviewUpdate
+	ApplicationRollback
+	ApplicationBuildSettings
 }
 
 // SaveGithubProviderRequest.

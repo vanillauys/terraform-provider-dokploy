@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -294,6 +296,117 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			Description: "Detach the shared `dokploy-network` from this application. Defaults to `false`. " +
 				"It has an effect only together with `network_ids`, and it applies on the next deploy.",
 		},
+		"title": schema.StringAttribute{
+			Optional:    true,
+			Description: "Display title in the Dokploy UI. Omit it to show the name.",
+		},
+		"subtitle": schema.StringAttribute{
+			Optional:    true,
+			Description: "Display subtitle in the Dokploy UI.",
+		},
+		// preview_deployments and rollback are plain Optional, like the
+		// source blocks, for the reason given on `build`: an Optional+Computed
+		// nested attribute makes every config-null Computed attribute unknown
+		// on plan. See settings.go for the null-block semantics.
+		"preview_deployments": schema.SingleNestedAttribute{
+			Optional: true,
+			Description: "Preview deployments: Dokploy deploys each pull request of a GitHub source to its own URL under `wildcard`. " +
+				"The block holds the settings; the preview deployment records themselves are imperative, and this provider does not manage them. " +
+				"Omit the block to write the Dokploy defaults, which keep previews off.",
+			Attributes: map[string]schema.Attribute{
+				"enabled": schema.BoolAttribute{
+					Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+					Description: "Create a preview deployment for each pull request. Defaults to `false`.",
+				},
+				"env": schema.StringAttribute{
+					Optional:    true,
+					Description: "Environment variables for the preview deployments, in the native Dokploy multiline `KEY=value` format.",
+				},
+				"build_args": schema.StringAttribute{
+					Optional:    true,
+					Description: "Build-time arguments for the preview deployments, in the same multiline format.",
+				},
+				"build_secrets": schema.StringAttribute{
+					Optional:  true,
+					Sensitive: true,
+					Description: "Build-time secrets for the preview deployments, in the same multiline format. Set this attribute or `build_secrets_wo`. " +
+						"If you omit both, the provider clears any value from the Dokploy UI.",
+				},
+				"certificate_type": schema.StringAttribute{
+					Optional: true, Computed: true, Default: stringdefault.StaticString("none"),
+					Description: "Certificate strategy for the preview domains: `letsencrypt`, `none`, or `custom`. Defaults to `\"none\"`.",
+					Validators:  []validator.String{stringvalidator.OneOf("letsencrypt", "none", "custom")},
+				},
+				"custom_cert_resolver": schema.StringAttribute{
+					Optional:    true,
+					Description: "Traefik certificate resolver name, for `certificate_type = \"custom\"`.",
+				},
+				"https": schema.BoolAttribute{
+					Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+					Description: "Serve the preview domains over HTTPS. Defaults to `false`.",
+				},
+				"labels": schema.ListAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					Description: "Docker labels for the preview containers, as `key=value` strings. An empty list is not valid. Omit the attribute instead.",
+					Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
+				},
+				"limit": schema.Int64Attribute{
+					Optional: true, Computed: true, Default: int64default.StaticInt64(3),
+					Description: "Maximum number of preview deployments that exist at once. Defaults to `3`.",
+					Validators:  []validator.Int64{int64validator.AtLeast(1)},
+				},
+				"path": schema.StringAttribute{
+					Optional: true, Computed: true, Default: stringdefault.StaticString("/"),
+					Description: "External path that the preview domains match. Defaults to `\"/\"`.",
+					Validators:  []validator.String{stringvalidator.LengthAtLeast(1)},
+				},
+				"port": schema.Int64Attribute{
+					Optional: true, Computed: true, Default: int64default.StaticInt64(3000),
+					Description: "Container port that the preview domains forward to. Defaults to `3000`.",
+					Validators:  []validator.Int64{int64validator.Between(1, 65535)},
+				},
+				"require_collaborator_permissions": schema.BoolAttribute{
+					Optional: true, Computed: true, Default: booldefault.StaticBool(true),
+					Description: "Deploy a preview only for pull requests from repository collaborators. Defaults to `true`.",
+				},
+				"wildcard": schema.StringAttribute{
+					Optional:    true,
+					Description: "Wildcard host for the preview domains, for example `*.preview.example.com`. Dokploy generates one host per pull request under it.",
+				},
+			},
+		},
+		"rollback": schema.SingleNestedAttribute{
+			Optional: true,
+			Description: "Rollback settings: Dokploy keeps the image of each successful deploy, so that the UI can roll the application back to it. " +
+				"The rollback itself is imperative, and this provider does not manage it. Omit the block to write the Dokploy defaults, which keep rollbacks off.",
+			Attributes: map[string]schema.Attribute{
+				"enabled": schema.BoolAttribute{
+					Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+					Description: "Keep the image of each successful deploy for a rollback. Defaults to `false`.",
+				},
+				"registry_id": schema.StringAttribute{
+					Optional:    true,
+					Description: "Id of the `dokploy_registry` that stores the rollback images. Omit it for the local Docker image store.",
+				},
+			},
+		},
+		"build_server_id": schema.StringAttribute{
+			Optional:    true,
+			Description: "Id of the `dokploy_server` with `server_type = \"build\"` that builds the image. Omit it to build on the server that runs the application.",
+		},
+		"build_registry_id": schema.StringAttribute{
+			Optional:    true,
+			Description: "Id of the `dokploy_registry` through which a build server hands the image to the application server. Omit it for the local Docker image store.",
+		},
+		"clean_cache": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Build without the Docker layer cache. Defaults to `false`.",
+		},
+		"drop_build_path": schema.StringAttribute{
+			Optional:    true,
+			Description: "Path inside the container where Dokploy drops the uploaded build archive, for the drag-and-drop source of the UI. Omit it for the Dokploy default.",
+		},
 		// status deliberately has NO UseStateForUnknown. It is genuinely
 		// server-mutable: a deploy moves it (idle -> running -> done), so
 		// pinning the prior value into the plan as a *known* value makes
@@ -320,6 +433,15 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 	for k, v := range tfutil.DeployAttributes() {
 		attrs[k] = v
 	}
+	// The write-only pair of preview_deployments.build_secrets sits inside
+	// the block. The server returns the secret in cleartext, and the update
+	// body carries every field on every call, so the configured write-only
+	// value goes out on each update; SentOnEveryUpdate words it so.
+	preview := attrs["preview_deployments"].(schema.SingleNestedAttribute)
+	for name, attr := range tfutil.WriteOnlyCompanions("build_secrets", tfutil.WriteOnlyOptions{Nested: true, SentOnEveryUpdate: true}) {
+		preview.Attributes[name] = attr
+	}
+	attrs["preview_deployments"] = preview
 	resp.Schema = schema.Schema{
 		Description: "An application service in a Dokploy environment. One resource manages the source, the build settings, and the environment variables.\n\n" +
 			"~> **Terraform owns the whole application.** An apply of this resource rewrites the source, build, and environment configuration of the application. " +
@@ -546,8 +668,16 @@ func (r *applicationResource) deployAndWait(ctx context.Context, plan *resourceM
 }
 
 func (r *applicationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan resourceModel
+	var plan, cfg resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	// The config, not the plan, carries the write-only preview build
+	// secret: the framework nulls it in the plan (tfutil.WriteOnlyCompanions).
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	inUse := previewSecretInUse(ctx, cfg, &resp.Diagnostics)
+	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlags(ctx, resp.Private, []string{previewSecretName}, inUse)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -573,7 +703,7 @@ func (r *applicationResource) Create(ctx context.Context, req resource.CreateReq
 	// args set in configuration are silently ignored on the FIRST apply and
 	// only take effect on a later one — caught by
 	// TestAccApplication_operationalAttributes step 1.
-	if req, d := updateRequest(ctx, created.ApplicationID, plan); !d.HasError() {
+	if req, d := updateRequest(ctx, created.ApplicationID, plan, cfg); !d.HasError() {
 		if err := r.client.UpdateApplication(ctx, req); err != nil {
 			r.persistPartial(ctx, resp, plan, "applying operational settings", err)
 			return
@@ -621,6 +751,8 @@ func (r *applicationResource) Create(ctx context.Context, req resource.CreateReq
 func (r *applicationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state resourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	inUse, flagDiags := tfutil.WriteOnlyFlags(ctx, req.Private, []string{previewSecretName})
+	resp.Diagnostics.Append(flagDiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -636,13 +768,20 @@ func (r *applicationResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 	resp.Diagnostics.Append(flatten(ctx, app, &state)...)
+	hideWriteOnly(ctx, &state, inUse, &resp.Diagnostics)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *applicationResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, state resourceModel
+	var plan, state, cfg resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	inUse := previewSecretInUse(ctx, cfg, &resp.Diagnostics)
+	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlags(ctx, resp.Private, []string{previewSecretName}, inUse)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -655,7 +794,7 @@ func (r *applicationResource) Update(ctx context.Context, req resource.UpdateReq
 	// the model on every call, and this guard only decides WHETHER to call.
 	if !plan.Name.Equal(state.Name) || !plan.Description.Equal(state.Description) ||
 		operationalChanged(plan, state) {
-		req, d := updateRequest(ctx, id, plan)
+		req, d := updateRequest(ctx, id, plan, cfg)
 		resp.Diagnostics.Append(d...)
 		if resp.Diagnostics.HasError() {
 			return
