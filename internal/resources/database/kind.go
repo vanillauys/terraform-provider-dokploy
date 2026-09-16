@@ -16,15 +16,20 @@ package database
 import (
 	"context"
 	"fmt"
+	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -57,7 +62,13 @@ type Kind struct {
 	// database_user, both Required + RequiresReplace). Task 2's doc.go
 	// record decides each engine's list.
 	CredentialAttrs []CredentialAttr
-	Client          KindClient
+	// ReplicaSets adds the `replica_sets` attribute, a bool that mongo.create
+	// and mongo.update accept as replicaSets (#51). Only MongoKind sets it:
+	// it is a topology switch, not a string credential, so it cannot ride
+	// on CredentialAttrs. The generic engine reads and writes it only when
+	// this flag is set; every other Kind's schema has no such attribute.
+	ReplicaSets bool
+	Client      KindClient
 }
 
 // CredentialAttr describes one engine-specific credential attribute, layered
@@ -196,6 +207,11 @@ type Object struct {
 	// networks attached.
 	NetworkIDs           []string
 	DetachDokployNetwork bool
+	// The operational settings of the .update endpoints (#51), the same
+	// embedded block every engine's read struct carries. ReplicaSets is
+	// meaningful only for a Kind with ReplicaSets set.
+	client.ServiceResources
+	ReplicaSets bool
 }
 
 // CreateSpec is the engine-neutral input to KindClient.Create.
@@ -204,6 +220,9 @@ type CreateSpec struct {
 	Description, ServerID                     *string
 	DatabasePassword                          string
 	Credentials                               map[string]string
+	// ReplicaSets is the one operational setting a create endpoint accepts
+	// (mongo.create). Every other one goes through the follow-up Update.
+	ReplicaSets bool
 }
 
 // UpdateSpec is the engine-neutral input to KindClient.Update.
@@ -229,6 +248,12 @@ type UpdateSpec struct {
 	// see tfutil.StringSetRequest, which produces this shape.
 	NetworkIDs           *[]string
 	DetachDokployNetwork bool
+	// The operational settings (#51), the same embedded block every
+	// engine's update request carries: a nil pointer reaches the wire as an
+	// explicit null and clears the stored value; Replicas always carries a
+	// concrete value; a nil Args clears.
+	client.ServiceResourcesUpdate
+	ReplicaSets bool
 }
 
 // KindClient adapts one engine's client methods to the CreateSpec/Object/
@@ -259,6 +284,15 @@ type KindClient struct {
 	// PostgresKind's ListByEnvironment below).
 	ListByEnvironment func(ctx context.Context, environmentID string) ([]Object, error)
 }
+
+// limitUnitNote is the shared tail of the four resource limit descriptions.
+const limitUnitNote = "Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` or a fraction such as `0.5` " +
+	"is not valid: the provider rejects it at plan time, because Dokploy would deploy `512m` as 512 bytes and `0.5` as no limit. " +
+	"A change starts a redeploy."
+
+// wholeNumber rejects every limit value Dokploy's parseInt would silently
+// misread (see the comment on the limit attributes in schemaAttributes).
+var wholeNumber = stringvalidator.RegexMatches(regexp.MustCompile(`^[1-9][0-9]*$`), "must be a whole number of bytes or nano-CPUs, with no unit suffix or fraction")
 
 // schemaAttributes builds the full attribute map for one Kind: the uniform
 // set every engine shares, that Kind's CredentialAttrs, and the shared
@@ -320,6 +354,55 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 			Description: "Detach the shared `dokploy-network` from this service. Defaults to `false`. " +
 				"It has an effect only together with `network_ids`, and it applies on the next deploy.",
 		},
+		// The operational settings (#51). Every one applies on the next
+		// deploy, so each is a deploy trigger (deployNeeded in model.go).
+		// The command is a plain Optional string: a "" cannot round-trip
+		// (flatten collapses it to null through tfutil.StringOrNull), so
+		// LengthAtLeast(1) rejects it at plan time. The four limits are
+		// strings on the wire, but Dokploy reads each with
+		// Number.parseInt and hands the result to swarm as raw bytes or
+		// nano-CPUs (calculateResources, probed 2026-09-16: "512m" deploys
+		// as 512 bytes and fails the 4 MiB minimum; "0.5" parses as 0 and
+		// sets no limit at all), so wholeNumber rejects every other shape
+		// at plan time. replicas mirrors dokploy_libsql: the wire field is
+		// a plain int64, never null, so it carries a Default.
+		"command": schema.StringAttribute{
+			Optional:    true,
+			Description: "Override the container command. A change starts a redeploy.",
+			Validators:  []validator.String{stringvalidator.LengthAtLeast(1)},
+		},
+		"args": schema.ListAttribute{
+			Optional:    true,
+			ElementType: types.StringType,
+			Description: "Arguments for the container command, in order. A change starts a redeploy. An empty list is not valid. Omit the attribute instead.",
+			Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
+		},
+		"cpu_limit": schema.StringAttribute{
+			Optional:    true,
+			Description: "Hard CPU limit in nano-CPUs, as a whole number in a string: `\"1000000000\"` is one CPU, `\"500000000\"` half a CPU. " + limitUnitNote,
+			Validators:  []validator.String{wholeNumber},
+		},
+		"cpu_reservation": schema.StringAttribute{
+			Optional:    true,
+			Description: "Reserved CPU in nano-CPUs, as a whole number in a string: `\"250000000\"` is a quarter CPU. " + limitUnitNote,
+			Validators:  []validator.String{wholeNumber},
+		},
+		"memory_limit": schema.StringAttribute{
+			Optional:    true,
+			Description: "Hard memory limit in bytes, as a whole number in a string: `\"536870912\"` is 512 MiB. " + limitUnitNote,
+			Validators:  []validator.String{wholeNumber},
+		},
+		"memory_reservation": schema.StringAttribute{
+			Optional:    true,
+			Description: "Reserved memory in bytes, as a whole number in a string: `\"268435456\"` is 256 MiB. " + limitUnitNote,
+			Validators:  []validator.String{wholeNumber},
+		},
+		"replicas": schema.Int64Attribute{
+			Optional:    true,
+			Computed:    true,
+			Default:     int64default.StaticInt64(1),
+			Description: "Number of container replicas. Defaults to `1`. A change starts a redeploy.",
+		},
 		// status deliberately has NO UseStateForUnknown: it is genuinely
 		// server-mutable (a deploy moves it idle -> running -> done), so
 		// pinning the prior value as a *known* plan value makes Terraform core
@@ -333,6 +416,13 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 			Description:   "Creation timestamp from the server.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+	}
+	if k.ReplicaSets {
+		attrs["replica_sets"] = schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Run " + k.HumanName + " as a replica set instead of a standalone instance. Defaults to `false`. " +
+				"Dokploy sends the value on create and on update, and a change applies on the next deploy, so it starts a redeploy.",
+		}
 	}
 	for _, ca := range k.CredentialAttrs {
 		attrs[ca.TFName] = ca.schemaAttribute()

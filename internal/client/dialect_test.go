@@ -24,11 +24,14 @@ var mustAlwaysSend = []struct {
 	fields []string
 }{
 	{UpdateProjectRequest{}, []string{"description"}},
-	{UpdatePostgresRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
-	{UpdateMysqlRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork"}},
-	{UpdateMariadbRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork"}},
-	{UpdateRedisRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
-	{UpdateMongoRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
+	// The five engines: the v1.3.0 operational settings (#51) are dialect B
+	// pointers that clear with an explicit null; replicas (and mongo's
+	// replicaSets) are bare values sent on every call.
+	{UpdatePostgresRequest{}, []string{"description", "networkIds", "detachDokployNetwork", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
+	{UpdateMysqlRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
+	{UpdateMariadbRequest{}, []string{"description", "databaseRootPassword", "networkIds", "detachDokployNetwork", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
+	{UpdateRedisRequest{}, []string{"description", "networkIds", "detachDokployNetwork", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
+	{UpdateMongoRequest{}, []string{"description", "networkIds", "detachDokployNetwork", "replicaSets", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
 	{UpdateApplicationRequest{}, []string{"description", "networkIds", "detachDokployNetwork"}},
 	{UpdateDomainRequest{}, []string{
 		"host", "path", "internalPath", "port", "https", "stripPath",

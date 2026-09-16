@@ -117,7 +117,7 @@ func (d *genericDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		resp.Diagnostics.AddError(fmt.Sprintf("Reading %s", d.kind.Name), err.Error())
 		return
 	}
-	applyObject(d.kind, obj, &config)
+	applyObject(ctx, d.kind, obj, &config, &resp.Diagnostics)
 	resp.Diagnostics.Append(setModel(ctx, &resp.State, config)...)
 }
 
@@ -188,6 +188,18 @@ func schemaAttributes(k resourcedb.Kind) map[string]schema.Attribute {
 		"external_port": schema.Int64Attribute{Computed: true, Description: "Exposed host port, if any."},
 		"status":        schema.StringAttribute{Computed: true, Description: "Service status."},
 		"created_at":    schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
+		// The operational settings (#51), read-only mirrors of the resource
+		// attributes of the same names.
+		"command":            schema.StringAttribute{Computed: true, Description: "Container command override, if any."},
+		"args":               schema.ListAttribute{Computed: true, ElementType: types.StringType, Description: "Arguments for the container command, if any."},
+		"cpu_limit":          schema.StringAttribute{Computed: true, Description: "Hard CPU limit in nano-CPUs, if any."},
+		"cpu_reservation":    schema.StringAttribute{Computed: true, Description: "Reserved CPU in nano-CPUs, if any."},
+		"memory_limit":       schema.StringAttribute{Computed: true, Description: "Hard memory limit in bytes, if any."},
+		"memory_reservation": schema.StringAttribute{Computed: true, Description: "Reserved memory in bytes, if any."},
+		"replicas":           schema.Int64Attribute{Computed: true, Description: "Number of container replicas."},
+	}
+	if k.ReplicaSets {
+		attrs["replica_sets"] = schema.BoolAttribute{Computed: true, Description: "Whether " + k.HumanName + " runs as a replica set."}
 	}
 	for _, ca := range k.CredentialAttrs {
 		attrs[ca.TFName] = schema.StringAttribute{
@@ -246,6 +258,9 @@ type genericModel struct {
 	CreatedAt     types.String
 	Credentials   map[string]types.String // keyed by CredentialAttr.TFName
 
+	// The operational settings (#51), shared with the resource model.
+	resourcedb.Operational
+
 	// attrTypes is captured from the source Config's actual object type so
 	// setModel can rebuild a types.Object without independently re-deriving
 	// (and risking drift from) the schema's attribute-type map.
@@ -256,7 +271,7 @@ type genericModel struct {
 // Mirrors internal/resources/database/model.go's flatten, minus
 // DatabasePassword (never exposed here) and minus Description/Env/ServerID
 // (never part of this data source's schema).
-func applyObject(k resourcedb.Kind, obj *resourcedb.Object, m *genericModel) {
+func applyObject(ctx context.Context, k resourcedb.Kind, obj *resourcedb.Object, m *genericModel, diags *diag.Diagnostics) {
 	m.ID = types.StringValue(obj.ID)
 	m.Name = types.StringValue(obj.Name)
 	m.AppName = types.StringValue(obj.AppName)
@@ -265,6 +280,7 @@ func applyObject(k resourcedb.Kind, obj *resourcedb.Object, m *genericModel) {
 	m.ExternalPort = types.Int64PointerValue(obj.ExternalPort)
 	m.Status = types.StringValue(obj.ApplicationStatus)
 	m.CreatedAt = types.StringValue(obj.CreatedAt)
+	m.Operational = resourcedb.OperationalFromObject(ctx, k, obj, diags)
 	if m.Credentials == nil {
 		m.Credentials = map[string]types.String{}
 	}
@@ -306,6 +322,7 @@ func getModel(ctx context.Context, k resourcedb.Kind, src getter) (genericModel,
 		CreatedAt:     a["created_at"].(types.String),
 		Credentials:   map[string]types.String{},
 		attrTypes:     obj.AttributeTypes(ctx),
+		Operational:   resourcedb.OperationalFromAttributes(k, a),
 	}
 	for _, ca := range k.CredentialAttrs {
 		m.Credentials[ca.TFName] = a[ca.TFName].(types.String)
@@ -325,6 +342,7 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 		"status":         m.Status,
 		"created_at":     m.CreatedAt,
 	}
+	m.PutValues(values, m.attrTypes)
 	for name, v := range m.Credentials {
 		values[name] = v
 	}

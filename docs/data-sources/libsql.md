@@ -40,8 +40,8 @@ data "dokploy_libsql" "by_name" {
 
 - `app_name` (String) Internal Dokploy app name. The server always generates it.
 - `command` (String) Container command override, if any.
-- `cpu_limit` (String) Hard CPU limit in Docker notation, for example `"0.5"`.
-- `cpu_reservation` (String) Reserved CPU in Docker notation, for example `"0.25"`.
+- `cpu_limit` (String) Hard CPU limit in nano-CPUs, for example `"500000000"` for half a CPU.
+- `cpu_reservation` (String) Reserved CPU in nano-CPUs, for example `"250000000"` for a quarter CPU.
 - `created_at` (String) Creation timestamp from the server.
 - `database_user` (String) LibSQL database user.
 - `description` (String) Free-form description.
@@ -51,8 +51,8 @@ data "dokploy_libsql" "by_name" {
 - `external_admin_port` (Number) Host port for the libsql admin interface, if any.
 - `external_grpc_port` (Number) Host port for the libsql gRPC replication interface, if any.
 - `external_port` (Number) Host port for the libsql HTTP interface, if any.
-- `memory_limit` (String) Hard memory limit in Docker notation, for example `"512m"`.
-- `memory_reservation` (String) Reserved memory in Docker notation, for example `"256m"`.
+- `memory_limit` (String) Hard memory limit in bytes, for example `"536870912"` for 512 MiB.
+- `memory_reservation` (String) Reserved memory in bytes, for example `"268435456"` for 256 MiB.
 - `replicas` (Number) Number of container replicas.
 - `server_id` (String) Id of the remote server that runs the service, if not the Dokploy host.
 - `sqld_node` (String) Topology role: `primary` or `replica`.

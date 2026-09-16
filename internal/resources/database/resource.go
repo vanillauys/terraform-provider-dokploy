@@ -213,6 +213,7 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 		ServerID:         plan.ServerID.ValueStringPointer(),
 		DatabasePassword: password,
 		Credentials:      creds,
+		ReplicaSets:      plan.ReplicaSets.ValueBool(),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Creating %s", r.kind.Name), err.Error())
@@ -241,14 +242,16 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 	setComputed(r.kind, current, &plan)
 
-	// The engine create endpoints accept no network fields (v0.30.0), so a
-	// first apply carrying them needs this follow-up update - otherwise they
-	// are silently ignored until the next apply. resolveCredentials gets
-	// `current` so a Computed credential (mysql/mariadb root password) is
-	// never collapsed to "".
-	if !plan.NetworkIDs.IsNull() || plan.DetachDokployNetwork.ValueBool() {
+	// The engine create endpoints accept no network fields (v0.30.0) and
+	// none of the operational settings (#51; mongo's replicaSets is the one
+	// exception, and it went out on the create call above), so a first
+	// apply carrying any of them needs this follow-up update - otherwise
+	// they are silently ignored until the next apply. resolveCredentials
+	// gets `current` so a Computed credential (mysql/mariadb root password)
+	// is never collapsed to "".
+	if !plan.NetworkIDs.IsNull() || plan.DetachDokployNetwork.ValueBool() || plan.operationalSettingsSet() {
 		var d diag.Diagnostics
-		err := r.kind.Client.Update(ctx, UpdateSpec{
+		spec := UpdateSpec{
 			ID:          plan.ID.ValueString(),
 			Name:        plan.Name.ValueString(),
 			Description: plan.Description.ValueStringPointer(),
@@ -262,10 +265,14 @@ func (r *genericResource) Create(ctx context.Context, req resource.CreateRequest
 			Credentials:          resolveCredentials(r.kind, plan, genericModel{}, current),
 			NetworkIDs:           tfutil.StringSetRequest(ctx, plan.NetworkIDs, &d),
 			DetachDokployNetwork: plan.DetachDokployNetwork.ValueBool(),
-		})
+		}
+		plan.applyOperational(ctx, &spec, &d)
 		resp.Diagnostics.Append(d...)
-		if err != nil {
-			r.persistPartial(ctx, resp, plan, "applying network attachments", err)
+		if d.HasError() {
+			return
+		}
+		if err := r.kind.Client.Update(ctx, spec); err != nil {
+			r.persistPartial(ctx, resp, plan, "applying the operational settings", err)
 			return
 		}
 	}
@@ -365,7 +372,7 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 	// An explicit "" on the wire would clear it.
 	password, _ := tfutil.SecretToUpdate(plan.DatabasePassword, plan.DatabasePasswordWo, state.DatabasePassword, plan.DatabasePasswordWoVersion, state.DatabasePasswordWoVersion)
 	var updateDiags diag.Diagnostics
-	err = r.kind.Client.Update(ctx, UpdateSpec{
+	spec := UpdateSpec{
 		ID:                   id,
 		Name:                 plan.Name.ValueString(),
 		Description:          plan.Description.ValueStringPointer(),
@@ -374,8 +381,13 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 		Credentials:          resolveCredentials(r.kind, plan, state, before),
 		NetworkIDs:           tfutil.StringSetRequest(ctx, plan.NetworkIDs, &updateDiags),
 		DetachDokployNetwork: plan.DetachDokployNetwork.ValueBool(),
-	})
+	}
+	plan.applyOperational(ctx, &spec, &updateDiags)
 	resp.Diagnostics.Append(updateDiags...)
+	if updateDiags.HasError() {
+		return
+	}
+	err = r.kind.Client.Update(ctx, spec)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Updating %s", r.kind.Name), err.Error())
 		return

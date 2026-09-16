@@ -13,11 +13,8 @@ import (
 // name/environmentId, and mongo.one's response carries no databaseName or
 // databaseRootPassword key whatsoever (a scratch record's raw JSON response
 // has no such keys, not even as null). mongo.one's response also carries a
-// `replicaSets` bool (defaults false, settable on both create and update) -
-// deliberately NOT modelled here: this provider does not expose replica-set
-// configuration as a Terraform attribute (see CreateMongoRequest's doc
-// comment for why), and this struct, like Postgres/Mysql/Redis, only
-// declares the fields it actually uses.
+// `replicaSets` bool (defaults false, settable on both create and update),
+// modelled since v1.3.0 (#51) as the replica_sets attribute.
 type Mongo struct {
 	MongoID           string  `json:"mongoId"`
 	Name              string  `json:"name"`
@@ -30,6 +27,9 @@ type Mongo struct {
 	Env               *string `json:"env"`
 	ApplicationStatus string  `json:"applicationStatus"`
 	EnvironmentID     string  `json:"environmentId"`
+	// ReplicaSets is the replica-set topology switch. A bare bool: the
+	// server stores false on a create that omits it (probed 2026-07-27).
+	ReplicaSets bool `json:"replicaSets"`
 
 	// v0.30.0 network attachment (probed 2026-08-19, see doc.go). networkIds
 	// reads back as [] on a fresh record. After an explicit clear, it reads
@@ -37,6 +37,9 @@ type Mongo struct {
 	// slice. The resource layer collapses both to a null set.
 	NetworkIDs           []string `json:"networkIds"`
 	DetachDokployNetwork bool     `json:"detachDokployNetwork"`
+
+	// The operational settings (#51); see ServiceResources.
+	ServiceResources
 
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
@@ -52,18 +55,13 @@ type Mongo struct {
 //
 // mongo.create's zod schema also accepts a `replicaSets` bool (defaults
 // false when omitted, and is independently settable via mongo.update too -
-// verified live, 2026-07-27). This field is NOT modelled here: replica-set
-// configuration is a deployment-topology choice, not a string-shaped
-// credential attribute, and does not fit CredentialAttr's fixed
-// Required/RequiresReplace/Computed/Sensitive/DeployTrigger string
-// interface (kind.go). Exposing it would need a new, non-string Kind
-// attribute mechanism - out of scope for this field-map-configuration task;
-// every dokploy_mongo instance this provider creates gets the server's
-// standalone (non-replica-set) default. See this task's report for the
-// full rationale.
+// verified live, 2026-07-27). It is a bare bool sent on every call: the
+// server default is false, so an explicit false is the same as omitting it,
+// and the resource's replica_sets attribute always has a concrete value.
 type CreateMongoRequest struct {
 	Name             string  `json:"name"`
 	AppName          string  `json:"appName,omitempty"`
+	ReplicaSets      bool    `json:"replicaSets"`
 	DatabaseUser     string  `json:"databaseUser"`
 	DatabasePassword string  `json:"databasePassword"`
 	DockerImage      string  `json:"dockerImage,omitempty"`
@@ -94,6 +92,9 @@ type UpdateMongoRequest struct {
 	Description      *string `json:"description"`
 	DockerImage      string  `json:"dockerImage,omitempty"`
 	DatabasePassword string  `json:"databasePassword,omitempty"`
+	// ReplicaSets is a bare bool sent on every call, like
+	// CreateMongoRequest.ReplicaSets.
+	ReplicaSets bool `json:"replicaSets"`
 
 	// v0.30.0 network attachment. NetworkIDs is nullable on the wire; a null
 	// value clears it. DetachDokployNetwork is a bare boolean. The server
@@ -101,6 +102,9 @@ type UpdateMongoRequest struct {
 	// always sends a concrete value - the Replicas pattern.
 	NetworkIDs           *[]string `json:"networkIds"`
 	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
+
+	// The operational settings (#51); see ServiceResourcesUpdate.
+	ServiceResourcesUpdate
 }
 
 func (c *Client) CreateMongo(ctx context.Context, req CreateMongoRequest) (*Mongo, error) {

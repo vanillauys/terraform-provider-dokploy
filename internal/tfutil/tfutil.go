@@ -155,6 +155,30 @@ func StringSetRequest(ctx context.Context, set types.Set, diags *diag.Diagnostic
 	return &items
 }
 
+// StringListOrNull is StringSetOrNull for an ordered list attribute (the
+// `args` of a database engine): nil and [] both collapse to a NULL list.
+// The attribute is Optional with no default and a SizeAtLeast(1)
+// validator, so config can never express [] and the collapse loses nothing.
+func StringListOrNull(ctx context.Context, items []string, diags *diag.Diagnostics) types.List {
+	if len(items) == 0 {
+		return types.ListNull(types.StringType)
+	}
+	list, d := types.ListValueFrom(ctx, types.StringType, items)
+	diags.Append(d...)
+	return list
+}
+
+// StringListRequest is StringSetRequest for a list attribute: a null or
+// unknown list means "unset", sent as an explicit JSON null.
+func StringListRequest(ctx context.Context, list types.List, diags *diag.Diagnostics) *[]string {
+	if list.IsNull() || list.IsUnknown() {
+		return nil
+	}
+	var items []string
+	diags.Append(list.ElementsAs(ctx, &items, false)...)
+	return &items
+}
+
 func ClientFromProviderData(providerData any) (*client.Client, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if providerData == nil {

@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `command`, `args`, `cpu_limit`, `cpu_reservation`, `memory_limit`,
+  `memory_reservation`, and `replicas` on `dokploy_postgres`,
+  `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`, and `dokploy_redis`,
+  and on their data sources (#51). The attributes match the ones on
+  `dokploy_application` and `dokploy_libsql`: `replicas` defaults to `1`,
+  and each one starts a redeploy on change, because Dokploy writes them
+  into the swarm service only at deploy. The four limits are whole numbers
+  in strings, memory in bytes and CPU in nano-CPUs, and the provider
+  rejects any other shape at plan time (see Fixed below). The create
+  endpoints do not accept them, so a first apply that sets any of them
+  runs create, then update, before the deploy. Dokploy
+  accepts a `null` for `replicas` and stores `0`, which would scale the
+  service to zero tasks; the provider always sends the concrete value.
+- `replica_sets` on `dokploy_mongo` and its data source (#51). It defaults
+  to `false`, goes out on create and on update, and starts a redeploy on
+  change. A toggle on a running instance converges in place, in both
+  directions, so it does not replace the resource. The README coverage
+  gap for it is gone.
 - `phase` and `aws_parameter_store` config blocks on `dokploy_vault_provider`
   (#50). `phase` connects a Phase.dev application (`token` or `token_wo`,
   `app_id`, `env`, and the server-defaulted `path` and `api_url`); it needs
@@ -20,6 +38,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secret of both types on read, like the other six, so the same
   write-only and import rules apply. The README coverage gap for the two
   types is gone.
+
+### Fixed
+
+- The descriptions of `cpu_limit`, `cpu_reservation`, `memory_limit`, and
+  `memory_reservation` on `dokploy_application` and `dokploy_libsql`, and
+  on the `dokploy_libsql` data source, claimed Docker notation such as
+  `"512m"` or `"0.5"`. Dokploy reads each value with `parseInt` and hands
+  the result to swarm as raw bytes or nano-CPUs, so `"512m"` deploys as
+  512 bytes and fails the 4 MiB minimum, and `"0.5"` parses as `0` and
+  sets no limit. The descriptions now state the real units and give
+  whole-number examples. The five database engines, which gain the
+  attributes in this release, also reject any other shape at plan time.
+
+### Changed
+
+- The endpoint census now also guards the dialect B endpoints: the create
+  and update pair of the five classic database engines, `application`,
+  `domain`, `environment`, and `project` (#51). Every field those
+  endpoints accept is either on the request struct or recorded in the
+  exemption list with its reason, so a Dokploy release that adds a field
+  fails the test instead of going unnoticed.
 
 ## [1.2.0] - 2026-09-15
 

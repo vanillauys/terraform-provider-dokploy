@@ -33,6 +33,9 @@ type Mariadb struct {
 	NetworkIDs           []string `json:"networkIds"`
 	DetachDokployNetwork bool     `json:"detachDokployNetwork"`
 
+	// The operational settings (#51); see ServiceResources.
+	ServiceResources
+
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
 }
@@ -95,6 +98,9 @@ type UpdateMariadbRequest struct {
 	// always sends a concrete value - the Replicas pattern.
 	NetworkIDs           *[]string `json:"networkIds"`
 	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
+
+	// The operational settings (#51); see ServiceResourcesUpdate.
+	ServiceResourcesUpdate
 }
 
 func (c *Client) CreateMariadb(ctx context.Context, req CreateMariadbRequest) (*Mariadb, error) {

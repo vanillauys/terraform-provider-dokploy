@@ -76,13 +76,14 @@ func PostgresKind(c *client.Client) Kind {
 			},
 			Update: func(ctx context.Context, s UpdateSpec) error {
 				return c.UpdatePostgres(ctx, client.UpdatePostgresRequest{
-					PostgresID:           s.ID,
-					Name:                 s.Name,
-					Description:          s.Description,
-					DockerImage:          s.DockerImage,
-					DatabasePassword:     s.DatabasePassword,
-					NetworkIDs:           s.NetworkIDs,
-					DetachDokployNetwork: s.DetachDokployNetwork,
+					PostgresID:             s.ID,
+					Name:                   s.Name,
+					Description:            s.Description,
+					DockerImage:            s.DockerImage,
+					DatabasePassword:       s.DatabasePassword,
+					NetworkIDs:             s.NetworkIDs,
+					DetachDokployNetwork:   s.DetachDokployNetwork,
+					ServiceResourcesUpdate: s.ServiceResourcesUpdate,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -138,6 +139,7 @@ func postgresObject(pg *client.Postgres) *Object {
 		DatabasePassword:     pg.DatabasePassword,
 		NetworkIDs:           pg.NetworkIDs,
 		DetachDokployNetwork: pg.DetachDokployNetwork,
+		ServiceResources:     pg.ServiceResources,
 		Credentials: map[string]string{
 			"database_name": pg.DatabaseName,
 			"database_user": pg.DatabaseUser,

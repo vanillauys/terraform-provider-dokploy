@@ -29,6 +29,13 @@ const postgresJSON = `{
 	"applicationStatus": "done",
 	"environmentId": "e1",
 	"createdAt": "2026-07-23T10:00:00.000Z",
+	"command": "docker-entrypoint.sh",
+	"args": ["--flag", "value"],
+	"cpuLimit": "0.5",
+	"cpuReservation": "0.25",
+	"memoryLimit": "512m",
+	"memoryReservation": "256m",
+	"replicas": 2,
 	"description": null,
 	"env": null,
 	"serverId": null
@@ -88,6 +95,13 @@ func TestCreateAndGetPostgres(t *testing.T) {
 		got.ExternalPort == nil || *got.ExternalPort != 5432 ||
 		got.ApplicationStatus != "done" || got.EnvironmentID != "e1" ||
 		got.CreatedAt != "2026-07-23T10:00:00.000Z" ||
+		got.Command == nil || *got.Command != "docker-entrypoint.sh" ||
+		len(got.Args) != 2 || got.Args[0] != "--flag" || got.Args[1] != "value" ||
+		got.CPULimit == nil || *got.CPULimit != "0.5" ||
+		got.CPUReservation == nil || *got.CPUReservation != "0.25" ||
+		got.MemoryLimit == nil || *got.MemoryLimit != "512m" ||
+		got.MemoryReservation == nil || *got.MemoryReservation != "256m" ||
+		got.Replicas != 2 ||
 		got.Description != nil || got.Env != nil || got.ServerID != nil {
 		t.Errorf("got = %+v", got)
 	}

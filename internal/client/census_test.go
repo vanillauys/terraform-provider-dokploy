@@ -132,6 +132,31 @@ var endpointStructs = map[string]any{
 	"user.createUserWithCredentials":    CreateUserRequest{},
 	"user.assignPermissions":            AssignPermissionsRequest{},
 	"user.createApiKey":                 CreateAPIKeyRequest{},
+
+	// Dialect B endpoints (an absent key keeps the stored value). An
+	// unmodelled field here is not reset on apply, only unmanageable - but
+	// nothing flagged it either, so a Dokploy release could add a field and
+	// the provider would never notice (#51, T1). Every field the server
+	// accepts is now either on the struct or listed in censusExempt with
+	// the reason it stays out.
+	"project.create":     CreateProjectRequest{},
+	"project.update":     UpdateProjectRequest{},
+	"environment.create": CreateEnvironmentRequest{},
+	"environment.update": UpdateEnvironmentRequest{},
+	"domain.create":      CreateDomainRequest{},
+	"domain.update":      UpdateDomainRequest{},
+	"application.create": CreateApplicationRequest{},
+	"application.update": UpdateApplicationRequest{},
+	"postgres.create":    CreatePostgresRequest{},
+	"postgres.update":    UpdatePostgresRequest{},
+	"mysql.create":       CreateMysqlRequest{},
+	"mysql.update":       UpdateMysqlRequest{},
+	"mariadb.create":     CreateMariadbRequest{},
+	"mariadb.update":     UpdateMariadbRequest{},
+	"mongo.create":       CreateMongoRequest{},
+	"mongo.update":       UpdateMongoRequest{},
+	"redis.create":       CreateRedisRequest{},
+	"redis.update":       UpdateRedisRequest{},
 }
 
 // inEndpointStructs reports whether a request struct is registered above.
@@ -343,6 +368,83 @@ var censusExempt = map[string]map[string]string{
 	"notification.updateLark":       {"organizationId": "implied by the API key's organization"},
 	"notification.updatePushover":   {"organizationId": "implied by the API key's organization"},
 	"notification.updateTeams":      {"organizationId": "implied by the API key's organization"},
+	// Dialect B endpoints (#51, T1). The engine .update endpoints share one
+	// list, built by databaseUpdateExemptions below.
+	"postgres.update": databaseUpdateExemptions("postgres", "databaseName", "databaseUser"),
+	"mysql.update":    databaseUpdateExemptions("mysql", "databaseName", "databaseUser"),
+	"mariadb.update":  databaseUpdateExemptions("mariadb", "databaseName", "databaseUser"),
+	"mongo.update":    databaseUpdateExemptions("mongo", "databaseUser"),
+	"redis.update":    databaseUpdateExemptions("redis"),
+	"project.create": {
+		"env": "project-level environment variables are not modelled yet (#54)",
+	},
+	"project.update": {
+		"env":            "project-level environment variables are not modelled yet (#54)",
+		"createdAt":      "server-generated; not user configuration",
+		"organizationId": "implied by the API key's organization",
+	},
+	"environment.update": {
+		"projectId": "RequiresReplace on the resource; moving an environment between projects is not modelled",
+	},
+	"domain.create": {
+		"middlewares":         "Traefik middlewares; the Traefik surface is out of scope like the Traefik files (settings router)",
+		"previewDeploymentId": "the parent of a preview deployment domain; preview deployments are not modelled yet (#52)",
+	},
+	"domain.update": {
+		"middlewares": "Traefik middlewares; the Traefik surface is out of scope like the Traefik files (settings router)",
+	},
+	// application.create accepts sourceType since v0.30.0; the resource sets
+	// the source through the save*Provider call it always issues after
+	// create, the same split as compose.create.
+	"application.create": {
+		"sourceType": "source is set by the application.save*Provider call the resource always issues on create",
+	},
+	// application.update accepts nearly every column. The resource writes
+	// the source, build and env groups through the dialect A save* endpoints
+	// (the ones the Dokploy UI uses), so they stay off this struct on
+	// purpose; the rest are server-managed, RequiresReplace, or unmodelled
+	// feature groups with an issue.
+	"application.update": mergeExemptions(
+		map[string]string{
+			"appName":            "server-generated; RequiresReplace on the resource, never updated",
+			"applicationStatus":  "server-mutable status; a deploy moves it, Terraform must not write it",
+			"createdAt":          "server-generated; not user configuration",
+			"environmentId":      "RequiresReplace on the resource; application.move is the supported retarget and is not modelled",
+			"refreshToken":       "server-generated webhook token; rotating it is an imperative operation",
+			"enabled":            "start/stop state; a desired_state attribute needs its own design (gap plan D1)",
+			"icon":               "display icon; not modelled on dokploy_application (dokploy_compose models it)",
+			"title":              "display field; not modelled yet (#52)",
+			"subtitle":           "display field; not modelled yet (#52)",
+			"rollbackActive":     "rollback settings are not modelled yet (#52)",
+			"rollbackRegistryId": "rollback settings are not modelled yet (#52)",
+			"buildServerId":      "build settings are not modelled yet (#52)",
+			"buildRegistryId":    "build settings are not modelled yet (#52)",
+			"cleanCache":         "build settings are not modelled yet (#52)",
+			"dropBuildPath":      "build settings are not modelled yet (#52)",
+		},
+		sameReason("set through the application.save*Provider endpoints (dialect A), which the Dokploy UI uses",
+			"sourceType", "triggerType", "watchPaths", "enableSubmodules",
+			"repository", "owner", "branch", "buildPath", "githubId",
+			"gitlabId", "gitlabProjectId", "gitlabRepository", "gitlabOwner", "gitlabBranch", "gitlabBuildPath", "gitlabPathNamespace",
+			"bitbucketId", "bitbucketRepository", "bitbucketOwner", "bitbucketBranch", "bitbucketBuildPath", "bitbucketRepositorySlug",
+			"giteaId", "giteaRepository", "giteaOwner", "giteaBranch", "giteaBuildPath",
+			"customGitUrl", "customGitBranch", "customGitBuildPath", "customGitSSHKeyId",
+			"dockerImage", "username", "password", "registryUrl",
+		),
+		sameReason("set through application.saveBuildType (dialect A), which the Dokploy UI uses",
+			"buildType", "dockerfile", "dockerContextPath", "dockerBuildStage", "publishDirectory",
+			"herokuVersion", "railpackVersion", "isStaticSpa",
+		),
+		sameReason("set through application.saveEnvironment (dialect A), which the Dokploy UI uses",
+			"env", "buildArgs", "buildSecrets", "createEnvFile",
+		),
+		sameReason("preview deployments are not modelled yet (#52)",
+			"isPreviewDeploymentsActive", "previewEnv", "previewBuildArgs", "previewBuildSecrets",
+			"previewCertificateType", "previewCustomCertResolver", "previewHttps", "previewLabels",
+			"previewLimit", "previewPath", "previewPort", "previewRequireCollaboratorPermissions", "previewWildcard",
+		),
+		swarmExemptions(),
+	),
 	// better-auth's refill quota fields: not exposed in the Dokploy UI, and
 	// the resource models the rate limit through rateLimitMax and the window.
 	"user.createApiKey": {
@@ -350,6 +452,62 @@ var censusExempt = map[string]map[string]string{
 		"refillAmount":   "better-auth refill quota; not exposed in the Dokploy UI and not modelled",
 		"refillInterval": "better-auth refill quota; not exposed in the Dokploy UI and not modelled",
 	},
+}
+
+// swarmExemptions is the Docker Swarm orchestration surface every service
+// update endpoint accepts (eleven JSON columns). None of it is modelled yet;
+// the gap plan tracks it as a `swarm` block (item A9).
+func swarmExemptions() map[string]string {
+	return sameReason("Docker Swarm orchestration surface; not modelled yet (gap plan A9)",
+		"endpointSpecSwarm", "healthCheckSwarm", "labelsSwarm", "modeSwarm", "networkSwarm",
+		"placementSwarm", "restartPolicySwarm", "rollbackConfigSwarm", "stopGracePeriodSwarm",
+		"ulimitsSwarm", "updateConfigSwarm",
+	)
+}
+
+// databaseUpdateExemptions is the shared list for the five engine .update
+// endpoints (#51): the server-managed columns, the RequiresReplace
+// credentials named per engine, the two columns the resource writes through
+// the engine's own save* endpoints, and the swarm surface.
+func databaseUpdateExemptions(engine string, replaceCredentials ...string) map[string]string {
+	out := mergeExemptions(
+		map[string]string{
+			"appName":           "server-generated (suffixed for uniqueness on every create); Computed-only on the resource, never updated",
+			"applicationStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
+			"createdAt":         "server-generated; not user configuration",
+			"environmentId":     "RequiresReplace on the resource; " + engine + ".move is the supported retarget and is not modelled",
+			"env":               "set through " + engine + ".saveEnvironment, which is the endpoint the Dokploy UI uses",
+			"externalPort":      "set through " + engine + ".saveExternalPort, which is the endpoint the Dokploy UI uses",
+		},
+		swarmExemptions(),
+	)
+	for _, c := range replaceCredentials {
+		out[c] = "RequiresReplace on the resource: an in-place change would not migrate the running database"
+	}
+	return out
+}
+
+// sameReason builds an exemption map with one reason for every field.
+func sameReason(reason string, fields ...string) map[string]string {
+	out := make(map[string]string, len(fields))
+	for _, f := range fields {
+		out[f] = reason
+	}
+	return out
+}
+
+// mergeExemptions joins exemption maps; a field listed twice is a mistake.
+func mergeExemptions(maps ...map[string]string) map[string]string {
+	out := map[string]string{}
+	for _, m := range maps {
+		for k, v := range m {
+			if _, dup := out[k]; dup {
+				panic("censusExempt: field " + k + " listed twice")
+			}
+			out[k] = v
+		}
+	}
+	return out
 }
 
 type endpointFields struct {
@@ -394,6 +552,7 @@ func TestEndpointFieldCensus(t *testing.T) {
 				"%s: the server accepts %q but %s has no such field and no censusExempt entry.\n"+
 					"On a dialect A endpoint every key is sent on every call, so an unmodelled "+
 					"field is reset to its schema default on every apply, silently, with an HTTP 200. "+
+					"On a dialect B endpoint it is unmanageable from Terraform and nothing else reports it. "+
 					"Either model it as a schema attribute or record why not in censusExempt.",
 				endpoint, field, typ.Name())
 		}

@@ -9,4 +9,15 @@ resource "dokploy_postgres" "example" {
   env = <<-EOT
     TZ=UTC
   EOT
+
+  # Resource limits as whole numbers: memory in bytes, CPU in nano-CPUs.
+  # Dokploy reads them with parseInt, so "1g" or "0.5" do not work. A change
+  # starts a redeploy.
+  memory_limit       = "1073741824" # 1 GiB
+  memory_reservation = "536870912"  # 512 MiB
+  # cpu_limit       = "1000000000"  # one CPU
+  # cpu_reservation = "500000000"   # half a CPU
+  # replicas        = 1
+  # command         = "docker-entrypoint.sh"
+  # args            = ["postgres", "-c", "max_connections=200"]
 }

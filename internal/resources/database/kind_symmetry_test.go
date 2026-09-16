@@ -86,13 +86,43 @@ func TestKindClient_NetworkMapping_Expand(t *testing.T) {
 			k := tc.newKind(c)
 
 			netIDs := []string{sentinelNetworkID}
+			args := []string{"--sentinel-arg"}
 			err = k.Client.Update(context.Background(), UpdateSpec{
 				ID:                   "id-1",
 				NetworkIDs:           &netIDs,
 				DetachDokployNetwork: true,
+				ServiceResourcesUpdate: client.ServiceResourcesUpdate{
+					Command:           ptr("sentinel-cmd"),
+					Args:              &args,
+					CPULimit:          ptr("0.5"),
+					CPUReservation:    ptr("0.25"),
+					MemoryLimit:       ptr("512m"),
+					MemoryReservation: ptr("256m"),
+					Replicas:          3,
+				},
+				ReplicaSets: true,
 			})
 			if err != nil {
 				t.Fatalf("Update: %v", err)
+			}
+
+			// The operational settings (#51): every engine's Update adapter
+			// must copy all seven; only mongo carries replicaSets.
+			for key, want := range map[string]any{
+				"command": "sentinel-cmd", "cpuLimit": "0.5", "cpuReservation": "0.25",
+				"memoryLimit": "512m", "memoryReservation": "256m", "replicas": float64(3),
+			} {
+				if gotBody[key] != want {
+					t.Errorf("%s: request body %s = %v, want %v (a missing mapping in this engine's Update adapter)", tc.name, key, gotBody[key], want)
+				}
+			}
+			if gotArgs, ok := gotBody["args"].([]any); !ok || len(gotArgs) != 1 || gotArgs[0] != "--sentinel-arg" {
+				t.Errorf("%s: request body args = %v, want [--sentinel-arg]", tc.name, gotBody["args"])
+			}
+			if rs, ok := gotBody["replicaSets"]; k.ReplicaSets && (!ok || rs != true) {
+				t.Errorf("%s: request body replicaSets = %v (present %v), want true", tc.name, rs, ok)
+			} else if !k.ReplicaSets && ok {
+				t.Errorf("%s: request body carries replicaSets %v, but this Kind has no replica_sets attribute", tc.name, rs)
 			}
 
 			gotNet, ok := gotBody["networkIds"].([]any)
@@ -121,7 +151,9 @@ func TestKindClient_NetworkMapping_Flatten(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			wantPath := "/api" + tc.onePath
 			fixture := fmt.Sprintf(
-				`{%q:"id-1","networkIds":[%q],"detachDokployNetwork":true}`,
+				`{%q:"id-1","networkIds":[%q],"detachDokployNetwork":true,`+
+					`"command":"sentinel-cmd","args":["--sentinel-arg"],"cpuLimit":"0.5","cpuReservation":"0.25",`+
+					`"memoryLimit":"512m","memoryReservation":"256m","replicas":3,"replicaSets":true}`,
 				tc.idJSONKey, sentinelNetworkID,
 			)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -153,6 +185,23 @@ func TestKindClient_NetworkMapping_Flatten(t *testing.T) {
 				t.Errorf("%s: Object.DetachDokployNetwork = %v, want true (a missing DetachDokployNetwork mapping in this engine's <engine>Object function)",
 					tc.name, obj.DetachDokployNetwork)
 			}
+			// The operational settings (#51) through <engine>Object.
+			for name, got := range map[string]*string{
+				"Command": obj.Command, "CPULimit": obj.CPULimit, "CPUReservation": obj.CPUReservation,
+				"MemoryLimit": obj.MemoryLimit, "MemoryReservation": obj.MemoryReservation,
+			} {
+				if got == nil {
+					t.Errorf("%s: Object.%s = nil, want the fixture value (a missing mapping in this engine's <engine>Object function)", tc.name, name)
+				}
+			}
+			if obj.Replicas != 3 || len(obj.Args) != 1 || obj.Args[0] != "--sentinel-arg" {
+				t.Errorf("%s: Object.Replicas = %d, Args = %v, want 3 and [--sentinel-arg]", tc.name, obj.Replicas, obj.Args)
+			}
+			if obj.ReplicaSets != k.ReplicaSets {
+				t.Errorf("%s: Object.ReplicaSets = %v, want %v (only the mongo Kind maps replicaSets)", tc.name, obj.ReplicaSets, k.ReplicaSets)
+			}
 		})
 	}
 }
+
+func ptr(s string) *string { return &s }

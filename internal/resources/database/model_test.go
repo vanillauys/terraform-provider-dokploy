@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
 
 func TestDeployNeeded(t *testing.T) {
@@ -24,6 +27,7 @@ func TestDeployNeeded(t *testing.T) {
 			// false, so a hand-built fixture must say so explicitly, or every
 			// comparison against it reports a spurious change.
 			NetworkIDs:           types.SetNull(types.StringType),
+			Operational:          Operational{Args: types.ListNull(types.StringType)},
 			DetachDokployNetwork: types.BoolValue(false),
 		}
 	}
@@ -52,6 +56,18 @@ func TestDeployNeeded(t *testing.T) {
 		"external_port":          func(m *genericModel) { m.ExternalPort = types.Int64Value(5433) },
 		"network_ids":            func(m *genericModel) { m.NetworkIDs = networkSet("net-1") },
 		"detach_dokploy_network": func(m *genericModel) { m.DetachDokployNetwork = types.BoolValue(true) },
+		// The operational settings (#51) only reach the swarm service at
+		// deploy, so each one is a trigger.
+		"command": func(m *genericModel) { m.Command = types.StringValue("docker-entrypoint.sh") },
+		"args": func(m *genericModel) {
+			m.Args = types.ListValueMust(types.StringType, []attr.Value{types.StringValue("--a")})
+		},
+		"cpu_limit":          func(m *genericModel) { m.CPULimit = types.StringValue("0.5") },
+		"cpu_reservation":    func(m *genericModel) { m.CPUReservation = types.StringValue("0.25") },
+		"memory_limit":       func(m *genericModel) { m.MemoryLimit = types.StringValue("512m") },
+		"memory_reservation": func(m *genericModel) { m.MemoryReservation = types.StringValue("256m") },
+		"replicas":           func(m *genericModel) { m.Replicas = types.Int64Value(2) },
+		"replica_sets":       func(m *genericModel) { m.ReplicaSets = types.BoolValue(true) },
 	} {
 		plan = base()
 		mutate(&plan)
@@ -83,6 +99,7 @@ func TestDeployNeeded_CredentialAttr(t *testing.T) {
 			ExternalPort:     types.Int64Value(3306),
 			// Same zero-value trap as TestDeployNeeded's base() above.
 			NetworkIDs:           types.SetNull(types.StringType),
+			Operational:          Operational{Args: types.ListNull(types.StringType)},
 			DetachDokployNetwork: types.BoolValue(false),
 			Credentials: map[string]types.String{
 				"database_root_password": types.StringValue("root1"),
@@ -528,6 +545,9 @@ func TestFlatten_TwoCredentialAttrs(t *testing.T) {
 	env := "TZ=UTC"
 	port := int64(5432)
 	serverID := "srv-1"
+	command := "docker-entrypoint.sh"
+	cpuLimit := "0.5"
+	memoryLimit := "512m"
 	obj := &Object{
 		ID:                   "pg-1",
 		Name:                 "mydb",
@@ -543,6 +563,13 @@ func TestFlatten_TwoCredentialAttrs(t *testing.T) {
 		DatabasePassword:     "hunter2",
 		NetworkIDs:           []string{"net-1"},
 		DetachDokployNetwork: true,
+		ServiceResources: client.ServiceResources{
+			Command:     &command,
+			Args:        []string{"--a", "--b"},
+			CPULimit:    &cpuLimit,
+			MemoryLimit: &memoryLimit,
+			Replicas:    2,
+		},
 		Credentials: map[string]string{
 			"database_name": "mydb",
 			"database_user": "myuser",
@@ -553,6 +580,30 @@ func TestFlatten_TwoCredentialAttrs(t *testing.T) {
 	flatten(context.Background(), k, obj, &m, &diags)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
+	}
+
+	// The operational settings (#51): set fields land verbatim, nil ones
+	// as null, and replica_sets stays null on a Kind without the flag.
+	if got := m.Command.ValueString(); got != command {
+		t.Errorf("Command = %q, want %q", got, command)
+	}
+	if got := m.Args.Elements(); len(got) != 2 || got[0].(types.String).ValueString() != "--a" {
+		t.Errorf("Args = %v, want [--a --b]", got)
+	}
+	if got := m.CPULimit.ValueString(); got != cpuLimit {
+		t.Errorf("CPULimit = %q, want %q", got, cpuLimit)
+	}
+	if got := m.MemoryLimit.ValueString(); got != memoryLimit {
+		t.Errorf("MemoryLimit = %q, want %q", got, memoryLimit)
+	}
+	if !m.CPUReservation.IsNull() || !m.MemoryReservation.IsNull() {
+		t.Errorf("CPUReservation = %v, MemoryReservation = %v, want both null", m.CPUReservation, m.MemoryReservation)
+	}
+	if got := m.Replicas.ValueInt64(); got != 2 {
+		t.Errorf("Replicas = %d, want 2", got)
+	}
+	if !m.ReplicaSets.IsNull() {
+		t.Errorf("ReplicaSets = %v, want null on a Kind without ReplicaSets", m.ReplicaSets)
 	}
 
 	if got := m.Name.ValueString(); got != "mydb" {
@@ -630,10 +681,14 @@ func TestSchemaAttributes_TwoCredentialAttrs(t *testing.T) {
 		"database_password", "docker_image", "description", "env",
 		"external_port", "app_name", "server_id", "status", "created_at",
 		"deploy_on_change", "deployment_timeout",
+		"command", "args", "cpu_limit", "cpu_reservation", "memory_limit", "memory_reservation", "replicas",
 	} {
 		if _, ok := attrs[name]; !ok {
 			t.Errorf("expected attribute %q in schema, not found", name)
 		}
+	}
+	if _, ok := attrs["replica_sets"]; ok {
+		t.Error("replica_sets must exist only on a Kind with ReplicaSets set; postgres has it")
 	}
 
 	dbName, ok := attrs["database_name"].(schema.StringAttribute)
@@ -698,6 +753,127 @@ func TestSchemaAttributes_ZeroCredentialAttrs(t *testing.T) {
 	}
 	if dbPassword.Description != "Redis password. A change starts a redeploy. Set this attribute or `database_password_wo`." {
 		t.Errorf("unexpected database_password description: %q", dbPassword.Description)
+	}
+}
+
+// TestSchemaAttributes_OperationalSettings pins the shape of the seven
+// operational attributes (#51) and the mongo-only replica_sets switch: the
+// limits and command are plain Optional strings with a non-empty
+// validator, args is an Optional list with a size validator, replicas is
+// Optional+Computed with a Default of 1, and replica_sets appears only on
+// the Kind that sets ReplicaSets, as Optional+Computed with a Default of
+// false.
+func TestSchemaAttributes_OperationalSettings(t *testing.T) {
+	attrs := schemaAttributes(RedisKind(nil))
+	for _, name := range []string{"command", "cpu_limit", "cpu_reservation", "memory_limit", "memory_reservation"} {
+		a, ok := attrs[name].(schema.StringAttribute)
+		if !ok {
+			t.Fatalf("%s is %T, want schema.StringAttribute", name, attrs[name])
+		}
+		if !a.Optional || a.Computed || a.Required || len(a.Validators) == 0 {
+			t.Errorf("%s must be plain Optional with a validator, got %+v", name, a)
+		}
+	}
+	args, ok := attrs["args"].(schema.ListAttribute)
+	if !ok || !args.Optional || args.Computed || len(args.Validators) == 0 || !args.ElementType.Equal(types.StringType) {
+		t.Errorf("args must be an Optional list of strings with a validator, got %+v", attrs["args"])
+	}
+	replicas, ok := attrs["replicas"].(schema.Int64Attribute)
+	if !ok || !replicas.Optional || !replicas.Computed || replicas.Default == nil {
+		t.Errorf("replicas must be Optional+Computed with a Default, got %+v", attrs["replicas"])
+	}
+	if _, ok := attrs["replica_sets"]; ok {
+		t.Error("redis must not carry replica_sets")
+	}
+
+	mongo := schemaAttributes(MongoKind(nil))
+	rs, ok := mongo["replica_sets"].(schema.BoolAttribute)
+	if !ok || !rs.Optional || !rs.Computed || rs.Default == nil {
+		t.Errorf("mongo replica_sets must be Optional+Computed with a Default, got %+v", mongo["replica_sets"])
+	}
+	for _, k := range []Kind{PostgresKind(nil), MysqlKind(nil), MariadbKind(nil), RedisKind(nil)} {
+		if k.ReplicaSets {
+			t.Errorf("%s: ReplicaSets must be set on the mongo Kind only", k.Name)
+		}
+	}
+}
+
+// TestOperationalSettingsSet pins the Create-side follow-up rule (#51): a
+// plan with every operational setting at its default needs no follow-up
+// update, and any single one set (or replicas away from 1) needs one.
+func TestOperationalSettingsSet(t *testing.T) {
+	base := func() genericModel {
+		return genericModel{Operational: Operational{
+			Args:     types.ListNull(types.StringType),
+			Replicas: types.Int64Value(1),
+		}}
+	}
+	if base().operationalSettingsSet() {
+		t.Error("all defaults must need no follow-up update")
+	}
+	for name, mutate := range map[string]func(*genericModel){
+		"command": func(m *genericModel) { m.Command = types.StringValue("x") },
+		"args": func(m *genericModel) {
+			m.Args = types.ListValueMust(types.StringType, []attr.Value{types.StringValue("--a")})
+		},
+		"cpu_limit":          func(m *genericModel) { m.CPULimit = types.StringValue("0.5") },
+		"cpu_reservation":    func(m *genericModel) { m.CPUReservation = types.StringValue("0.25") },
+		"memory_limit":       func(m *genericModel) { m.MemoryLimit = types.StringValue("512m") },
+		"memory_reservation": func(m *genericModel) { m.MemoryReservation = types.StringValue("256m") },
+		"replicas":           func(m *genericModel) { m.Replicas = types.Int64Value(2) },
+	} {
+		m := base()
+		mutate(&m)
+		if !m.operationalSettingsSet() {
+			t.Errorf("%s set must need a follow-up update", name)
+		}
+	}
+	// replica_sets goes out on the create call itself, so it never forces
+	// the follow-up on its own.
+	m := base()
+	m.ReplicaSets = types.BoolValue(true)
+	if m.operationalSettingsSet() {
+		t.Error("replica_sets alone must not need a follow-up update")
+	}
+}
+
+// TestApplyOperational pins the plan -> UpdateSpec copy: null strings reach
+// the spec as nil pointers (an explicit null on the wire), a null list as a
+// nil pointer, and set values verbatim.
+func TestApplyOperational(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+	var spec UpdateSpec
+	m := genericModel{Operational: Operational{Args: types.ListNull(types.StringType), Replicas: types.Int64Value(1), ReplicaSets: types.BoolNull()}}
+	m.applyOperational(ctx, &spec, &diags)
+	if spec.Command != nil || spec.Args != nil || spec.CPULimit != nil || spec.CPUReservation != nil ||
+		spec.MemoryLimit != nil || spec.MemoryReservation != nil || spec.Replicas != 1 || spec.ReplicaSets {
+		t.Errorf("all-null plan -> %+v, want nil pointers, replicas 1, replica_sets false", spec)
+	}
+
+	m = genericModel{Operational: Operational{
+		Command:           types.StringValue("docker-entrypoint.sh"),
+		Args:              types.ListValueMust(types.StringType, []attr.Value{types.StringValue("--a"), types.StringValue("--b")}),
+		CPULimit:          types.StringValue("0.5"),
+		CPUReservation:    types.StringValue("0.25"),
+		MemoryLimit:       types.StringValue("512m"),
+		MemoryReservation: types.StringValue("256m"),
+		Replicas:          types.Int64Value(3),
+		ReplicaSets:       types.BoolValue(true),
+	}}
+	spec = UpdateSpec{}
+	m.applyOperational(ctx, &spec, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	if spec.Command == nil || *spec.Command != "docker-entrypoint.sh" ||
+		spec.Args == nil || len(*spec.Args) != 2 || (*spec.Args)[1] != "--b" ||
+		spec.CPULimit == nil || *spec.CPULimit != "0.5" ||
+		spec.CPUReservation == nil || *spec.CPUReservation != "0.25" ||
+		spec.MemoryLimit == nil || *spec.MemoryLimit != "512m" ||
+		spec.MemoryReservation == nil || *spec.MemoryReservation != "256m" ||
+		spec.Replicas != 3 || !spec.ReplicaSets {
+		t.Errorf("set plan -> %+v", spec)
 	}
 }
 
@@ -938,6 +1114,7 @@ func TestDeployNeeded_WriteOnlyVersion(t *testing.T) {
 			DockerImage:          types.StringValue("mysql:8"),
 			DatabasePassword:     types.StringNull(),
 			NetworkIDs:           types.SetNull(types.StringType),
+			Operational:          Operational{Args: types.ListNull(types.StringType)},
 			DetachDokployNetwork: types.BoolValue(false),
 			Credentials: map[string]types.String{
 				"database_root_password": types.StringNull(),
