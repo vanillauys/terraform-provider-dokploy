@@ -157,11 +157,6 @@ The provider does not model these Dokploy features yet.
 - **`dokploy_user` cannot change a password.** Dokploy has no endpoint that
   resets another user's password, so a password change replaces the
   account.
-- **`dokploy_vault_provider` models six provider types.** Dokploy v0.30.5
-  adds a seventh type, `phase` (Phase.dev), and v0.30.6 an eighth,
-  `aws-parameter-store` (AWS Systems Manager Parameter Store). The resource
-  cannot create or update a vault provider of these two types. Manage one in
-  the Dokploy UI.
 - **`dokploy_backup` cannot back up Redis.** Dokploy has no logical dump for
   Redis. Use `dokploy_volume_backup`, which archives the volume and accepts a
   Redis parent. The provider also does not expose a backup of the Dokploy

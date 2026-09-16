@@ -3,7 +3,7 @@
 page_title: "dokploy_vault_provider Resource - dokploy"
 subcategory: "Vault providers and AI"
 description: |-
-  A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their env attribute as ${{vault.<name>.<key>}}, a plain string that this provider does not parse or validate. The resource models six provider types: hashicorp (also OpenBao, which uses the same wire protocol), infisical, aws, doppler, azure, and scaleway. Dokploy v0.30.5 adds a seventh type, phase (Phase.dev), and v0.30.6 an eighth, aws-parameter-store (AWS Systems Manager Parameter Store). This resource does not model these two types yet.
+  A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their env attribute as ${{vault.<name>.<key>}}, a plain string that this provider does not parse or validate. The resource models eight provider types: hashicorp (also OpenBao, which uses the same wire protocol), infisical, aws, doppler, azure, scaleway, phase (Phase.dev, Dokploy v0.30.5 and later), and aws_parameter_store (AWS Systems Manager Parameter Store, Dokploy v0.30.6 and later).
   ~> Dokploy masks each secret on each read. Dokploy returns each secret field in the config blocks of this resource as the literal string ********, on create, read, and update alike. The provider therefore cannot detect a config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage the config of a vault provider only through Terraform. An edit in the UI stays undetected until the next apply that modifies this resource. That apply writes the full body and overwrites the edit with the Terraform config.
   ~> Each secret field has a write-only companion, for example hashicorp.token_wo with hashicorp.token_wo_version. Terraform keeps the companion out of the plan and the state. The server does not return the secret, so the provider sends the companion's value on every update. Change the version to start an update when only the secret changed.
   ~> terraform import cannot recover a config block. The import leaves the config blocks null. Supply the block that matches the actual provider type in the configuration. The first terraform apply then writes it as a full-body update, not as a partial patch.
@@ -12,7 +12,7 @@ description: |-
 
 # dokploy_vault_provider (Resource)
 
-A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their `env` attribute as `${{vault.<name>.<key>}}`, a plain string that this provider does not parse or validate. The resource models six provider types: `hashicorp` (also OpenBao, which uses the same wire protocol), `infisical`, `aws`, `doppler`, `azure`, and `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), and v0.30.6 an eighth, `aws-parameter-store` (AWS Systems Manager Parameter Store). This resource does not model these two types yet.
+A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their `env` attribute as `${{vault.<name>.<key>}}`, a plain string that this provider does not parse or validate. The resource models eight provider types: `hashicorp` (also OpenBao, which uses the same wire protocol), `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase` (Phase.dev, Dokploy v0.30.5 and later), and `aws_parameter_store` (AWS Systems Manager Parameter Store, Dokploy v0.30.6 and later).
 
 ~> **Dokploy masks each secret on each read.** Dokploy returns each secret field in the config blocks of this resource as the literal string `********`, on create, read, and update alike. The provider therefore cannot detect a config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret and non-secret fields alike. Manage the config of a vault provider only through Terraform. An edit in the UI stays undetected until the next apply that modifies this resource. That apply writes the full body and overwrites the edit with the Terraform config.
 
@@ -66,6 +66,36 @@ resource "dokploy_vault_provider" "secrets" {
 #     DATABASE_PASSWORD=$${{vault.prod-vault.database_password}}
 #   EOT
 # }
+
+# Phase.dev (Dokploy v0.30.5 and later).
+resource "dokploy_vault_provider" "phase" {
+  name = "phase"
+
+  phase = {
+    token_wo         = var.phase_token
+    token_wo_version = 1
+    app_id           = "app_0123456789"
+    env              = "production"
+    # path    = "/"                     # Server default.
+    # api_url = "https://api.phase.dev" # Server default. Set it for a self-hosted Phase.
+  }
+
+  assignments = []
+}
+
+# AWS Systems Manager Parameter Store (Dokploy v0.30.6 and later).
+resource "dokploy_vault_provider" "ssm" {
+  name = "ssm"
+
+  aws_parameter_store = {
+    region            = "eu-west-1"
+    access_key_id     = var.aws_access_key_id
+    secret_access_key = var.aws_secret_access_key
+    parameter_path    = "/wihan-dev/" # Optional. It must start with `/`.
+  }
+
+  assignments = []
+}
 ```
 
 <!-- schema generated by tfplugindocs -->
@@ -78,16 +108,18 @@ resource "dokploy_vault_provider" "secrets" {
 
 ### Optional
 
-- `aws` (Attributes) AWS Secrets Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.
+- `aws` (Attributes) AWS Secrets Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.
 
 ~> The shape of this block comes from the OpenAPI contract, not from a live probe. The acceptance tests of this resource are the first live confirmation of it. (see [below for nested schema](#nestedatt--aws))
-- `azure` (Attributes) Azure Key Vault connection. The API requires each field; Azure has no optional field here. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.
+- `aws_parameter_store` (Attributes) AWS Systems Manager Parameter Store connection. Needs Dokploy v0.30.6 or later. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`. (see [below for nested schema](#nestedatt--aws_parameter_store))
+- `azure` (Attributes) Azure Key Vault connection. The API requires each field; Azure has no optional field here. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.
 
 ~> The shape of this block comes from the OpenAPI contract, not from a live probe. (see [below for nested schema](#nestedatt--azure))
-- `doppler` (Attributes) Doppler connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`. (see [below for nested schema](#nestedatt--doppler))
-- `hashicorp` (Attributes) HashiCorp Vault or OpenBao connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`. (see [below for nested schema](#nestedatt--hashicorp))
-- `infisical` (Attributes) Infisical connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`. (see [below for nested schema](#nestedatt--infisical))
-- `scaleway` (Attributes) Scaleway Secret Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`. (see [below for nested schema](#nestedatt--scaleway))
+- `doppler` (Attributes) Doppler connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`. (see [below for nested schema](#nestedatt--doppler))
+- `hashicorp` (Attributes) HashiCorp Vault or OpenBao connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`. (see [below for nested schema](#nestedatt--hashicorp))
+- `infisical` (Attributes) Infisical connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`. (see [below for nested schema](#nestedatt--infisical))
+- `phase` (Attributes) Phase.dev connection. Needs Dokploy v0.30.5 or later. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`. (see [below for nested schema](#nestedatt--phase))
+- `scaleway` (Attributes) Scaleway Secret Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`. (see [below for nested schema](#nestedatt--scaleway))
 - `verify_connection` (Boolean) Test the config against the real vault before the write, through `vaultProvider.testConnection`. Defaults to `false`. On failure, the apply fails with the server message, and the provider creates or updates nothing. This attribute is provider-only, and Dokploy stores no value for it, so `terraform import` always seeds it with `false`.
 
 ### Read-Only
@@ -120,6 +152,23 @@ Optional:
 - `access_key_id_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `access_key_id`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `access_key_id` and `access_key_id_wo`. The server does not return the value, so every update sends it. Change `access_key_id_wo_version` to start an update when only this value changed.
 - `access_key_id_wo_version` (Number) Version of `access_key_id_wo`. Change it to start an update when only `access_key_id_wo` changed. It needs `access_key_id_wo`.
 - `endpoint` (String) Custom Secrets Manager endpoint, for a compatible service or a VPC endpoint. Omit it to use the default AWS endpoint. The server has no default for this field.
+- `secret_access_key` (String, Sensitive) AWS secret access key. Set this attribute or `secret_access_key_wo`.
+- `secret_access_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `secret_access_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `secret_access_key` and `secret_access_key_wo`. The server does not return the value, so every update sends it. Change `secret_access_key_wo_version` to start an update when only this value changed.
+- `secret_access_key_wo_version` (Number) Version of `secret_access_key_wo`. Change it to start an update when only `secret_access_key_wo` changed. It needs `secret_access_key_wo`.
+
+
+<a id="nestedatt--aws_parameter_store"></a>
+### Nested Schema for `aws_parameter_store`
+
+Required:
+
+- `access_key_id` (String) AWS access key id. Dokploy stores and returns it in cleartext.
+- `region` (String) AWS region for Parameter Store, for example `eu-west-1`.
+
+Optional:
+
+- `endpoint` (String) Custom Parameter Store endpoint URL, for a compatible service or a VPC endpoint. Omit it to use the default AWS endpoint. The server has no default for this field.
+- `parameter_path` (String) Path prefix under which Dokploy discovers parameters, for example `/wihan-dev/`. It must start with `/`. Omit it to discover every parameter. The server has no default for this field.
 - `secret_access_key` (String, Sensitive) AWS secret access key. Set this attribute or `secret_access_key_wo`.
 - `secret_access_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `secret_access_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `secret_access_key` and `secret_access_key_wo`. The server does not return the value, so every update sends it. Change `secret_access_key_wo_version` to start an update when only this value changed.
 - `secret_access_key_wo_version` (Number) Version of `secret_access_key_wo`. Change it to start an update when only `secret_access_key_wo` changed. It needs `secret_access_key_wo`.
@@ -185,6 +234,23 @@ Optional:
 - `client_secret_wo_version` (Number) Version of `client_secret_wo`. Change it to start an update when only `client_secret_wo` changed. It needs `client_secret_wo`.
 - `secret_path` (String) Path inside the Infisical project to read secrets from. Defaults to `/`.
 - `site_url` (String) Infisical instance URL. Defaults to the Infisical Cloud URL.
+
+
+<a id="nestedatt--phase"></a>
+### Nested Schema for `phase`
+
+Required:
+
+- `app_id` (String) Phase application id.
+- `env` (String) Phase environment name, for example `production`.
+
+Optional:
+
+- `api_url` (String) Phase API URL. Defaults to the Phase Cloud URL, `https://api.phase.dev`. Set it for a self-hosted Phase instance.
+- `path` (String) Path inside the Phase application to read secrets from. Defaults to `/`.
+- `token` (String, Sensitive) Phase service token. Set this attribute or `token_wo`.
+- `token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `token`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `token` and `token_wo`. The server does not return the value, so every update sends it. Change `token_wo_version` to start an update when only this value changed.
+- `token_wo_version` (Number) Version of `token_wo`. Change it to start an update when only `token_wo` changed. It needs `token_wo`.
 
 
 <a id="nestedatt--scaleway"></a>

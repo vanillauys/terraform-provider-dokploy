@@ -4,6 +4,7 @@ package vaultprovider_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -545,4 +546,264 @@ resource "dokploy_vault_provider" "second" {
 			},
 		},
 	})
+}
+
+// TestAccVaultProvider_phaseFakeCredLifecycle covers the phase block (#50)
+// with fake credentials and verify_connection = false: create with the two
+// server defaults omitted, an in-place update of path and env, the switch
+// to the write-only token, and a verify_connection = true step that must
+// fail the apply with the server's message and leave the record as it was.
+// The acceptance suite is the first live confirmation of the block; doc.go
+// records the v0.30.5 probe it is modeled on.
+func TestAccVaultProvider_phaseFakeCredLifecycle(t *testing.T) {
+	name := acctest.RandomName("vault-phase")
+	cfg := func(body string) string {
+		return fmt.Sprintf(`
+resource "dokploy_vault_provider" "test" {
+  name = %q
+
+  phase = {
+    app_id = "app_acceptance_only"
+%s
+  }
+
+  assignments = []
+}
+`, name, body)
+	}
+	verify := fmt.Sprintf(`
+resource "dokploy_vault_provider" "test" {
+  name = %q
+
+  phase = {
+    token  = "pss_service:v1:acceptance-only-fake"
+    app_id = "app_acceptance_only"
+    env    = "production"
+  }
+
+  assignments = []
+
+  verify_connection = true
+}
+`, name)
+	update := resource.ConfigPlanChecks{
+		PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_vault_provider.test", plancheck.ResourceActionUpdate)},
+		PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+	}
+
+	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkVaultProviderDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg("    token  = \"pss_service:v1:acceptance-only-fake\"\n    env    = \"production\""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "phase.token", "pss_service:v1:acceptance-only-fake"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "phase.app_id", "app_acceptance_only"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "phase.env", "production"),
+					// Both server defaults were omitted from config and must
+					// plan clean through the schema Default.
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "phase.path", "/"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "phase.api_url", "https://api.phase.dev"),
+					resource.TestCheckResourceAttrSet("dokploy_vault_provider.test", "created_at"),
+					checkVaultProviderType(t, "phase"),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// An in-place update of two non-secret fields, one of them a
+				// server-defaulted one moved off its default.
+				Config:           cfg("    token  = \"pss_service:v1:acceptance-only-fake\"\n    env    = \"staging\"\n    path   = \"/backend\""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "phase.env", "staging"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "phase.path", "/backend"),
+				),
+			},
+			{
+				// The write-only companion: the state loses the token.
+				Config:           cfg("    token_wo         = \"pss_service:v1:acceptance-only-fake-2\"\n    token_wo_version = 1\n    env              = \"staging\"\n    path             = \"/backend\""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "phase.token"),
+					resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "phase.token_wo"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "phase.token_wo_version", "1"),
+				),
+			},
+			{
+				// verify_connection reaches the real Phase API with a fake
+				// token: the apply must fail through the verify path, and
+				// the record must keep the previous step's values.
+				Config:      verify,
+				ExpectError: regexp.MustCompile(`Verifying vault connection`),
+			},
+			{
+				// Gate R: import cannot recover the block or verify_connection.
+				ResourceName:            "dokploy_vault_provider.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"phase.", "verify_connection"},
+			},
+		},
+	})
+}
+
+// TestAccVaultProvider_awsParameterStoreFakeCredLifecycle covers the
+// aws_parameter_store block (#50): a plan-time rejection of a
+// parameter_path without the leading slash, create with parameter_path set
+// and endpoint omitted, dropping parameter_path (which must revert to null
+// on the next plan), the write-only secret, and a failed
+// verify_connection. doc.go records the v0.30.6 probe it is modeled on,
+// including the server-side "must start with /" rule the validator
+// front-runs.
+func TestAccVaultProvider_awsParameterStoreFakeCredLifecycle(t *testing.T) {
+	name := acctest.RandomName("vault-ssm")
+	cfg := func(body, extra string) string {
+		return fmt.Sprintf(`
+resource "dokploy_vault_provider" "test" {
+  name = %q
+
+  aws_parameter_store = {
+    region        = "eu-west-1"
+    access_key_id = "AKIAACCEPTANCEONLY"
+%s
+  }
+
+  assignments = []
+%s
+}
+`, name, body, extra)
+	}
+	update := resource.ConfigPlanChecks{
+		PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_vault_provider.test", plancheck.ResourceActionUpdate)},
+		PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+	}
+
+	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkVaultProviderDestroy,
+		Steps: []resource.TestStep{
+			{
+				// Rejected at plan time, before any request: the server would
+				// answer HTTP 400 on config.parameterPath for the same value.
+				Config:      cfg("    secret_access_key = \"acceptance-only-not-a-real-secret\"\n    parameter_path    = \"acc/\"", ""),
+				ExpectError: regexp.MustCompile(`must start with /`),
+			},
+			{
+				Config: cfg("    secret_access_key = \"acceptance-only-not-a-real-secret\"\n    parameter_path    = \"/acc/\"", ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.region", "eu-west-1"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.access_key_id", "AKIAACCEPTANCEONLY"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.secret_access_key", "acceptance-only-not-a-real-secret"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.parameter_path", "/acc/"),
+					resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.endpoint"),
+					resource.TestCheckResourceAttrSet("dokploy_vault_provider.test", "created_at"),
+					checkVaultProviderType(t, "aws-parameter-store"),
+					// The server keeps region, accessKeyId and parameterPath in
+					// cleartext and masks only the secret (doc.go).
+					checkVaultProviderConfig(t, map[string]string{
+						"region": "eu-west-1", "accessKeyId": "AKIAACCEPTANCEONLY",
+						"parameterPath": "/acc/", "secretAccessKey": "********",
+					}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// parameter_path dropped from config: an in-place update that
+				// sends no parameterPath key, and a state that reverts to
+				// null with an empty plan afterwards.
+				Config:           cfg("    secret_access_key = \"acceptance-only-not-a-real-secret\"", ""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.parameter_path"),
+					checkVaultProviderConfig(t, map[string]string{"parameterPath": ""}),
+				),
+			},
+			{
+				// The write-only companion: the state loses the secret.
+				Config:           cfg("    secret_access_key_wo         = \"acceptance-only-not-a-real-secret-2\"\n    secret_access_key_wo_version = 1", ""),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.secret_access_key"),
+					resource.TestCheckNoResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.secret_access_key_wo"),
+					resource.TestCheckResourceAttr("dokploy_vault_provider.test", "aws_parameter_store.secret_access_key_wo_version", "1"),
+				),
+			},
+			{
+				// verify_connection with fake credentials: the apply fails
+				// through the verify path with the server's (redacted)
+				// message, and nothing is written.
+				Config:      cfg("    secret_access_key = \"acceptance-only-not-a-real-secret\"", "\n  verify_connection = true"),
+				ExpectError: regexp.MustCompile(`Verifying vault connection`),
+			},
+			{
+				ResourceName:            "dokploy_vault_provider.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"aws_parameter_store.", "verify_connection"},
+			},
+		},
+	})
+}
+
+// checkVaultProviderType reads the record back and asserts the server's
+// top-level providerType discriminator: the resource never decodes the
+// redacted config, so this is the one server-side fact that proves the
+// right union member reached the wire.
+func checkVaultProviderType(t *testing.T, want string) resource.TestCheckFunc {
+	t.Helper()
+	return func(s *terraform.State) error {
+		v, err := getAccVaultProvider(s)
+		if err != nil {
+			return err
+		}
+		if v.ProviderType != want {
+			return fmt.Errorf("server providerType = %q, want %q", v.ProviderType, want)
+		}
+		return nil
+	}
+}
+
+// checkVaultProviderConfig decodes the server's (redacted) config object
+// and asserts the given keys. A want of "" asserts the key is absent or
+// empty, which is how the server stores an omitted parameterPath (doc.go).
+func checkVaultProviderConfig(t *testing.T, want map[string]string) resource.TestCheckFunc {
+	t.Helper()
+	return func(s *terraform.State) error {
+		v, err := getAccVaultProvider(s)
+		if err != nil {
+			return err
+		}
+		var cfg map[string]any
+		if err := json.Unmarshal(v.Config, &cfg); err != nil {
+			return fmt.Errorf("decoding server config: %w", err)
+		}
+		for k, w := range want {
+			got, _ := cfg[k].(string)
+			if got != w {
+				return fmt.Errorf("server config.%s = %q, want %q", k, got, w)
+			}
+		}
+		return nil
+	}
+}
+
+func getAccVaultProvider(s *terraform.State) (*client.VaultProvider, error) {
+	rs, ok := s.RootModule().Resources["dokploy_vault_provider.test"]
+	if !ok {
+		return nil, fmt.Errorf("dokploy_vault_provider.test not found in state")
+	}
+	c, err := acctest.ClientFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	return c.GetVaultProvider(context.Background(), rs.Primary.ID)
 }

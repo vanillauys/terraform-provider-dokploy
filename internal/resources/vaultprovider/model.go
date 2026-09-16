@@ -14,17 +14,19 @@ import (
 )
 
 type resourceModel struct {
-	ID               types.String `tfsdk:"id"`
-	Name             types.String `tfsdk:"name"`
-	Hashicorp        types.Object `tfsdk:"hashicorp"`
-	Infisical        types.Object `tfsdk:"infisical"`
-	AWS              types.Object `tfsdk:"aws"`
-	Doppler          types.Object `tfsdk:"doppler"`
-	Azure            types.Object `tfsdk:"azure"`
-	Scaleway         types.Object `tfsdk:"scaleway"`
-	Assignments      types.List   `tfsdk:"assignments"`
-	VerifyConnection types.Bool   `tfsdk:"verify_connection"`
-	CreatedAt        types.String `tfsdk:"created_at"`
+	ID                types.String `tfsdk:"id"`
+	Name              types.String `tfsdk:"name"`
+	Hashicorp         types.Object `tfsdk:"hashicorp"`
+	Infisical         types.Object `tfsdk:"infisical"`
+	AWS               types.Object `tfsdk:"aws"`
+	Doppler           types.Object `tfsdk:"doppler"`
+	Azure             types.Object `tfsdk:"azure"`
+	Scaleway          types.Object `tfsdk:"scaleway"`
+	Phase             types.Object `tfsdk:"phase"`
+	AWSParameterStore types.Object `tfsdk:"aws_parameter_store"`
+	Assignments       types.List   `tfsdk:"assignments"`
+	VerifyConnection  types.Bool   `tfsdk:"verify_connection"`
+	CreatedAt         types.String `tfsdk:"created_at"`
 }
 
 // Each secret field of a config block has its write-only companions
@@ -86,6 +88,26 @@ type scalewayModel struct {
 	SecretKeyWoVersion types.Int64  `tfsdk:"secret_key_wo_version"`
 	Region             types.String `tfsdk:"region"`
 	APIURL             types.String `tfsdk:"api_url"`
+}
+
+type phaseModel struct {
+	Token          types.String `tfsdk:"token"`
+	TokenWo        types.String `tfsdk:"token_wo"`
+	TokenWoVersion types.Int64  `tfsdk:"token_wo_version"`
+	AppID          types.String `tfsdk:"app_id"`
+	Env            types.String `tfsdk:"env"`
+	Path           types.String `tfsdk:"path"`
+	APIURL         types.String `tfsdk:"api_url"`
+}
+
+type awsParameterStoreModel struct {
+	Region                   types.String `tfsdk:"region"`
+	AccessKeyID              types.String `tfsdk:"access_key_id"`
+	SecretAccessKey          types.String `tfsdk:"secret_access_key"`
+	SecretAccessKeyWo        types.String `tfsdk:"secret_access_key_wo"`
+	SecretAccessKeyWoVersion types.Int64  `tfsdk:"secret_access_key_wo_version"`
+	Endpoint                 types.String `tfsdk:"endpoint"`
+	ParameterPath            types.String `tfsdk:"parameter_path"`
 }
 
 type assignmentModel struct {
@@ -159,6 +181,30 @@ func scalewayAttrTypes() map[string]attr.Type {
 		"secret_key_wo_version": types.Int64Type,
 		"region":                types.StringType,
 		"api_url":               types.StringType,
+	}
+}
+
+func phaseAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"token":            types.StringType,
+		"token_wo":         types.StringType,
+		"token_wo_version": types.Int64Type,
+		"app_id":           types.StringType,
+		"env":              types.StringType,
+		"path":             types.StringType,
+		"api_url":          types.StringType,
+	}
+}
+
+func awsParameterStoreAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"region":                       types.StringType,
+		"access_key_id":                types.StringType,
+		"secret_access_key":            types.StringType,
+		"secret_access_key_wo":         types.StringType,
+		"secret_access_key_wo_version": types.Int64Type,
+		"endpoint":                     types.StringType,
+		"parameter_path":               types.StringType,
 	}
 }
 
@@ -304,6 +350,46 @@ func expandScalewayConfig(ctx context.Context, obj, cfgObj types.Object, diags *
 	}
 }
 
+func expandPhaseConfig(ctx context.Context, obj, cfgObj types.Object, diags *diag.Diagnostics) *client.VaultPhaseConfig {
+	if obj.IsNull() || obj.IsUnknown() {
+		return nil
+	}
+	var m, wo phaseModel
+	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	decodeBlock(ctx, cfgObj, &wo, diags)
+	if diags.HasError() {
+		return nil
+	}
+	return &client.VaultPhaseConfig{
+		ProviderType: client.VaultProviderTypePhase,
+		Token:        tfutil.SecretToCreate(m.Token, wo.TokenWo),
+		AppID:        m.AppID.ValueString(),
+		Env:          m.Env.ValueString(),
+		Path:         m.Path.ValueString(),
+		APIURL:       m.APIURL.ValueString(),
+	}
+}
+
+func expandAWSParameterStoreConfig(ctx context.Context, obj, cfgObj types.Object, diags *diag.Diagnostics) *client.VaultAWSParameterStoreConfig {
+	if obj.IsNull() || obj.IsUnknown() {
+		return nil
+	}
+	var m, wo awsParameterStoreModel
+	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	decodeBlock(ctx, cfgObj, &wo, diags)
+	if diags.HasError() {
+		return nil
+	}
+	return &client.VaultAWSParameterStoreConfig{
+		ProviderType:    client.VaultProviderTypeAWSParameterStore,
+		Region:          m.Region.ValueString(),
+		AccessKeyID:     m.AccessKeyID.ValueString(),
+		SecretAccessKey: tfutil.SecretToCreate(m.SecretAccessKey, wo.SecretAccessKeyWo),
+		Endpoint:        m.Endpoint.ValueString(),
+		ParameterPath:   m.ParameterPath.ValueString(),
+	}
+}
+
 // expandConfig picks the one populated config block out of m (the
 // ConfigValidators ExactlyOneOf on the resource guarantees exactly one is
 // set by the time Create/Update run) and returns the built client struct
@@ -324,10 +410,14 @@ func expandConfig(ctx context.Context, m, cfg resourceModel, diags *diag.Diagnos
 		return expandAzureConfig(ctx, m.Azure, cfg.Azure, diags), client.VaultProviderTypeAzure
 	case !m.Scaleway.IsNull():
 		return expandScalewayConfig(ctx, m.Scaleway, cfg.Scaleway, diags), client.VaultProviderTypeScaleway
+	case !m.Phase.IsNull():
+		return expandPhaseConfig(ctx, m.Phase, cfg.Phase, diags), client.VaultProviderTypePhase
+	case !m.AWSParameterStore.IsNull():
+		return expandAWSParameterStoreConfig(ctx, m.AWSParameterStore, cfg.AWSParameterStore, diags), client.VaultProviderTypeAWSParameterStore
 	default:
 		diags.AddError(
 			"Building vault provider config",
-			"exactly one of hashicorp, infisical, aws, doppler, azure, or scaleway must be set; "+
+			"exactly one of hashicorp, infisical, aws, doppler, azure, scaleway, phase, or aws_parameter_store must be set; "+
 				"the resource's ConfigValidators should have caught this before Create or Update ran",
 		)
 		return nil, ""
@@ -344,7 +434,9 @@ func expandConfig(ctx context.Context, m, cfg resourceModel, diags *diag.Diagnos
 // endpoint) use tfutil.StringOrNull, collapsing the expand path's "" back to
 // null so a config that omits the field round-trips to the same null it
 // started from - the "documented omitempty exception" internal/client/
-// vaultprovider.go's struct comments describe.
+// vaultprovider.go's struct comments describe. phase.path and
+// phase.api_url join the first group; aws_parameter_store.endpoint and
+// aws_parameter_store.parameter_path join the second.
 //
 // Each flatten also takes the plan block, for the write-only companions: a
 // secret whose plain attribute is null in the plan is in write-only mode,
@@ -472,6 +564,44 @@ func flattenScalewayConfig(ctx context.Context, c *client.VaultScalewayConfig, p
 	return obj
 }
 
+func flattenPhaseConfig(ctx context.Context, c *client.VaultPhaseConfig, planObj types.Object, diags *diag.Diagnostics) types.Object {
+	if c == nil {
+		return types.ObjectNull(phaseAttrTypes())
+	}
+	var p phaseModel
+	hasPlan := decodeBlock(ctx, planObj, &p, diags)
+	obj, d := types.ObjectValue(phaseAttrTypes(), map[string]attr.Value{
+		"token":            secretState(hasPlan, p.Token, c.Token),
+		"token_wo":         types.StringNull(),
+		"token_wo_version": p.TokenWoVersion,
+		"app_id":           types.StringValue(c.AppID),
+		"env":              types.StringValue(c.Env),
+		"path":             types.StringValue(c.Path),
+		"api_url":          types.StringValue(c.APIURL),
+	})
+	diags.Append(d...)
+	return obj
+}
+
+func flattenAWSParameterStoreConfig(ctx context.Context, c *client.VaultAWSParameterStoreConfig, planObj types.Object, diags *diag.Diagnostics) types.Object {
+	if c == nil {
+		return types.ObjectNull(awsParameterStoreAttrTypes())
+	}
+	var p awsParameterStoreModel
+	hasPlan := decodeBlock(ctx, planObj, &p, diags)
+	obj, d := types.ObjectValue(awsParameterStoreAttrTypes(), map[string]attr.Value{
+		"region":                       types.StringValue(c.Region),
+		"access_key_id":                types.StringValue(c.AccessKeyID),
+		"secret_access_key":            secretState(hasPlan, p.SecretAccessKey, c.SecretAccessKey),
+		"secret_access_key_wo":         types.StringNull(),
+		"secret_access_key_wo_version": p.SecretAccessKeyWoVersion,
+		"endpoint":                     tfutil.StringOrNull(&c.Endpoint),
+		"parameter_path":               tfutil.StringOrNull(&c.ParameterPath),
+	})
+	diags.Append(d...)
+	return obj
+}
+
 // flattenConfig nulls all six config blocks in m, then sets whichever one
 // matches cfg's concrete type - the union round-trip's inverse of
 // expandConfig. Create and Update call it on the very struct they just sent
@@ -486,6 +616,8 @@ func flattenConfig(ctx context.Context, cfg any, m *resourceModel, diags *diag.D
 	m.Doppler = types.ObjectNull(dopplerAttrTypes())
 	m.Azure = types.ObjectNull(azureAttrTypes())
 	m.Scaleway = types.ObjectNull(scalewayAttrTypes())
+	m.Phase = types.ObjectNull(phaseAttrTypes())
+	m.AWSParameterStore = types.ObjectNull(awsParameterStoreAttrTypes())
 
 	switch c := cfg.(type) {
 	case *client.VaultHashicorpConfig:
@@ -500,6 +632,10 @@ func flattenConfig(ctx context.Context, cfg any, m *resourceModel, diags *diag.D
 		m.Azure = flattenAzureConfig(ctx, c, plan.Azure, diags)
 	case *client.VaultScalewayConfig:
 		m.Scaleway = flattenScalewayConfig(ctx, c, plan.Scaleway, diags)
+	case *client.VaultPhaseConfig:
+		m.Phase = flattenPhaseConfig(ctx, c, plan.Phase, diags)
+	case *client.VaultAWSParameterStoreConfig:
+		m.AWSParameterStore = flattenAWSParameterStoreConfig(ctx, c, plan.AWSParameterStore, diags)
 	}
 }
 
@@ -521,6 +657,10 @@ func secretsOf(cfg any) []string {
 		return []string{c.ClientSecret}
 	case *client.VaultScalewayConfig:
 		return []string{c.SecretKey}
+	case *client.VaultPhaseConfig:
+		return []string{c.Token}
+	case *client.VaultAWSParameterStoreConfig:
+		return []string{c.SecretAccessKey}
 	default:
 		return nil
 	}

@@ -4382,6 +4382,53 @@
             "optional": true
           },
           {
+            "name": "aws_parameter_store",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "access_key_id",
+                  "type": "tftypes.String",
+                  "required": true
+                },
+                {
+                  "name": "endpoint",
+                  "type": "tftypes.String",
+                  "optional": true
+                },
+                {
+                  "name": "parameter_path",
+                  "type": "tftypes.String",
+                  "optional": true
+                },
+                {
+                  "name": "region",
+                  "type": "tftypes.String",
+                  "required": true
+                },
+                {
+                  "name": "secret_access_key",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "sensitive": true
+                },
+                {
+                  "name": "secret_access_key_wo",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "sensitive": true,
+                  "write_only": true
+                },
+                {
+                  "name": "secret_access_key_wo_version",
+                  "type": "tftypes.Number",
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
+          },
+          {
             "name": "azure",
             "nested": {
               "nesting": "SINGLE",
@@ -4571,6 +4618,55 @@
             "name": "name",
             "type": "tftypes.String",
             "required": true
+          },
+          {
+            "name": "phase",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "api_url",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "app_id",
+                  "type": "tftypes.String",
+                  "required": true
+                },
+                {
+                  "name": "env",
+                  "type": "tftypes.String",
+                  "required": true
+                },
+                {
+                  "name": "path",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "computed": true
+                },
+                {
+                  "name": "token",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "sensitive": true
+                },
+                {
+                  "name": "token_wo",
+                  "type": "tftypes.String",
+                  "optional": true,
+                  "sensitive": true,
+                  "write_only": true
+                },
+                {
+                  "name": "token_wo_version",
+                  "type": "tftypes.Number",
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
           },
           {
             "name": "scaleway",
