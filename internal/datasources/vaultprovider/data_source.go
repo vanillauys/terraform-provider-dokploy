@@ -4,13 +4,12 @@ package vaultprovider
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/datasources/dsutil"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/lookup"
 	resourcevault "github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
@@ -43,56 +42,37 @@ func (d *vaultProviderDataSource) Metadata(_ context.Context, req datasource.Met
 }
 
 func (d *vaultProviderDataSource) ConfigValidators(_ context.Context) []datasource.ConfigValidator {
-	return []datasource.ConfigValidator{
-		datasourcevalidator.ExactlyOneOf(path.MatchRoot("id"), path.MatchRoot("name")),
-	}
+	return dsutil.IDOrName()
 }
 
 func (d *vaultProviderDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Description: "Looks up a vault provider that already exists in Dokploy (Settings > Vault Providers), for example to " +
-			"confirm the name that the `${{vault.<name>.<key>}}` environment variable syntax refers to:\n\n" +
-			"```terraform\n" +
-			"data \"dokploy_vault_provider\" \"prod\" {\n  name = \"prod\"\n}\n" +
-			"```\n\n" +
-			"~> **The data source does not expose the connection config.** The provider-specific blocks exist on the " +
-			"`dokploy_vault_provider` resource, but not here, by design: Dokploy masks their secrets on every read, and " +
-			"a consumer needs only the id and the name.\n\n" +
-			"~> Dokploy does not enforce name uniqueness. If two vault providers share a name, this data source fails " +
-			"instead of a guess. Look the record up by `id` in that case.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Vault provider id. Set it for a lookup by id, or leave it unset and set `name`.",
-			},
-			"name": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Display name as shown in Dokploy. Set exactly one of `id` or `name`.",
-			},
-			"provider_type": schema.StringAttribute{
-				Computed: true,
-				Description: "Kind of vault: `hashicorp` (also OpenBao), `infisical`, `aws`, `doppler`, `azure`, `scaleway`, " +
-					"`phase`, or `aws-parameter-store`.",
-			},
-			"assignments": schema.ListNestedAttribute{
-				Computed:    true,
-				Description: "Projects, and optionally specific environments in them, that can use this vault provider.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"project_id": schema.StringAttribute{Computed: true, Description: "Id of the assigned project."},
-						"environment_ids": schema.SetAttribute{
-							Computed:    true,
-							ElementType: types.StringType,
-							Description: "Ids of the environments that the assignment covers. Empty when it covers each environment in the project.",
-						},
-					},
+	lookup := dsutil.Lookup{
+		Kind: "vault provider", Plural: "vault providers",
+		What: "a vault provider that already exists in Dokploy (Settings > Vault Providers), for example to " +
+			"confirm the name that the `${{vault.<name>.<key>}}` environment variable syntax refers to",
+		Example: "data \"dokploy_vault_provider\" \"prod\" {\n  name = \"prod\"\n}",
+		Note: "The `provider_type` attribute says which kind of vault the record connects to. Dokploy masks the secrets " +
+			"of the connection config on every read, so the config blocks of the resource are not part of the data source.",
+	}
+	attrs := lookup.Attributes()
+	attrs["provider_type"] = dsutil.String("Kind of vault: `hashicorp` (also OpenBao), `infisical`, `aws`, `doppler`, `azure`, `scaleway`, " +
+		"`phase`, or `aws-parameter-store`.")
+	attrs["assignments"] = schema.ListNestedAttribute{
+		Computed:    true,
+		Description: "Projects, and optionally specific environments in them, that can use this vault provider.",
+		NestedObject: schema.NestedAttributeObject{
+			Attributes: map[string]schema.Attribute{
+				"project_id": dsutil.String("Id of the assigned project."),
+				"environment_ids": schema.SetAttribute{
+					Computed:    true,
+					ElementType: types.StringType,
+					Description: "Ids of the environments that the assignment covers. Empty when it covers each environment in the project.",
 				},
 			},
-			"created_at": schema.StringAttribute{Computed: true, Description: "Creation timestamp from the server."},
 		},
 	}
+	attrs["created_at"] = dsutil.String("Creation timestamp from the server.")
+	resp.Schema = schema.Schema{Description: lookup.Description(), Attributes: attrs}
 }
 
 func (d *vaultProviderDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {

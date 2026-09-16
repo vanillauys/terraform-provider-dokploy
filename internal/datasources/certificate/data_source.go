@@ -4,13 +4,12 @@ package certificate
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/datasources/dsutil"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/lookup"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
@@ -43,40 +42,24 @@ func (d *certificateDataSource) Metadata(_ context.Context, req datasource.Metad
 }
 
 func (d *certificateDataSource) ConfigValidators(_ context.Context) []datasource.ConfigValidator {
-	return []datasource.ConfigValidator{
-		datasourcevalidator.ExactlyOneOf(path.MatchRoot("id"), path.MatchRoot("name")),
-	}
+	return dsutil.IDOrName()
 }
 
 func (d *certificateDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Description: "Looks up a TLS certificate that already exists in Dokploy (Settings > Certificates), so that a domain " +
-			"with `certificate_type = \"custom\"` can reference it:\n\n" +
-			"```terraform\n" +
-			"data \"dokploy_certificate\" \"wildcard\" {\n  name = \"wildcard-example-com\"\n}\n" +
-			"```\n\n" +
-			"~> **The data source does not expose the private key.** `private_key` exists on the `dokploy_certificate` " +
-			"resource, but not here, by design. A consumer needs only the id.\n\n" +
-			"~> Dokploy does not enforce name uniqueness. If two certificates share a name, this data source fails instead " +
-			"of a guess. Look the record up by `id` in that case.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Certificate id. Set it for a lookup by id, or leave it unset and set `name`.",
-			},
-			"name": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Display name as shown in Dokploy. Set exactly one of `id` or `name`.",
-			},
-			"certificate_data": schema.StringAttribute{Computed: true, Description: "The certificate chain in PEM format."},
-			"certificate_path": schema.StringAttribute{Computed: true, Description: "Name of the Traefik certificate file that Dokploy generates."},
-			"auto_renew":       schema.BoolAttribute{Computed: true, Description: "Whether Dokploy renews the certificate."},
-			"server_id":        schema.StringAttribute{Computed: true, Description: "Id of the server that serves the certificate, or null for the Dokploy host."},
-			"organization_id":  schema.StringAttribute{Computed: true, Description: "Id of the organization that owns the certificate."},
-		},
+	lookup := dsutil.Lookup{
+		Kind: "certificate", Plural: "certificates",
+		What: "a TLS certificate that already exists in Dokploy (Settings > Certificates), so that a domain with " +
+			"`certificate_type = \"custom\"` can reference it",
+		Example: "data \"dokploy_certificate\" \"wildcard\" {\n  name = \"wildcard-example-com\"\n}",
+		Secret:  "the private key", SecretAttr: "`private_key`", Resource: "`dokploy_certificate`",
 	}
+	attrs := lookup.Attributes()
+	attrs["certificate_data"] = dsutil.String("The certificate chain in PEM format.")
+	attrs["certificate_path"] = dsutil.String("Name of the Traefik certificate file that Dokploy generates.")
+	attrs["auto_renew"] = dsutil.Bool("Whether Dokploy renews the certificate.")
+	attrs["server_id"] = dsutil.String("Id of the server that serves the certificate, or null for the Dokploy host.")
+	attrs["organization_id"] = dsutil.String("Id of the organization that owns the certificate.")
+	resp.Schema = schema.Schema{Description: lookup.Description(), Attributes: attrs}
 }
 
 func (d *certificateDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {

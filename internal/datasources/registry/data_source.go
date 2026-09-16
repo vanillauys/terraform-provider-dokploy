@@ -4,13 +4,12 @@ package registry
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/datasources/dsutil"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/lookup"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
@@ -44,42 +43,26 @@ func (d *registryDataSource) Metadata(_ context.Context, req datasource.Metadata
 }
 
 func (d *registryDataSource) ConfigValidators(_ context.Context) []datasource.ConfigValidator {
-	return []datasource.ConfigValidator{
-		datasourcevalidator.ExactlyOneOf(path.MatchRoot("id"), path.MatchRoot("name")),
-	}
+	return dsutil.IDOrName()
 }
 
 func (d *registryDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Description: "Looks up a container registry login that already exists in Dokploy (Settings > Registry), so that an " +
-			"application can push its built images to it:\n\n" +
-			"```terraform\n" +
-			"data \"dokploy_registry\" \"ghcr\" {\n  name = \"ghcr\"\n}\n\n" +
-			"resource \"dokploy_application\" \"api\" {\n  registry_id = data.dokploy_registry.ghcr.id\n  # ...\n}\n" +
-			"```\n\n" +
-			"~> **The data source does not expose the password.** `password` exists on the `dokploy_registry` " +
-			"resource, but not here, by design. A consumer needs only the id.\n\n" +
-			"~> Dokploy does not enforce name uniqueness. If two registries share a name, this data source fails instead " +
-			"of a guess. Look the record up by `id` in that case.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Registry id. Set it for a lookup by id, or leave it unset and set `name`.",
-			},
-			"name": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Display name as shown in Dokploy. Set exactly one of `id` or `name`.",
-			},
-			"url":             schema.StringAttribute{Computed: true, Description: "Registry host, with an optional port and without a scheme."},
-			"username":        schema.StringAttribute{Computed: true, Description: "Login user."},
-			"image_prefix":    schema.StringAttribute{Computed: true, Description: "Path that Dokploy puts in front of each image name it pushes, or null."},
-			"registry_type":   schema.StringAttribute{Computed: true, Description: "Registry type, `cloud` on Dokploy v0.30."},
-			"organization_id": schema.StringAttribute{Computed: true, Description: "Id of the organization that owns the registry."},
-			"created_at":      schema.StringAttribute{Computed: true, Description: "Creation timestamp from the server."},
-		},
+	lookup := dsutil.Lookup{
+		Kind: "registry", Plural: "registries",
+		What: "a container registry login that already exists in Dokploy (Settings > Registry), so that an " +
+			"application can push its built images to it",
+		Example: "data \"dokploy_registry\" \"ghcr\" {\n  name = \"ghcr\"\n}\n\n" +
+			"resource \"dokploy_application\" \"api\" {\n  registry_id = data.dokploy_registry.ghcr.id\n  # ...\n}",
+		Secret: "the password", SecretAttr: "`password`", Resource: "`dokploy_registry`",
 	}
+	attrs := lookup.Attributes()
+	attrs["url"] = dsutil.String("Registry host, with an optional port and without a scheme.")
+	attrs["username"] = dsutil.String("Login user.")
+	attrs["image_prefix"] = dsutil.String("Path that Dokploy puts in front of each image name it pushes, or null.")
+	attrs["registry_type"] = dsutil.String("Registry type, `cloud` on Dokploy v0.30.")
+	attrs["organization_id"] = dsutil.String("Id of the organization that owns the registry.")
+	attrs["created_at"] = dsutil.String("Creation timestamp from the server.")
+	resp.Schema = schema.Schema{Description: lookup.Description(), Attributes: attrs}
 }
 
 func (d *registryDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {

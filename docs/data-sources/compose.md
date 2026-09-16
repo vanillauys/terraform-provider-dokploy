@@ -59,7 +59,7 @@ resource "dokploy_domain" "mail" {
 
 - `environment_id` (String) Id of the environment to search. Required with `name`.
 - `id` (String) Compose service id. Set this attribute, or set both `environment_id` and `name`.
-- `name` (String) Exact display name. The lookup searches within `environment_id` and errors when zero or many services match.
+- `name` (String) Exact display name. The lookup searches within `environment_id` and errors when zero or many compose services in the environment match.
 
 ### Read-Only
 

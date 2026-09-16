@@ -9,7 +9,7 @@ description: |-
     name = "prod"
   }
   
-  ~> The data source does not expose the connection config. The provider-specific blocks exist on the dokploy_vault_provider resource, but not here, by design: Dokploy masks their secrets on every read, and a consumer needs only the id and the name.
+  The provider_type attribute says which kind of vault the record connects to. Dokploy masks the secrets of the connection config on every read, so the config blocks of the resource are not part of the data source.
   ~> Dokploy does not enforce name uniqueness. If two vault providers share a name, this data source fails instead of a guess. Look the record up by id in that case.
 ---
 
@@ -23,7 +23,7 @@ data "dokploy_vault_provider" "prod" {
 }
 ```
 
-~> **The data source does not expose the connection config.** The provider-specific blocks exist on the `dokploy_vault_provider` resource, but not here, by design: Dokploy masks their secrets on every read, and a consumer needs only the id and the name.
+The `provider_type` attribute says which kind of vault the record connects to. Dokploy masks the secrets of the connection config on every read, so the config blocks of the resource are not part of the data source.
 
 ~> Dokploy does not enforce name uniqueness. If two vault providers share a name, this data source fails instead of a guess. Look the record up by `id` in that case.
 

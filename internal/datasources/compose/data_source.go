@@ -7,13 +7,12 @@ package compose
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/datasources/dsutil"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -56,67 +55,42 @@ func (d *composeDataSource) Metadata(_ context.Context, req datasource.MetadataR
 }
 
 func (d *composeDataSource) ConfigValidators(_ context.Context) []datasource.ConfigValidator {
-	return []datasource.ConfigValidator{
-		datasourcevalidator.ExactlyOneOf(path.MatchRoot("id"), path.MatchRoot("name")),
-		datasourcevalidator.RequiredTogether(path.MatchRoot("environment_id"), path.MatchRoot("name")),
-	}
+	return dsutil.ServiceLookup()
 }
 
 func (d *composeDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Description: "Looks up a Dokploy compose service by id, or by name within an environment, for example to attach a " +
-			"`dokploy_domain` or a `dokploy_backup` to a stack that Terraform does not manage:\n\n" +
-			"```terraform\n" +
-			"data \"dokploy_compose\" \"stalwart\" {\n  name           = \"stalwart\"\n  environment_id = data.dokploy_environment.prod.id\n}\n" +
-			"```\n\n" +
-			"The source blocks and `service_networks` of the resource are not part of the data source.\n\n" +
-			"~> Dokploy does not enforce name uniqueness. If two compose services in the environment share a name, this " +
-			"data source fails instead of a guess. Look the record up by `id` in that case.",
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Compose service id. Set this attribute, or set both `environment_id` and `name`.",
-			},
-			"name": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Exact display name. The lookup searches within `environment_id` and errors when zero or many services match.",
-			},
-			"environment_id": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Id of the environment to search. Required with `name`.",
-			},
-			"app_name":     schema.StringAttribute{Computed: true, Description: "Internal Dokploy app name."},
-			"description":  schema.StringAttribute{Computed: true, Description: "Free-form description, or null."},
-			"server_id":    schema.StringAttribute{Computed: true, Description: "Id of the remote server that runs the service, or null for the Dokploy host."},
-			"compose_type": schema.StringAttribute{Computed: true, Description: "`docker-compose` or `stack`."},
-			"source_type":  schema.StringAttribute{Computed: true, Description: "Configured source type: `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `raw`."},
-			"compose_path": schema.StringAttribute{Computed: true, Description: "Path to the compose file inside the repository."},
-			"command":      schema.StringAttribute{Computed: true, Description: "Replacement deploy command, or null."},
-			"suffix":       schema.StringAttribute{Computed: true, Description: "Suffix for the generated resource names, or null."},
-			"env": schema.StringAttribute{
-				Computed:  true,
-				Sensitive: true,
-				Description: "Environment variables as multiline `KEY=value` lines, exactly as Dokploy stores them. " +
-					"The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.",
-			},
-			"auto_deploy":  schema.BoolAttribute{Computed: true, Description: "Whether a source change starts a redeploy, or null."},
-			"trigger_type": schema.StringAttribute{Computed: true, Description: "Git event that starts an auto-deploy: `push` or `tag`, or null."},
-			"watch_paths": schema.ListAttribute{
-				Computed:    true,
-				ElementType: types.StringType,
-				Description: "Paths that limit an auto-deploy, or null.",
-			},
-			"enable_submodules": schema.BoolAttribute{Computed: true, Description: "Whether Dokploy clones git submodules."},
-			"randomize":         schema.BoolAttribute{Computed: true, Description: "Whether Dokploy randomizes the generated resource names."},
-			"create_env_file":   schema.BoolAttribute{Computed: true, Description: "Whether Dokploy writes the environment variables to a `.env` file."},
-			"icon":              schema.StringAttribute{Computed: true, Description: "Service icon for the Dokploy UI, or null."},
-			"status":            schema.StringAttribute{Computed: true, Description: "Service status from Dokploy."},
-			"created_at":        schema.StringAttribute{Computed: true, Description: "Creation timestamp from the server."},
-		},
+	lookup := dsutil.Lookup{
+		Kind: "compose service", Plural: "compose services in the environment",
+		What: "a Dokploy compose service by id, or by name within an environment, for example to attach a " +
+			"`dokploy_domain` or a `dokploy_backup` to a stack that Terraform does not manage",
+		Example: "data \"dokploy_compose\" \"stalwart\" {\n  name           = \"stalwart\"\n  environment_id = data.dokploy_environment.prod.id\n}",
+		Note:    "The source blocks and `service_networks` of the resource are not part of the data source.",
 	}
+	attrs := lookup.ServiceAttributes()
+	attrs["app_name"] = dsutil.String("Internal Dokploy app name.")
+	attrs["description"] = dsutil.String("Free-form description, or null.")
+	attrs["server_id"] = dsutil.String("Id of the remote server that runs the service, or null for the Dokploy host.")
+	attrs["compose_type"] = dsutil.String("`docker-compose` or `stack`.")
+	attrs["source_type"] = dsutil.String("Configured source type: `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `raw`.")
+	attrs["compose_path"] = dsutil.String("Path to the compose file inside the repository.")
+	attrs["command"] = dsutil.String("Replacement deploy command, or null.")
+	attrs["suffix"] = dsutil.String("Suffix for the generated resource names, or null.")
+	attrs["env"] = schema.StringAttribute{
+		Computed:  true,
+		Sensitive: true,
+		Description: "Environment variables as multiline `KEY=value` lines, exactly as Dokploy stores them. " +
+			"The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.",
+	}
+	attrs["auto_deploy"] = dsutil.Bool("Whether a source change starts a redeploy, or null.")
+	attrs["trigger_type"] = dsutil.String("Git event that starts an auto-deploy: `push` or `tag`, or null.")
+	attrs["watch_paths"] = dsutil.StringList("Paths that limit an auto-deploy, or null.")
+	attrs["enable_submodules"] = dsutil.Bool("Whether Dokploy clones git submodules.")
+	attrs["randomize"] = dsutil.Bool("Whether Dokploy randomizes the generated resource names.")
+	attrs["create_env_file"] = dsutil.Bool("Whether Dokploy writes the environment variables to a `.env` file.")
+	attrs["icon"] = dsutil.String("Service icon for the Dokploy UI, or null.")
+	attrs["status"] = dsutil.String("Service status from Dokploy.")
+	attrs["created_at"] = dsutil.String("Creation timestamp from the server.")
+	resp.Schema = schema.Schema{Description: lookup.Description(), Attributes: attrs}
 }
 
 func (d *composeDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
@@ -136,20 +110,12 @@ func (d *composeDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	id := config.ID.ValueString()
-	if config.ID.IsNull() {
-		services, err := d.client.EnvironmentServices(ctx, config.EnvironmentID.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError("Listing compose services", err.Error())
-			return
-		}
-		id, err = client.FindServiceByName(services.Compose, config.Name.ValueString(), "compose")
-		if err != nil {
-			resp.Diagnostics.AddError("Looking up compose service by name", err.Error())
-			return
-		}
+	id, diags := dsutil.ResolveService(ctx, d.client, config.ID, config.EnvironmentID, config.Name, "compose",
+		func(s *client.EnvironmentServices) []client.ServiceRef { return s.Compose })
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-
 	co, err := d.client.GetCompose(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Reading compose service", err.Error())
