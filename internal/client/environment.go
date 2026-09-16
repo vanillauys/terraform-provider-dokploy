@@ -116,6 +116,7 @@ type ServiceRef struct {
 // endpoint that returns every service kind in one call.
 type EnvironmentServices struct {
 	Applications []ServiceRef
+	Compose      []ServiceRef
 	Postgres     []ServiceRef
 	Mysql        []ServiceRef
 	Redis        []ServiceRef
@@ -130,6 +131,10 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 			ApplicationID string `json:"applicationId"`
 			Name          string `json:"name"`
 		} `json:"applications"`
+		Compose []struct {
+			ComposeID string `json:"composeId"`
+			Name      string `json:"name"`
+		} `json:"compose"`
 		Postgres []struct {
 			PostgresID string `json:"postgresId"`
 			Name       string `json:"name"`
@@ -161,6 +166,9 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 	out := &EnvironmentServices{}
 	for _, a := range raw.Applications {
 		out.Applications = append(out.Applications, ServiceRef{ID: a.ApplicationID, Name: a.Name})
+	}
+	for _, co := range raw.Compose {
+		out.Compose = append(out.Compose, ServiceRef{ID: co.ComposeID, Name: co.Name})
 	}
 	for _, p := range raw.Postgres {
 		out.Postgres = append(out.Postgres, ServiceRef{ID: p.PostgresID, Name: p.Name})

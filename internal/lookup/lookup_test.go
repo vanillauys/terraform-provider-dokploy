@@ -61,3 +61,21 @@ func TestByName(t *testing.T) {
 		t.Errorf("empty input should report no match, not multiple: %v", err)
 	}
 }
+
+func TestRecord(t *testing.T) {
+	type rec struct{ ID, Name string }
+	items := []rec{{"1", "a"}, {"2", "b"}, {"3", "b"}}
+	nameOf := func(r rec) string { return r.Name }
+
+	got, err := Record(items, "a", "certificate", nameOf)
+	if err != nil || got.ID != "1" {
+		t.Errorf("Record(a) = %+v, %v; want id 1", got, err)
+	}
+	if _, err := Record(items, "b", "certificate", nameOf); err == nil ||
+		err.Error() != `more than one certificate is named "b"; names are not unique in Dokploy, so look it up by id instead` {
+		t.Errorf("Record(b) err = %v", err)
+	}
+	if _, err := Record(items, "c", "certificate", nameOf); err == nil || err.Error() != `no certificate named "c"` {
+		t.Errorf("Record(c) err = %v", err)
+	}
+}
