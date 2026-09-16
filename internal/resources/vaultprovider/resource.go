@@ -415,7 +415,7 @@ func refreshComputed(ctx context.Context, v *client.VaultProvider, m *resourceMo
 	m.ID = types.StringValue(v.VaultProviderID)
 	m.Name = types.StringValue(v.Name)
 	m.CreatedAt = types.StringValue(v.CreatedAt)
-	m.Assignments = flattenAssignments(ctx, v.Assignments, diags)
+	m.Assignments = FlattenAssignments(ctx, v.Assignments, diags)
 }
 
 // Create builds the config struct - and its secrets, for redactSecrets -

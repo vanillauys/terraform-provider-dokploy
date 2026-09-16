@@ -668,7 +668,7 @@ func TestAssignmentsExpandFlatten(t *testing.T) {
 			t.Fatalf("environment ids = %v, want 2 entries", got[0].EnvironmentIDs)
 		}
 
-		back := flattenAssignments(ctx, got, &diags)
+		back := FlattenAssignments(ctx, got, &diags)
 		if diags.HasError() {
 			t.Fatalf("flattenAssignments diags = %v", diags)
 		}
@@ -713,7 +713,7 @@ func TestAssignmentsExpandFlatten(t *testing.T) {
 
 	t.Run("flattenAssignments echoes an empty, non-null set for a zero-length slice", func(t *testing.T) {
 		var diags diag.Diagnostics
-		list := flattenAssignments(ctx, []client.VaultAssignment{{ProjectID: "proj-3", EnvironmentIDs: nil}}, &diags)
+		list := FlattenAssignments(ctx, []client.VaultAssignment{{ProjectID: "proj-3", EnvironmentIDs: nil}}, &diags)
 		if diags.HasError() {
 			t.Fatalf("diags = %v", diags)
 		}
@@ -746,7 +746,7 @@ func TestAssignmentsExpandFlatten(t *testing.T) {
 			t.Fatalf("expanded = %+v, want empty", got)
 		}
 
-		back := flattenAssignments(ctx, got, &diags)
+		back := FlattenAssignments(ctx, got, &diags)
 		if diags.HasError() {
 			t.Fatalf("diags = %v", diags)
 		}

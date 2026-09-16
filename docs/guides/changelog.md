@@ -11,6 +11,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Data sources `dokploy_domain`, `dokploy_compose`, `dokploy_certificate`,
+  `dokploy_registry`, and `dokploy_vault_provider` (#53). Each one looks a
+  record up by `id` or by name, and errors when more than one record
+  matches. `dokploy_domain` looks up by `host`, with an optional
+  `application_id` or `compose_id` filter; without a filter it reads the
+  domains of every service in the organization, because Dokploy has no
+  endpoint that lists every domain. `dokploy_compose` looks up by `name`
+  within an `environment_id`, like `dokploy_application`. The secret fields
+  stay out: the certificate private key, the registry password, and the
+  vault provider config blocks are not part of the data sources.
+
 ## [1.3.0] - 2026-09-16
 
 ### Added

@@ -82,3 +82,20 @@ func ByName[T any](items []T, name, kind string, idOf, nameOf func(T) string) (s
 	}
 	return idOf(item), nil
 }
+
+// Record resolves an exact name to the one item that carries it, for a
+// record type whose list endpoint returns full records (certificates,
+// registries, vault providers). kind names the record in the error, in the
+// singular. The wording matches the data sources that predate this helper:
+// a miss names the string searched for, and an ambiguous name says to use
+// the id instead.
+func Record[T any](items []T, name, kind string, nameOf func(T) string) (T, error) {
+	item, err := Find(items, func(t T) bool { return nameOf(t) == name })
+	switch {
+	case errors.Is(err, ErrMultipleMatches):
+		return item, fmt.Errorf("more than one %s is named %q; names are not unique in Dokploy, so look it up by id instead", kind, name)
+	case errors.Is(err, ErrNoMatch):
+		return item, fmt.Errorf("no %s named %q", kind, name)
+	}
+	return item, err
+}

@@ -5093,6 +5093,166 @@
         ]
       }
     },
+    "dokploy_certificate": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "auto_renew",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "certificate_data",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "certificate_path",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "organization_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "server_id",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_compose": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "auto_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "compose_path",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "compose_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "create_env_file",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "description",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enable_submodules",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "env",
+            "type": "tftypes.String",
+            "computed": true,
+            "sensitive": true
+          },
+          {
+            "name": "environment_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "icon",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "randomize",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "server_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "source_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "status",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "suffix",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "trigger_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "watch_paths",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_destination": {
       "version": 0,
       "block": {
@@ -5137,6 +5297,112 @@
           {
             "name": "region",
             "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_domain": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "application_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "certificate_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "compose_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "custom_cert_resolver",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "custom_entrypoint",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "domain_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "forward_auth_enabled",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "host",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "https",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "internal_path",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "middlewares",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "path",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "port",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "service_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "strip_path",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "unique_config_key",
+            "type": "tftypes.Number",
             "computed": true
           }
         ]
@@ -6079,6 +6345,55 @@
         ]
       }
     },
+    "dokploy_registry": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "image_prefix",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "organization_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "registry_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "url",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "username",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_server": {
       "version": 0,
       "block": {
@@ -6240,6 +6555,54 @@
           },
           {
             "name": "role",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_vault_provider": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "assignments",
+            "nested": {
+              "nesting": "LIST",
+              "attributes": [
+                {
+                  "name": "environment_ids",
+                  "type": "tftypes.Set[tftypes.String]",
+                  "computed": true
+                },
+                {
+                  "name": "project_id",
+                  "type": "tftypes.String",
+                  "computed": true
+                }
+              ]
+            },
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "provider_type",
             "type": "tftypes.String",
             "computed": true
           }

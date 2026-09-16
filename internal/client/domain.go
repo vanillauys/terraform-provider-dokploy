@@ -129,3 +129,56 @@ func (c *Client) ListDomainsByApplication(ctx context.Context, applicationID str
 	}
 	return ds, nil
 }
+
+// ListDomainsByCompose returns the domains attached to a compose service.
+// Each row embeds the compose record, like ListDomainsByApplication (probed
+// live, v0.30.6, 2026-09-16).
+func (c *Client) ListDomainsByCompose(ctx context.Context, composeID string) ([]Domain, error) {
+	var ds []Domain
+	if err := c.Get(ctx, "/domain.byComposeId", url.Values{"composeId": {composeID}}, &ds); err != nil {
+		return nil, err
+	}
+	return ds, nil
+}
+
+// ListAllDomains returns every domain in the organization. Dokploy has no
+// domain.all (a 404 on the rig), so the walk starts at project.all, whose
+// environments embed the application and compose ids, and then calls
+// domain.byApplicationId and domain.byComposeId for each service. The cost
+// is one call per service; the dokploy_domain data source uses this only
+// when the config names no application_id or compose_id filter.
+func (c *Client) ListAllDomains(ctx context.Context) ([]Domain, error) {
+	var projects []struct {
+		Environments []struct {
+			Applications []struct {
+				ApplicationID string `json:"applicationId"`
+			} `json:"applications"`
+			Compose []struct {
+				ComposeID string `json:"composeId"`
+			} `json:"compose"`
+		} `json:"environments"`
+	}
+	if err := c.Get(ctx, "/project.all", nil, &projects); err != nil {
+		return nil, err
+	}
+	var all []Domain
+	for _, p := range projects {
+		for _, e := range p.Environments {
+			for _, a := range e.Applications {
+				ds, err := c.ListDomainsByApplication(ctx, a.ApplicationID)
+				if err != nil {
+					return nil, err
+				}
+				all = append(all, ds...)
+			}
+			for _, co := range e.Compose {
+				ds, err := c.ListDomainsByCompose(ctx, co.ComposeID)
+				if err != nil {
+					return nil, err
+				}
+				all = append(all, ds...)
+			}
+		}
+	}
+	return all, nil
+}

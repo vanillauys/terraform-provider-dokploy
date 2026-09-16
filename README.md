@@ -17,7 +17,7 @@
 A Terraform and OpenTofu provider for [Dokploy](https://dokploy.com), the
 self-hosted PaaS. It manages projects, environments, applications, compose
 stacks, databases, domains, backups, servers, git providers, notifications,
-users, and API keys: 46 resources and 19 data sources, each with an
+users, and API keys: 46 resources and 24 data sources, each with an
 acceptance test against a real Dokploy server.
 
 [Documentation](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs) ·
@@ -182,11 +182,14 @@ The provider does not model these Dokploy features yet.
   `replica`.
 - **Names are not unique in Dokploy.** Each data source that looks up a
   record by name errors when more than one record matches. This applies to
-  project, environment, application, destination, network, ssh_key, server,
-  organization, the four git providers, and all six database engines.
-  Domain hosts are also not unique, because the same host can attach to more
-  than one domain. There is no `dokploy_domain` data source, so nothing
-  looks up a domain by host.
+  project, environment, application, compose, destination, network, ssh_key,
+  server, organization, certificate, registry, vault_provider, the four git
+  providers, and all six database engines. Domain hosts are also not unique,
+  because the same host can attach to more than one domain. The
+  `dokploy_domain` data source takes an `application_id` or `compose_id`
+  filter for that case, and without a filter it reads the domains of every
+  service in the organization, one request per service, because Dokploy has
+  no endpoint that lists every domain.
 - **`dogfood/generate_imports.py` lists a user as a comment.** Dokploy
   never returns a password, so an imported `dokploy_user` has no valid
   configuration until you add `password` or `password_wo` by hand. The

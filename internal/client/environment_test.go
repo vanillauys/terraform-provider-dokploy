@@ -77,6 +77,7 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 			"description":null,"env":"","isDefault":true,
 			"applications":[{"applicationId":"a1","name":"frontend"},
 			                {"applicationId":"a2","name":"api"}],
+			"compose":[{"composeId":"co1","name":"stack"}],
 			"postgres":[{"postgresId":"pg1","name":"db"}],
 			"mysql":[{"mysqlId":"my1","name":"mydb"}],
 			"redis":[{"redisId":"rd1","name":"cache"}],
@@ -96,6 +97,9 @@ func TestEnvironmentServicesExtractsNameAndID(t *testing.T) {
 	}
 	if got.Applications[0].ID != "a1" || got.Applications[0].Name != "frontend" {
 		t.Errorf("applications[0] = %+v, want {a1 frontend}", got.Applications[0])
+	}
+	if len(got.Compose) != 1 || got.Compose[0].ID != "co1" || got.Compose[0].Name != "stack" {
+		t.Errorf("compose = %+v, want one entry {co1 stack}", got.Compose)
 	}
 	if len(got.Postgres) != 1 || got.Postgres[0].ID != "pg1" {
 		t.Errorf("postgres = %+v, want one entry with id pg1", got.Postgres)

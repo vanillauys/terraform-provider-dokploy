@@ -3,9 +3,11 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -105,5 +107,106 @@ func TestUpdateDomainRequestCarriesEnabled(t *testing.T) {
 	}
 	if string(m["enabled"]) != "false" {
 		t.Errorf("enabled = %s, want false", m["enabled"])
+	}
+}
+
+// The two list endpoints embed the parent record in every row; the Domain
+// fields decode and the rest is ignored. The routes assert the query key
+// each endpoint expects.
+func TestListDomainsByApplicationAndCompose(t *testing.T) {
+	row := func(id, host, parentKey, parentID string) string {
+		return fmt.Sprintf(`{"domainId":%q,"host":%q,"path":"/","internalPath":"/","port":3000,"https":false,
+			"stripPath":false,"certificateType":"none","customCertResolver":null,"customEntrypoint":null,
+			"serviceName":null,"forwardAuthEnabled":false,"enabled":true,"middlewares":[],"domainType":"application",
+			"uniqueConfigKey":1,"applicationId":null,"composeId":null,%q:%q,"createdAt":"2026-09-16T00:00:00.000Z",
+			"application":{"applicationId":%q,"name":"web"},"compose":null,"previewDeploymentId":null}`,
+			id, host, parentKey, parentID, parentID)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s, want GET", r.Method)
+		}
+		switch r.URL.Path {
+		case "/api/domain.byApplicationId":
+			if got := r.URL.Query().Get("applicationId"); got != "app-1" {
+				t.Errorf("applicationId = %q, want app-1", got)
+			}
+			_, _ = fmt.Fprint(w, "["+row("d1", "a.example.com", "applicationId", "app-1")+"]")
+		case "/api/domain.byComposeId":
+			if got := r.URL.Query().Get("composeId"); got != "co-1" {
+				t.Errorf("composeId = %q, want co-1", got)
+			}
+			_, _ = fmt.Fprint(w, "["+row("d2", "c.example.com", "composeId", "co-1")+"]")
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	c := testClient(t, srv)
+
+	byApp, err := c.ListDomainsByApplication(context.Background(), "app-1")
+	if err != nil {
+		t.Fatalf("ListDomainsByApplication: %v", err)
+	}
+	if len(byApp) != 1 || byApp[0].DomainID != "d1" || byApp[0].Host != "a.example.com" ||
+		byApp[0].ApplicationID == nil || *byApp[0].ApplicationID != "app-1" {
+		t.Errorf("byApp = %+v, want one row d1 on app-1", byApp)
+	}
+	byCompose, err := c.ListDomainsByCompose(context.Background(), "co-1")
+	if err != nil {
+		t.Fatalf("ListDomainsByCompose: %v", err)
+	}
+	if len(byCompose) != 1 || byCompose[0].DomainID != "d2" || byCompose[0].ComposeID == nil || *byCompose[0].ComposeID != "co-1" {
+		t.Errorf("byCompose = %+v, want one row d2 on co-1", byCompose)
+	}
+}
+
+// ListAllDomains walks project.all for the service ids, then calls the two
+// list endpoints once per service. An environment with no services makes
+// no domain call at all.
+func TestListAllDomainsWalksProjectsAndServices(t *testing.T) {
+	var calls []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.URL.Path+"?"+r.URL.RawQuery)
+		switch r.URL.Path {
+		case "/api/project.all":
+			_, _ = fmt.Fprint(w, `[
+				{"projectId":"p1","name":"one","environments":[
+					{"environmentId":"e1","applications":[{"applicationId":"app-1","name":"web"}],"compose":[{"composeId":"co-1","name":"stack"}]},
+					{"environmentId":"e2","applications":[],"compose":[]}]},
+				{"projectId":"p2","name":"two","environments":[
+					{"environmentId":"e3","applications":[{"applicationId":"app-2","name":"api"}],"compose":[]}]}]`)
+		case "/api/domain.byApplicationId":
+			id := r.URL.Query().Get("applicationId")
+			_, _ = fmt.Fprintf(w, `[{"domainId":"d-%s","host":"%s.example.com","applicationId":%q,"composeId":null}]`, id, id, id)
+		case "/api/domain.byComposeId":
+			id := r.URL.Query().Get("composeId")
+			_, _ = fmt.Fprintf(w, `[{"domainId":"d-%s","host":"%s.example.com","applicationId":null,"composeId":%q}]`, id, id, id)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	c := testClient(t, srv)
+
+	all, err := c.ListAllDomains(context.Background())
+	if err != nil {
+		t.Fatalf("ListAllDomains: %v", err)
+	}
+	var ids []string
+	for _, d := range all {
+		ids = append(ids, d.DomainID)
+	}
+	if want := []string{"d-app-1", "d-co-1", "d-app-2"}; !reflect.DeepEqual(ids, want) {
+		t.Errorf("domain ids = %v, want %v", ids, want)
+	}
+	wantCalls := []string{
+		"/api/project.all?",
+		"/api/domain.byApplicationId?applicationId=app-1",
+		"/api/domain.byComposeId?composeId=co-1",
+		"/api/domain.byApplicationId?applicationId=app-2",
+	}
+	if !reflect.DeepEqual(calls, wantCalls) {
+		t.Errorf("calls = %v, want %v", calls, wantCalls)
 	}
 }

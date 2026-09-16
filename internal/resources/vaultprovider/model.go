@@ -713,12 +713,15 @@ func expandAssignments(ctx context.Context, list types.List, diags *diag.Diagnos
 	return out
 }
 
-// flattenAssignments always produces a non-null environment_ids set, even
+// FlattenAssignments always produces a non-null environment_ids set, even
 // for a zero-length slice - client.VaultAssignment.EnvironmentIDs carries no
 // omitempty (doc comment: "[] is meaningful"), and the schema's
 // Optional+Computed environment_ids has an empty-set Default, so a null set
 // here would diff against that default forever.
-func flattenAssignments(ctx context.Context, assignments []client.VaultAssignment, diags *diag.Diagnostics) types.List {
+//
+// It is exported for the dokploy_vault_provider data source, which reads the
+// same assignments list with the same shape.
+func FlattenAssignments(ctx context.Context, assignments []client.VaultAssignment, diags *diag.Diagnostics) types.List {
 	values := make([]attr.Value, 0, len(assignments))
 	for _, a := range assignments {
 		ids := a.EnvironmentIDs

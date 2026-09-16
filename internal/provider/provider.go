@@ -12,8 +12,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	dsapplication "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/application"
+	dscertificate "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/certificate"
+	dscompose "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/compose"
 	dsdatabase "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/database"
 	dsdestination "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/destination"
+	dsdomain "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/domain"
 	dsenvironment "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/environment"
 	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
 	dsgitproviders "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitproviders"
@@ -21,9 +24,11 @@ import (
 	dsnetwork "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/network"
 	dsorganization "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/organization"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
+	dsregistry "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/registry"
 	dsserver "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/server"
 	dssshkey "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/sshkey"
 	dsuser "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/user"
+	dsvaultprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/ai"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/apikey"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
@@ -268,5 +273,10 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsuser.NewDataSource,
 		libsqldatasource.NewDataSource,
 		dsnetwork.NewDataSource,
+		dsdomain.NewDataSource,
+		dscompose.NewDataSource,
+		dscertificate.NewDataSource,
+		dsregistry.NewDataSource,
+		dsvaultprovider.NewDataSource,
 	}
 }
