@@ -133,6 +133,62 @@ func TestUpdateDeleteAndTestConnectionVaultProvider(t *testing.T) {
 	}
 }
 
+// TestVaultPhaseAndParameterStoreConfigsMarshal pins the wire shape of the
+// two v1.3.0 config structs (#50) against doc.go's v0.30.5 and v0.30.6
+// census records: the required keys are always present, the discriminator
+// carries the exact server enum value (including the hyphen in
+// "aws-parameter-store"), and the optional server-defaulted or no-default
+// keys are omitted when empty, so the server applies its own default
+// instead of storing "".
+func TestVaultPhaseAndParameterStoreConfigsMarshal(t *testing.T) {
+	marshal := func(t *testing.T, v any) map[string]json.RawMessage {
+		t.Helper()
+		raw, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &m); err != nil {
+			t.Fatal(err)
+		}
+		return m
+	}
+
+	t.Run("phase omits path and apiUrl when empty", func(t *testing.T) {
+		m := marshal(t, VaultPhaseConfig{ProviderType: VaultProviderTypePhase, Token: "pss", AppID: "app", Env: "prod"})
+		if string(m["providerType"]) != `"phase"` || string(m["token"]) != `"pss"` ||
+			string(m["appId"]) != `"app"` || string(m["env"]) != `"prod"` {
+			t.Errorf("body = %v", m)
+		}
+		for _, k := range []string{"path", "apiUrl"} {
+			if _, ok := m[k]; ok {
+				t.Errorf("empty %s must be omitted so the server default applies: %v", k, m)
+			}
+		}
+		full := marshal(t, VaultPhaseConfig{ProviderType: VaultProviderTypePhase, Token: "pss", AppID: "app", Env: "prod", Path: "/app", APIURL: "https://phase.example.test"})
+		if string(full["path"]) != `"/app"` || string(full["apiUrl"]) != `"https://phase.example.test"` {
+			t.Errorf("body = %v", full)
+		}
+	})
+
+	t.Run("aws-parameter-store omits endpoint and parameterPath when empty", func(t *testing.T) {
+		m := marshal(t, VaultAWSParameterStoreConfig{ProviderType: VaultProviderTypeAWSParameterStore, Region: "eu-west-1", AccessKeyID: "AKIA", SecretAccessKey: "sk"})
+		if string(m["providerType"]) != `"aws-parameter-store"` || string(m["region"]) != `"eu-west-1"` ||
+			string(m["accessKeyId"]) != `"AKIA"` || string(m["secretAccessKey"]) != `"sk"` {
+			t.Errorf("body = %v", m)
+		}
+		for _, k := range []string{"endpoint", "parameterPath"} {
+			if _, ok := m[k]; ok {
+				t.Errorf("empty %s must be omitted: the server stores no key for it: %v", k, m)
+			}
+		}
+		full := marshal(t, VaultAWSParameterStoreConfig{ProviderType: VaultProviderTypeAWSParameterStore, Region: "eu-west-1", AccessKeyID: "AKIA", SecretAccessKey: "sk", Endpoint: "https://ssm.example.test", ParameterPath: "/acc/"})
+		if string(full["endpoint"]) != `"https://ssm.example.test"` || string(full["parameterPath"]) != `"/acc/"` {
+			t.Errorf("body = %v", full)
+		}
+	})
+}
+
 // TestVaultConnection's two documented failure shapes (doc.go wave 6c gate
 // B), both HTTP 400: the server's own message must come back verbatim, not
 // rewritten by the client.

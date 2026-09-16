@@ -22,9 +22,13 @@ var blockSecrets = map[string][]string{
 	"doppler":   {"service_token"},
 	"azure":     {"client_secret"},
 	"scaleway":  {"secret_key"},
+	"phase":     {"token"},
+	// aws_parameter_store.access_key_id is plain: Dokploy returns it in
+	// cleartext (doc.go, v0.30.6 census).
+	"aws_parameter_store": {"secret_access_key"},
 }
 
-// TestSchema_WriteOnlyCompanions pins the D1(a) shape inside the six config
+// TestSchema_WriteOnlyCompanions pins the D1(a) shape inside the eight config
 // blocks, runs the framework's own schema checks (which only an acceptance
 // run reached before), and pins that each block's attribute-type map in
 // model.go agrees with the schema: a mismatch fails flattenConfig at apply.
@@ -41,6 +45,7 @@ func TestSchema_WriteOnlyCompanions(t *testing.T) {
 	attrTypes := map[string]map[string]attr.Type{
 		"hashicorp": hashicorpAttrTypes(), "infisical": infisicalAttrTypes(), "aws": awsAttrTypes(),
 		"doppler": dopplerAttrTypes(), "azure": azureAttrTypes(), "scaleway": scalewayAttrTypes(),
+		"phase": phaseAttrTypes(), "aws_parameter_store": awsParameterStoreAttrTypes(),
 	}
 	for block, secrets := range blockSecrets {
 		nested, ok := resp.Schema.Attributes[block].(schema.SingleNestedAttribute)
@@ -374,18 +379,187 @@ func TestExpandFlattenConfig_RoundTrip(t *testing.T) {
 	})
 }
 
+// TestExpandFlattenConfig_RoundTrip_PhaseAndParameterStore covers the two
+// v1.3.0 types (#50) the same way TestExpandFlattenConfig_RoundTrip covers
+// the first six: expand, check the discriminator and every wire field,
+// flatten back, and confirm only that block is set. The optional fields
+// take both routes: phase.path and phase.api_url are schema-defaulted and
+// always concrete; aws_parameter_store.endpoint and .parameter_path have
+// no default and must collapse "" back to null.
+func TestExpandFlattenConfig_RoundTrip_PhaseAndParameterStore(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("phase", func(t *testing.T) {
+		obj := blockWithNullCompanions(phaseAttrTypes(), map[string]attr.Value{
+			"token":   types.StringValue("pss_service:fake"),
+			"app_id":  types.StringValue("app_123"),
+			"env":     types.StringValue("production"),
+			"path":    types.StringValue("/"),
+			"api_url": types.StringValue("https://api.phase.dev"),
+		})
+		m := resourceModel{Phase: obj}
+		var diags diag.Diagnostics
+		cfg, providerType := expandConfig(ctx, m, resourceModel{}, &diags)
+		if diags.HasError() {
+			t.Fatalf("diags = %v", diags)
+		}
+		if providerType != client.VaultProviderTypePhase {
+			t.Fatalf("providerType = %q", providerType)
+		}
+		c, ok := cfg.(*client.VaultPhaseConfig)
+		if !ok {
+			t.Fatalf("cfg is %T", cfg)
+		}
+		if c.ProviderType != client.VaultProviderTypePhase || c.Token != "pss_service:fake" || c.AppID != "app_123" ||
+			c.Env != "production" || c.Path != "/" || c.APIURL != "https://api.phase.dev" {
+			t.Fatalf("expanded = %+v", c)
+		}
+
+		var out resourceModel
+		flattenConfig(ctx, cfg, &out, &diags)
+		if diags.HasError() {
+			t.Fatalf("flattenConfig diags = %v", diags)
+		}
+		assertOnlyBlockSet(t, out, "phase")
+		var got phaseModel
+		diags.Append(out.Phase.As(ctx, &got, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			t.Fatalf("As diags = %v", diags)
+		}
+		if got.Token.ValueString() != "pss_service:fake" || got.AppID.ValueString() != "app_123" ||
+			got.Env.ValueString() != "production" || got.Path.ValueString() != "/" ||
+			got.APIURL.ValueString() != "https://api.phase.dev" || !got.TokenWo.IsNull() {
+			t.Errorf("flattened phase = %+v", got)
+		}
+	})
+
+	t.Run("aws_parameter_store with optional fields set", func(t *testing.T) {
+		obj := blockWithNullCompanions(awsParameterStoreAttrTypes(), map[string]attr.Value{
+			"region":            types.StringValue("eu-west-1"),
+			"access_key_id":     types.StringValue("AKIAFAKE"),
+			"secret_access_key": types.StringValue("fake-secret"),
+			"endpoint":          types.StringValue("https://ssm.example.test"),
+			"parameter_path":    types.StringValue("/acc/"),
+		})
+		m := resourceModel{AWSParameterStore: obj}
+		var diags diag.Diagnostics
+		cfg, providerType := expandConfig(ctx, m, resourceModel{}, &diags)
+		if diags.HasError() {
+			t.Fatalf("diags = %v", diags)
+		}
+		if providerType != client.VaultProviderTypeAWSParameterStore {
+			t.Fatalf("providerType = %q", providerType)
+		}
+		c, ok := cfg.(*client.VaultAWSParameterStoreConfig)
+		if !ok {
+			t.Fatalf("cfg is %T", cfg)
+		}
+		if c.ProviderType != client.VaultProviderTypeAWSParameterStore || c.Region != "eu-west-1" ||
+			c.AccessKeyID != "AKIAFAKE" || c.SecretAccessKey != "fake-secret" ||
+			c.Endpoint != "https://ssm.example.test" || c.ParameterPath != "/acc/" {
+			t.Fatalf("expanded = %+v", c)
+		}
+
+		var out resourceModel
+		flattenConfig(ctx, cfg, &out, &diags)
+		if diags.HasError() {
+			t.Fatalf("flattenConfig diags = %v", diags)
+		}
+		assertOnlyBlockSet(t, out, "aws_parameter_store")
+		var got awsParameterStoreModel
+		diags.Append(out.AWSParameterStore.As(ctx, &got, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			t.Fatalf("As diags = %v", diags)
+		}
+		if got.Region.ValueString() != "eu-west-1" || got.AccessKeyID.ValueString() != "AKIAFAKE" ||
+			got.SecretAccessKey.ValueString() != "fake-secret" || got.Endpoint.ValueString() != "https://ssm.example.test" ||
+			got.ParameterPath.ValueString() != "/acc/" || !got.SecretAccessKeyWo.IsNull() {
+			t.Errorf("flattened aws_parameter_store = %+v", got)
+		}
+	})
+
+	t.Run("aws_parameter_store with endpoint and parameter_path omitted flattens to null", func(t *testing.T) {
+		obj := blockWithNullCompanions(awsParameterStoreAttrTypes(), map[string]attr.Value{
+			"region":            types.StringValue("eu-west-1"),
+			"access_key_id":     types.StringValue("AKIAFAKE"),
+			"secret_access_key": types.StringValue("fake-secret"),
+			"endpoint":          types.StringNull(),
+			"parameter_path":    types.StringNull(),
+		})
+		m := resourceModel{AWSParameterStore: obj}
+		var diags diag.Diagnostics
+		cfg, _ := expandConfig(ctx, m, resourceModel{}, &diags)
+		c := cfg.(*client.VaultAWSParameterStoreConfig)
+		if c.Endpoint != "" || c.ParameterPath != "" {
+			t.Fatalf("expanded = %+v, want empty endpoint and parameterPath (omitempty on write)", c)
+		}
+
+		var out resourceModel
+		flattenConfig(ctx, cfg, &out, &diags)
+		var got awsParameterStoreModel
+		diags.Append(out.AWSParameterStore.As(ctx, &got, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			t.Fatalf("diags = %v", diags)
+		}
+		if !got.Endpoint.IsNull() || !got.ParameterPath.IsNull() {
+			t.Errorf("flattened endpoint = %v, parameter_path = %v, want both null", got.Endpoint, got.ParameterPath)
+		}
+	})
+
+	t.Run("write-only secret_access_key reaches the wire and stays out of the state", func(t *testing.T) {
+		plan := resourceModel{AWSParameterStore: blockWithNullCompanions(awsParameterStoreAttrTypes(), map[string]attr.Value{
+			"region":                       types.StringValue("eu-west-1"),
+			"access_key_id":                types.StringValue("AKIAFAKE"),
+			"secret_access_key":            types.StringNull(),
+			"secret_access_key_wo_version": types.Int64Value(2),
+			"endpoint":                     types.StringNull(),
+			"parameter_path":               types.StringNull(),
+		})}
+		config := resourceModel{AWSParameterStore: blockWithNullCompanions(awsParameterStoreAttrTypes(), map[string]attr.Value{
+			"region":                       types.StringValue("eu-west-1"),
+			"access_key_id":                types.StringValue("AKIAFAKE"),
+			"secret_access_key":            types.StringNull(),
+			"secret_access_key_wo":         types.StringValue("wo-secret"),
+			"secret_access_key_wo_version": types.Int64Value(2),
+			"endpoint":                     types.StringNull(),
+			"parameter_path":               types.StringNull(),
+		})}
+		var diags diag.Diagnostics
+		cfg, _ := expandConfig(ctx, plan, config, &diags)
+		if diags.HasError() {
+			t.Fatalf("expandConfig: %v", diags)
+		}
+		c, ok := cfg.(*client.VaultAWSParameterStoreConfig)
+		if !ok || c.SecretAccessKey != "wo-secret" {
+			t.Fatalf("expanded = %+v, want the write-only secret on the wire", cfg)
+		}
+		out := plan
+		flattenConfig(ctx, cfg, &out, &diags)
+		var got awsParameterStoreModel
+		diags.Append(out.AWSParameterStore.As(ctx, &got, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			t.Fatalf("diags = %v", diags)
+		}
+		if !got.SecretAccessKey.IsNull() || !got.SecretAccessKeyWo.IsNull() || got.SecretAccessKeyWoVersion.ValueInt64() != 2 {
+			t.Errorf("flattened = %+v, want secret null, companion null, version 2", got)
+		}
+	})
+}
+
 // assertOnlyBlockSet checks that exactly the named block is non-null in m
 // and every other one of the six is null - flattenConfig's "nulled sibling
 // blocks" guarantee.
 func assertOnlyBlockSet(t *testing.T, m resourceModel, want string) {
 	t.Helper()
 	blocks := map[string]types.Object{
-		"hashicorp": m.Hashicorp,
-		"infisical": m.Infisical,
-		"aws":       m.AWS,
-		"doppler":   m.Doppler,
-		"azure":     m.Azure,
-		"scaleway":  m.Scaleway,
+		"hashicorp":           m.Hashicorp,
+		"infisical":           m.Infisical,
+		"aws":                 m.AWS,
+		"doppler":             m.Doppler,
+		"azure":               m.Azure,
+		"scaleway":            m.Scaleway,
+		"phase":               m.Phase,
+		"aws_parameter_store": m.AWSParameterStore,
 	}
 	for name, obj := range blocks {
 		if name == want {
@@ -445,6 +619,9 @@ func TestRedactSecrets(t *testing.T) {
 			{"doppler", &client.VaultDopplerConfig{ServiceToken: "st"}, []string{"st"}},
 			{"azure", &client.VaultAzureConfig{ClientSecret: "cs"}, []string{"cs"}},
 			{"scaleway", &client.VaultScalewayConfig{SecretKey: "sk"}, []string{"sk"}},
+			{"phase", &client.VaultPhaseConfig{Token: "pss"}, []string{"pss"}},
+			// access_key_id is deliberately not a secret of this type.
+			{"aws_parameter_store", &client.VaultAWSParameterStoreConfig{AccessKeyID: "ak", SecretAccessKey: "sk"}, []string{"sk"}},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {

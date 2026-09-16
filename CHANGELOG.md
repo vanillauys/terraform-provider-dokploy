@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `phase` and `aws_parameter_store` config blocks on `dokploy_vault_provider`
+  (#50). `phase` connects a Phase.dev application (`token` or `token_wo`,
+  `app_id`, `env`, and the server-defaulted `path` and `api_url`); it needs
+  Dokploy v0.30.5 or later. `aws_parameter_store` connects AWS Systems
+  Manager Parameter Store (`region`, `access_key_id`, `secret_access_key`
+  or `secret_access_key_wo`, and the optional `endpoint` and
+  `parameter_path`); it needs Dokploy v0.30.6 or later. A `parameter_path`
+  must start with `/`, and the provider reports any other value at plan
+  time. The exactly-one-of rule now covers eight blocks. Dokploy masks the
+  secret of both types on read, like the other six, so the same
+  write-only and import rules apply. The README coverage gap for the two
+  types is gone.
+
 ## [1.2.0] - 2026-09-15
 
 ### Fixed

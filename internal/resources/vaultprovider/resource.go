@@ -1,6 +1,7 @@
 // Package vaultprovider holds the dokploy_vault_provider resource: a
-// secret-vault connection Dokploy can pull runtime secrets from, one of six
-// provider types (hashicorp, infisical, aws, doppler, azure, scaleway).
+// secret-vault connection Dokploy can pull runtime secrets from, one of
+// eight provider types (hashicorp, infisical, aws, doppler, azure, scaleway,
+// phase, aws_parameter_store).
 //
 // Config is REDACT, not ECHO (internal/client/doc.go, wave 6c gate R):
 // every secret field reads back masked as the literal string "********" on
@@ -96,6 +97,8 @@ func (r *vaultProviderResource) ConfigValidators(_ context.Context) []resource.C
 			path.MatchRoot("doppler"),
 			path.MatchRoot("azure"),
 			path.MatchRoot("scaleway"),
+			path.MatchRoot("phase"),
+			path.MatchRoot("aws_parameter_store"),
 		),
 	}
 }
@@ -104,10 +107,9 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 	resp.Schema = schema.Schema{
 		Description: "A secret-vault connection. Dokploy pulls runtime secrets from it at deploy time. Other resources reference a secret in their " +
 			"`env` attribute as `${{vault.<name>.<key>}}`, a plain string that this provider does not parse or validate. " +
-			"The resource models six provider types: `hashicorp` (also OpenBao, which uses the same wire protocol), " +
-			"`infisical`, `aws`, `doppler`, `azure`, and `scaleway`. Dokploy v0.30.5 adds a seventh type, `phase` (Phase.dev), " +
-			"and v0.30.6 an eighth, `aws-parameter-store` (AWS Systems Manager Parameter Store). This resource does not " +
-			"model these two types yet.\n\n" +
+			"The resource models eight provider types: `hashicorp` (also OpenBao, which uses the same wire protocol), " +
+			"`infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase` (Phase.dev, Dokploy v0.30.5 and later), and " +
+			"`aws_parameter_store` (AWS Systems Manager Parameter Store, Dokploy v0.30.6 and later).\n\n" +
 			"~> **Dokploy masks each secret on each read.** Dokploy returns each secret field in the config blocks of this resource " +
 			"as the literal string `********`, on create, read, and update alike. The provider therefore cannot detect a " +
 			"config value that changed in the Dokploy UI. Read keeps each config block exactly as Terraform last wrote it, secret " +
@@ -142,7 +144,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"hashicorp": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "HashiCorp Vault or OpenBao connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
+				Description: "HashiCorp Vault or OpenBao connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.",
 				Attributes: map[string]schema.Attribute{
 					"url":   schema.StringAttribute{Required: true, Description: "Vault or OpenBao server URL, for example `https://vault.example.com:8200`."},
 					"token": schema.StringAttribute{Optional: true, Sensitive: true, Description: "Vault authentication token. Set this attribute or `token_wo`."},
@@ -163,7 +165,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"infisical": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "Infisical connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
+				Description: "Infisical connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.",
 				Attributes: map[string]schema.Attribute{
 					"site_url": schema.StringAttribute{
 						Optional: true, Computed: true,
@@ -186,7 +188,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"aws": schema.SingleNestedAttribute{
 				Optional: true,
-				Description: "AWS Secrets Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.\n\n" +
+				Description: "AWS Secrets Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.\n\n" +
 					"~> The shape of this block comes from the OpenAPI contract, not from a live probe. " +
 					"The acceptance tests of this resource are the first live confirmation of it.",
 				Attributes: map[string]schema.Attribute{
@@ -203,7 +205,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"doppler": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "Doppler connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
+				Description: "Doppler connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.",
 				Attributes: map[string]schema.Attribute{
 					"service_token": schema.StringAttribute{Optional: true, Sensitive: true, Description: "Doppler service token. Set this attribute or `service_token_wo`."},
 					"project": schema.StringAttribute{
@@ -223,7 +225,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"azure": schema.SingleNestedAttribute{
 				Optional: true,
-				Description: "Azure Key Vault connection. The API requires each field; Azure has no optional field here. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.\n\n" +
+				Description: "Azure Key Vault connection. The API requires each field; Azure has no optional field here. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.\n\n" +
 					"~> The shape of this block comes from the OpenAPI contract, not from a live probe.",
 				Attributes: map[string]schema.Attribute{
 					"vault_uri":     schema.StringAttribute{Required: true, Description: "Azure Key Vault URI, for example `https://myvault.vault.azure.net/`."},
@@ -234,7 +236,7 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"scaleway": schema.SingleNestedAttribute{
 				Optional:    true,
-				Description: "Scaleway Secret Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, or `scaleway`.",
+				Description: "Scaleway Secret Manager connection. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.",
 				Attributes: map[string]schema.Attribute{
 					"project_id": schema.StringAttribute{Required: true, Description: "Scaleway project id."},
 					"secret_key": schema.StringAttribute{Optional: true, Sensitive: true, Description: "Scaleway API secret key. Set this attribute or `secret_key_wo`."},
@@ -247,6 +249,49 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 						Optional: true, Computed: true,
 						Default:     stringdefault.StaticString("https://api.scaleway.com"),
 						Description: "Scaleway Secret Manager API URL. Defaults to `https://api.scaleway.com`.",
+					},
+				},
+			},
+			"phase": schema.SingleNestedAttribute{
+				Optional:    true,
+				Description: "Phase.dev connection. Needs Dokploy v0.30.5 or later. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.",
+				Attributes: map[string]schema.Attribute{
+					"token":  schema.StringAttribute{Optional: true, Sensitive: true, Description: "Phase service token. Set this attribute or `token_wo`."},
+					"app_id": schema.StringAttribute{Required: true, Description: "Phase application id."},
+					"env":    schema.StringAttribute{Required: true, Description: "Phase environment name, for example `production`."},
+					"path": schema.StringAttribute{
+						Optional: true, Computed: true,
+						Default:     stringdefault.StaticString("/"),
+						Description: "Path inside the Phase application to read secrets from. Defaults to `/`.",
+					},
+					"api_url": schema.StringAttribute{
+						Optional: true, Computed: true,
+						Default:     stringdefault.StaticString("https://api.phase.dev"),
+						Description: "Phase API URL. Defaults to the Phase Cloud URL, `https://api.phase.dev`. Set it for a self-hosted Phase instance.",
+					},
+				},
+			},
+			"aws_parameter_store": schema.SingleNestedAttribute{
+				Optional:    true,
+				Description: "AWS Systems Manager Parameter Store connection. Needs Dokploy v0.30.6 or later. Set exactly one of `hashicorp`, `infisical`, `aws`, `doppler`, `azure`, `scaleway`, `phase`, or `aws_parameter_store`.",
+				Attributes: map[string]schema.Attribute{
+					"region":            schema.StringAttribute{Required: true, Description: "AWS region for Parameter Store, for example `eu-west-1`."},
+					"access_key_id":     schema.StringAttribute{Required: true, Description: "AWS access key id. Dokploy stores and returns it in cleartext."},
+					"secret_access_key": schema.StringAttribute{Optional: true, Sensitive: true, Description: "AWS secret access key. Set this attribute or `secret_access_key_wo`."},
+					"endpoint": schema.StringAttribute{
+						Optional:    true,
+						Description: "Custom Parameter Store endpoint URL, for a compatible service or a VPC endpoint. Omit it to use the default AWS endpoint. The server has no default for this field.",
+						// Same reason as hashicorp.namespace above: flattenAWSParameterStoreConfig collapses "" back to null.
+						Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
+					},
+					"parameter_path": schema.StringAttribute{
+						Optional: true,
+						Description: "Path prefix under which Dokploy discovers parameters, for example `/wihan-dev/`. It must start with `/`. " +
+							"Omit it to discover every parameter. The server has no default for this field.",
+						// The server rejects a non-empty value without the leading slash with an HTTP 400 (doc.go, v0.30.6
+						// census). An empty string cannot round-trip either (flattenAWSParameterStoreConfig collapses it to
+						// null), so one regex rejects both shapes at plan time.
+						Validators: []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^/`), "must start with /")},
 					},
 				},
 			},
@@ -292,6 +337,11 @@ func (r *vaultProviderResource) Schema(_ context.Context, _ resource.SchemaReque
 		"doppler":   {"service_token"},
 		"azure":     {"client_secret"},
 		"scaleway":  {"secret_key"},
+		"phase":     {"token"},
+		// access_key_id is not a secret here: Dokploy returns it in
+		// cleartext (doc.go, v0.30.6 census), unlike the aws block, which
+		// was never probed live.
+		"aws_parameter_store": {"secret_access_key"},
 	} {
 		nested := resp.Schema.Attributes[block].(schema.SingleNestedAttribute)
 		for _, secret := range secrets {
@@ -328,6 +378,10 @@ func populatedBlockType(m resourceModel) string {
 		return client.VaultProviderTypeAzure
 	case !m.Scaleway.IsNull():
 		return client.VaultProviderTypeScaleway
+	case !m.Phase.IsNull():
+		return client.VaultProviderTypePhase
+	case !m.AWSParameterStore.IsNull():
+		return client.VaultProviderTypeAWSParameterStore
 	default:
 		return ""
 	}

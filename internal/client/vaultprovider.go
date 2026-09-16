@@ -16,6 +16,10 @@ const (
 	VaultProviderTypeDoppler   = "doppler"
 	VaultProviderTypeAzure     = "azure"
 	VaultProviderTypeScaleway  = "scaleway"
+	// v0.30.5 and v0.30.6 additions (doc.go, "vaultProvider: a seventh
+	// type, phase" and "an eighth type, aws-parameter-store").
+	VaultProviderTypePhase             = "phase"
+	VaultProviderTypeAWSParameterStore = "aws-parameter-store"
 )
 
 // VaultHashicorpConfig also covers OpenBao - the wire type is "hashicorp".
@@ -101,6 +105,36 @@ type VaultScalewayConfig struct {
 	ProjectID    string `json:"projectId"`
 	SecretKey    string `json:"secretKey"`
 	APIURL       string `json:"apiUrl,omitempty"`
+}
+
+// VaultPhaseConfig is the Phase.dev type, added in Dokploy v0.30.5. Path
+// and APIURL carry the same documented omitempty exception as the other
+// optional, non-nullable, server-defaulted config fields (Path defaults to
+// "/", APIURL to "https://api.phase.dev"; both probed live, doc.go
+// "vaultProvider: a seventh type, phase").
+type VaultPhaseConfig struct {
+	ProviderType string `json:"providerType"` // always "phase"
+	Token        string `json:"token"`
+	AppID        string `json:"appId"`
+	Env          string `json:"env"`
+	Path         string `json:"path,omitempty"`
+	APIURL       string `json:"apiUrl,omitempty"`
+}
+
+// VaultAWSParameterStoreConfig is the AWS Systems Manager Parameter Store
+// type, added in Dokploy v0.30.6. Endpoint and ParameterPath carry the
+// omitempty exception: both are optional with no server default, and the
+// server stores no key at all for an absent ParameterPath (doc.go
+// "vaultProvider: an eighth type, aws-parameter-store"). A non-empty
+// ParameterPath must start with "/"; the server rejects any other value
+// with an HTTP 400 on config.parameterPath.
+type VaultAWSParameterStoreConfig struct {
+	ProviderType    string `json:"providerType"` // always "aws-parameter-store"
+	Region          string `json:"region"`
+	AccessKeyID     string `json:"accessKeyId"`
+	SecretAccessKey string `json:"secretAccessKey"`
+	Endpoint        string `json:"endpoint,omitempty"`
+	ParameterPath   string `json:"parameterPath,omitempty"`
 }
 
 // VaultAssignment is one project this vault provider is assigned to. No

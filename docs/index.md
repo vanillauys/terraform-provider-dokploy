@@ -21,7 +21,7 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 - **Git providers**: GitLab, Bitbucket, and Gitea connections, and lookups of GitHub Apps
 - **Registries**: container registry logins for private images and built images
 - **Notifications**: Slack, Discord, Telegram, email, Resend, Gotify, ntfy, Mattermost, Lark, Microsoft Teams, Pushover, and custom webhooks
-- **Vault providers**: HashiCorp Vault or OpenBao, Infisical, AWS Secrets Manager, Doppler, Azure Key Vault, and Scaleway connections for runtime secrets
+- **Vault providers**: HashiCorp Vault or OpenBao, Infisical, AWS Secrets Manager, Doppler, Azure Key Vault, Scaleway, Phase.dev, and AWS Systems Manager Parameter Store connections for runtime secrets
 - **Organization and access**: the organization record, users with an initial password, per-user permissions, and API keys
 - **AI settings**: OpenAI-compatible endpoints for Dokploy's AI features
 
