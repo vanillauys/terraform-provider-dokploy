@@ -1554,3 +1554,54 @@
 // 404 for an unknown id. organization.one answers 403 "You are not a member
 // of this organization" for an unknown id; it has no 404.
 package client
+
+// # v1.3.0 records (probed 2026-09-16 on a fresh v0.30.6 rig)
+//
+// ## The operational settings on the five engine .update endpoints (#51)
+//
+// postgres.update stands in for mysql, mariadb, mongo and redis: the census
+// shows the same seven columns on every one of them. A fresh record reads
+// command, args, cpuLimit, cpuReservation, memoryLimit and memoryReservation
+// as null and replicas as 1. An update that sets all seven reads them back
+// verbatim (args as a JSON array). An update that carries only the id and
+// name keeps every one of them: dialect B, as expected. An update with an
+// explicit null on the six nullable columns clears each to null. Two edge
+// shapes decide the resource side:
+//
+//   - args: [] is stored and read back as [] (not null). The resource
+//     collapses [] and null to a null list (tfutil.StringListOrNull) and a
+//     SizeAtLeast(1) validator keeps config from expressing [].
+//   - cpuLimit: "" is stored and read back as "". tfutil.StringOrNull
+//     collapses it, and a LengthAtLeast(1) validator rejects it in config.
+//   - the four limits: Dokploy's calculateResources (packages/server/src/
+//     utils/docker/utils.ts) reads each with Number.parseInt and passes the
+//     result to swarm as MemoryBytes or NanoCPUs. A deploy with memoryLimit
+//     "512m" failed on the rig with "invalid memory value 512: Must be at
+//     least 4MiB"; "0.5" for a CPU parses as 0, which swarm reads as no
+//     limit. The values are whole numbers of bytes and nano-CPUs. The
+//     application and libsql descriptions said "Docker notation" until
+//     v1.3.0; the five engines validate the shape at plan time.
+//   - replicas: null is ACCEPTED (HTTP 200) and stored as 0. The zod schema
+//     is nullable here, unlike application.update. A 0 would scale the
+//     service to zero tasks on the next deploy, so every engine's update
+//     request carries a bare int64 and the resource always supplies its
+//     Optional+Computed value (default 1).
+//
+// ## mongo replicaSets (#51)
+//
+// mongo.create with replicaSets true stores true; mongo.update with false
+// stores false; an update with null stores false. A deploy converges with
+// the switch in both directions on a running instance (mongo:7: true ->
+// done in 94s including the image pull, false -> done in 16s, true again ->
+// done), so replica_sets is an in-place update plus redeploy, never a
+// replace.
+//
+// ## vaultProvider phase and aws-parameter-store, re-probed (#50)
+//
+// The zod field lists match the v0.30.5 and v0.30.6 records above. A phase
+// config without token, appId and env is an HTTP 400 naming those three; a
+// create with them stores path "/" and apiUrl "https://api.phase.dev" when
+// both are omitted. An aws-parameter-store config without region,
+// accessKeyId and secretAccessKey is an HTTP 400 naming those three, and a
+// parameterPath of "nope" is an HTTP 400 "Parameter discovery path must
+// start with /" on config.parameterPath.

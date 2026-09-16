@@ -55,6 +55,8 @@ data "dokploy_mongo" "by_name" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.dokploy_mongo.test", "database_user", "acc"),
 					resource.TestCheckResourceAttrSet("data.dokploy_mongo.test", "app_name"),
+					resource.TestCheckResourceAttr("data.dokploy_mongo.test", "replica_sets", "false"),
+					resource.TestCheckResourceAttr("data.dokploy_mongo.test", "replicas", "1"),
 					resource.TestCheckResourceAttrPair(
 						"data.dokploy_mongo.by_name", "id",
 						"dokploy_mongo.test", "id"),

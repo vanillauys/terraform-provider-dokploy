@@ -56,6 +56,10 @@ data "dokploy_postgres" "by_name" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.dokploy_postgres.test", "database_name", "acc"),
 					resource.TestCheckResourceAttrSet("data.dokploy_postgres.test", "app_name"),
+					// The operational settings (#51) at their defaults.
+					resource.TestCheckResourceAttr("data.dokploy_postgres.test", "replicas", "1"),
+					resource.TestCheckNoResourceAttr("data.dokploy_postgres.test", "memory_limit"),
+					resource.TestCheckNoResourceAttr("data.dokploy_postgres.test", "command"),
 					resource.TestCheckResourceAttrPair(
 						"data.dokploy_postgres.by_name", "id",
 						"dokploy_postgres.test", "id"),

@@ -98,6 +98,13 @@ func MysqlKind(c *client.Client) Kind {
 					DatabaseRootPassword: s.Credentials["database_root_password"],
 					NetworkIDs:           s.NetworkIDs,
 					DetachDokployNetwork: s.DetachDokployNetwork,
+					Command:              s.Command,
+					Args:                 s.Args,
+					CPULimit:             s.CPULimit,
+					CPUReservation:       s.CPUReservation,
+					MemoryLimit:          s.MemoryLimit,
+					MemoryReservation:    s.MemoryReservation,
+					Replicas:             s.Replicas,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -149,6 +156,13 @@ func mysqlObject(my *client.Mysql) *Object {
 		DatabasePassword:     my.DatabasePassword,
 		NetworkIDs:           my.NetworkIDs,
 		DetachDokployNetwork: my.DetachDokployNetwork,
+		Command:              my.Command,
+		Args:                 my.Args,
+		CPULimit:             my.CPULimit,
+		CPUReservation:       my.CPUReservation,
+		MemoryLimit:          my.MemoryLimit,
+		MemoryReservation:    my.MemoryReservation,
+		Replicas:             my.Replicas,
 		Credentials: map[string]string{
 			"database_name":          my.DatabaseName,
 			"database_user":          my.DatabaseUser,

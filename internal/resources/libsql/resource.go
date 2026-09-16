@@ -195,19 +195,19 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		},
 		"cpu_limit": schema.StringAttribute{
 			Optional:    true,
-			Description: "Hard CPU limit in Docker notation, for example `\"0.5\"`. A string, not a number.",
+			Description: "Hard CPU limit in nano-CPUs, as a whole number in a string: `\"1000000000\"` is one CPU, `\"500000000\"` half a CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.",
 		},
 		"cpu_reservation": schema.StringAttribute{
 			Optional:    true,
-			Description: "Reserved CPU in Docker notation, for example `\"0.25\"`.",
+			Description: "Reserved CPU in nano-CPUs, as a whole number in a string: `\"250000000\"` is a quarter CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.",
 		},
 		"memory_limit": schema.StringAttribute{
 			Optional:    true,
-			Description: "Hard memory limit in Docker notation, for example `\"512m\"`.",
+			Description: "Hard memory limit in bytes, as a whole number in a string: `\"536870912\"` is 512 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.",
 		},
 		"memory_reservation": schema.StringAttribute{
 			Optional:    true,
-			Description: "Reserved memory in Docker notation, for example `\"256m\"`.",
+			Description: "Reserved memory in bytes, as a whole number in a string: `\"268435456\"` is 256 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.",
 		},
 		// replicas has a Default for the same reason as enable_namespaces:
 		// the wire field (client.Libsql.Replicas) is a plain int64, never

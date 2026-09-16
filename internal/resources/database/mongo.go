@@ -28,35 +28,16 @@ import (
 // docker_image must be pinned to a real tag (e.g. mongo:7) for anything
 // that triggers a deploy (saveExternalPort, deploy) to succeed.
 //
-// # replicaSets is a known, deliberate gap
+// # replicaSets
 //
-// mongo.create's zod schema also accepts a `replicaSets` bool (defaults
-// false when omitted; verified live, 2026-07-27, also independently
-// settable via mongo.update). This provider does NOT expose it as a
-// Terraform attribute: CredentialAttr's fixed interface is string-only by
-// design (kind.go: "every CredentialAttr is a string... matching Task 2's
-// evidence that all per-engine credential fields ... are strings"), and
-// replicaSets is neither a credential nor string-shaped - it is a
-// deployment-topology toggle. Exposing it would need a new, non-string Kind
-// attribute mechanism (e.g. a second, typed attribute list alongside
-// CredentialAttrs, threaded through CreateSpec/UpdateSpec/Object/
-// schemaAttributes/genericModel), which is a materially larger, generic-
-// engine change than the field-map configuration this task is scoped to,
-// and one that would need to be re-verified against every existing engine's
-// tests. Every dokploy_mongo instance this provider creates therefore gets
-// the server's standalone (non-replica-set) default. Deferring it is safe:
-// mongo.update is dialect B (doc.go), and UpdateMongoRequest declares no
-// replicaSets field, so a server-side replicaSets: true (set out-of-band,
-// e.g. via the Dokploy UI) survives every provider Update call untouched -
-// there is no clobber risk in leaving this gap open. See this wave's task-7
-// report for the full rationale and live evidence; a follow-up task should
-// pick this up if replica-set mongo instances are ever needed. Whenever that
-// happens, the attribute MUST be Optional+Computed, not plain Optional: Read
-// (flatten) will populate it from the server's actual value on every
-// refresh, and a plain Optional attribute left unset in config would fight
-// that server-reported value as a permanent diff forever (spec §5.6) rather
-// than adopting it, exactly the trap UseStateForUnknown/Computed exists to
-// avoid for docker_image/app_name above.
+// mongo.create and mongo.update both accept a `replicaSets` bool (defaults
+// false; verified live 2026-07-27). It is not a string credential, so it
+// does not ride on CredentialAttrs: Kind.ReplicaSets switches on the
+// generic engine's `replica_sets` attribute (Optional+Computed, default
+// false, a deploy trigger), and this Kind alone sets it (#51, v1.3.0).
+// Read populates it from the server on every refresh, so a value set
+// out-of-band in the Dokploy UI shows up as a diff, never as a silent
+// clobber.
 func MongoKind(c *client.Client) Kind {
 	return Kind{
 		Name:      "mongo",
@@ -71,6 +52,7 @@ func MongoKind(c *client.Client) Kind {
 		// so a first apply that leaves docker_image unset creates the
 		// record and then fails the deploy with a manifest-unknown error.
 		DockerImageCaveat: " The server default `mongo:15` does not exist on Docker Hub. A first apply without this attribute creates the record and then fails the deploy, because `deploy_on_change` defaults to `true`. Set an explicit tag that exists, for example `mongo:7`.",
+		ReplicaSets:       true,
 		CredentialAttrs: []CredentialAttr{
 			{
 				TFName:          "database_user",
@@ -86,6 +68,7 @@ func MongoKind(c *client.Client) Kind {
 					AppName:          s.AppName,
 					DatabaseUser:     s.Credentials["database_user"],
 					DatabasePassword: s.DatabasePassword,
+					ReplicaSets:      s.ReplicaSets,
 					DockerImage:      s.DockerImage,
 					Description:      s.Description,
 					EnvironmentID:    s.EnvironmentID,
@@ -112,6 +95,14 @@ func MongoKind(c *client.Client) Kind {
 					DatabasePassword:     s.DatabasePassword,
 					NetworkIDs:           s.NetworkIDs,
 					DetachDokployNetwork: s.DetachDokployNetwork,
+					Command:              s.Command,
+					Args:                 s.Args,
+					CPULimit:             s.CPULimit,
+					CPUReservation:       s.CPUReservation,
+					MemoryLimit:          s.MemoryLimit,
+					MemoryReservation:    s.MemoryReservation,
+					Replicas:             s.Replicas,
+					ReplicaSets:          s.ReplicaSets,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -163,6 +154,14 @@ func mongoObject(mo *client.Mongo) *Object {
 		DatabasePassword:     mo.DatabasePassword,
 		NetworkIDs:           mo.NetworkIDs,
 		DetachDokployNetwork: mo.DetachDokployNetwork,
+		Command:              mo.Command,
+		Args:                 mo.Args,
+		CPULimit:             mo.CPULimit,
+		CPUReservation:       mo.CPUReservation,
+		MemoryLimit:          mo.MemoryLimit,
+		MemoryReservation:    mo.MemoryReservation,
+		Replicas:             mo.Replicas,
+		ReplicaSets:          mo.ReplicaSets,
 		Credentials: map[string]string{
 			"database_user": mo.DatabaseUser,
 		},

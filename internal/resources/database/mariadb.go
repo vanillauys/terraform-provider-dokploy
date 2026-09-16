@@ -103,6 +103,13 @@ func MariadbKind(c *client.Client) Kind {
 					DatabaseRootPassword: s.Credentials["database_root_password"],
 					NetworkIDs:           s.NetworkIDs,
 					DetachDokployNetwork: s.DetachDokployNetwork,
+					Command:              s.Command,
+					Args:                 s.Args,
+					CPULimit:             s.CPULimit,
+					CPUReservation:       s.CPUReservation,
+					MemoryLimit:          s.MemoryLimit,
+					MemoryReservation:    s.MemoryReservation,
+					Replicas:             s.Replicas,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -154,6 +161,13 @@ func mariadbObject(md *client.Mariadb) *Object {
 		DatabasePassword:     md.DatabasePassword,
 		NetworkIDs:           md.NetworkIDs,
 		DetachDokployNetwork: md.DetachDokployNetwork,
+		Command:              md.Command,
+		Args:                 md.Args,
+		CPULimit:             md.CPULimit,
+		CPUReservation:       md.CPUReservation,
+		MemoryLimit:          md.MemoryLimit,
+		MemoryReservation:    md.MemoryReservation,
+		Replicas:             md.Replicas,
 		Credentials: map[string]string{
 			"database_name":          md.DatabaseName,
 			"database_user":          md.DatabaseUser,

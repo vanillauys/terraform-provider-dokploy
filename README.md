@@ -168,10 +168,8 @@ The provider does not model these Dokploy features yet.
   Dokploy, not in the schema.
 - **`dokploy_mongo` has no `database_name` or `database_root_password`
   attribute.** MongoDB has no database name at create time and no root
-  password separate from `database_user` and `database_password`. Dokploy
-  also has a `replicaSets` option for MongoDB, for a replica-set topology.
-  The provider does not expose it. Each `dokploy_mongo` instance uses the
-  default standalone mode of the server.
+  password separate from `database_user` and `database_password`. The
+  replica-set topology switch is the `replica_sets` attribute.
 - **A `dokploy_libsql` replica needs a `command` override on Dokploy
   v0.30.5.** Dokploy stores `sqld_node = "replica"` and `sqld_primary_url`
   and passes them to the container as `SQLD_NODE` and `SQLD_PRIMARY_URL`.

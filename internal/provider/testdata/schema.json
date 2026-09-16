@@ -2188,6 +2188,26 @@
             "computed": true
           },
           {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "optional": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -2289,6 +2309,16 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "required": true
@@ -2297,6 +2327,12 @@
             "name": "network_ids",
             "type": "tftypes.Set[tftypes.String]",
             "optional": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "server_id",
@@ -2426,6 +2462,26 @@
             "computed": true
           },
           {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "optional": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -2503,6 +2559,16 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "required": true
@@ -2511,6 +2577,18 @@
             "name": "network_ids",
             "type": "tftypes.Set[tftypes.String]",
             "optional": true
+          },
+          {
+            "name": "replica_sets",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "server_id",
@@ -2592,6 +2670,26 @@
             "type": "tftypes.String",
             "optional": true,
             "computed": true
+          },
+          {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "optional": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "optional": true
           },
           {
             "name": "created_at",
@@ -2695,6 +2793,16 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "required": true
@@ -2703,6 +2811,12 @@
             "name": "network_ids",
             "type": "tftypes.Set[tftypes.String]",
             "optional": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "server_id",
@@ -3020,6 +3134,26 @@
             "computed": true
           },
           {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "optional": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -3102,6 +3236,16 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "required": true
@@ -3110,6 +3254,12 @@
             "name": "network_ids",
             "type": "tftypes.Set[tftypes.String]",
             "optional": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "server_id",
@@ -3347,6 +3497,26 @@
             "computed": true
           },
           {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "optional": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -3419,6 +3589,16 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "required": true
@@ -3427,6 +3607,12 @@
             "name": "network_ids",
             "type": "tftypes.Set[tftypes.String]",
             "optional": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "server_id",
@@ -5269,6 +5455,26 @@
             "computed": true
           },
           {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -5312,9 +5518,24 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "optional": true,
+            "computed": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
             "computed": true
           },
           {
@@ -5335,6 +5556,26 @@
             "computed": true
           },
           {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -5367,9 +5608,29 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "optional": true,
+            "computed": true
+          },
+          {
+            "name": "replica_sets",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
             "computed": true
           },
           {
@@ -5386,6 +5647,26 @@
         "attributes": [
           {
             "name": "app_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_reservation",
             "type": "tftypes.String",
             "computed": true
           },
@@ -5433,9 +5714,24 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "optional": true,
+            "computed": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
             "computed": true
           },
           {
@@ -5560,6 +5856,26 @@
             "computed": true
           },
           {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -5597,9 +5913,24 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "optional": true,
+            "computed": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
             "computed": true
           },
           {
@@ -5673,6 +6004,26 @@
             "computed": true
           },
           {
+            "name": "args",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cpu_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "created_at",
             "type": "tftypes.String",
             "computed": true
@@ -5700,9 +6051,24 @@
             "computed": true
           },
           {
+            "name": "memory_limit",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "memory_reservation",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "name",
             "type": "tftypes.String",
             "optional": true,
+            "computed": true
+          },
+          {
+            "name": "replicas",
+            "type": "tftypes.Number",
             "computed": true
           },
           {

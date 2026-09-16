@@ -60,8 +60,8 @@ resource "dokploy_libsql" "replica" {
 
 - `app_name_prefix` (String) Prefix of the Dokploy app name. Dokploy appends `-<suffix>` (six random lowercase characters) at create and never changes the app name afterwards. Defaults to `name`. Use lowercase letters, digits, dots, underscores, and hyphens; 56 characters at most. A change replaces the resource. After an import the provider derives the value from `app_name`.
 - `command` (String) Override the container command. A replica needs it on Dokploy v0.30.5: `sqld --db-path iku.db --http-listen-addr 0.0.0.0:8080 --admin-listen-addr 0.0.0.0:5000 --primary-grpc-url http://<primary app_name>:5001`. Do not add `--grpc-listen-addr` to a replica command; `sqld` rejects it next to `--primary-grpc-url`.
-- `cpu_limit` (String) Hard CPU limit in Docker notation, for example `"0.5"`. A string, not a number.
-- `cpu_reservation` (String) Reserved CPU in Docker notation, for example `"0.25"`.
+- `cpu_limit` (String) Hard CPU limit in nano-CPUs, as a whole number in a string: `"1000000000"` is one CPU, `"500000000"` half a CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
+- `cpu_reservation` (String) Reserved CPU in nano-CPUs, as a whole number in a string: `"250000000"` is a quarter CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
 - `database_password` (String, Sensitive) LibSQL database password. Set this attribute or `database_password_wo`.
 - `database_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `database_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `database_password` and `database_password_wo`. A new value reaches the server only when `database_password_wo_version` changes.
 - `database_password_wo_version` (Number) Version of `database_password_wo`. Change it to send the current `database_password_wo` value to the server. A version change starts a redeploy. It needs `database_password_wo`.
@@ -75,8 +75,8 @@ resource "dokploy_libsql" "replica" {
 - `external_admin_port` (Number) Host port for the libsql admin interface. Not permitted when `sqld_node` is `replica`.
 - `external_grpc_port` (Number) Host port for the libsql gRPC replication interface. Not permitted when `sqld_node` is `replica`.
 - `external_port` (Number) Host port for the libsql HTTP interface. Not permitted when `sqld_node` is `replica`.
-- `memory_limit` (String) Hard memory limit in Docker notation, for example `"512m"`.
-- `memory_reservation` (String) Reserved memory in Docker notation, for example `"256m"`.
+- `memory_limit` (String) Hard memory limit in bytes, as a whole number in a string: `"536870912"` is 512 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
+- `memory_reservation` (String) Reserved memory in bytes, as a whole number in a string: `"268435456"` is 256 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
 - `network_ids` (Set of String) Ids of the Dokploy network records to attach this service to. The attachment applies on the next deploy. Omit it to keep only the default `dokploy-network`. An empty set is not valid. Omit the attribute instead.
 - `replicas` (Number) Number of container replicas. Defaults to `1`.
 - `server_id` (String) Id of the remote server that runs the service. Defaults to the Dokploy host.

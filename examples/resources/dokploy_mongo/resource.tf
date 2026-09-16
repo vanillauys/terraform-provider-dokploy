@@ -8,4 +8,8 @@ resource "dokploy_mongo" "example" {
   env = <<-EOT
     TZ=UTC
   EOT
+
+  # Run as a replica set instead of a standalone instance. A change starts
+  # a redeploy and converges in place.
+  # replica_sets = true
 }

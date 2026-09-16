@@ -1,10 +1,12 @@
 package database
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	resourcedb "github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
 )
@@ -20,10 +22,18 @@ func TestSchemaAttributes_TwoCredentialAttrs(t *testing.T) {
 	for _, name := range []string{
 		"id", "name", "environment_id", "app_name", "database_name",
 		"database_user", "docker_image", "external_port", "status", "created_at",
+		"command", "args", "cpu_limit", "cpu_reservation", "memory_limit", "memory_reservation", "replicas",
 	} {
 		if _, ok := attrs[name]; !ok {
 			t.Errorf("expected attribute %q in schema, not found", name)
 		}
+	}
+	// replica_sets exists only on the mongo Kind's data source (#51).
+	if _, ok := attrs["replica_sets"]; ok {
+		t.Error("postgres data source must not define replica_sets")
+	}
+	if rs, ok := schemaAttributes(resourcedb.MongoKind(nil))["replica_sets"].(schema.BoolAttribute); !ok || !rs.Computed || rs.Optional {
+		t.Errorf("mongo data source replica_sets must be a Computed bool, got %+v", schemaAttributes(resourcedb.MongoKind(nil))["replica_sets"])
 	}
 	// This data source never exposes these — they belong to the resource
 	// side only (docs/data-sources/postgres.md has no description, env,
@@ -217,7 +227,11 @@ func TestApplyObject_TwoCredentialAttrs(t *testing.T) {
 		},
 	}
 	var m genericModel
-	applyObject(k, obj, &m)
+	var diags diag.Diagnostics
+	applyObject(context.Background(), k, obj, &m, &diags)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
 
 	if got := m.ID.ValueString(); got != "pg-1" {
 		t.Errorf("ID = %q, want pg-1", got)
@@ -263,7 +277,11 @@ func TestApplyObject_MissingCredentialGoesNull(t *testing.T) {
 		Credentials: map[string]string{},
 	}
 	var m genericModel
-	applyObject(k, obj, &m)
+	var diags diag.Diagnostics
+	applyObject(context.Background(), k, obj, &m, &diags)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
 	if !m.Credentials["database_name"].IsNull() {
 		t.Errorf("expected database_name null when absent from Object.Credentials, got %v", m.Credentials["database_name"])
 	}
@@ -279,7 +297,11 @@ func TestApplyObject_NilExternalPortGoesNull(t *testing.T) {
 	k := resourcedb.PostgresKind(nil)
 	obj := &resourcedb.Object{ID: "pg-1", Credentials: map[string]string{}}
 	var m genericModel
-	applyObject(k, obj, &m)
+	var diags diag.Diagnostics
+	applyObject(context.Background(), k, obj, &m, &diags)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
 	if !m.ExternalPort.IsNull() {
 		t.Errorf("expected ExternalPort null when Object.ExternalPort is nil, got %v", m.ExternalPort)
 	}

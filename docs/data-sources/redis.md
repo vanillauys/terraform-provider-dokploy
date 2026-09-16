@@ -36,7 +36,14 @@ data "dokploy_redis" "by_name" {
 ### Read-Only
 
 - `app_name` (String) Internal Dokploy app name.
+- `args` (List of String) Arguments for the container command, if any.
+- `command` (String) Container command override, if any.
+- `cpu_limit` (String) Hard CPU limit in nano-CPUs, if any.
+- `cpu_reservation` (String) Reserved CPU in nano-CPUs, if any.
 - `created_at` (String) Creation timestamp.
 - `docker_image` (String) Docker image.
 - `external_port` (Number) Exposed host port, if any.
+- `memory_limit` (String) Hard memory limit in bytes, if any.
+- `memory_reservation` (String) Reserved memory in bytes, if any.
+- `replicas` (Number) Number of container replicas.
 - `status` (String) Service status.

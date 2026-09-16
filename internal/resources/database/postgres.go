@@ -83,6 +83,13 @@ func PostgresKind(c *client.Client) Kind {
 					DatabasePassword:     s.DatabasePassword,
 					NetworkIDs:           s.NetworkIDs,
 					DetachDokployNetwork: s.DetachDokployNetwork,
+					Command:              s.Command,
+					Args:                 s.Args,
+					CPULimit:             s.CPULimit,
+					CPUReservation:       s.CPUReservation,
+					MemoryLimit:          s.MemoryLimit,
+					MemoryReservation:    s.MemoryReservation,
+					Replicas:             s.Replicas,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -138,6 +145,13 @@ func postgresObject(pg *client.Postgres) *Object {
 		DatabasePassword:     pg.DatabasePassword,
 		NetworkIDs:           pg.NetworkIDs,
 		DetachDokployNetwork: pg.DetachDokployNetwork,
+		Command:              pg.Command,
+		Args:                 pg.Args,
+		CPULimit:             pg.CPULimit,
+		CPUReservation:       pg.CPUReservation,
+		MemoryLimit:          pg.MemoryLimit,
+		MemoryReservation:    pg.MemoryReservation,
+		Replicas:             pg.Replicas,
 		Credentials: map[string]string{
 			"database_name": pg.DatabaseName,
 			"database_user": pg.DatabaseUser,

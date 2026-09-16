@@ -154,6 +154,44 @@ func TestStringSetRequestNullMeansNil(t *testing.T) {
 	}
 }
 
+// TestStringListOrNullCollapsesEmpty and TestStringListRequestNullMeansNil
+// pin the list twins of the set helpers, used by the `args` attribute of
+// the database engines (#51): null and [] both read as a null list, and a
+// null list is sent as an explicit JSON null.
+func TestStringListOrNullCollapsesEmpty(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+	if got := StringListOrNull(ctx, nil, &diags); !got.IsNull() {
+		t.Errorf("nil -> %v, want null list", got)
+	}
+	if got := StringListOrNull(ctx, []string{}, &diags); !got.IsNull() {
+		t.Errorf("[] -> %v, want null list", got)
+	}
+	got := StringListOrNull(ctx, []string{"--a", "--b"}, &diags)
+	if got.IsNull() || len(got.Elements()) != 2 || got.Elements()[0].(types.String).ValueString() != "--a" {
+		t.Errorf(`["--a","--b"] -> %v, want an ordered two-element list`, got)
+	}
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+}
+
+func TestStringListRequestNullMeansNil(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+	if got := StringListRequest(ctx, types.ListNull(types.StringType), &diags); got != nil {
+		t.Errorf("null list -> %v, want nil", got)
+	}
+	if got := StringListRequest(ctx, types.ListUnknown(types.StringType), &diags); got != nil {
+		t.Errorf("unknown list -> %v, want nil", got)
+	}
+	list, _ := types.ListValueFrom(ctx, types.StringType, []string{"--a", "--b"})
+	got := StringListRequest(ctx, list, &diags)
+	if got == nil || len(*got) != 2 || (*got)[0] != "--a" || (*got)[1] != "--b" {
+		t.Errorf("list -> %v, want &[--a --b]", got)
+	}
+}
+
 // TestStringOrNull pins the rule that broke wave 3's first production
 // round-trip: Dokploy stores "" for an optional string cleared through its
 // UI, and null for one never set. Both must present as null, or Read

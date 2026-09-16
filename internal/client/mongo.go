@@ -13,11 +13,8 @@ import (
 // name/environmentId, and mongo.one's response carries no databaseName or
 // databaseRootPassword key whatsoever (a scratch record's raw JSON response
 // has no such keys, not even as null). mongo.one's response also carries a
-// `replicaSets` bool (defaults false, settable on both create and update) -
-// deliberately NOT modelled here: this provider does not expose replica-set
-// configuration as a Terraform attribute (see CreateMongoRequest's doc
-// comment for why), and this struct, like Postgres/Mysql/Redis, only
-// declares the fields it actually uses.
+// `replicaSets` bool (defaults false, settable on both create and update),
+// modelled since v1.3.0 (#51) as the replica_sets attribute.
 type Mongo struct {
 	MongoID           string  `json:"mongoId"`
 	Name              string  `json:"name"`
@@ -30,6 +27,9 @@ type Mongo struct {
 	Env               *string `json:"env"`
 	ApplicationStatus string  `json:"applicationStatus"`
 	EnvironmentID     string  `json:"environmentId"`
+	// ReplicaSets is the replica-set topology switch. A bare bool: the
+	// server stores false on a create that omits it (probed 2026-07-27).
+	ReplicaSets bool `json:"replicaSets"`
 
 	// v0.30.0 network attachment (probed 2026-08-19, see doc.go). networkIds
 	// reads back as [] on a fresh record. After an explicit clear, it reads
@@ -37,6 +37,20 @@ type Mongo struct {
 	// slice. The resource layer collapses both to a null set.
 	NetworkIDs           []string `json:"networkIds"`
 	DetachDokployNetwork bool     `json:"detachDokployNetwork"`
+
+	// Operational settings, all on the .update endpoint (dialect B; v1.3.0,
+	// #51). The four resource limits are STRINGS in Dokploy's schema
+	// (Docker-style "0.5" / "512m"), not numbers, and read back as null until
+	// set. replicas always carries a number. args reads back as JSON null
+	// until set and as [] after an explicit []; the resource layer collapses
+	// both to a null list.
+	Command           *string  `json:"command"`
+	CPULimit          *string  `json:"cpuLimit"`
+	CPUReservation    *string  `json:"cpuReservation"`
+	MemoryLimit       *string  `json:"memoryLimit"`
+	MemoryReservation *string  `json:"memoryReservation"`
+	Replicas          int64    `json:"replicas"`
+	Args              []string `json:"args"`
 
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
@@ -52,18 +66,13 @@ type Mongo struct {
 //
 // mongo.create's zod schema also accepts a `replicaSets` bool (defaults
 // false when omitted, and is independently settable via mongo.update too -
-// verified live, 2026-07-27). This field is NOT modelled here: replica-set
-// configuration is a deployment-topology choice, not a string-shaped
-// credential attribute, and does not fit CredentialAttr's fixed
-// Required/RequiresReplace/Computed/Sensitive/DeployTrigger string
-// interface (kind.go). Exposing it would need a new, non-string Kind
-// attribute mechanism - out of scope for this field-map-configuration task;
-// every dokploy_mongo instance this provider creates gets the server's
-// standalone (non-replica-set) default. See this task's report for the
-// full rationale.
+// verified live, 2026-07-27). It is a bare bool sent on every call: the
+// server default is false, so an explicit false is the same as omitting it,
+// and the resource's replica_sets attribute always has a concrete value.
 type CreateMongoRequest struct {
 	Name             string  `json:"name"`
 	AppName          string  `json:"appName,omitempty"`
+	ReplicaSets      bool    `json:"replicaSets"`
 	DatabaseUser     string  `json:"databaseUser"`
 	DatabasePassword string  `json:"databasePassword"`
 	DockerImage      string  `json:"dockerImage,omitempty"`
@@ -94,6 +103,9 @@ type UpdateMongoRequest struct {
 	Description      *string `json:"description"`
 	DockerImage      string  `json:"dockerImage,omitempty"`
 	DatabasePassword string  `json:"databasePassword,omitempty"`
+	// ReplicaSets is a bare bool sent on every call, like
+	// CreateMongoRequest.ReplicaSets.
+	ReplicaSets bool `json:"replicaSets"`
 
 	// v0.30.0 network attachment. NetworkIDs is nullable on the wire; a null
 	// value clears it. DetachDokployNetwork is a bare boolean. The server
@@ -101,6 +113,22 @@ type UpdateMongoRequest struct {
 	// always sends a concrete value - the Replicas pattern.
 	NetworkIDs           *[]string `json:"networkIds"`
 	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
+
+	// Operational settings (v1.3.0, #51). Dialect B: every pointer is sent
+	// without omitempty, so a nil marshals to an explicit null that clears
+	// the stored value (probed live on v0.30.6, 2026-09-16: a null on each
+	// of the six reads back as null). Replicas is a bare int64: the server
+	// ACCEPTS a null there and stores 0 (same probe), which would scale the
+	// service to zero tasks, so the client always sends the concrete value
+	// the resource holds (Optional+Computed, default 1) - the Replicas
+	// pattern.
+	Command           *string   `json:"command"`
+	CPULimit          *string   `json:"cpuLimit"`
+	CPUReservation    *string   `json:"cpuReservation"`
+	MemoryLimit       *string   `json:"memoryLimit"`
+	MemoryReservation *string   `json:"memoryReservation"`
+	Replicas          int64     `json:"replicas"`
+	Args              *[]string `json:"args"`
 }
 
 func (c *Client) CreateMongo(ctx context.Context, req CreateMongoRequest) (*Mongo, error) {

@@ -71,6 +71,19 @@ type genericModel struct {
 	NetworkIDs           types.Set
 	DetachDokployNetwork types.Bool
 
+	// The operational settings (#51), uniform across every engine. Replicas
+	// is Optional+Computed with a Default of 1, so it is always known.
+	// ReplicaSets exists in the schema only for a Kind with ReplicaSets set;
+	// for every other Kind it stays a null Bool that setModel never writes.
+	Command           types.String
+	Args              types.List
+	CPULimit          types.String
+	CPUReservation    types.String
+	MemoryLimit       types.String
+	MemoryReservation types.String
+	Replicas          types.Int64
+	ReplicaSets       types.Bool
+
 	// attrTypes is captured from the source Plan/State's actual object type
 	// (types.Object.AttributeTypes) so setModel can rebuild a types.Object
 	// without independently re-deriving (and risking drift from) the
@@ -96,6 +109,11 @@ type genericModel struct {
 //
 // A change of a write-only version companion counts like a change of its
 // secret: in that mode the secret itself is null on both sides.
+//
+// The operational settings (#51) are deploy triggers too: the .update
+// endpoints store them on the record, and only the next deploy writes them
+// into the swarm service spec (the same reason a changed password needs a
+// deploy). replica_sets rides on the same rule for the mongo Kind.
 func deployNeeded(k Kind, plan, state genericModel) bool {
 	if !plan.DockerImage.Equal(state.DockerImage) ||
 		!plan.DatabasePassword.Equal(state.DatabasePassword) ||
@@ -103,7 +121,15 @@ func deployNeeded(k Kind, plan, state genericModel) bool {
 		!plan.Env.Equal(state.Env) ||
 		!plan.ExternalPort.Equal(state.ExternalPort) ||
 		!plan.NetworkIDs.Equal(state.NetworkIDs) ||
-		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork) {
+		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork) ||
+		!plan.Command.Equal(state.Command) ||
+		!plan.Args.Equal(state.Args) ||
+		!plan.CPULimit.Equal(state.CPULimit) ||
+		!plan.CPUReservation.Equal(state.CPUReservation) ||
+		!plan.MemoryLimit.Equal(state.MemoryLimit) ||
+		!plan.MemoryReservation.Equal(state.MemoryReservation) ||
+		!plan.Replicas.Equal(state.Replicas) ||
+		!plan.ReplicaSets.Equal(state.ReplicaSets) {
 		return true
 	}
 	for _, ca := range k.CredentialAttrs {
@@ -116,6 +142,34 @@ func deployNeeded(k Kind, plan, state genericModel) bool {
 		}
 	}
 	return false
+}
+
+// operationalSettingsSet reports whether the plan carries any operational
+// setting (#51) that the create endpoints do not accept, so Create knows
+// to issue the follow-up Update that lands them. Replicas counts only when
+// it differs from the server default of 1; replica_sets is not consulted
+// because mongo.create accepts it directly.
+func (m genericModel) operationalSettingsSet() bool {
+	return !m.Command.IsNull() || !m.Args.IsNull() ||
+		!m.CPULimit.IsNull() || !m.CPUReservation.IsNull() ||
+		!m.MemoryLimit.IsNull() || !m.MemoryReservation.IsNull() ||
+		m.Replicas.ValueInt64() != 1
+}
+
+// applyOperational copies the operational settings (#51) of the plan onto
+// an UpdateSpec. Create and Update share it so neither can forget a field:
+// TestKindClient_NetworkMapping_Expand drives the result through every
+// engine's adapter. A null string reaches the spec as a nil pointer, which
+// every engine's update request marshals as an explicit null (dialect B).
+func (m genericModel) applyOperational(ctx context.Context, s *UpdateSpec, diags *diag.Diagnostics) {
+	s.Command = m.Command.ValueStringPointer()
+	s.Args = tfutil.StringListRequest(ctx, m.Args, diags)
+	s.CPULimit = m.CPULimit.ValueStringPointer()
+	s.CPUReservation = m.CPUReservation.ValueStringPointer()
+	s.MemoryLimit = m.MemoryLimit.ValueStringPointer()
+	s.MemoryReservation = m.MemoryReservation.ValueStringPointer()
+	s.Replicas = m.Replicas.ValueInt64()
+	s.ReplicaSets = m.ReplicaSets.ValueBool()
 }
 
 // setComputed copies server-computed fields from the API object, keeping
@@ -308,6 +362,16 @@ func flatten(ctx context.Context, k Kind, obj *Object, m *genericModel, diags *d
 	m.ServerID = tfutil.StringOrNull(obj.ServerID)
 	m.NetworkIDs = tfutil.StringSetOrNull(ctx, obj.NetworkIDs, diags)
 	m.DetachDokployNetwork = types.BoolValue(obj.DetachDokployNetwork)
+	m.Command = tfutil.StringOrNull(obj.Command)
+	m.Args = tfutil.StringListOrNull(ctx, obj.Args, diags)
+	m.CPULimit = tfutil.StringOrNull(obj.CPULimit)
+	m.CPUReservation = tfutil.StringOrNull(obj.CPUReservation)
+	m.MemoryLimit = tfutil.StringOrNull(obj.MemoryLimit)
+	m.MemoryReservation = tfutil.StringOrNull(obj.MemoryReservation)
+	m.Replicas = types.Int64Value(obj.Replicas)
+	if k.ReplicaSets {
+		m.ReplicaSets = types.BoolValue(obj.ReplicaSets)
+	}
 	if m.Credentials == nil {
 		m.Credentials = map[string]types.String{}
 	}
@@ -368,6 +432,18 @@ func getModel(ctx context.Context, k Kind, src getter) (genericModel, diag.Diagn
 
 		NetworkIDs:           a["network_ids"].(types.Set),
 		DetachDokployNetwork: a["detach_dokploy_network"].(types.Bool),
+
+		Command:           a["command"].(types.String),
+		Args:              a["args"].(types.List),
+		CPULimit:          a["cpu_limit"].(types.String),
+		CPUReservation:    a["cpu_reservation"].(types.String),
+		MemoryLimit:       a["memory_limit"].(types.String),
+		MemoryReservation: a["memory_reservation"].(types.String),
+		Replicas:          a["replicas"].(types.Int64),
+		ReplicaSets:       types.BoolNull(),
+	}
+	if k.ReplicaSets {
+		m.ReplicaSets = a["replica_sets"].(types.Bool)
 	}
 	for _, ca := range k.CredentialAttrs {
 		m.Credentials[ca.TFName] = a[ca.TFName].(types.String)
@@ -401,10 +477,23 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 		"network_ids":            m.NetworkIDs,
 		"detach_dokploy_network": m.DetachDokployNetwork,
 
+		"command":            m.Command,
+		"args":               m.Args,
+		"cpu_limit":          m.CPULimit,
+		"cpu_reservation":    m.CPUReservation,
+		"memory_limit":       m.MemoryLimit,
+		"memory_reservation": m.MemoryReservation,
+		"replicas":           m.Replicas,
+
 		// A write-only value never reaches the plan or the state. The
 		// framework nulls it there too; this only says so explicitly.
 		"database_password_wo":         types.StringNull(),
 		"database_password_wo_version": m.DatabasePasswordWoVersion,
+	}
+	// replica_sets is in the object type only for a Kind with ReplicaSets
+	// set (kind.go); writing it for any other Kind would fail ObjectValue.
+	if _, ok := m.attrTypes["replica_sets"]; ok {
+		values["replica_sets"] = m.ReplicaSets
 	}
 	for name, v := range m.Credentials {
 		values[name] = v

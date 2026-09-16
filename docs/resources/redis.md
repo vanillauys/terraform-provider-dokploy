@@ -39,6 +39,10 @@ resource "dokploy_redis" "example" {
 
 - `app_name` (String) Internal Dokploy app name, `<app_name_prefix>-<suffix>`. The server generates it at create. You cannot set it; set `app_name_prefix` instead.
 - `app_name_prefix` (String) Prefix of the Dokploy app name. Dokploy appends `-<suffix>` (six random lowercase characters) at create and never changes the app name afterwards. Defaults to `name`. Use lowercase letters, digits, dots, underscores, and hyphens; 56 characters at most. A change replaces the resource. After an import the provider derives the value from `app_name`.
+- `args` (List of String) Arguments for the container command, in order. A change starts a redeploy. An empty list is not valid. Omit the attribute instead.
+- `command` (String) Override the container command. A change starts a redeploy.
+- `cpu_limit` (String) Hard CPU limit in nano-CPUs, as a whole number in a string: `"1000000000"` is one CPU, `"500000000"` half a CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` or a fraction such as `0.5` is not valid: the provider rejects it at plan time, because Dokploy would deploy `512m` as 512 bytes and `0.5` as no limit. A change starts a redeploy.
+- `cpu_reservation` (String) Reserved CPU in nano-CPUs, as a whole number in a string: `"250000000"` is a quarter CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` or a fraction such as `0.5` is not valid: the provider rejects it at plan time, because Dokploy would deploy `512m` as 512 bytes and `0.5` as no limit. A change starts a redeploy.
 - `database_password` (String, Sensitive) Redis password. A change starts a redeploy. Set this attribute or `database_password_wo`.
 - `database_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `database_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `database_password` and `database_password_wo`. A new value reaches the server only when `database_password_wo_version` changes.
 - `database_password_wo_version` (Number) Version of `database_password_wo`. Change it to send the current `database_password_wo` value to the server. A version change starts a redeploy. It needs `database_password_wo`.
@@ -49,7 +53,10 @@ resource "dokploy_redis" "example" {
 - `docker_image` (String) Redis Docker image, for example `redis:8`. If you omit it, the server default applies.
 - `env` (String) Extra environment variables in the native Dokploy multiline `KEY=value` format. Use Terraform sensitive variables for secret values. An omitted value and `""` both read back as null. Omit the attribute to clear it.
 - `external_port` (Number) Host port for Redis. If unset, the database stays internal.
+- `memory_limit` (String) Hard memory limit in bytes, as a whole number in a string: `"536870912"` is 512 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` or a fraction such as `0.5` is not valid: the provider rejects it at plan time, because Dokploy would deploy `512m` as 512 bytes and `0.5` as no limit. A change starts a redeploy.
+- `memory_reservation` (String) Reserved memory in bytes, as a whole number in a string: `"268435456"` is 256 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` or a fraction such as `0.5` is not valid: the provider rejects it at plan time, because Dokploy would deploy `512m` as 512 bytes and `0.5` as no limit. A change starts a redeploy.
 - `network_ids` (Set of String) Ids of the Dokploy network records to attach this service to. The attachment applies on the next deploy. Omit it to keep only the default `dokploy-network`. An empty set is not valid. Omit the attribute instead.
+- `replicas` (Number) Number of container replicas. Defaults to `1`. A change starts a redeploy.
 - `server_id` (String) Id of the remote server that runs the service. Defaults to the Dokploy host.
 
 ### Read-Only

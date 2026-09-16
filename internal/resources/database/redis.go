@@ -88,6 +88,13 @@ func RedisKind(c *client.Client) Kind {
 					DatabasePassword:     s.DatabasePassword,
 					NetworkIDs:           s.NetworkIDs,
 					DetachDokployNetwork: s.DetachDokployNetwork,
+					Command:              s.Command,
+					Args:                 s.Args,
+					CPULimit:             s.CPULimit,
+					CPUReservation:       s.CPUReservation,
+					MemoryLimit:          s.MemoryLimit,
+					MemoryReservation:    s.MemoryReservation,
+					Replicas:             s.Replicas,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -145,6 +152,13 @@ func redisObject(rd *client.Redis) *Object {
 		DatabasePassword:     rd.DatabasePassword,
 		NetworkIDs:           rd.NetworkIDs,
 		DetachDokployNetwork: rd.DetachDokployNetwork,
+		Command:              rd.Command,
+		Args:                 rd.Args,
+		CPULimit:             rd.CPULimit,
+		CPUReservation:       rd.CPUReservation,
+		MemoryLimit:          rd.MemoryLimit,
+		MemoryReservation:    rd.MemoryReservation,
+		Replicas:             rd.Replicas,
 		Credentials:          map[string]string{},
 	}
 }

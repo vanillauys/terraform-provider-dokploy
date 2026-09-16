@@ -103,8 +103,8 @@ resource "dokploy_application" "from_gitea" {
 - `build_args` (String) Build-time arguments in the same multiline format.
 - `build_secrets` (String, Sensitive) Build-time secrets in the same multiline `KEY=value` format. Docker mounts them during the build and does not store them in the image. If you omit this attribute, the provider clears any value from the Dokploy UI. An omitted value and `""` read back the same, so omit the attribute to clear it.
 - `command` (String) Override the container entrypoint command.
-- `cpu_limit` (String) Hard CPU limit in Docker notation, for example `"0.5"`. A string, not a number.
-- `cpu_reservation` (String) Reserved CPU in Docker notation, for example `"0.25"`.
+- `cpu_limit` (String) Hard CPU limit in nano-CPUs, as a whole number in a string: `"1000000000"` is one CPU, `"500000000"` half a CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
+- `cpu_reservation` (String) Reserved CPU in nano-CPUs, as a whole number in a string: `"250000000"` is a quarter CPU. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
 - `create_env_file` (Boolean) Write the environment variables to a `.env` file in the build context. Defaults to `true`, the Dokploy default for a new application.
 - `deploy_on_change` (Boolean) Deploy after a create, and after a change to an attribute that starts a deploy. Defaults to `true`.
 - `deployment_timeout` (String) The maximum wait for a deploy to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout, the apply fails, but the deploy continues on the server.
@@ -117,8 +117,8 @@ resource "dokploy_application" "from_gitea" {
 - `gitea` (Attributes) Gitea source, through a `dokploy_gitea_provider`. Set exactly one of `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `docker`. The provider must be authorized in the Dokploy UI before a deploy can clone from it. (see [below for nested schema](#nestedatt--gitea))
 - `github` (Attributes) GitHub App source. Set exactly one of `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `docker`. Configure the GitHub provider (`github_id`) in Dokploy under Git > GitHub before you use this block. (see [below for nested schema](#nestedatt--github))
 - `gitlab` (Attributes) GitLab source, through a `dokploy_gitlab_provider`. Set exactly one of `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `docker`. The provider must be authorized in the Dokploy UI before a deploy can clone from it. (see [below for nested schema](#nestedatt--gitlab))
-- `memory_limit` (String) Hard memory limit in Docker notation, for example `"512m"`.
-- `memory_reservation` (String) Reserved memory in Docker notation, for example `"256m"`.
+- `memory_limit` (String) Hard memory limit in bytes, as a whole number in a string: `"536870912"` is 512 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
+- `memory_reservation` (String) Reserved memory in bytes, as a whole number in a string: `"268435456"` is 256 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` deploys as 512 bytes and a fraction such as `0.5` sets no limit. Use a whole number.
 - `network_ids` (Set of String) Ids of the Dokploy network records to attach this application to. The attachment applies on the next deploy. Omit it to keep only the default `dokploy-network`. An empty set is not valid. Omit the attribute instead.
 - `registry_id` (String) Id of the Dokploy registry that receives the built images. Use the `id` of a `dokploy_registry` resource.
 - `replicas` (Number) Number of container replicas. The Dokploy schema has no null variant for this field, so it always has a value.
