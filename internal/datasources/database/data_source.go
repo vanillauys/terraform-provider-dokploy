@@ -29,7 +29,6 @@ import (
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/lookup"
 	resourcedb "github.com/vanillauys/terraform-provider-dokploy/internal/resources/database"
-	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 var (
@@ -259,16 +258,8 @@ type genericModel struct {
 	CreatedAt     types.String
 	Credentials   map[string]types.String // keyed by CredentialAttr.TFName
 
-	// The operational settings (#51). ReplicaSets is in the schema only for
-	// a Kind with ReplicaSets set; setModel writes it only then.
-	Command           types.String
-	Args              types.List
-	CPULimit          types.String
-	CPUReservation    types.String
-	MemoryLimit       types.String
-	MemoryReservation types.String
-	Replicas          types.Int64
-	ReplicaSets       types.Bool
+	// The operational settings (#51), shared with the resource model.
+	resourcedb.Operational
 
 	// attrTypes is captured from the source Config's actual object type so
 	// setModel can rebuild a types.Object without independently re-deriving
@@ -289,16 +280,7 @@ func applyObject(ctx context.Context, k resourcedb.Kind, obj *resourcedb.Object,
 	m.ExternalPort = types.Int64PointerValue(obj.ExternalPort)
 	m.Status = types.StringValue(obj.ApplicationStatus)
 	m.CreatedAt = types.StringValue(obj.CreatedAt)
-	m.Command = tfutil.StringOrNull(obj.Command)
-	m.Args = tfutil.StringListOrNull(ctx, obj.Args, diags)
-	m.CPULimit = tfutil.StringOrNull(obj.CPULimit)
-	m.CPUReservation = tfutil.StringOrNull(obj.CPUReservation)
-	m.MemoryLimit = tfutil.StringOrNull(obj.MemoryLimit)
-	m.MemoryReservation = tfutil.StringOrNull(obj.MemoryReservation)
-	m.Replicas = types.Int64Value(obj.Replicas)
-	if k.ReplicaSets {
-		m.ReplicaSets = types.BoolValue(obj.ReplicaSets)
-	}
+	m.Operational = resourcedb.OperationalFromObject(ctx, k, obj, diags)
 	if m.Credentials == nil {
 		m.Credentials = map[string]types.String{}
 	}
@@ -340,18 +322,7 @@ func getModel(ctx context.Context, k resourcedb.Kind, src getter) (genericModel,
 		CreatedAt:     a["created_at"].(types.String),
 		Credentials:   map[string]types.String{},
 		attrTypes:     obj.AttributeTypes(ctx),
-
-		Command:           a["command"].(types.String),
-		Args:              a["args"].(types.List),
-		CPULimit:          a["cpu_limit"].(types.String),
-		CPUReservation:    a["cpu_reservation"].(types.String),
-		MemoryLimit:       a["memory_limit"].(types.String),
-		MemoryReservation: a["memory_reservation"].(types.String),
-		Replicas:          a["replicas"].(types.Int64),
-		ReplicaSets:       types.BoolNull(),
-	}
-	if k.ReplicaSets {
-		m.ReplicaSets = a["replica_sets"].(types.Bool)
+		Operational:   resourcedb.OperationalFromAttributes(k, a),
 	}
 	for _, ca := range k.CredentialAttrs {
 		m.Credentials[ca.TFName] = a[ca.TFName].(types.String)
@@ -370,18 +341,8 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 		"external_port":  m.ExternalPort,
 		"status":         m.Status,
 		"created_at":     m.CreatedAt,
-
-		"command":            m.Command,
-		"args":               m.Args,
-		"cpu_limit":          m.CPULimit,
-		"cpu_reservation":    m.CPUReservation,
-		"memory_limit":       m.MemoryLimit,
-		"memory_reservation": m.MemoryReservation,
-		"replicas":           m.Replicas,
 	}
-	if _, ok := m.attrTypes["replica_sets"]; ok {
-		values["replica_sets"] = m.ReplicaSets
-	}
+	m.PutValues(values, m.attrTypes)
 	for name, v := range m.Credentials {
 		values[name] = v
 	}

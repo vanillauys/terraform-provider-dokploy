@@ -37,19 +37,8 @@ type Mysql struct {
 	NetworkIDs           []string `json:"networkIds"`
 	DetachDokployNetwork bool     `json:"detachDokployNetwork"`
 
-	// Operational settings, all on the .update endpoint (dialect B; v1.3.0,
-	// #51). The four resource limits are STRINGS in Dokploy's schema
-	// (Docker-style "0.5" / "512m"), not numbers, and read back as null until
-	// set. replicas always carries a number. args reads back as JSON null
-	// until set and as [] after an explicit []; the resource layer collapses
-	// both to a null list.
-	Command           *string  `json:"command"`
-	CPULimit          *string  `json:"cpuLimit"`
-	CPUReservation    *string  `json:"cpuReservation"`
-	MemoryLimit       *string  `json:"memoryLimit"`
-	MemoryReservation *string  `json:"memoryReservation"`
-	Replicas          int64    `json:"replicas"`
-	Args              []string `json:"args"`
+	// The operational settings (#51); see ServiceResources.
+	ServiceResources
 
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
@@ -148,21 +137,8 @@ type UpdateMysqlRequest struct {
 	NetworkIDs           *[]string `json:"networkIds"`
 	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
 
-	// Operational settings (v1.3.0, #51). Dialect B: every pointer is sent
-	// without omitempty, so a nil marshals to an explicit null that clears
-	// the stored value (probed live on v0.30.6, 2026-09-16: a null on each
-	// of the six reads back as null). Replicas is a bare int64: the server
-	// ACCEPTS a null there and stores 0 (same probe), which would scale the
-	// service to zero tasks, so the client always sends the concrete value
-	// the resource holds (Optional+Computed, default 1) - the Replicas
-	// pattern.
-	Command           *string   `json:"command"`
-	CPULimit          *string   `json:"cpuLimit"`
-	CPUReservation    *string   `json:"cpuReservation"`
-	MemoryLimit       *string   `json:"memoryLimit"`
-	MemoryReservation *string   `json:"memoryReservation"`
-	Replicas          int64     `json:"replicas"`
-	Args              *[]string `json:"args"`
+	// The operational settings (#51); see ServiceResourcesUpdate.
+	ServiceResourcesUpdate
 }
 
 func (c *Client) CreateMysql(ctx context.Context, req CreateMysqlRequest) (*Mysql, error) {

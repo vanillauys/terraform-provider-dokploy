@@ -81,20 +81,14 @@ func RedisKind(c *client.Client) Kind {
 			},
 			Update: func(ctx context.Context, s UpdateSpec) error {
 				return c.UpdateRedis(ctx, client.UpdateRedisRequest{
-					RedisID:              s.ID,
-					Name:                 s.Name,
-					Description:          s.Description,
-					DockerImage:          s.DockerImage,
-					DatabasePassword:     s.DatabasePassword,
-					NetworkIDs:           s.NetworkIDs,
-					DetachDokployNetwork: s.DetachDokployNetwork,
-					Command:              s.Command,
-					Args:                 s.Args,
-					CPULimit:             s.CPULimit,
-					CPUReservation:       s.CPUReservation,
-					MemoryLimit:          s.MemoryLimit,
-					MemoryReservation:    s.MemoryReservation,
-					Replicas:             s.Replicas,
+					RedisID:                s.ID,
+					Name:                   s.Name,
+					Description:            s.Description,
+					DockerImage:            s.DockerImage,
+					DatabasePassword:       s.DatabasePassword,
+					NetworkIDs:             s.NetworkIDs,
+					DetachDokployNetwork:   s.DetachDokployNetwork,
+					ServiceResourcesUpdate: s.ServiceResourcesUpdate,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -152,13 +146,7 @@ func redisObject(rd *client.Redis) *Object {
 		DatabasePassword:     rd.DatabasePassword,
 		NetworkIDs:           rd.NetworkIDs,
 		DetachDokployNetwork: rd.DetachDokployNetwork,
-		Command:              rd.Command,
-		Args:                 rd.Args,
-		CPULimit:             rd.CPULimit,
-		CPUReservation:       rd.CPUReservation,
-		MemoryLimit:          rd.MemoryLimit,
-		MemoryReservation:    rd.MemoryReservation,
-		Replicas:             rd.Replicas,
+		ServiceResources:     rd.ServiceResources,
 		Credentials:          map[string]string{},
 	}
 }

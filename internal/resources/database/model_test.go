@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
 
 func TestDeployNeeded(t *testing.T) {
@@ -25,7 +27,7 @@ func TestDeployNeeded(t *testing.T) {
 			// false, so a hand-built fixture must say so explicitly, or every
 			// comparison against it reports a spurious change.
 			NetworkIDs:           types.SetNull(types.StringType),
-			Args:                 types.ListNull(types.StringType),
+			Operational:          Operational{Args: types.ListNull(types.StringType)},
 			DetachDokployNetwork: types.BoolValue(false),
 		}
 	}
@@ -97,7 +99,7 @@ func TestDeployNeeded_CredentialAttr(t *testing.T) {
 			ExternalPort:     types.Int64Value(3306),
 			// Same zero-value trap as TestDeployNeeded's base() above.
 			NetworkIDs:           types.SetNull(types.StringType),
-			Args:                 types.ListNull(types.StringType),
+			Operational:          Operational{Args: types.ListNull(types.StringType)},
 			DetachDokployNetwork: types.BoolValue(false),
 			Credentials: map[string]types.String{
 				"database_root_password": types.StringValue("root1"),
@@ -561,11 +563,13 @@ func TestFlatten_TwoCredentialAttrs(t *testing.T) {
 		DatabasePassword:     "hunter2",
 		NetworkIDs:           []string{"net-1"},
 		DetachDokployNetwork: true,
-		Command:              &command,
-		Args:                 []string{"--a", "--b"},
-		CPULimit:             &cpuLimit,
-		MemoryLimit:          &memoryLimit,
-		Replicas:             2,
+		ServiceResources: client.ServiceResources{
+			Command:     &command,
+			Args:        []string{"--a", "--b"},
+			CPULimit:    &cpuLimit,
+			MemoryLimit: &memoryLimit,
+			Replicas:    2,
+		},
 		Credentials: map[string]string{
 			"database_name": "mydb",
 			"database_user": "myuser",
@@ -799,10 +803,10 @@ func TestSchemaAttributes_OperationalSettings(t *testing.T) {
 // update, and any single one set (or replicas away from 1) needs one.
 func TestOperationalSettingsSet(t *testing.T) {
 	base := func() genericModel {
-		return genericModel{
+		return genericModel{Operational: Operational{
 			Args:     types.ListNull(types.StringType),
 			Replicas: types.Int64Value(1),
-		}
+		}}
 	}
 	if base().operationalSettingsSet() {
 		t.Error("all defaults must need no follow-up update")
@@ -840,14 +844,14 @@ func TestApplyOperational(t *testing.T) {
 	ctx := context.Background()
 	var diags diag.Diagnostics
 	var spec UpdateSpec
-	m := genericModel{Args: types.ListNull(types.StringType), Replicas: types.Int64Value(1), ReplicaSets: types.BoolNull()}
+	m := genericModel{Operational: Operational{Args: types.ListNull(types.StringType), Replicas: types.Int64Value(1), ReplicaSets: types.BoolNull()}}
 	m.applyOperational(ctx, &spec, &diags)
 	if spec.Command != nil || spec.Args != nil || spec.CPULimit != nil || spec.CPUReservation != nil ||
 		spec.MemoryLimit != nil || spec.MemoryReservation != nil || spec.Replicas != 1 || spec.ReplicaSets {
 		t.Errorf("all-null plan -> %+v, want nil pointers, replicas 1, replica_sets false", spec)
 	}
 
-	m = genericModel{
+	m = genericModel{Operational: Operational{
 		Command:           types.StringValue("docker-entrypoint.sh"),
 		Args:              types.ListValueMust(types.StringType, []attr.Value{types.StringValue("--a"), types.StringValue("--b")}),
 		CPULimit:          types.StringValue("0.5"),
@@ -856,7 +860,7 @@ func TestApplyOperational(t *testing.T) {
 		MemoryReservation: types.StringValue("256m"),
 		Replicas:          types.Int64Value(3),
 		ReplicaSets:       types.BoolValue(true),
-	}
+	}}
 	spec = UpdateSpec{}
 	m.applyOperational(ctx, &spec, &diags)
 	if diags.HasError() {
@@ -1110,7 +1114,7 @@ func TestDeployNeeded_WriteOnlyVersion(t *testing.T) {
 			DockerImage:          types.StringValue("mysql:8"),
 			DatabasePassword:     types.StringNull(),
 			NetworkIDs:           types.SetNull(types.StringType),
-			Args:                 types.ListNull(types.StringType),
+			Operational:          Operational{Args: types.ListNull(types.StringType)},
 			DetachDokployNetwork: types.BoolValue(false),
 			Credentials: map[string]types.String{
 				"database_root_password": types.StringNull(),

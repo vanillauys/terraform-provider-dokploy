@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -206,14 +207,11 @@ type Object struct {
 	// networks attached.
 	NetworkIDs           []string
 	DetachDokployNetwork bool
-	// The operational settings of the .update endpoints (#51): the four
-	// resource limits and the command are nil until set, Replicas is never
-	// null on the wire, and Args is nil or empty until set. ReplicaSets is
+	// The operational settings of the .update endpoints (#51), the same
+	// embedded block every engine's read struct carries. ReplicaSets is
 	// meaningful only for a Kind with ReplicaSets set.
-	Command, CPULimit, CPUReservation, MemoryLimit, MemoryReservation *string
-	Replicas                                                          int64
-	Args                                                              []string
-	ReplicaSets                                                       bool
+	client.ServiceResources
+	ReplicaSets bool
 }
 
 // CreateSpec is the engine-neutral input to KindClient.Create.
@@ -250,13 +248,12 @@ type UpdateSpec struct {
 	// see tfutil.StringSetRequest, which produces this shape.
 	NetworkIDs           *[]string
 	DetachDokployNetwork bool
-	// The operational settings (#51), dialect B on every engine: a nil
-	// pointer reaches the wire as an explicit null and clears the stored
-	// value; Replicas always carries a concrete value; a nil Args clears.
-	Command, CPULimit, CPUReservation, MemoryLimit, MemoryReservation *string
-	Replicas                                                          int64
-	Args                                                              *[]string
-	ReplicaSets                                                       bool
+	// The operational settings (#51), the same embedded block every
+	// engine's update request carries: a nil pointer reaches the wire as an
+	// explicit null and clears the stored value; Replicas always carries a
+	// concrete value; a nil Args clears.
+	client.ServiceResourcesUpdate
+	ReplicaSets bool
 }
 
 // KindClient adapts one engine's client methods to the CreateSpec/Object/

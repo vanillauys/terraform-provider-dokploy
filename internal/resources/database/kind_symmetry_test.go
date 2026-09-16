@@ -91,14 +91,16 @@ func TestKindClient_NetworkMapping_Expand(t *testing.T) {
 				ID:                   "id-1",
 				NetworkIDs:           &netIDs,
 				DetachDokployNetwork: true,
-				Command:              ptr("sentinel-cmd"),
-				Args:                 &args,
-				CPULimit:             ptr("0.5"),
-				CPUReservation:       ptr("0.25"),
-				MemoryLimit:          ptr("512m"),
-				MemoryReservation:    ptr("256m"),
-				Replicas:             3,
-				ReplicaSets:          true,
+				ServiceResourcesUpdate: client.ServiceResourcesUpdate{
+					Command:           ptr("sentinel-cmd"),
+					Args:              &args,
+					CPULimit:          ptr("0.5"),
+					CPUReservation:    ptr("0.25"),
+					MemoryLimit:       ptr("512m"),
+					MemoryReservation: ptr("256m"),
+					Replicas:          3,
+				},
+				ReplicaSets: true,
 			})
 			if err != nil {
 				t.Fatalf("Update: %v", err)

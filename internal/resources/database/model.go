@@ -71,10 +71,24 @@ type genericModel struct {
 	NetworkIDs           types.Set
 	DetachDokployNetwork types.Bool
 
-	// The operational settings (#51), uniform across every engine. Replicas
-	// is Optional+Computed with a Default of 1, so it is always known.
-	// ReplicaSets exists in the schema only for a Kind with ReplicaSets set;
-	// for every other Kind it stays a null Bool that setModel never writes.
+	// The operational settings (#51), shared with the data-source model.
+	Operational
+
+	// attrTypes is captured from the source Plan/State's actual object type
+	// (types.Object.AttributeTypes) so setModel can rebuild a types.Object
+	// without independently re-deriving (and risking drift from) the
+	// schema's attribute-type map.
+	attrTypes map[string]attr.Type
+}
+
+// Operational holds the Terraform values of the operational settings (#51).
+// The resource model and the data-source model (internal/datasources/
+// database) both embed it, so the object-to-value mapping, the attribute
+// reads and the attribute writes live here once. Replicas is
+// Optional+Computed with a Default of 1, so it is always known. ReplicaSets
+// exists in the schema only for a Kind with ReplicaSets set; for every
+// other Kind it stays a null Bool that PutValues never writes.
+type Operational struct {
 	Command           types.String
 	Args              types.List
 	CPULimit          types.String
@@ -83,12 +97,61 @@ type genericModel struct {
 	MemoryReservation types.String
 	Replicas          types.Int64
 	ReplicaSets       types.Bool
+}
 
-	// attrTypes is captured from the source Plan/State's actual object type
-	// (types.Object.AttributeTypes) so setModel can rebuild a types.Object
-	// without independently re-deriving (and risking drift from) the
-	// schema's attribute-type map.
-	attrTypes map[string]attr.Type
+// OperationalFromObject maps the server's values: a nil or "" string and a
+// nil or empty args array collapse to null (tfutil.StringOrNull,
+// tfutil.StringListOrNull), replicas is always a number.
+func OperationalFromObject(ctx context.Context, k Kind, obj *Object, diags *diag.Diagnostics) Operational {
+	o := Operational{
+		Command:           tfutil.StringOrNull(obj.Command),
+		Args:              tfutil.StringListOrNull(ctx, obj.Args, diags),
+		CPULimit:          tfutil.StringOrNull(obj.CPULimit),
+		CPUReservation:    tfutil.StringOrNull(obj.CPUReservation),
+		MemoryLimit:       tfutil.StringOrNull(obj.MemoryLimit),
+		MemoryReservation: tfutil.StringOrNull(obj.MemoryReservation),
+		Replicas:          types.Int64Value(obj.Replicas),
+		ReplicaSets:       types.BoolNull(),
+	}
+	if k.ReplicaSets {
+		o.ReplicaSets = types.BoolValue(obj.ReplicaSets)
+	}
+	return o
+}
+
+// OperationalFromAttributes reads the values out of a Plan, State or Config
+// object's attribute map.
+func OperationalFromAttributes(k Kind, a map[string]attr.Value) Operational {
+	o := Operational{
+		Command:           a["command"].(types.String),
+		Args:              a["args"].(types.List),
+		CPULimit:          a["cpu_limit"].(types.String),
+		CPUReservation:    a["cpu_reservation"].(types.String),
+		MemoryLimit:       a["memory_limit"].(types.String),
+		MemoryReservation: a["memory_reservation"].(types.String),
+		Replicas:          a["replicas"].(types.Int64),
+		ReplicaSets:       types.BoolNull(),
+	}
+	if k.ReplicaSets {
+		o.ReplicaSets = a["replica_sets"].(types.Bool)
+	}
+	return o
+}
+
+// PutValues writes the values into the map a types.ObjectValue is built
+// from. replica_sets goes in only when the object type has it (a Kind with
+// ReplicaSets set); writing it for any other Kind would fail ObjectValue.
+func (o Operational) PutValues(values map[string]attr.Value, attrTypes map[string]attr.Type) {
+	values["command"] = o.Command
+	values["args"] = o.Args
+	values["cpu_limit"] = o.CPULimit
+	values["cpu_reservation"] = o.CPUReservation
+	values["memory_limit"] = o.MemoryLimit
+	values["memory_reservation"] = o.MemoryReservation
+	values["replicas"] = o.Replicas
+	if _, ok := attrTypes["replica_sets"]; ok {
+		values["replica_sets"] = o.ReplicaSets
+	}
 }
 
 // deployNeeded reports whether any deploy-trigger attribute changed (the
@@ -362,16 +425,7 @@ func flatten(ctx context.Context, k Kind, obj *Object, m *genericModel, diags *d
 	m.ServerID = tfutil.StringOrNull(obj.ServerID)
 	m.NetworkIDs = tfutil.StringSetOrNull(ctx, obj.NetworkIDs, diags)
 	m.DetachDokployNetwork = types.BoolValue(obj.DetachDokployNetwork)
-	m.Command = tfutil.StringOrNull(obj.Command)
-	m.Args = tfutil.StringListOrNull(ctx, obj.Args, diags)
-	m.CPULimit = tfutil.StringOrNull(obj.CPULimit)
-	m.CPUReservation = tfutil.StringOrNull(obj.CPUReservation)
-	m.MemoryLimit = tfutil.StringOrNull(obj.MemoryLimit)
-	m.MemoryReservation = tfutil.StringOrNull(obj.MemoryReservation)
-	m.Replicas = types.Int64Value(obj.Replicas)
-	if k.ReplicaSets {
-		m.ReplicaSets = types.BoolValue(obj.ReplicaSets)
-	}
+	m.Operational = OperationalFromObject(ctx, k, obj, diags)
 	if m.Credentials == nil {
 		m.Credentials = map[string]types.String{}
 	}
@@ -432,18 +486,7 @@ func getModel(ctx context.Context, k Kind, src getter) (genericModel, diag.Diagn
 
 		NetworkIDs:           a["network_ids"].(types.Set),
 		DetachDokployNetwork: a["detach_dokploy_network"].(types.Bool),
-
-		Command:           a["command"].(types.String),
-		Args:              a["args"].(types.List),
-		CPULimit:          a["cpu_limit"].(types.String),
-		CPUReservation:    a["cpu_reservation"].(types.String),
-		MemoryLimit:       a["memory_limit"].(types.String),
-		MemoryReservation: a["memory_reservation"].(types.String),
-		Replicas:          a["replicas"].(types.Int64),
-		ReplicaSets:       types.BoolNull(),
-	}
-	if k.ReplicaSets {
-		m.ReplicaSets = a["replica_sets"].(types.Bool)
+		Operational:          OperationalFromAttributes(k, a),
 	}
 	for _, ca := range k.CredentialAttrs {
 		m.Credentials[ca.TFName] = a[ca.TFName].(types.String)
@@ -477,24 +520,12 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 		"network_ids":            m.NetworkIDs,
 		"detach_dokploy_network": m.DetachDokployNetwork,
 
-		"command":            m.Command,
-		"args":               m.Args,
-		"cpu_limit":          m.CPULimit,
-		"cpu_reservation":    m.CPUReservation,
-		"memory_limit":       m.MemoryLimit,
-		"memory_reservation": m.MemoryReservation,
-		"replicas":           m.Replicas,
-
 		// A write-only value never reaches the plan or the state. The
 		// framework nulls it there too; this only says so explicitly.
 		"database_password_wo":         types.StringNull(),
 		"database_password_wo_version": m.DatabasePasswordWoVersion,
 	}
-	// replica_sets is in the object type only for a Kind with ReplicaSets
-	// set (kind.go); writing it for any other Kind would fail ObjectValue.
-	if _, ok := m.attrTypes["replica_sets"]; ok {
-		values["replica_sets"] = m.ReplicaSets
-	}
+	m.PutValues(values, m.attrTypes)
 	for name, v := range m.Credentials {
 		values[name] = v
 	}
