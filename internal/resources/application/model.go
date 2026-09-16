@@ -51,6 +51,17 @@ type resourceModel struct {
 
 	NetworkIDs           types.Set  `tfsdk:"network_ids"`
 	DetachDokployNetwork types.Bool `tfsdk:"detach_dokploy_network"`
+
+	// v1.4.0 (#52): display fields, the two blocks (settings.go), and the
+	// build settings that application.update carries.
+	Title              types.String `tfsdk:"title"`
+	Subtitle           types.String `tfsdk:"subtitle"`
+	PreviewDeployments types.Object `tfsdk:"preview_deployments"`
+	Rollback           types.Object `tfsdk:"rollback"`
+	BuildServerID      types.String `tfsdk:"build_server_id"`
+	BuildRegistryID    types.String `tfsdk:"build_registry_id"`
+	CleanCache         types.Bool   `tfsdk:"clean_cache"`
+	DropBuildPath      types.String `tfsdk:"drop_build_path"`
 }
 
 type githubModel struct {
@@ -221,7 +232,15 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.DeployOnChange.Equal(state.DeployOnChange) &&
 		plan.DeploymentTimeout.Equal(state.DeploymentTimeout) &&
 		plan.NetworkIDs.Equal(state.NetworkIDs) &&
-		plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork)
+		plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork) &&
+		plan.Title.Equal(state.Title) &&
+		plan.Subtitle.Equal(state.Subtitle) &&
+		plan.PreviewDeployments.Equal(state.PreviewDeployments) &&
+		plan.Rollback.Equal(state.Rollback) &&
+		plan.BuildServerID.Equal(state.BuildServerID) &&
+		plan.BuildRegistryID.Equal(state.BuildRegistryID) &&
+		plan.CleanCache.Equal(state.CleanCache) &&
+		plan.DropBuildPath.Equal(state.DropBuildPath)
 }
 
 // strOrNull treats null and "" alike as unset. See tfutil.StringOrNull for
@@ -382,8 +401,20 @@ func buildTypeRequest(ctx context.Context, id string, m resourceModel) (client.S
 // differs. Update calls the endpoint when this is true even if name and
 // description are untouched — otherwise changing, say, replicas alone would
 // write state and never reach the server.
+//
+// preview_deployments compares as a whole object, so a change of
+// build_secrets_wo_version alone starts an update: the version is the one
+// signal that a write-only secret changed.
 func operationalChanged(plan, state resourceModel) bool {
 	return !plan.AutoDeploy.Equal(state.AutoDeploy) ||
+		!plan.Title.Equal(state.Title) ||
+		!plan.Subtitle.Equal(state.Subtitle) ||
+		!plan.PreviewDeployments.Equal(state.PreviewDeployments) ||
+		!plan.Rollback.Equal(state.Rollback) ||
+		!plan.BuildServerID.Equal(state.BuildServerID) ||
+		!plan.BuildRegistryID.Equal(state.BuildRegistryID) ||
+		!plan.CleanCache.Equal(state.CleanCache) ||
+		!plan.DropBuildPath.Equal(state.DropBuildPath) ||
 		!plan.Replicas.Equal(state.Replicas) ||
 		!plan.CPULimit.Equal(state.CPULimit) ||
 		!plan.MemoryLimit.Equal(state.MemoryLimit) ||
@@ -398,10 +429,17 @@ func operationalChanged(plan, state resourceModel) bool {
 
 // updateRequest builds the application.update body. Dialect B: every key is
 // sent explicitly so a nil pointer clears the field rather than silently
-// preserving it.
-func updateRequest(ctx context.Context, id string, m resourceModel) (client.UpdateApplicationRequest, diag.Diagnostics) {
+// preserving it. cfg is the config model, which alone carries the
+// write-only preview build secret (see previewRequest).
+func updateRequest(ctx context.Context, id string, m, cfg resourceModel) (client.UpdateApplicationRequest, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	return client.UpdateApplicationRequest{
+		Title:                    m.Title.ValueStringPointer(),
+		Subtitle:                 m.Subtitle.ValueStringPointer(),
+		ApplicationPreviewUpdate: previewRequest(ctx, m.PreviewDeployments, cfg.PreviewDeployments, &diags),
+		ApplicationRollback:      rollbackRequest(ctx, m.Rollback, &diags),
+		ApplicationBuildSettings: buildSettingsRequest(m),
+
 		ApplicationID:        id,
 		Name:                 m.Name.ValueString(),
 		Description:          m.Description.ValueStringPointer(),
@@ -513,6 +551,14 @@ func flatten(ctx context.Context, app *client.Application, m *resourceModel) dia
 	m.CreatedAt = types.StringValue(app.CreatedAt)
 	m.NetworkIDs = tfutil.StringSetOrNull(ctx, app.NetworkIDs, &diags)
 	m.DetachDokployNetwork = types.BoolValue(app.DetachDokployNetwork)
+	m.Title = strOrNull(app.Title)
+	m.Subtitle = strOrNull(app.Subtitle)
+	m.PreviewDeployments = flattenPreview(ctx, app, m.PreviewDeployments, &diags)
+	m.Rollback = flattenRollback(ctx, app, m.Rollback, &diags)
+	m.BuildServerID = strOrNull(app.BuildServerID)
+	m.BuildRegistryID = strOrNull(app.BuildRegistryID)
+	m.CleanCache = types.BoolValue(app.CleanCache)
+	m.DropBuildPath = strOrNull(app.DropBuildPath)
 
 	m.Github = types.ObjectNull(githubAttrTypes)
 	m.Git = types.ObjectNull(gitAttrTypes)

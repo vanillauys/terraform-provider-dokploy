@@ -9,7 +9,7 @@ description: |-
 Manage [Dokploy](https://dokploy.com) resources with Terraform:
 
 - **Projects and environments**, with shared environment variables
-- **Applications** from a GitHub App, a GitLab project, a Bitbucket repository, a Gitea repository, a plain git repository, or a Docker image
+- **Applications** from a GitHub App, a GitLab project, a Bitbucket repository, a Gitea repository, a plain git repository, or a Docker image, with preview deployment, rollback, and build server settings
 - **Compose services**: `docker-compose` projects and Docker Swarm stacks, from the same sources or an inline compose file
 - **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, and LibSQL
 - **Routing**: domains, published ports, Traefik redirects, HTTP basic auth, and TLS certificates

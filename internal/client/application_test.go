@@ -294,3 +294,85 @@ func TestSaveApplicationEnvironmentSendsCallerValues(t *testing.T) {
 		})
 	}
 }
+
+// Every field of the three v1.4.0 blocks (#52) and the two display fields
+// must decode; a tag typo on an unasserted field decodes silently wrong and
+// stays green.
+func TestGetApplicationDecodesPreviewRollbackAndBuildFields(t *testing.T) {
+	srv := testRoutes(t, route{
+		Method: http.MethodGet, Path: "/api/application.one", Status: http.StatusOK,
+		Body: `{"applicationId":"app1","name":"web","title":"Web","subtitle":"Astro site",
+			"isPreviewDeploymentsActive":true,"previewEnv":"A=1","previewBuildArgs":"B=2","previewBuildSecrets":"S=3",
+			"previewCertificateType":"letsencrypt","previewCustomCertResolver":"resolver","previewHttps":true,
+			"previewLabels":["traefik.enable=true"],"previewLimit":5,"previewPath":"/p","previewPort":4321,
+			"previewRequireCollaboratorPermissions":false,"previewWildcard":"*.preview.example.com",
+			"rollbackActive":true,"rollbackRegistryId":"reg-1",
+			"buildServerId":"srv-1","buildRegistryId":"reg-2","cleanCache":true,"dropBuildPath":"/drop"}`,
+	})
+	defer srv.Close()
+	c := testClient(t, srv)
+	got, err := c.GetApplication(context.Background(), "app1")
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	str := func(p *string) string {
+		if p == nil {
+			return "<nil>"
+		}
+		return *p
+	}
+	for name, f := range map[string]struct{ have, want any }{
+		"title":                                 {str(got.Title), "Web"},
+		"subtitle":                              {str(got.Subtitle), "Astro site"},
+		"isPreviewDeploymentsActive":            {got.IsPreviewDeploymentsActive, true},
+		"previewEnv":                            {str(got.PreviewEnv), "A=1"},
+		"previewBuildArgs":                      {str(got.PreviewBuildArgs), "B=2"},
+		"previewBuildSecrets":                   {str(got.PreviewBuildSecrets), "S=3"},
+		"previewCertificateType":                {got.PreviewCertificateType, "letsencrypt"},
+		"previewCustomCertResolver":             {str(got.PreviewCustomCertResolver), "resolver"},
+		"previewHttps":                          {got.PreviewHTTPS, true},
+		"previewLabels":                         {fmt.Sprint(got.PreviewLabels), "[traefik.enable=true]"},
+		"previewLimit":                          {got.PreviewLimit, int64(5)},
+		"previewPath":                           {got.PreviewPath, "/p"},
+		"previewPort":                           {got.PreviewPort, int64(4321)},
+		"previewRequireCollaboratorPermissions": {got.PreviewRequireCollaboratorPermissions, false},
+		"previewWildcard":                       {str(got.PreviewWildcard), "*.preview.example.com"},
+		"rollbackActive":                        {got.RollbackActive, true},
+		"rollbackRegistryId":                    {str(got.RollbackRegistryID), "reg-1"},
+		"buildServerId":                         {str(got.BuildServerID), "srv-1"},
+		"buildRegistryId":                       {str(got.BuildRegistryID), "reg-2"},
+		"cleanCache":                            {got.CleanCache, true},
+		"dropBuildPath":                         {str(got.DropBuildPath), "/drop"},
+	} {
+		if f.have != f.want {
+			t.Errorf("%s = %v, want %v", name, f.have, f.want)
+		}
+	}
+}
+
+// Dialect B: a zero UpdateApplicationRequest must still name every v1.4.0
+// key, with null for each pointer, so that an unset attribute clears the
+// stored value instead of keeping it silently.
+func TestUpdateApplicationRequestCarriesPreviewRollbackAndBuildKeys(t *testing.T) {
+	raw, err := json.Marshal(UpdateApplicationRequest{ApplicationID: "a1", Replicas: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	for key, want := range map[string]string{
+		"title": "null", "subtitle": "null",
+		"isPreviewDeploymentsActive": "false", "previewEnv": "null", "previewBuildArgs": "null",
+		"previewBuildSecrets": "null", "previewCertificateType": `""`, "previewCustomCertResolver": "null",
+		"previewHttps": "false", "previewLabels": "null", "previewLimit": "0", "previewPath": `""`,
+		"previewPort": "0", "previewRequireCollaboratorPermissions": "false", "previewWildcard": "null",
+		"rollbackActive": "false", "rollbackRegistryId": "null",
+		"buildServerId": "null", "buildRegistryId": "null", "cleanCache": "false", "dropBuildPath": "null",
+	} {
+		if got, ok := m[key]; !ok || string(got) != want {
+			t.Errorf("%s = %s (present %v), want %s", key, got, ok, want)
+		}
+	}
+}

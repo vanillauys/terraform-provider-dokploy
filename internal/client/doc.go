@@ -1605,3 +1605,40 @@ package client
 // accessKeyId and secretAccessKey is an HTTP 400 naming those three, and a
 // parameterPath of "nope" is an HTTP 400 "Parameter discovery path must
 // start with /" on config.parameterPath.
+//
+// # v1.4.0 records (probed 2026-09-16 on the same v0.30.6 rig)
+//
+// ## application.update: preview deployments, rollback, build settings (#52)
+//
+// application.one returns every column of the three groups. A fresh record
+// reads title null, subtitle null, isPreviewDeploymentsActive false,
+// previewEnv/previewBuildArgs/previewBuildSecrets null, previewCertificateType
+// "none", previewCustomCertResolver null, previewHttps false, previewLabels
+// null, previewLimit 3, previewPath "/", previewPort 3000,
+// previewRequireCollaboratorPermissions true, previewWildcard null,
+// rollbackActive false, rollbackRegistryId null, buildServerId null,
+// buildRegistryId null, cleanCache false, dropBuildPath null.
+//
+// application.update is dialect B for all of them: an update that carries
+// only applicationId and name keeps previewLimit 7 and title "T2". An
+// explicit null is accepted on every column except previewCertificateType
+// ("Invalid option: expected one of letsencrypt|none|custom") and stores
+// null, including on the bool and number columns (isPreviewDeploymentsActive,
+// previewLimit, previewPort, previewRequireCollaboratorPermissions,
+// rollbackActive, cleanCache all read back null); previewHttps null reads
+// back false. An empty string is stored as "" on every text column, and
+// previewLabels [] is stored as []. previewLimit "x" is a 400 "expected
+// number, received NaN".
+//
+// The three id columns are checked: rollbackRegistryId and buildRegistryId
+// with an unknown id fail with an HTTP 500 "Failed query" (a foreign key),
+// and buildServerId with an unknown id is an HTTP 401 "You are not
+// authorized to access this build server". Each accepts null.
+//
+// ## domain.byComposeId and the domain walk (#53)
+//
+// domain.byComposeId exists and mirrors domain.byApplicationId: each row
+// embeds the parent record (compose or application) and a
+// previewDeploymentId. domain.all is a 404. project.all embeds, per
+// environment, the applications and compose lists with their ids, and
+// environment.one embeds a compose list next to the applications list.

@@ -16,6 +16,37 @@ resource "dokploy_application" "example" {
   # network_ids = ["<dokploy-network-id>"]
 }
 
+# Preview deployments for each pull request of a GitHub source, a rollback
+# image per deploy, and a build on a separate build server.
+resource "dokploy_application" "with_previews" {
+  name           = "web"
+  environment_id = dokploy_project.example.production_environment_id
+  title          = "wihan.dev"
+  subtitle       = "Astro site"
+
+  github = {
+    owner      = "vanillauys"
+    repository = "wihan-dev-app"
+    branch     = "master"
+    github_id  = data.dokploy_github_provider.main.id
+  }
+
+  preview_deployments = {
+    enabled  = true
+    limit    = 3
+    port     = 4321
+    https    = true
+    wildcard = "*.preview.example.com"
+  }
+
+  rollback = {
+    enabled = true
+  }
+
+  build_server_id = dokploy_server.build.id
+  clean_cache     = true
+}
+
 # From a GitLab project. The provider record holds the OAuth application;
 # project_id and path_namespace come from the project's settings page.
 resource "dokploy_application" "from_gitlab" {

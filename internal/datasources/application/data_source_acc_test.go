@@ -35,7 +35,12 @@ resource "dokploy_application" "test" {
   name             = %q
   environment_id   = dokploy_project.test.environments[0].id
   docker           = { image = "traefik/whoami:v1.10" }
+  title            = "Data source fixture"
   deploy_on_change = false
+
+  preview_deployments = {
+    limit = 5
+  }
 }
 
 data "dokploy_application" "test" {
@@ -49,6 +54,14 @@ data "dokploy_application" "by_name" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "name", name),
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "source_type", "docker"),
+					resource.TestCheckResourceAttr("data.dokploy_application.test", "title", "Data source fixture"),
+					resource.TestCheckNoResourceAttr("data.dokploy_application.test", "subtitle"),
+					resource.TestCheckResourceAttr("data.dokploy_application.test", "preview_deployments.enabled", "false"),
+					resource.TestCheckResourceAttr("data.dokploy_application.test", "preview_deployments.limit", "5"),
+					resource.TestCheckResourceAttr("data.dokploy_application.test", "preview_deployments.port", "3000"),
+					resource.TestCheckNoResourceAttr("data.dokploy_application.test", "preview_deployments.build_secrets"),
+					resource.TestCheckResourceAttr("data.dokploy_application.test", "rollback.enabled", "false"),
+					resource.TestCheckResourceAttr("data.dokploy_application.test", "clean_cache", "false"),
 					resource.TestCheckResourceAttrPair(
 						"data.dokploy_application.by_name", "id",
 						"dokploy_application.test", "id"),
