@@ -23,7 +23,10 @@ var mustAlwaysSend = []struct {
 	value  any
 	fields []string
 }{
-	{UpdateProjectRequest{}, []string{"description"}},
+	{UpdateProjectRequest{}, []string{"description", "env"}},
+	{CreateProjectRequest{}, []string{"env"}},
+	{UpdateBuildsConcurrencyRequest{}, []string{"buildsConcurrency"}},
+	{DeployComposeRequest{}, []string{"freshVolumes"}},
 	// The five engines: the v1.3.0 operational settings (#51) are dialect B
 	// pointers that clear with an explicit null; replicas (and mongo's
 	// replicaSets) are bare values sent on every call.

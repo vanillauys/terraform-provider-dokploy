@@ -54,6 +54,10 @@ resource "dokploy_server" "builder" {
   username    = "ubuntu"
   server_type = "build"
   ssh_key_id  = dokploy_ssh_key.deploy.id
+
+  # Builds that run at once on this server. Omit it to keep the Dokploy
+  # default of 1.
+  builds_concurrency = 2
 }
 ```
 
@@ -67,6 +71,7 @@ resource "dokploy_server" "builder" {
 
 ### Optional
 
+- `builds_concurrency` (Number) Number of builds that the server runs at once. Dokploy sets `1` on a new server. If you omit the attribute, the provider keeps the server value. The minimum is `1`.
 - `command` (String) Command that the setup runs on the server instead of the default installation. Omit it for the standard setup. If you remove it from the configuration, the provider clears it on the server.
 - `description` (String) Free-text description. If you remove it from the configuration, the provider clears it on the server.
 - `enable_docker_cleanup` (Boolean) Run the daily Docker cleanup on the server. Defaults to `true`, the Dokploy default.

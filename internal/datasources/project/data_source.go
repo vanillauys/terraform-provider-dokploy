@@ -29,6 +29,7 @@ type dataSourceModel struct {
 	ID                      types.String `tfsdk:"id"`
 	Name                    types.String `tfsdk:"name"`
 	Description             types.String `tfsdk:"description"`
+	Env                     types.String `tfsdk:"env"`
 	CreatedAt               types.String `tfsdk:"created_at"`
 	Environments            types.List   `tfsdk:"environments"`
 	ProductionEnvironmentID types.String `tfsdk:"production_environment_id"`
@@ -47,7 +48,13 @@ func (d *projectDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			"id":          schema.StringAttribute{Optional: true, Computed: true, Description: "Project id. Set exactly one of `id` or `name`."},
 			"name":        schema.StringAttribute{Optional: true, Computed: true, Description: "Exact project name. The lookup errors when zero or many projects match."},
 			"description": schema.StringAttribute{Computed: true, Description: "Project description."},
-			"created_at":  schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
+			"env": schema.StringAttribute{
+				Computed:  true,
+				Sensitive: true,
+				Description: "Variables that each service in the project can reference, exactly as Dokploy stores them. " +
+					"The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.",
+			},
+			"created_at": schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
 			"environments": schema.ListNestedAttribute{
 				Computed:    true,
 				Description: "Environments in this project.",
@@ -130,6 +137,7 @@ func (d *projectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	config.ID = types.StringValue(p.ProjectID)
 	config.Name = types.StringValue(p.Name)
 	config.Description = tfutil.StringOrNull(p.Description)
+	config.Env = tfutil.StringOrNull(&p.Env)
 	config.CreatedAt = types.StringValue(p.CreatedAt)
 	list, diags := resproject.BuildEnvironments(p.Environments)
 	resp.Diagnostics.Append(diags...)

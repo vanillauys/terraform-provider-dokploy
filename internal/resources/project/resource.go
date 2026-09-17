@@ -51,6 +51,12 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:    true,
 				Description: "Free-form description.",
 			},
+			"env": schema.StringAttribute{
+				Optional: true,
+				Description: "Variables that each service in the project can reference, as `KEY=value` lines. A service reads " +
+					"them through the `${{project.KEY}}` syntax; an environment does not inherit them into its own `env`. " +
+					"An omitted value and `\"\"` both read back as null. Omit the attribute to clear it.",
+			},
 			// created_at is immutable server-side, so pinning the prior value
 			// into the plan is always safe and keeps it out of the framework's
 			// MarkComputedNilsAsUnknown sweep (see the package comment on
@@ -105,6 +111,7 @@ func (r *projectResource) Create(ctx context.Context, req resource.CreateRequest
 	created, err := r.client.CreateProject(ctx, client.CreateProjectRequest{
 		Name:        plan.Name.ValueString(),
 		Description: plan.Description.ValueStringPointer(),
+		Env:         plan.Env.ValueString(),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Creating project", err.Error())
@@ -159,6 +166,7 @@ func (r *projectResource) Update(ctx context.Context, req resource.UpdateRequest
 		ProjectID:   plan.ID.ValueString(),
 		Name:        plan.Name.ValueString(),
 		Description: plan.Description.ValueStringPointer(),
+		Env:         plan.Env.ValueString(),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Updating project", err.Error())

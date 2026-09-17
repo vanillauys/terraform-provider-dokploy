@@ -100,22 +100,32 @@ resource "dokploy_project" "test" {
 		CheckDestroy:             checkProjectDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: config(`  description = "made by acceptance"`),
+				Config: config("  description = \"made by acceptance\"\n  env         = \"SHARED=1\""),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("dokploy_project.test", "id"),
 					resource.TestCheckResourceAttr("dokploy_project.test", "name", name),
 					resource.TestCheckResourceAttrSet("dokploy_project.test", "created_at"),
 					resource.TestCheckResourceAttrSet("dokploy_project.test", "environments.0.id"),
 					checkProductionEnvironmentID("dokploy_project.test"),
+					resource.TestCheckResourceAttr("dokploy_project.test", "env", "SHARED=1"),
 					func(s *terraform.State) error { // verify via direct API read (spec §7)
-						_, err := getAccProject(s)
-						return err
+						p, err := getAccProject(s)
+						if err != nil {
+							return err
+						}
+						if p.Env != "SHARED=1" {
+							return fmt.Errorf("server env = %q, want SHARED=1", p.Env)
+						}
+						return nil
 					},
 				),
 			},
 			{
-				Config: config(`  description = "updated"`),
-				Check:  resource.TestCheckResourceAttr("dokploy_project.test", "description", "updated"),
+				Config: config("  description = \"updated\"\n  env         = \"SHARED=2\""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_project.test", "description", "updated"),
+					resource.TestCheckResourceAttr("dokploy_project.test", "env", "SHARED=2"),
+				),
 			},
 			{
 				// Spec §5.6: optional attributes must be clearable back to
@@ -133,6 +143,7 @@ resource "dokploy_project" "test" {
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("dokploy_project.test", "description"),
+					resource.TestCheckNoResourceAttr("dokploy_project.test", "env"),
 					func(s *terraform.State) error {
 						p, err := getAccProject(s)
 						if err != nil {
@@ -140,6 +151,11 @@ resource "dokploy_project" "test" {
 						}
 						if p.Description != nil && *p.Description != "" {
 							return fmt.Errorf("server still stores description %q; it was removed from config", *p.Description)
+						}
+						// env is dialect C: the clear travels as "" (a null is
+						// an HTTP 400), and the server reads back "".
+						if p.Env != "" {
+							return fmt.Errorf("server still stores env %q; it was removed from config", p.Env)
 						}
 						return nil
 					},

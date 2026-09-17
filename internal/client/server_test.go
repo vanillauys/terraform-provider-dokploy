@@ -2,8 +2,12 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -76,5 +80,27 @@ func TestGetServerNotFound(t *testing.T) {
 	c := testClient(t, srv)
 	if _, err := c.GetServer(context.Background(), "nope"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("GetServer(unknown) = %v, want ErrNotFound", err)
+	}
+}
+
+// server.updateBuildsConcurrency carries both fields on every call: the
+// endpoint requires them, and a 0 or a null is an HTTP 400.
+func TestUpdateServerBuildsConcurrency(t *testing.T) {
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/server.updateBuildsConcurrency" {
+			t.Errorf("unexpected call: %s %s", r.Method, r.URL.Path)
+		}
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		_, _ = fmt.Fprint(w, `{"serverId":"s1","buildsConcurrency":3}`)
+	}))
+	defer srv.Close()
+	err := testClient(t, srv).UpdateServerBuildsConcurrency(context.Background(), UpdateBuildsConcurrencyRequest{ServerID: "s1", BuildsConcurrency: 3})
+	if err != nil {
+		t.Fatalf("UpdateServerBuildsConcurrency: %v", err)
+	}
+	if body["serverId"] != "s1" || body["buildsConcurrency"] != float64(3) {
+		t.Errorf("body = %v", body)
 	}
 }

@@ -233,8 +233,18 @@ func (c *Client) SaveComposeEnvironment(ctx context.Context, req SaveComposeEnvi
 	return c.Post(ctx, "/compose.saveEnvironment", req, nil)
 }
 
-func (c *Client) DeployCompose(ctx context.Context, id string) error {
-	return c.PostDeploy(ctx, "/compose.deploy", map[string]string{"composeId": id})
+// DeployComposeRequest. FreshVolumes (v0.30.5) recreates the volumes of the
+// stack on the deploy; the server stores nothing for it, so there is no
+// read path and the resource models it as a provider-only attribute (#54).
+// compose.deploy also accepts title and description for the deployment log
+// entry, which the resource does not set.
+type DeployComposeRequest struct {
+	ComposeID    string `json:"composeId"`
+	FreshVolumes bool   `json:"freshVolumes"`
+}
+
+func (c *Client) DeployCompose(ctx context.Context, req DeployComposeRequest) error {
+	return c.PostDeploy(ctx, "/compose.deploy", req)
 }
 
 // DeleteCompose. deleteVolumes is sent by choice, not by requirement: the

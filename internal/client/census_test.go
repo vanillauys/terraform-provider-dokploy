@@ -91,6 +91,8 @@ var endpointStructs = map[string]any{
 	"sshKey.update":                     UpdateSSHKeyRequest{},
 	"server.create":                     CreateServerRequest{},
 	"server.update":                     UpdateServerRequest{},
+	"server.updateBuildsConcurrency":    UpdateBuildsConcurrencyRequest{},
+	"compose.deploy":                    DeployComposeRequest{},
 	"certificates.create":               CreateCertificateRequest{},
 	"certificates.update":               UpdateCertificateRequest{},
 	"ai.create":                         CreateAIRequest{},
@@ -375,13 +377,13 @@ var censusExempt = map[string]map[string]string{
 	"mariadb.update":  databaseUpdateExemptions("mariadb", "databaseName", "databaseUser"),
 	"mongo.update":    databaseUpdateExemptions("mongo", "databaseUser"),
 	"redis.update":    databaseUpdateExemptions("redis"),
-	"project.create": {
-		"env": "project-level environment variables are not modelled yet (#54)",
-	},
 	"project.update": {
-		"env":            "project-level environment variables are not modelled yet (#54)",
 		"createdAt":      "server-generated; not user configuration",
 		"organizationId": "implied by the API key's organization",
+	},
+	"compose.deploy": {
+		"title":       "title of the deployment log entry; not configuration",
+		"description": "description of the deployment log entry; not configuration",
 	},
 	"environment.update": {
 		"projectId": "RequiresReplace on the resource; moving an environment between projects is not modelled",

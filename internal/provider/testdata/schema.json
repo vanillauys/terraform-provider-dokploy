@@ -1047,6 +1047,12 @@
             "required": true
           },
           {
+            "name": "fresh_volumes",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "git",
             "nested": {
               "nesting": "SINGLE",
@@ -3434,6 +3440,11 @@
             "optional": true
           },
           {
+            "name": "env",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "environments",
             "nested": {
               "nesting": "LIST",
@@ -4062,6 +4073,12 @@
           {
             "name": "app_name",
             "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "builds_concurrency",
+            "type": "tftypes.Number",
+            "optional": true,
             "computed": true
           },
           {
@@ -5776,6 +5793,11 @@
             "computed": true
           },
           {
+            "name": "github_url",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "id",
             "type": "tftypes.String",
             "optional": true,
@@ -6485,6 +6507,12 @@
             "computed": true
           },
           {
+            "name": "env",
+            "type": "tftypes.String",
+            "computed": true,
+            "sensitive": true
+          },
+          {
             "name": "environments",
             "nested": {
               "nesting": "LIST",
@@ -6664,6 +6692,11 @@
           {
             "name": "app_name",
             "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "builds_concurrency",
+            "type": "tftypes.Number",
             "computed": true
           },
           {

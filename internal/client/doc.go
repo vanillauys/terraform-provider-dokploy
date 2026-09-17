@@ -1642,3 +1642,35 @@ package client
 // previewDeploymentId. domain.all is a 404. project.all embeds, per
 // environment, the applications and compose lists with their ids, and
 // environment.one embeds a compose list next to the applications list.
+//
+// # v1.5.0 records (probed 2026-09-17 on the same v0.30.6 rig)
+//
+// ## project env (#54)
+//
+// project.one returns env ("" on a fresh project) and project.all carries
+// it too. project.create accepts env AND stores it, unlike
+// environment.create. project.update is dialect C for env: an absent key
+// keeps the stored value, an explicit null is an HTTP 400 "expected string,
+// received null", and "" clears it. environment.one on an environment of
+// the project reports its own env ("") while the project envelope inside it
+// shows the project value: the environment does not inherit it.
+//
+// ## server.updateBuildsConcurrency (#54)
+//
+// A fresh server reads buildsConcurrency 1. The endpoint requires both
+// serverId and buildsConcurrency: an absent or string value is an HTTP 400
+// "expected number, received NaN", and 0 or null is "Too small: expected
+// number to be >=1". A value of 100 is accepted. A full-body server.update
+// keeps the stored value.
+//
+// ## compose.deploy freshVolumes (#54)
+//
+// compose.deploy and compose.redeploy accept freshVolumes and answer
+// {"success": true, "message": "Deployment queued"}; the server stores
+// nothing for it, so the resource models it as a provider-only attribute.
+//
+// ## github githubUrl (#54)
+//
+// Not probed: the rig has no GitHub App (a browser-bound install). The
+// field name comes from the Dokploy schema; the data source reads it as a
+// nullable string.

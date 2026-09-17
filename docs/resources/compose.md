@@ -32,6 +32,10 @@ resource "dokploy_compose" "inline" {
   environment_id = dokploy_project.example.production_environment_id
   description    = "Defined entirely in Terraform"
 
+  # Recreate the volumes on each deploy that Terraform starts. The data in
+  # the volumes is lost, so keep the default of false for a stateful stack.
+  fresh_volumes = false
+
   raw = {
     compose_file = <<-YAML
       services:
@@ -146,6 +150,7 @@ resource "dokploy_compose" "from_gitea" {
 - `description` (String) Free-form description.
 - `enable_submodules` (Boolean) Clone git submodules with the repository. Defaults to `false`.
 - `env` (String) Extra environment variables in the native Dokploy multiline `KEY=value` format. Use Terraform sensitive variables for secret values. An omitted value and `""` both read back as null. Omit the attribute to clear it.
+- `fresh_volumes` (Boolean) Recreate the volumes of the stack on each deploy that this provider starts (Dokploy v0.30.5 and later). Defaults to `false`. The data in the volumes is lost on such a deploy. A change of this attribute alone starts no deploy.
 - `git` (Attributes) Source the compose file from a plain git remote. (see [below for nested schema](#nestedatt--git))
 - `gitea` (Attributes) Source the compose file from a Gitea repository, through a `dokploy_gitea_provider`. The provider must be authorized in the Dokploy UI before a deploy can clone from it. (see [below for nested schema](#nestedatt--gitea))
 - `github` (Attributes) Source the compose file from a GitHub App repository. (see [below for nested schema](#nestedatt--github))

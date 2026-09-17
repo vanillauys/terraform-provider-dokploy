@@ -102,6 +102,7 @@ type resourceModel struct {
 
 	DeployOnChange    types.Bool   `tfsdk:"deploy_on_change"`
 	DeploymentTimeout types.String `tfsdk:"deployment_timeout"`
+	FreshVolumes      types.Bool   `tfsdk:"fresh_volumes"`
 
 	// v0.30.0. See doc.go's "compose createEnvFile" and "serviceNetworks and
 	// icon on compose.update" sections.

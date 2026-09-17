@@ -41,6 +41,7 @@ type model struct {
 	ProviderType           types.String `tfsdk:"provider_type"`
 	CreatedAt              types.String `tfsdk:"created_at"`
 	SharedWithOrganization types.Bool   `tfsdk:"shared_with_organization"`
+	GithubURL              types.String `tfsdk:"github_url"`
 }
 
 func (d *githubProviderDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -93,6 +94,10 @@ func (d *githubProviderDataSource) Schema(_ context.Context, _ datasource.Schema
 			"shared_with_organization": schema.BoolAttribute{
 				Computed:    true,
 				Description: "Whether the provider is shared with the whole Dokploy organization.",
+			},
+			"github_url": schema.StringAttribute{
+				Computed:    true,
+				Description: "Base URL of a GitHub Enterprise instance, or null for github.com.",
 			},
 		},
 	}
@@ -158,5 +163,6 @@ func (d *githubProviderDataSource) Read(ctx context.Context, req datasource.Read
 	config.ProviderType = types.StringValue(found.GitProvider.ProviderType)
 	config.CreatedAt = types.StringValue(found.GitProvider.CreatedAt)
 	config.SharedWithOrganization = types.BoolValue(found.GitProvider.SharedWithOrganization)
+	config.GithubURL = tfutil.StringOrNull(found.GithubURL)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

@@ -1,7 +1,12 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -206,5 +211,32 @@ func TestSaveComposeEnvironmentCarriesCreateEnvFile(t *testing.T) {
 	}
 	if string(m["createEnvFile"]) != "null" {
 		t.Errorf("createEnvFile = %s, want null", m["createEnvFile"])
+	}
+}
+
+// compose.deploy carries freshVolumes on every call, as a concrete bool.
+func TestDeployComposeCarriesFreshVolumes(t *testing.T) {
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/compose.deploy" {
+			t.Errorf("unexpected call: %s %s", r.Method, r.URL.Path)
+		}
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		_, _ = fmt.Fprint(w, `{"success":true}`)
+	}))
+	defer srv.Close()
+	c := testClient(t, srv)
+	if err := c.DeployCompose(context.Background(), DeployComposeRequest{ComposeID: "c1", FreshVolumes: true}); err != nil {
+		t.Fatalf("DeployCompose: %v", err)
+	}
+	if body["composeId"] != "c1" || body["freshVolumes"] != true {
+		t.Errorf("body = %v", body)
+	}
+	if err := c.DeployCompose(context.Background(), DeployComposeRequest{ComposeID: "c1"}); err != nil {
+		t.Fatalf("DeployCompose: %v", err)
+	}
+	if body["freshVolumes"] != false {
+		t.Errorf("freshVolumes = %v, want an explicit false", body["freshVolumes"])
 	}
 }

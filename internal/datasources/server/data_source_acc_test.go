@@ -48,6 +48,7 @@ data "dokploy_server" "by_id" {
 					resource.TestCheckResourceAttr("data.dokploy_server.by_name", "ip_address", "10.255.255.2"),
 					resource.TestCheckResourceAttr("data.dokploy_server.by_name", "port", "2200"),
 					resource.TestCheckResourceAttr("data.dokploy_server.by_name", "username", "root"),
+					resource.TestCheckResourceAttr("data.dokploy_server.by_name", "builds_concurrency", "1"),
 					resource.TestCheckResourceAttr("data.dokploy_server.by_name", "server_type", "deploy"),
 					resource.TestCheckResourceAttr("data.dokploy_server.by_name", "description", "fixture"),
 					resource.TestCheckNoResourceAttr("data.dokploy_server.by_name", "ssh_key_id"),

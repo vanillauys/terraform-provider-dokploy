@@ -662,3 +662,43 @@ func TestAccCompose_appNamePrefix(t *testing.T) {
 		},
 	})
 }
+
+// fresh_volumes is provider-only: it goes out on compose.deploy and the
+// server stores nothing for it. The first step deploys with it set, the
+// second drops it (no deploy: the attribute alone starts none), and the
+// import seeds the default.
+func TestAccCompose_freshVolumes(t *testing.T) {
+	projectName := acctest.RandomName("compose-fresh-proj")
+	name := acctest.RandomName("compose-fresh")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkComposeDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: rawConfigDeploy(projectName, name, "  fresh_volumes = true\n", true),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_compose.test", "fresh_volumes", "true"),
+					resource.TestCheckResourceAttr("dokploy_compose.test", "status", "done"),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				Config: rawConfigDeploy(projectName, name, "", true),
+				Check:  resource.TestCheckResourceAttr("dokploy_compose.test", "fresh_volumes", "false"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_compose.test", plancheck.ResourceActionUpdate)},
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				ResourceName:      "dokploy_compose.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
