@@ -17,7 +17,7 @@
 A Terraform and OpenTofu provider for [Dokploy](https://dokploy.com), the
 self-hosted PaaS. It manages projects, environments, applications, compose
 stacks, databases, domains, backups, servers, git providers, notifications,
-users, and API keys: 46 resources and 24 data sources, each with an
+users, and API keys: 47 resources and 25 data sources, each with an
 acceptance test against a real Dokploy server.
 
 [Documentation](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs) ·
@@ -57,7 +57,7 @@ describes each resource and data source.
 
 | Area | Resources |
 |------|-----------|
-| Projects | `dokploy_project`, `dokploy_environment`, `dokploy_environment_variables` |
+| Projects | `dokploy_project`, `dokploy_environment`, `dokploy_environment_variables`, `dokploy_tag` |
 | Services | `dokploy_application` (GitHub, GitLab, Bitbucket, Gitea, git, or Docker source), `dokploy_compose` (the same sources or an inline file) |
 | Databases | `dokploy_postgres`, `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`, `dokploy_redis`, `dokploy_libsql` |
 | Routing | `dokploy_domain`, `dokploy_port`, `dokploy_redirect`, `dokploy_security`, `dokploy_certificate` |
@@ -186,7 +186,8 @@ The provider does not model these Dokploy features yet.
   record by name errors when more than one record matches. This applies to
   project, environment, application, compose, destination, network, ssh_key,
   server, organization, certificate, registry, vault_provider, the four git
-  providers, and all six database engines. Domain hosts are also not unique,
+  providers, and all six database engines. Tag names are the exception:
+  Dokploy enforces them, so the `dokploy_tag` lookup by name is safe. Domain hosts are also not unique,
   because the same host can attach to more than one domain. The
   `dokploy_domain` data source takes an `application_id` or `compose_id`
   filter for that case, and without a filter it reads the domains of every

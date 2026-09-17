@@ -180,3 +180,26 @@ func TestProjectEnvRoundTrip(t *testing.T) {
 		t.Errorf("update body env = %v (present %v), want \"\"", v, ok)
 	}
 }
+
+// projectTags is the join table that project.one embeds (#63): each row
+// carries the full tag, and TagIDs projects the ids in server order.
+func TestProjectDecodesProjectTags(t *testing.T) {
+	var p Project
+	body := `{"projectId":"p1","projectTags":[
+		{"id":"j1","projectId":"p1","tagId":"t1","tag":{"tagId":"t1","name":"a","color":null,"createdAt":"c","organizationId":"o"}},
+		{"id":"j2","projectId":"p1","tagId":"t2","tag":{"tagId":"t2","name":"b","color":"#fff","createdAt":"c","organizationId":"o"}}]}`
+	if err := json.Unmarshal([]byte(body), &p); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(p.ProjectTags) != 2 || p.ProjectTags[0].ID != "j1" || p.ProjectTags[0].ProjectID != "p1" ||
+		p.ProjectTags[0].Tag.Name != "a" || p.ProjectTags[0].Tag.Color != nil ||
+		p.ProjectTags[1].Tag.Color == nil || *p.ProjectTags[1].Tag.Color != "#fff" {
+		t.Errorf("ProjectTags = %+v", p.ProjectTags)
+	}
+	if ids := p.TagIDs(); len(ids) != 2 || ids[0] != "t1" || ids[1] != "t2" {
+		t.Errorf("TagIDs() = %v", ids)
+	}
+	if ids := (&Project{}).TagIDs(); ids == nil || len(ids) != 0 {
+		t.Errorf("TagIDs() of a project without tags = %#v, want an empty non-nil slice", ids)
+	}
+}

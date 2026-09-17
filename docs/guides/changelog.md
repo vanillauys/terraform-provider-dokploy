@@ -11,6 +11,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `dokploy_tag` resource and data source (#63): an organization-level
+  label with a `name`, unique in the organization, and an optional `color`
+  that Dokploy stores as is. The data source looks a tag up by `id` or by
+  `name`.
+- `tag_ids` on `dokploy_project` and its data source (#63): the set of tags
+  that the project carries. The provider sends the whole set through
+  `tag.bulkAssign`, which replaces the assignments in one call, so the
+  assignments in Dokploy match the set exactly. An omitted attribute clears
+  them. A project created before v1.6.0 and a configuration without the
+  attribute plan no change.
+
+### Fixed
+
+- The registry pages of the `dokploy_domain`, `dokploy_compose`,
+  `dokploy_certificate`, `dokploy_registry`, and `dokploy_vault_provider`
+  data sources had no subcategory, so the sidebar listed them outside their
+  groups.
+
 ## [1.5.0] - 2026-09-17
 
 ### Added

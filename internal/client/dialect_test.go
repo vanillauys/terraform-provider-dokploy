@@ -27,6 +27,11 @@ var mustAlwaysSend = []struct {
 	{CreateProjectRequest{}, []string{"env"}},
 	{UpdateBuildsConcurrencyRequest{}, []string{"buildsConcurrency"}},
 	{DeployComposeRequest{}, []string{"freshVolumes"}},
+	// tag.update is dialect B; tag.bulkAssign replaces the set, so an
+	// empty list must travel as [] (#63).
+	{UpdateTagRequest{}, []string{"name", "color"}},
+	{CreateTagRequest{}, []string{"color"}},
+	{BulkAssignTagsRequest{}, []string{"tagIds"}},
 	// The five engines: the v1.3.0 operational settings (#51) are dialect B
 	// pointers that clear with an explicit null; replicas (and mongo's
 	// replicaSets) are bare values sent on every call.

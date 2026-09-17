@@ -33,6 +33,7 @@ data "dokploy_project" "example" {
 - `env` (String, Sensitive) Variables that each service in the project can reference, exactly as Dokploy stores them. The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.
 - `environments` (Attributes List) Environments in this project. (see [below for nested schema](#nestedatt--environments))
 - `production_environment_id` (String) Id of the default environment. Dokploy creates it with the project and names it `production`. The provider selects it with the server's `isDefault` flag, not by name, so a rename does not change the value. Use it as the `environment_id` of a service in the default environment.
+- `tag_ids` (Set of String) Ids of the tags that the project carries. Empty when it has none.
 
 <a id="nestedatt--environments"></a>
 ### Nested Schema for `environments`
