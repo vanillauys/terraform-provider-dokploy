@@ -33,4 +33,8 @@ resource "dokploy_server" "builder" {
   username    = "ubuntu"
   server_type = "build"
   ssh_key_id  = dokploy_ssh_key.deploy.id
+
+  # Builds that run at once on this server. Omit it to keep the Dokploy
+  # default of 1.
+  builds_concurrency = 2
 }

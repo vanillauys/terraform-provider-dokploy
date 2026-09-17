@@ -11,6 +11,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `env` on `dokploy_project` and its data source (#54): the project-level
+  variables that a service reads through the `${{project.KEY}}` syntax. An
+  environment does not inherit them into its own `env`. The create endpoint
+  stores the value, and the update endpoint takes `""` for a clear, like
+  `env` on `dokploy_environment`.
+- `builds_concurrency` on `dokploy_server` and its data source (#54). It is
+  optional and computed: Dokploy sets `1` on a new server, a configured
+  value goes out through `server.updateBuildsConcurrency` after the create
+  and after a change, and an omitted attribute keeps the server value. The
+  minimum is `1`.
+- `fresh_volumes` on `dokploy_compose` (#54), a provider-only bool next to
+  `deploy_on_change` that recreates the volumes of the stack on each deploy
+  the provider starts. Defaults to `false`. A change of the attribute alone
+  starts no deploy.
+- `github_url` on the `dokploy_github_provider` data source (#54): the base
+  URL of a GitHub Enterprise instance, null for github.com.
+
 ## [1.4.0] - 2026-09-17
 
 ### Added

@@ -16,6 +16,7 @@ type resourceModel struct {
 	ID                      types.String `tfsdk:"id"`
 	Name                    types.String `tfsdk:"name"`
 	Description             types.String `tfsdk:"description"`
+	Env                     types.String `tfsdk:"env"`
 	CreatedAt               types.String `tfsdk:"created_at"`
 	Environments            types.List   `tfsdk:"environments"`
 	ProductionEnvironmentID types.String `tfsdk:"production_environment_id"`
@@ -74,6 +75,7 @@ func flatten(_ context.Context, p *client.Project, m *resourceModel) diag.Diagno
 	m.ID = types.StringValue(p.ProjectID)
 	m.Name = types.StringValue(p.Name)
 	m.Description = tfutil.StringOrNull(p.Description)
+	m.Env = tfutil.StringOrNull(&p.Env)
 	m.CreatedAt = types.StringValue(p.CreatedAt)
 	list, diags := BuildEnvironments(p.Environments)
 	m.Environments = list

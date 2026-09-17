@@ -5,17 +5,28 @@ import (
 	"net/url"
 )
 
+// Project. Env is the project-level environment variables (#54, v1.5.0):
+// a dialect C column like Environment.Env, so a plain string that reads ""
+// when unset and after a clear. An environment does NOT inherit it:
+// environment.one reports its own env only (probed live, v0.30.6,
+// 2026-09-17), the shared value is a separate scope that a service reads
+// through the ${{project.KEY}} syntax.
 type Project struct {
 	ProjectID    string        `json:"projectId"`
 	Name         string        `json:"name"`
 	Description  *string       `json:"description"`
+	Env          string        `json:"env"`
 	CreatedAt    string        `json:"createdAt"`
 	Environments []Environment `json:"environments"`
 }
 
+// CreateProjectRequest. Unlike environment.create, project.create accepts
+// env AND stores it (probed live, v0.30.6, 2026-09-17), so no follow-up
+// update is needed. Env is dialect C: a plain string, never null.
 type CreateProjectRequest struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description,omitempty"`
+	Env         string  `json:"env"`
 }
 
 // UpdateProjectRequest. Description is deliberately NOT omitempty, for the
@@ -28,10 +39,16 @@ type CreateProjectRequest struct {
 // could never converge: state recorded null, the next Read flattened the
 // server's stale value back in, and every plan showed the same diff forever
 // (spec §5.6: optional attributes must be clearable back to null).
+//
+// Env is dialect C on this endpoint (probed live, v0.30.6, 2026-09-17): an
+// absent key keeps the stored value, an explicit null is an HTTP 400
+// "expected string, received null", and "" clears it. A plain string with
+// no omitempty sends "" for a null attribute.
 type UpdateProjectRequest struct {
 	ProjectID   string  `json:"projectId"`
 	Name        string  `json:"name,omitempty"`
 	Description *string `json:"description"`
+	Env         string  `json:"env"`
 }
 
 // createProjectResponse matches the real /project.create response shape:

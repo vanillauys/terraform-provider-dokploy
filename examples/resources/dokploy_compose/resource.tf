@@ -8,6 +8,10 @@ resource "dokploy_compose" "inline" {
   environment_id = dokploy_project.example.production_environment_id
   description    = "Defined entirely in Terraform"
 
+  # Recreate the volumes on each deploy that Terraform starts. The data in
+  # the volumes is lost, so keep the default of false for a stateful stack.
+  fresh_volumes = false
+
   raw = {
     compose_file = <<-YAML
       services:

@@ -67,6 +67,7 @@ resource "dokploy_redis" "cache" {
 ### Read-Only
 
 - `app_name` (String) Internal name that Dokploy generates for the server.
+- `builds_concurrency` (Number) Number of builds that the server runs at once.
 - `command` (String) Custom setup command, or null.
 - `created_at` (String) Creation timestamp from the server.
 - `description` (String) Free-text description, or null.

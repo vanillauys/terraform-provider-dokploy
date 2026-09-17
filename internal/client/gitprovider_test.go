@@ -13,6 +13,7 @@ import (
 const githubProvidersJSON = `[
   {
     "githubId": "eCVFhKf1HP8lfeQmoUTRY",
+    "githubUrl": "https://github.example.com",
     "gitProvider": {
       "gitProviderId": "EWt7QahDf2rqMZqETGefF",
       "name": "vnly-io-dokploy",
@@ -45,6 +46,9 @@ func TestListGithubProviders(t *testing.T) {
 	// silently wrong and stays green.
 	if p.GithubID != "eCVFhKf1HP8lfeQmoUTRY" {
 		t.Errorf("githubId = %q", p.GithubID)
+	}
+	if p.GithubURL == nil || *p.GithubURL != "https://github.example.com" {
+		t.Errorf("githubUrl = %v", p.GithubURL)
 	}
 	if p.GitProvider.GitProviderID != "EWt7QahDf2rqMZqETGefF" {
 		t.Errorf("gitProviderId = %q", p.GitProvider.GitProviderID)

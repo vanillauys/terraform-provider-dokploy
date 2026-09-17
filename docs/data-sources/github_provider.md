@@ -79,5 +79,6 @@ resource "dokploy_application" "web" {
 
 - `created_at` (String) Creation timestamp from the server.
 - `git_provider_id` (String) Id of the generic git-provider record that owns this GitHub App. An application does not reference it.
+- `github_url` (String) Base URL of a GitHub Enterprise instance, or null for github.com.
 - `provider_type` (String) Always `github` for this data source.
 - `shared_with_organization` (Boolean) Whether the provider is shared with the whole Dokploy organization.

@@ -16,6 +16,12 @@ A Dokploy project. Dokploy creates a default `production` environment with each 
 resource "dokploy_project" "example" {
   name        = "my-project"
   description = "Managed by Terraform"
+
+  # Variables that each service in the project can reference as
+  # ${{project.KEY}}. Use Terraform sensitive variables for secret values.
+  env = <<-EOT
+    REGION=eu-west-1
+  EOT
 }
 
 output "production_environment_id" {
@@ -33,6 +39,7 @@ output "production_environment_id" {
 ### Optional
 
 - `description` (String) Free-form description.
+- `env` (String) Variables that each service in the project can reference, as `KEY=value` lines. A service reads them through the `${{project.KEY}}` syntax; an environment does not inherit them into its own `env`. An omitted value and `""` both read back as null. Omit the attribute to clear it.
 
 ### Read-Only
 

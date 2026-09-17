@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -51,6 +52,7 @@ func checkAgainstAPI(want client.Server) resource.TestCheckFunc {
 		if got.Name != want.Name || got.Description != want.Description || got.IPAddress != want.IPAddress ||
 			got.Port != want.Port || got.Username != want.Username || got.ServerType != want.ServerType ||
 			got.EnableDockerCleanup != want.EnableDockerCleanup || got.Command != want.Command ||
+			got.BuildsConcurrency != want.BuildsConcurrency ||
 			(got.SSHKeyID == "") != (want.SSHKeyID == "") {
 			return fmt.Errorf("server on the API = %+v, want %+v", got, want)
 		}
@@ -85,7 +87,9 @@ func TestAccServer_lifecycle(t *testing.T) {
   ssh_key_id            = dokploy_ssh_key.fixture.id
   server_type           = "build"
   enable_docker_cleanup = false
-  command               = "echo setup"`
+  command               = "echo setup"
+  builds_concurrency    = 2`
+	withThree := strings.Replace(full, "builds_concurrency    = 2", "builds_concurrency    = 3", 1)
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProviderFactories(),
@@ -97,11 +101,24 @@ func TestAccServer_lifecycle(t *testing.T) {
 					resource.TestCheckResourceAttr("dokploy_server.test", "port", "2222"),
 					resource.TestCheckResourceAttr("dokploy_server.test", "server_type", "build"),
 					resource.TestCheckResourceAttr("dokploy_server.test", "command", "echo setup"),
+					resource.TestCheckResourceAttr("dokploy_server.test", "builds_concurrency", "2"),
 					resource.TestCheckResourceAttrPair("dokploy_server.test", "ssh_key_id", "dokploy_ssh_key.fixture", "id"),
 					resource.TestCheckResourceAttrSet("dokploy_server.test", "app_name"),
 					resource.TestCheckResourceAttrSet("dokploy_server.test", "created_at"),
 					checkAgainstAPI(client.Server{Name: name, Description: "build box", IPAddress: "10.255.255.1", Port: 2222,
-						Username: "ubuntu", ServerType: "build", Command: "echo setup", SSHKeyID: "set"}),
+						Username: "ubuntu", ServerType: "build", Command: "echo setup", SSHKeyID: "set", BuildsConcurrency: 2}),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// A changed builds_concurrency alone reaches its own endpoint.
+				Config: serverConfig(name, pub, priv, withThree),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_server.test", "builds_concurrency", "3"),
+					checkAgainstAPI(client.Server{Name: name, Description: "build box", IPAddress: "10.255.255.1", Port: 2222,
+						Username: "ubuntu", ServerType: "build", Command: "echo setup", SSHKeyID: "set", BuildsConcurrency: 3}),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
@@ -110,6 +127,8 @@ func TestAccServer_lifecycle(t *testing.T) {
 			{
 				// Every optional attribute dropped: the defaults come back and
 				// the free-text fields and the key clear on the server.
+				// builds_concurrency has no default: the provider keeps the
+				// server value, 3 from the previous step.
 				Config: serverConfig(name, pub, priv, ""),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("dokploy_server.test", "port", "22"),
@@ -119,8 +138,9 @@ func TestAccServer_lifecycle(t *testing.T) {
 					resource.TestCheckNoResourceAttr("dokploy_server.test", "description"),
 					resource.TestCheckNoResourceAttr("dokploy_server.test", "command"),
 					resource.TestCheckNoResourceAttr("dokploy_server.test", "ssh_key_id"),
+					resource.TestCheckResourceAttr("dokploy_server.test", "builds_concurrency", "3"),
 					checkAgainstAPI(client.Server{Name: name, IPAddress: "10.255.255.1", Port: 22, Username: "root",
-						ServerType: "deploy", EnableDockerCleanup: true}),
+						ServerType: "deploy", EnableDockerCleanup: true, BuildsConcurrency: 3}),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_server.test", plancheck.ResourceActionUpdate)},

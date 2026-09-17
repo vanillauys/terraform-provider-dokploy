@@ -36,6 +36,7 @@ type model struct {
 	ServerType          types.String `tfsdk:"server_type"`
 	EnableDockerCleanup types.Bool   `tfsdk:"enable_docker_cleanup"`
 	Command             types.String `tfsdk:"command"`
+	BuildsConcurrency   types.Int64  `tfsdk:"builds_concurrency"`
 	AppName             types.String `tfsdk:"app_name"`
 	Status              types.String `tfsdk:"status"`
 	OrganizationID      types.String `tfsdk:"organization_id"`
@@ -81,6 +82,7 @@ func (d *serverDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			"server_type":           schema.StringAttribute{Computed: true, Description: "`deploy` or `build`."},
 			"enable_docker_cleanup": schema.BoolAttribute{Computed: true, Description: "Whether the daily Docker cleanup runs on the server."},
 			"command":               schema.StringAttribute{Computed: true, Description: "Custom setup command, or null."},
+			"builds_concurrency":    schema.Int64Attribute{Computed: true, Description: "Number of builds that the server runs at once."},
 			"app_name":              schema.StringAttribute{Computed: true, Description: "Internal name that Dokploy generates for the server."},
 			"status": schema.StringAttribute{
 				Computed:    true,
@@ -158,6 +160,7 @@ func (d *serverDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	config.ServerType = types.StringValue(found.ServerType)
 	config.EnableDockerCleanup = types.BoolValue(found.EnableDockerCleanup)
 	config.Command = tfutil.StringOrNull(&found.Command)
+	config.BuildsConcurrency = types.Int64Value(found.BuildsConcurrency)
 	config.AppName = types.StringValue(found.AppName)
 	config.Status = types.StringValue(found.ServerStatus)
 	config.OrganizationID = types.StringValue(found.OrganizationID)

@@ -14,8 +14,13 @@ import "context"
 // Shape captured live against a production instance (v0.29.13, 2026-07-28).
 // The acceptance rig cannot produce one: installing a GitHub App is a
 // browser-bound flow and the github router has no .create.
+//
+// GithubURL (v0.29.14) is the base URL of a GitHub Enterprise instance, null
+// for github.com. The rig cannot confirm the shape; the field name comes
+// from the Dokploy schema (#54).
 type GithubProvider struct {
 	GithubID    string      `json:"githubId"`
+	GithubURL   *string     `json:"githubUrl"`
 	GitProvider GitProvider `json:"gitProvider"`
 }
 

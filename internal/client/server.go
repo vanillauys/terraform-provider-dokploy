@@ -12,10 +12,10 @@ import (
 // neither of which this struct decodes. metricsConfig is a nested object
 // that server.setupMonitoring owns; it is not modelled.
 //
-// serverStatus and buildsConcurrency are deliberately absent from the
-// resource: the first changes when Dokploy loses the SSH connection, and the
-// second has its own endpoint (server.updateBuildsConcurrency). Both would
-// be Computed attributes that the server mutates behind Terraform's back.
+// serverStatus is deliberately absent from the resource: it changes when
+// Dokploy loses the SSH connection. buildsConcurrency has its own endpoint
+// (server.updateBuildsConcurrency, below) and is Optional+Computed on the
+// resource since v1.5.0 (#54).
 type Server struct {
 	ServerID            string `json:"serverId"`
 	Name                string `json:"name"`
@@ -97,6 +97,20 @@ func (c *Client) ListServers(ctx context.Context) ([]Server, error) {
 
 func (c *Client) UpdateServer(ctx context.Context, req UpdateServerRequest) error {
 	return c.Post(ctx, "/server.update", req, nil)
+}
+
+// UpdateBuildsConcurrencyRequest sets the number of builds a server runs at
+// once. Both fields are required; buildsConcurrency must be a number >= 1
+// (0, null and a string are each an HTTP 400 that names the field). A fresh
+// server reads 1, and server.update keeps the stored value (probed live,
+// v0.30.6, 2026-09-17).
+type UpdateBuildsConcurrencyRequest struct {
+	ServerID          string `json:"serverId"`
+	BuildsConcurrency int64  `json:"buildsConcurrency"`
+}
+
+func (c *Client) UpdateServerBuildsConcurrency(ctx context.Context, req UpdateBuildsConcurrencyRequest) error {
+	return c.Post(ctx, "/server.updateBuildsConcurrency", req, nil)
 }
 
 // DeleteServer. Note the verb: server uses .remove.

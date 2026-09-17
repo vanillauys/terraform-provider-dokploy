@@ -5,12 +5,14 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -42,6 +44,7 @@ type resourceModel struct {
 	ServerType          types.String `tfsdk:"server_type"`
 	EnableDockerCleanup types.Bool   `tfsdk:"enable_docker_cleanup"`
 	Command             types.String `tfsdk:"command"`
+	BuildsConcurrency   types.Int64  `tfsdk:"builds_concurrency"`
 	AppName             types.String `tfsdk:"app_name"`
 	OrganizationID      types.String `tfsdk:"organization_id"`
 	CreatedAt           types.String `tfsdk:"created_at"`
@@ -99,6 +102,17 @@ func (r *serverResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Description: "Command that the setup runs on the server instead of the default installation. Omit it for " +
 					"the standard setup. If you remove it from the configuration, the provider clears it on the server.",
 			},
+			// Optional+Computed with UseStateForUnknown and no default: the
+			// value has its own endpoint (server.updateBuildsConcurrency), so
+			// the resource writes it only when the configuration sets it and
+			// otherwise keeps whatever the server holds (1 on a fresh record).
+			"builds_concurrency": schema.Int64Attribute{
+				Optional: true, Computed: true,
+				Description: "Number of builds that the server runs at once. Dokploy sets `1` on a new server. If you omit " +
+					"the attribute, the provider keeps the server value. The minimum is `1`.",
+				Validators:    []validator.Int64{int64validator.AtLeast(1)},
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
 			"app_name": schema.StringAttribute{
 				Computed:      true,
 				Description:   "Internal name that Dokploy generates for the server.",
@@ -137,6 +151,7 @@ func flatten(s *client.Server, m *resourceModel) {
 	m.ServerType = types.StringValue(s.ServerType)
 	m.EnableDockerCleanup = types.BoolValue(s.EnableDockerCleanup)
 	m.Command = tfutil.StringOrNull(&s.Command)
+	m.BuildsConcurrency = types.Int64Value(s.BuildsConcurrency)
 	m.AppName = types.StringValue(s.AppName)
 	m.OrganizationID = types.StringValue(s.OrganizationID)
 	m.CreatedAt = types.StringValue(s.CreatedAt)
@@ -178,6 +193,12 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 			resp.Diagnostics.AddError("Setting the server command after create", err.Error())
 			return
 		}
+	}
+	if err := r.saveBuildsConcurrency(ctx, created.ServerID, plan, resourceModel{}); err != nil {
+		resp.Diagnostics.AddError("Setting the builds concurrency after create", err.Error())
+		return
+	}
+	if !plan.Command.IsNull() || !plan.BuildsConcurrency.IsUnknown() {
 		if created, err = r.client.GetServer(ctx, created.ServerID); err != nil {
 			resp.Diagnostics.AddError("Reading server after create", err.Error())
 			return
@@ -185,6 +206,20 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 	flatten(created, &plan)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// saveBuildsConcurrency calls server.updateBuildsConcurrency when the plan
+// holds a known value that differs from the prior state. An unknown value
+// (the attribute is absent from the configuration and the state has no
+// value yet, as on create) leaves the server value alone.
+func (r *serverResource) saveBuildsConcurrency(ctx context.Context, id string, plan, state resourceModel) error {
+	if plan.BuildsConcurrency.IsNull() || plan.BuildsConcurrency.IsUnknown() || plan.BuildsConcurrency.Equal(state.BuildsConcurrency) {
+		return nil
+	}
+	return r.client.UpdateServerBuildsConcurrency(ctx, client.UpdateBuildsConcurrencyRequest{
+		ServerID:          id,
+		BuildsConcurrency: plan.BuildsConcurrency.ValueInt64(),
+	})
 }
 
 func updateRequest(id string, m resourceModel) client.UpdateServerRequest {
@@ -222,13 +257,18 @@ func (r *serverResource) Read(ctx context.Context, req resource.ReadRequest, res
 }
 
 func (r *serverResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan resourceModel
+	var plan, state resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	if err := r.client.UpdateServer(ctx, updateRequest(plan.ID.ValueString(), plan)); err != nil {
 		resp.Diagnostics.AddError("Updating server", err.Error())
+		return
+	}
+	if err := r.saveBuildsConcurrency(ctx, plan.ID.ValueString(), plan, state); err != nil {
+		resp.Diagnostics.AddError("Updating the builds concurrency", err.Error())
 		return
 	}
 	s, err := r.client.GetServer(ctx, plan.ID.ValueString())

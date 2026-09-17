@@ -40,14 +40,15 @@ func TestCreateProject(t *testing.T) {
 		var body map[string]any
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, &body)
-		if body["name"] != "demo" {
+		// env is dialect C: the key is always present, as "" when unset.
+		if body["name"] != "demo" || body["env"] != "SHARED=1" {
 			t.Errorf("body = %v", body)
 		}
 		_, _ = fmt.Fprint(w, createProjectJSON)
 	}))
 	defer srv.Close()
 
-	p, err := testClient(t, srv).CreateProject(context.Background(), CreateProjectRequest{Name: "demo"})
+	p, err := testClient(t, srv).CreateProject(context.Background(), CreateProjectRequest{Name: "demo", Env: "SHARED=1"})
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
 	}
@@ -143,5 +144,39 @@ func TestListProjects(t *testing.T) {
 	}
 	if len(ps) != 1 || ps[0].ProjectID != "p1" {
 		t.Errorf("projects = %+v", ps)
+	}
+}
+
+// env decodes from project.one and goes out on project.update as a plain
+// string: "" clears it, because the endpoint rejects a null (dialect C).
+func TestProjectEnvRoundTrip(t *testing.T) {
+	var updateBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/project.one":
+			_, _ = fmt.Fprint(w, `{"projectId":"p1","name":"demo","description":null,"env":"SHARED=1","createdAt":"2026-09-17T00:00:00.000Z","environments":[]}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/api/project.update":
+			raw, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(raw, &updateBody)
+			_, _ = fmt.Fprint(w, "true")
+		default:
+			t.Errorf("unexpected call: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	c := testClient(t, srv)
+
+	p, err := c.GetProject(context.Background(), "p1")
+	if err != nil {
+		t.Fatalf("GetProject: %v", err)
+	}
+	if p.Env != "SHARED=1" {
+		t.Errorf("env = %q, want SHARED=1", p.Env)
+	}
+	if err := c.UpdateProject(context.Background(), UpdateProjectRequest{ProjectID: "p1", Name: "demo"}); err != nil {
+		t.Fatalf("UpdateProject: %v", err)
+	}
+	if v, ok := updateBody["env"]; !ok || v != "" {
+		t.Errorf("update body env = %v (present %v), want \"\"", v, ok)
 	}
 }

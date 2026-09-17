@@ -297,6 +297,14 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	for name, attr := range tfutil.DeployAttributes() {
 		attrs[name] = attr
 	}
+	// fresh_volumes is provider-only, like the two deploy attributes: the
+	// server stores nothing for it (compose.deploy consumes it), so Import
+	// seeds the default and Read leaves the state value alone.
+	attrs["fresh_volumes"] = schema.BoolAttribute{
+		Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+		Description: "Recreate the volumes of the stack on each deploy that this provider starts (Dokploy v0.30.5 and later). " +
+			"Defaults to `false`. The data in the volumes is lost on such a deploy. A change of this attribute alone starts no deploy.",
+	}
 
 	resp.Schema = schema.Schema{
 		// Version 1 (v0.11.0) removed isolated_deployment and
@@ -382,7 +390,7 @@ func (r *composeResource) deployAndWait(ctx context.Context, m *resourceModel) e
 	}
 	id := m.ID.ValueString()
 	prior := r.newestDeploymentID(ctx, id)
-	if err := r.client.DeployCompose(ctx, id); err != nil {
+	if err := r.client.DeployCompose(ctx, client.DeployComposeRequest{ComposeID: id, FreshVolumes: m.FreshVolumes.ValueBool()}); err != nil {
 		return err
 	}
 	return r.waiter.Wait(ctx, timeout, r.fetchStatus(id, prior))
@@ -488,6 +496,14 @@ func (r *composeResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 	resp.Diagnostics.Append(flatten(ctx, c, &state)...)
+	// fresh_volumes is provider-only and arrived in v1.5.0: a state that an
+	// earlier release wrote holds null for it, and the schema default would
+	// then plan a change on every such state. Read seeds the default, so the
+	// refreshed state equals the plan and the upgrade promise (an empty plan
+	// after a provider upgrade) holds.
+	if state.FreshVolumes.IsNull() {
+		state.FreshVolumes = types.BoolValue(false)
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -570,6 +586,7 @@ func (r *composeResource) ImportState(ctx context.Context, req resource.ImportSt
 	// nothing server-side to read them back from, so they must be seeded with
 	// their schema defaults or the plan after an import is never empty.
 	resp.Diagnostics.Append(tfutil.ImportDeployDefaults(ctx, &resp.State)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("fresh_volumes"), false)...)
 }
 
 // removedInV1 lists the version 0 attributes that the current schema no
