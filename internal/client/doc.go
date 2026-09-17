@@ -1674,3 +1674,29 @@ package client
 // Not probed: the rig has no GitHub App (a browser-bound install). The
 // field name comes from the Dokploy schema; the data source reads it as a
 // nullable string.
+//
+// # v1.6.0 records (probed 2026-09-17 on the same v0.30.6 rig)
+//
+// ## The tag router (#63)
+//
+// tag.all, tag.one and tag.create return {tagId, name, color, createdAt,
+// organizationId}. tag.create needs name; color is optional, nullable, and
+// stored without validation ("red" round-trips). A duplicate name in the
+// organization is an HTTP 400 that quotes the failed insert. tag.update is
+// dialect B: an absent key keeps the stored value, null clears color, and
+// name rejects null ("expected string, received null") and "" ("Too small:
+// expected string to have >=1 characters"); a body with only tagId is an
+// HTTP 400 "No values to set". tag.remove cascades to the project
+// assignments and answers 404 on a second call. tag.byProjectId does not
+// exist (404 "Not found").
+//
+// project.one and project.all embed projectTags: [{id, projectId, tagId,
+// tag: {...}}]. project.create ignores a tagIds key. tag.assignToProject is
+// one insert and fails with HTTP 400 on a duplicate pair;
+// tag.removeFromProject answers {"success": true} whether or not the pair
+// existed. tag.bulkAssign deletes every assignment of the project and
+// inserts the list: [] clears, a duplicate id in the list fails the insert
+// after the delete (the project ends with no tags), an unknown id is an
+// HTTP 404 "One or more tags not found in your organization", and null is
+// an HTTP 400 "expected array, received null". application.one has no
+// tags: the router is project-level only.

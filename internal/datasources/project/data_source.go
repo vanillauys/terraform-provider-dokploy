@@ -33,6 +33,7 @@ type dataSourceModel struct {
 	CreatedAt               types.String `tfsdk:"created_at"`
 	Environments            types.List   `tfsdk:"environments"`
 	ProductionEnvironmentID types.String `tfsdk:"production_environment_id"`
+	TagIDs                  types.Set    `tfsdk:"tag_ids"`
 }
 
 func NewDataSource() datasource.DataSource { return &projectDataSource{} }
@@ -68,6 +69,11 @@ func (d *projectDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			"production_environment_id": schema.StringAttribute{
 				Computed:    true,
 				Description: "Id of the default environment. Dokploy creates it with the project and names it `production`. The provider selects it with the server's `isDefault` flag, not by name, so a rename does not change the value. Use it as the `environment_id` of a service in the default environment.",
+			},
+			"tag_ids": schema.SetAttribute{
+				Computed:    true,
+				ElementType: types.StringType,
+				Description: "Ids of the tags that the project carries. Empty when it has none.",
 			},
 		},
 	}
@@ -145,5 +151,10 @@ func (d *projectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	prod, diags := resproject.ProductionEnvironmentID(p.ProjectID, p.Environments)
 	resp.Diagnostics.Append(diags...)
 	config.ProductionEnvironmentID = prod
+	// A known empty prior makes TagIDSet return [] rather than null for a
+	// project without tags: a data source reports a set, never "unset".
+	tags, diags := resproject.TagIDSet(p, types.SetValueMust(types.StringType, nil))
+	resp.Diagnostics.Append(diags...)
+	config.TagIDs = tags
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

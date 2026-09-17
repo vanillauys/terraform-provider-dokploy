@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"testing"
 
@@ -201,6 +202,163 @@ resource "dokploy_project" "test" {
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 				Check: resource.TestCheckResourceAttrSet("dokploy_project.test", "production_environment_id"),
+			},
+		},
+	})
+}
+
+// checkServerTagIDs compares the assignments in Dokploy with the expected
+// set (spec §7: server-side truth). The order is the server's, so the
+// check sorts both sides.
+func checkServerTagIDs(want ...string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		p, err := getAccProject(s)
+		if err != nil {
+			return err
+		}
+		got := p.TagIDs()
+		sort.Strings(got)
+		wantSorted := append([]string(nil), want...)
+		sort.Strings(wantSorted)
+		if fmt.Sprint(got) != fmt.Sprint(wantSorted) {
+			return fmt.Errorf("server tag ids = %v, want %v", got, wantSorted)
+		}
+		return nil
+	}
+}
+
+// checkTags asserts that the server assignments are exactly the ids of the
+// named dokploy_tag resources.
+func checkTags(addrs ...string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		ids := make([]string, 0, len(addrs))
+		for _, a := range addrs {
+			rs, ok := s.RootModule().Resources[a]
+			if !ok {
+				return fmt.Errorf("%s not found in state", a)
+			}
+			ids = append(ids, rs.Primary.ID)
+		}
+		return checkServerTagIDs(ids...)(s)
+	}
+}
+
+// tag_ids is a set that tag.bulkAssign replaces as a whole (#63). The
+// steps cover the create-time assignment, growth, a reorder that must plan
+// nothing, the clear back to null with an empty plan, and the import.
+func TestAccProject_tags(t *testing.T) {
+	name := acctest.RandomName("proj-tags")
+	config := func(tagIDs string) string {
+		return fmt.Sprintf(`
+resource "dokploy_tag" "a" {
+  name = %[1]q
+}
+
+resource "dokploy_tag" "b" {
+  name  = "%[1]s-b"
+  color = "#0a8a74"
+}
+
+resource "dokploy_project" "test" {
+  name = %[1]q
+%[2]s
+}`, name, tagIDs)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config("  tag_ids = [dokploy_tag.a.id]"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_project.test", "tag_ids.#", "1"),
+					resource.TestCheckTypeSetElemAttrPair("dokploy_project.test", "tag_ids.*", "dokploy_tag.a", "id"),
+					checkTags("dokploy_tag.a"),
+				),
+			},
+			{
+				Config: config("  tag_ids = [dokploy_tag.a.id, dokploy_tag.b.id]"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_project.test", "tag_ids.#", "2"),
+					checkTags("dokploy_tag.a", "dokploy_tag.b"),
+				),
+			},
+			{
+				// A set ignores order: the reversed list must plan nothing.
+				Config: config("  tag_ids = [dokploy_tag.b.id, dokploy_tag.a.id]"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				Config: config("  tag_ids = [dokploy_tag.b.id]"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_project.test", "tag_ids.#", "1"),
+					checkTags("dokploy_tag.b"),
+				),
+			},
+			{
+				// Spec §5.6: the attribute clears back to null, and the server
+				// must hold no assignment afterwards.
+				Config: config(""),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_project.test", "tag_ids"),
+					checkServerTagIDs(),
+				),
+			},
+			{
+				Config: config("  tag_ids = [dokploy_tag.a.id, dokploy_tag.b.id]"),
+				Check:  checkTags("dokploy_tag.a", "dokploy_tag.b"),
+			},
+			{
+				ResourceName:      "dokploy_project.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// A tag deleted in Dokploy disappears from the project's assignments. The
+// next plan recreates the tag and assigns the new id, and the plan after
+// that is empty.
+func TestAccProject_tagRemovedOutOfBand(t *testing.T) {
+	name := acctest.RandomName("proj-tagrm")
+	cfg := fmt.Sprintf(`
+resource "dokploy_tag" "a" {
+  name = %[1]q
+}
+
+resource "dokploy_project" "test" {
+  name    = %[1]q
+  tag_ids = [dokploy_tag.a.id]
+}`, name)
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkProjectDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: cfg,
+				Check: func(s *terraform.State) error {
+					c, err := acctest.ClientFromEnv()
+					if err != nil {
+						return err
+					}
+					return c.DeleteTag(context.Background(), s.RootModule().Resources["dokploy_tag.a"].Primary.ID)
+				},
+				ExpectNonEmptyPlan: true,
+			},
+			{
+				Config: cfg,
+				Check:  checkTags("dokploy_tag.a"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
 			},
 		},
 	})

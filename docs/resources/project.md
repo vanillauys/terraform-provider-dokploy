@@ -22,6 +22,14 @@ resource "dokploy_project" "example" {
   env = <<-EOT
     REGION=eu-west-1
   EOT
+
+  # Labels from dokploy_tag records. Omit the attribute for no tags.
+  tag_ids = [dokploy_tag.production.id]
+}
+
+resource "dokploy_tag" "production" {
+  name  = "production"
+  color = "#0a8a74"
 }
 
 output "production_environment_id" {
@@ -40,6 +48,7 @@ output "production_environment_id" {
 
 - `description` (String) Free-form description.
 - `env` (String) Variables that each service in the project can reference, as `KEY=value` lines. A service reads them through the `${{project.KEY}}` syntax; an environment does not inherit them into its own `env`. An omitted value and `""` both read back as null. Omit the attribute to clear it.
+- `tag_ids` (Set of String) Ids of the `dokploy_tag` records that the project carries. The provider sends the whole set on each change, so the assignments in Dokploy match the set exactly. Omit the attribute to clear them.
 
 ### Read-Only
 

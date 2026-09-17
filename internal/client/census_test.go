@@ -92,6 +92,9 @@ var endpointStructs = map[string]any{
 	"server.create":                     CreateServerRequest{},
 	"server.update":                     UpdateServerRequest{},
 	"server.updateBuildsConcurrency":    UpdateBuildsConcurrencyRequest{},
+	"tag.create":                        CreateTagRequest{},
+	"tag.update":                        UpdateTagRequest{},
+	"tag.bulkAssign":                    BulkAssignTagsRequest{},
 	"compose.deploy":                    DeployComposeRequest{},
 	"certificates.create":               CreateCertificateRequest{},
 	"certificates.update":               UpdateCertificateRequest{},
@@ -320,6 +323,11 @@ var censusExempt = map[string]map[string]string{
 	// destination.serverId.
 	"registry.create": {
 		"serverId": "registry.one does not return it; a write-only field cannot round-trip",
+	},
+	// tag.update echoes the read-only columns of the record (#63, v1.6.0).
+	"tag.update": {
+		"createdAt":      "server-generated; not user configuration",
+		"organizationId": "implied by the API key's organization",
 	},
 	"registry.update": {
 		"serverId":       "registry.one does not return it; a write-only field cannot round-trip",

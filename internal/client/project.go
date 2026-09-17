@@ -11,6 +11,11 @@ import (
 // environment.one reports its own env only (probed live, v0.30.6,
 // 2026-09-17), the shared value is a separate scope that a service reads
 // through the ${{project.KEY}} syntax.
+//
+// ProjectTags is the join table that tag.bulkAssign writes (#63, v1.6.0).
+// project.one and project.all both embed it, each row with its full Tag,
+// so a read needs no tag.* call. project.create ignores a tagIds key
+// (probed live, v0.30.6, 2026-09-17); the resource assigns after the create.
 type Project struct {
 	ProjectID    string        `json:"projectId"`
 	Name         string        `json:"name"`
@@ -18,6 +23,18 @@ type Project struct {
 	Env          string        `json:"env"`
 	CreatedAt    string        `json:"createdAt"`
 	Environments []Environment `json:"environments"`
+	ProjectTags  []ProjectTag  `json:"projectTags"`
+}
+
+// TagIDs returns the ids of the tags assigned to the project, in server
+// order. The result is never nil, so an empty assignment set marshals as
+// [] wherever it is echoed.
+func (p *Project) TagIDs() []string {
+	ids := make([]string, 0, len(p.ProjectTags))
+	for _, t := range p.ProjectTags {
+		ids = append(ids, t.TagID)
+	}
+	return ids
 }
 
 // CreateProjectRequest. Unlike environment.create, project.create accepts

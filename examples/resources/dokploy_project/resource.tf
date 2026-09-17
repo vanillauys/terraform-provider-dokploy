@@ -7,6 +7,14 @@ resource "dokploy_project" "example" {
   env = <<-EOT
     REGION=eu-west-1
   EOT
+
+  # Labels from dokploy_tag records. Omit the attribute for no tags.
+  tag_ids = [dokploy_tag.production.id]
+}
+
+resource "dokploy_tag" "production" {
+  name  = "production"
+  color = "#0a8a74"
 }
 
 output "production_environment_id" {

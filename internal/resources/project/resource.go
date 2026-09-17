@@ -90,8 +90,30 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description:   "Id of the default environment. Dokploy creates it with the project and names it `production`. The provider selects it with the server's `isDefault` flag, not by name, so a rename does not change the value. Use it as the `environment_id` of a service in the default environment.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"tag_ids": schema.SetAttribute{
+				Optional:    true,
+				ElementType: types.StringType,
+				Description: "Ids of the `dokploy_tag` records that the project carries. The provider sends the whole set " +
+					"on each change, so the assignments in Dokploy match the set exactly. Omit the attribute to clear them.",
+			},
 		},
 	}
+}
+
+// assignTags sends the planned tag set when it differs from the prior one.
+// tag.bulkAssign replaces the assignments of the project in one call, and
+// a null plan clears them (client.BulkAssignTags sends []).
+func (r *projectResource) assignTags(ctx context.Context, id string, plan, prior types.Set) error {
+	if plan.IsUnknown() || plan.Equal(prior) {
+		return nil
+	}
+	var ids []string
+	if !plan.IsNull() {
+		if diags := plan.ElementsAs(ctx, &ids, false); diags.HasError() {
+			return fmt.Errorf("reading tag_ids: %s", diags[0].Detail())
+		}
+	}
+	return r.client.BulkAssignTags(ctx, client.BulkAssignTagsRequest{ProjectID: id, TagIDs: ids})
 }
 
 func (r *projectResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -118,6 +140,20 @@ func (r *projectResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 	plan.ID = types.StringValue(created.ProjectID)
+
+	// project.create ignores tagIds (client.Project), so the assignment
+	// is a second call. A failure here leaves the project created with no
+	// tags; the id goes to state so that the next apply converges.
+	if err := r.assignTags(ctx, created.ProjectID, plan.TagIDs, types.SetNull(types.StringType)); err != nil {
+		plan.CreatedAt = types.StringNull()
+		plan.Environments = types.ListNull(EnvironmentObjectType)
+		plan.ProductionEnvironmentID = types.StringNull()
+		plan.TagIDs = types.SetNull(types.StringType)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		resp.Diagnostics.AddError("Assigning tags after create",
+			fmt.Sprintf("project %s was created, but assigning its tags failed: %s. The next apply will converge.", created.ProjectID, err))
+		return
+	}
 
 	current, err := r.client.GetProject(ctx, created.ProjectID)
 	if err != nil {
@@ -157,8 +193,9 @@ func (r *projectResource) Read(ctx context.Context, req resource.ReadRequest, re
 }
 
 func (r *projectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan resourceModel
+	var plan, state resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -170,6 +207,10 @@ func (r *projectResource) Update(ctx context.Context, req resource.UpdateRequest
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Updating project", err.Error())
+		return
+	}
+	if err := r.assignTags(ctx, plan.ID.ValueString(), plan.TagIDs, state.TagIDs); err != nil {
+		resp.Diagnostics.AddError("Assigning tags", err.Error())
 		return
 	}
 	current, err := r.client.GetProject(ctx, plan.ID.ValueString())

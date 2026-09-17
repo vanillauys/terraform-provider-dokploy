@@ -27,6 +27,7 @@ import (
 	dsregistry "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/registry"
 	dsserver "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/server"
 	dssshkey "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/sshkey"
+	dstag "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/tag"
 	dsuser "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/user"
 	dsvaultprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/ai"
@@ -54,6 +55,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/server"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/sshkey"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/tag"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/user"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/userpermissions"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
@@ -206,6 +208,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		certificate.NewResource,
 		ai.NewResource,
 		registry.NewResource,
+		tag.NewResource,
 		gitlabprovider.NewResource,
 		bitbucketprovider.NewResource,
 		giteaprovider.NewResource,
@@ -278,5 +281,6 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dscertificate.NewDataSource,
 		dsregistry.NewDataSource,
 		dsvaultprovider.NewDataSource,
+		dstag.NewDataSource,
 	}
 }

@@ -20,6 +20,24 @@ type resourceModel struct {
 	CreatedAt               types.String `tfsdk:"created_at"`
 	Environments            types.List   `tfsdk:"environments"`
 	ProductionEnvironmentID types.String `tfsdk:"production_environment_id"`
+	TagIDs                  types.Set    `tfsdk:"tag_ids"`
+}
+
+// TagIDSet converts the assignments of a project into the tag_ids value.
+// An empty assignment set keeps the shape of prior: null stays null, so a
+// state written before v1.6.0 and a configuration without the attribute
+// plan no change, and a known empty set stays an empty set. It is exported
+// for the dokploy_project data source.
+func TagIDSet(p *client.Project, prior types.Set) (types.Set, diag.Diagnostics) {
+	ids := p.TagIDs()
+	if len(ids) == 0 && (prior.IsNull() || prior.IsUnknown()) {
+		return types.SetNull(types.StringType), nil
+	}
+	values := make([]attr.Value, 0, len(ids))
+	for _, id := range ids {
+		values = append(values, types.StringValue(id))
+	}
+	return types.SetValue(types.StringType, values)
 }
 
 type environmentModel struct {
@@ -82,6 +100,9 @@ func flatten(_ context.Context, p *client.Project, m *resourceModel) diag.Diagno
 	prod, d := ProductionEnvironmentID(p.ProjectID, p.Environments)
 	diags.Append(d...)
 	m.ProductionEnvironmentID = prod
+	tags, d := TagIDSet(p, m.TagIDs)
+	diags.Append(d...)
+	m.TagIDs = tags
 	return diags
 }
 

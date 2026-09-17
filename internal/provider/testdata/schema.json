@@ -3477,6 +3477,11 @@
             "name": "production_environment_id",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "tag_ids",
+            "type": "tftypes.Set[tftypes.String]",
+            "optional": true
           }
         ]
       }
@@ -4292,6 +4297,38 @@
             "name": "public_key",
             "type": "tftypes.String",
             "required": true
+          }
+        ]
+      }
+    },
+    "dokploy_tag": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "color",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "required": true
+          },
+          {
+            "name": "organization_id",
+            "type": "tftypes.String",
+            "computed": true
           }
         ]
       }
@@ -6547,6 +6584,11 @@
             "name": "production_environment_id",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "tag_ids",
+            "type": "tftypes.Set[tftypes.String]",
+            "computed": true
           }
         ]
       }
@@ -6802,6 +6844,40 @@
           },
           {
             "name": "public_key",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_tag": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "color",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "organization_id",
             "type": "tftypes.String",
             "computed": true
           }
