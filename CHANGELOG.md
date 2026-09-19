@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-09-19
+
+### Added
+
+- `compose_database_user`, `compose_database_password`, and
+  `compose_database_root_password` on `dokploy_backup` (#71): the
+  credentials of the dump command for a database inside a `dokploy_compose`
+  service. Dokploy stores them in the `metadata` field of the backup record,
+  and reads them for a compose backup only; a database parent carries its
+  own. The engine in `compose_database_type` says which attributes apply:
+  the user for `postgres`, the user and the password for `mariadb` and
+  `mongo`, the root password for `mysql`. The provider requires them at plan
+  time for that engine and rejects them otherwise. The two passwords have
+  write-only companions (`compose_database_password_wo` and
+  `compose_database_root_password_wo`, each with a `_wo_version`), because
+  `backup.one` returns them in cleartext. The Dokploy update endpoint
+  replaces the credentials as a whole, so every update resends them, and a
+  write-only password with nothing new to send resends the stored value.
+
+### Fixed
+
+- A `dokploy_backup` with `service_type = "compose"` applied without
+  credentials, and every run of it failed on the server (#71): Dokploy
+  builds no dump command for a compose backup whose `metadata` is null. The
+  provider sent null on every create and update. A configuration from
+  v1.6.0 that has a compose backup now fails at plan time until it sets the
+  credentials of its engine; a database parent needs no change.
+
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.30.6 to v0.30.7
+  (README, the badge, and the provider index page). The endpoint census
+  snapshot was regenerated from a fresh v0.30.7 install (2026-09-19). It
+  gains one entry, `stripe.startFreeTrial` (Dokploy Cloud billing); no
+  endpoint the provider sends to gained or lost a request field. The
+  upstream v0.30.6...v0.30.7 diff agrees: it changes the billing, trial,
+  and onboarding UI only. The acceptance suite for this release ran against
+  a fresh v0.30.7 install.
+
 ## [1.6.0] - 2026-09-17
 
 ### Added

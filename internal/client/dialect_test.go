@@ -102,7 +102,7 @@ var mustAlwaysSend = []struct {
 	{UpdateScheduleRequest{}, []string{"description", "script", "enabled", "timezone", "serviceName"}},
 	{CreateVolumeBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
 	{UpdateVolumeBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
-	{CreateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
+	{CreateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
 	{UpdateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
 	// compose.update is dialect B at the endpoint level, but its fields
 	// split three ways (doc.go). Every managed field is listed: the dialect

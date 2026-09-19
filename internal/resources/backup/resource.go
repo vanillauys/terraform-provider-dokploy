@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
@@ -54,7 +55,11 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"~> **This resource does not support Redis.** Dokploy has no logical dump for Redis. Use " +
 			"`dokploy_volume_backup`, which archives the volume and accepts a Redis parent.\n\n" +
 			"~> This resource does not expose a backup of the Dokploy server itself (the Dokploy `web-server` backup type). " +
-			"That backup type has no parent service and needs a separate validation path.",
+			"That backup type has no parent service and needs a separate validation path.\n\n" +
+			"~> Dokploy stores and returns `compose_database_password` and `compose_database_root_password` in cleartext. " +
+			"Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server " +
+			"can read them. The `compose_database_password_wo` and `compose_database_root_password_wo` companions keep " +
+			"them out of the Terraform state.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -126,12 +131,62 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Optional:    true,
 				Description: "Name of the specific container, for compose services with more than one.",
 			},
+			"compose_database_user": schema.StringAttribute{
+				Optional: true,
+				Description: "User that the dump command authenticates as, for a compose parent whose " +
+					"`compose_database_type` is `postgres`, `mariadb`, or `mongo`. Required for those engines, and " +
+					"invalid otherwise: a database parent carries its own credentials, and Dokploy reads this value " +
+					"for a compose parent only. Without it, Dokploy builds no dump command, and every run of the " +
+					"backup fails.",
+			},
+			"compose_database_password": schema.StringAttribute{
+				Optional: true, Sensitive: true,
+				Description: "Password of `compose_database_user`, for a compose parent whose `compose_database_type` " +
+					"is `mariadb` or `mongo`. Set this attribute or `compose_database_password_wo` for those engines; " +
+					"both are invalid otherwise.",
+			},
+			"compose_database_root_password": schema.StringAttribute{
+				Optional: true, Sensitive: true,
+				Description: "Root password of the MySQL server, for a compose parent whose `compose_database_type` " +
+					"is `mysql`. Set this attribute or `compose_database_root_password_wo` for that engine; both are " +
+					"invalid otherwise.",
+			},
 			"app_name": schema.StringAttribute{
 				Computed:      true,
 				Description:   "Internal Dokploy app name. The server generates it.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},
+	}
+	for _, name := range secretNames {
+		for k, v := range tfutil.WriteOnlyCompanions(name, tfutil.WriteOnlyOptions{}) {
+			resp.Schema.Attributes[k] = v
+		}
+	}
+}
+
+// secretNames lists the attributes with write-only companions. Neither one
+// is ExactlyOne: an engine that has no use for the secret needs both forms
+// unset (validateComposeCredentials).
+var secretNames = []string{"compose_database_password", "compose_database_root_password"}
+
+// writeOnlyInUse reports, per secret in secretNames, whether the config
+// carries the write-only companion.
+func writeOnlyInUse(cfg resourceModel) map[string]bool {
+	return map[string]bool{
+		"compose_database_password":      !cfg.ComposeDatabasePasswordWo.IsNull(),
+		"compose_database_root_password": !cfg.ComposeDatabaseRootPasswordWo.IsNull(),
+	}
+}
+
+// hideWriteOnly nulls each secret whose companion is in use (inUse is keyed
+// by secretNames), after flatten put the server's cleartext value in.
+func hideWriteOnly(m *resourceModel, inUse map[string]bool) {
+	if inUse["compose_database_password"] {
+		m.ComposeDatabasePassword = types.StringNull()
+	}
+	if inUse["compose_database_root_password"] {
+		m.ComposeDatabaseRootPassword = types.StringNull()
 	}
 }
 
@@ -181,9 +236,62 @@ func validateComposeDatabaseType(m resourceModel) error {
 	return nil
 }
 
-// ValidateConfig catches a service_type/compose_database_type mismatch at
-// plan time, with an attribute-level diagnostic, rather than surfacing it
-// only once Create runs validateComposeDatabaseType.
+// validateComposeCredentials enforces the pairing between the engine inside
+// a compose parent and the three credential attributes: each engine needs
+// exactly the attributes of its dump command (client.BackupMetadata), and a
+// database parent needs none. cfg carries the write-only companions, which
+// the plan nulls; m carries everything else. The returned name is the
+// attribute that the diagnostic points at.
+//
+// The required half is what closes issue #71: before v1.7.0 a compose backup
+// applied without credentials, and every run of it failed on the server.
+func validateComposeCredentials(m, cfg resourceModel) (string, error) {
+	needs := needsFor(composeEngine(m))
+	checks := []struct {
+		attr      string
+		need, has bool
+		engines   string
+		companion string
+	}{
+		{"compose_database_user", needs.user, !m.ComposeDatabaseUser.IsNull(),
+			"`postgres`, `mariadb`, or `mongo`", ""},
+		{"compose_database_password", needs.password,
+			!m.ComposeDatabasePassword.IsNull() || !cfg.ComposeDatabasePasswordWo.IsNull(),
+			"`mariadb` or `mongo`", " or `compose_database_password_wo`"},
+		{"compose_database_root_password", needs.rootPassword,
+			!m.ComposeDatabaseRootPassword.IsNull() || !cfg.ComposeDatabaseRootPasswordWo.IsNull(),
+			"`mysql`", " or `compose_database_root_password_wo`"},
+	}
+	for _, c := range checks {
+		switch {
+		case c.need && !c.has:
+			return c.attr, fmt.Errorf(
+				"`%s`%s is required when `service_type` is `compose` and `compose_database_type` is %s: "+
+					"Dokploy reads the credentials of a compose backup from the backup record, and builds no dump "+
+					"command without them, so every run of the backup fails",
+				c.attr, c.companion, c.engines)
+		case !c.need && c.has:
+			return c.attr, fmt.Errorf(
+				"`%s`%s is only valid when `service_type` is `compose` and `compose_database_type` is %s: "+
+					"a database parent carries its own credentials, and the other engines have no use for the value",
+				c.attr, c.companion, c.engines)
+		}
+	}
+	return "", nil
+}
+
+// hasUnknownCredential reports whether a credential attribute or companion
+// is not yet known at plan time.
+func hasUnknownCredential(cfg resourceModel) bool {
+	return cfg.ComposeDatabaseUser.IsUnknown() ||
+		cfg.ComposeDatabasePassword.IsUnknown() || cfg.ComposeDatabasePasswordWo.IsUnknown() ||
+		cfg.ComposeDatabaseRootPassword.IsUnknown() || cfg.ComposeDatabaseRootPasswordWo.IsUnknown()
+}
+
+// ValidateConfig catches a service_type/compose_database_type mismatch, and
+// a credential set that does not match the engine, at plan time, with an
+// attribute-level diagnostic, rather than surfacing it only once Create runs
+// the same checks.
 //
 // Unknown values (e.g. service_type derived from a resource attribute not
 // yet known during plan) are skipped: there is nothing to validate against
@@ -200,12 +308,22 @@ func (r *backupResource) ValidateConfig(ctx context.Context, req resource.Valida
 	}
 	if err := validateComposeDatabaseType(cfg); err != nil {
 		resp.Diagnostics.AddAttributeError(path.Root("compose_database_type"), "Invalid backup configuration", err.Error())
+		return
+	}
+	if hasUnknownCredential(cfg) {
+		return
+	}
+	if attr, err := validateComposeCredentials(cfg, cfg); err != nil {
+		resp.Diagnostics.AddAttributeError(path.Root(attr), "Invalid backup configuration", err.Error())
 	}
 }
 
 func (r *backupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan resourceModel
+	var plan, cfg resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	// The config, not the plan, carries the write-only values: the
+	// framework nulls them in the plan (tfutil.WriteOnlyCompanions).
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -217,18 +335,32 @@ func (r *backupResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Invalid backup configuration", err.Error())
 		return
 	}
-	created, err := r.client.CreateBackup(ctx, parentRef(plan), createRequest(plan))
+	if _, err := validateComposeCredentials(plan, cfg); err != nil {
+		resp.Diagnostics.AddError("Invalid backup configuration", err.Error())
+		return
+	}
+	inUse := writeOnlyInUse(cfg)
+	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlags(ctx, resp.Private, secretNames, inUse)...)
+	metadata := metadataFor(plan,
+		tfutil.SecretToCreate(plan.ComposeDatabasePassword, cfg.ComposeDatabasePasswordWo),
+		tfutil.SecretToCreate(plan.ComposeDatabaseRootPassword, cfg.ComposeDatabaseRootPasswordWo))
+	created, err := r.client.CreateBackup(ctx, parentRef(plan), createRequest(plan, metadata))
 	if err != nil {
 		resp.Diagnostics.AddError("Creating backup", err.Error())
 		return
 	}
 	flatten(created, &plan)
+	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *backupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state resourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	// The flags say which secrets stay out of the state: the API returns
+	// them in cleartext, so a refresh would put them back otherwise.
+	inUse, flagDiags := tfutil.WriteOnlyFlags(ctx, req.Private, secretNames)
+	resp.Diagnostics.Append(flagDiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -242,16 +374,42 @@ func (r *backupResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 	flatten(b, &state)
+	hideWriteOnly(&state, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *backupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan resourceModel
+	var plan, state, cfg resourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.UpdateBackup(ctx, updateRequest(plan)); err != nil {
+	inUse := writeOnlyInUse(cfg)
+	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlags(ctx, resp.Private, secretNames, inUse)...)
+	password, sendPassword := tfutil.SecretToUpdate(plan.ComposeDatabasePassword, cfg.ComposeDatabasePasswordWo,
+		state.ComposeDatabasePassword, plan.ComposeDatabasePasswordWoVersion, state.ComposeDatabasePasswordWoVersion)
+	rootPassword, sendRoot := tfutil.SecretToUpdate(plan.ComposeDatabaseRootPassword, cfg.ComposeDatabaseRootPasswordWo,
+		state.ComposeDatabaseRootPassword, plan.ComposeDatabaseRootPasswordWoVersion, state.ComposeDatabaseRootPasswordWoVersion)
+	if needs := needsFor(composeEngine(plan)); (needs.password && !sendPassword) || (needs.rootPassword && !sendRoot) {
+		// backup.update replaces metadata as a whole (client/backup.go), so
+		// a write-only secret with nothing new to send resends the stored
+		// one, which the API returns in cleartext.
+		current, err := r.client.GetBackup(ctx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Reading backup before update", err.Error())
+			return
+		}
+		stored := storedCredentials(current)
+		if !sendPassword {
+			password = stored.password
+		}
+		if !sendRoot {
+			rootPassword = stored.rootPassword
+		}
+	}
+	if err := r.client.UpdateBackup(ctx, updateRequest(plan, metadataFor(plan, password, rootPassword))); err != nil {
 		resp.Diagnostics.AddError("Updating backup", err.Error())
 		return
 	}
@@ -261,6 +419,7 @@ func (r *backupResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 	flatten(b, &plan)
+	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -312,13 +471,12 @@ func currentSchema(ctx context.Context) schema.Schema {
 }
 
 // schemaV0 derives the version 0 schema from the current one: the cron
-// attribute is named `schedule`, and `compose_database_type` does not exist
-// yet. Deriving rather than duplicating keeps every other attribute from
-// drifting out of sync with the current schema.
+// attribute is named `schedule`, and neither `compose_database_type` nor the
+// credential attributes exist yet. Deriving rather than duplicating keeps
+// every other attribute from drifting out of sync with the current schema.
 func schemaV0(ctx context.Context) schema.Schema {
-	s := currentSchema(ctx)
+	s := schemaV1(ctx)
 	attrs := s.Attributes
-	delete(attrs, "compose_database_type")
 	attrs["schedule"] = attrs["cron_expression"]
 	delete(attrs, "cron_expression")
 	s.Version = 0
@@ -326,10 +484,15 @@ func schemaV0(ctx context.Context) schema.Schema {
 }
 
 // schemaV1 derives the version 1 schema from the current one: identical
-// except `compose_database_type` does not exist yet.
+// except `compose_database_type` and the credential attributes do not exist
+// yet. The upgrader models (resourceModelV0, resourceModelV1) carry none of
+// them, and a prior schema with an attribute the model lacks fails the read.
 func schemaV1(ctx context.Context) schema.Schema {
 	s := currentSchema(ctx)
 	delete(s.Attributes, "compose_database_type")
+	for _, name := range credentialAttributes {
+		delete(s.Attributes, name)
+	}
 	s.Version = 1
 	return s
 }

@@ -1700,3 +1700,37 @@ package client
 // HTTP 404 "One or more tags not found in your organization", and null is
 // an HTTP 400 "expected array, received null". application.one has no
 // tags: the router is project-level only.
+//
+// # v0.30.7 census (probed 2026-09-19)
+//
+// The pin moved from v0.30.6 to v0.30.7 against a fresh v0.30.7 rig. The
+// endpoint census gained one entry, stripe.startFreeTrial (Dokploy Cloud
+// billing); no endpoint this client sends to gained or lost a request field.
+// The upstream v0.30.6...v0.30.7 compare agrees: three commits, all in the
+// billing, trial and onboarding UI, the Stripe webhook and router, and a
+// trial email. Nothing below the request schema changed for a self-hosted
+// server.
+//
+// # v1.7.0 records (probed 2026-09-19 on the same v0.30.7 rig)
+//
+// ## backup metadata (#71)
+//
+// The `metadata` jsonb of a backup record carries the credentials of a
+// compose backup, and nothing else: packages/server/src/utils/backups/
+// utils.ts (generateBackupCommand) reads metadata.<databaseType> for a
+// compose backup and the parent record for a database backup. The shape per
+// engine is postgres {databaseUser}, mariadb and mongo {databaseUser,
+// databasePassword}, mysql {databaseRootPassword}; libsql has no compose
+// dump. The request schema types the field as `unknown`, which is why the
+// census listed it as untyped until this release.
+//
+// Probed live: backup.create without metadata answers 200 and stores null,
+// which is the v1.6.0 shape, and backup.manualBackupCompose on that record
+// answers HTTP 400 "Error running manual Compose backup": the dump command
+// is undefined, so every run fails. backup.create with metadata stores the
+// object, and backup.one returns it as stored, passwords in cleartext.
+// backup.update replaces the object as a whole (a body with the mariadb key
+// dropped a stored postgres key), null stores null, {} stores {}, and an
+// absent key is the dialect A 400 "expected nonoptional, received
+// undefined". So the resource sends the full object on every update, and a
+// write-only secret with nothing new to send resends the stored value.

@@ -42,9 +42,11 @@ import (
 //	json.dump(dict(sorted(out.items())),sys.stdout,indent=1)
 //	' > internal/client/testdata/endpoint-fields.json
 //
-// Snapshot taken against Dokploy v0.30.6 on 2026-09-10. It is byte-identical
-// to the v0.30.5 snapshot of 2026-09-04: the v0.30.5...v0.30.6 release changed
-// no request body on any endpoint.
+// Snapshot taken against Dokploy v0.30.7 on 2026-09-19. It differs from the
+// v0.30.6 snapshot of 2026-09-10 in one entry: the new stripe.startFreeTrial
+// endpoint (Dokploy Cloud billing, not a self-hosted feature). No endpoint
+// this client sends to gained or lost a request field. The v0.30.6 snapshot
+// was byte-identical to the v0.30.5 snapshot of 2026-09-04.
 
 // endpointStructs maps a Dokploy write endpoint to the request struct this
 // package sends to it. Every endpoint whose absent keys are load-bearing —
@@ -248,13 +250,8 @@ var censusExempt = map[string]map[string]string{
 		"appName":   "server-generated; not user configuration",
 		"createdAt": "server-generated; not user configuration",
 	},
-	// metadata's schema is `anyOf: [{}, null]` -- genuinely untyped -- and it
-	// has read back null on every record observed live. There is no shape to
-	// model and no value to preserve, so it is sent as an explicit null.
-	// Modelling it needs evidence this provider does not have.
 	"backup.create": {
-		"metadata": "schema is untyped (anyOf [{}, null]); reads back null on every observed record",
-		"userId":   "implied by the API key; the server assigns it",
+		"userId": "implied by the API key; the server assigns it",
 	},
 	// compose.update is dialect B, not A, so an unmodelled field is merely
 	// unmanageable here - it is NOT reset on every apply, verified live

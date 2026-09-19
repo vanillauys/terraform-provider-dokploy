@@ -222,7 +222,8 @@ resource "dokploy_backup" "test" {
 // Dokploy actually populates for a compose parent).
 func TestAccBackup_composeParent(t *testing.T) {
 	name := acctest.RandomName("bk-compose")
-	cfg := fmt.Sprintf(`
+	cfg := func(credentials string) string {
+		return fmt.Sprintf(`
 resource "dokploy_project" "test" {
   name = %q
 }
@@ -256,8 +257,24 @@ resource "dokploy_backup" "test" {
   prefix                 = "backups/acc/"
   cron_expression        = "0 3 * * *"
   destination_id         = dokploy_destination.test.id
+%s
 }
-`, name+"-proj", name+"-dest", name+"-compose")
+`, name+"-proj", name+"-dest", name+"-compose", credentials)
+	}
+
+	// serverCredentials asserts the mariadb entry of the record's metadata:
+	// the value that Dokploy's dump command reads (issue #71).
+	serverCredentials := func(user, password string) resource.TestCheckFunc {
+		return checkServer("dokploy_backup.test", func(b *client.Backup) error {
+			if b.Metadata == nil || b.Metadata.Mariadb == nil {
+				return fmt.Errorf("server metadata = %+v, want a mariadb entry", b.Metadata)
+			}
+			if got := *b.Metadata.Mariadb; got.DatabaseUser != user || got.DatabasePassword != password {
+				return fmt.Errorf("server metadata.mariadb = %+v, want user %q and password %q", got, user, password)
+			}
+			return nil
+		})
+	}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -265,11 +282,16 @@ resource "dokploy_backup" "test" {
 		CheckDestroy:             checkDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: cfg,
+				Config: cfg(`
+  compose_database_user     = "app"
+  compose_database_password = "app-pass-1"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("dokploy_backup.test", "id"),
 					resource.TestCheckResourceAttr("dokploy_backup.test", "service_type", "compose"),
 					resource.TestCheckResourceAttr("dokploy_backup.test", "compose_database_type", "mariadb"),
+					resource.TestCheckResourceAttr("dokploy_backup.test", "compose_database_user", "app"),
+					resource.TestCheckResourceAttr("dokploy_backup.test", "compose_database_password", "app-pass-1"),
+					resource.TestCheckNoResourceAttr("dokploy_backup.test", "compose_database_root_password"),
 					resource.TestCheckResourceAttrPair(
 						"dokploy_backup.test", "service_id", "dokploy_compose.test", "id"),
 					checkServer("dokploy_backup.test", func(b *client.Backup) error {
@@ -289,15 +311,68 @@ resource "dokploy_backup" "test" {
 						}
 						return nil
 					}),
+					serverCredentials("app", "app-pass-1"),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 			},
 			{
+				// backup.update replaces metadata as a whole: a user change
+				// must carry the password again.
+				Config: cfg(`
+  compose_database_user     = "app2"
+  compose_database_password = "app-pass-1"`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_backup.test", "compose_database_user", "app2"),
+					serverCredentials("app2", "app-pass-1"),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// The server returns the password in cleartext, so an import
+				// of the plain shape verifies without an ignore list.
 				ResourceName:      "dokploy_backup.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+			{
+				// The switch to the write-only companion: the new value
+				// reaches the server, and the state holds null for the plain
+				// attribute from then on.
+				Config: cfg(`
+  compose_database_user                = "app2"
+  compose_database_password_wo         = "app-pass-2"
+  compose_database_password_wo_version = 1`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("dokploy_backup.test", "compose_database_password"),
+					resource.TestCheckNoResourceAttr("dokploy_backup.test", "compose_database_password_wo"),
+					resource.TestCheckResourceAttr("dokploy_backup.test", "compose_database_password_wo_version", "1"),
+					serverCredentials("app2", "app-pass-2"),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// An update of another attribute with the companion unchanged
+				// resends the stored password: the full metadata object goes
+				// out on every update, and the secret must survive it.
+				Config: cfg(`
+  keep_latest_count                    = 3
+  compose_database_user                = "app2"
+  compose_database_password_wo         = "app-pass-2"
+  compose_database_password_wo_version = 1`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("dokploy_backup.test", "keep_latest_count", "3"),
+					resource.TestCheckNoResourceAttr("dokploy_backup.test", "compose_database_password"),
+					serverCredentials("app2", "app-pass-2"),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
 			},
 		},
 	})
@@ -351,6 +426,72 @@ resource "dokploy_backup" "nope" {
 				Config:      cfg,
 				PlanOnly:    true,
 				ExpectError: regexp.MustCompile(`(?s)compose_database_type.*required`),
+			},
+		},
+	})
+}
+
+// TestAccBackup_rejectsMissingComposeCredentialsAtPlanTime is the
+// plan-time half of issue #71: a compose backup without the credentials of
+// its engine applied before v1.7.0 and failed on every run. The user is
+// required for a postgres engine, and a password is invalid for it.
+func TestAccBackup_rejectsMissingComposeCredentialsAtPlanTime(t *testing.T) {
+	name := acctest.RandomName("bk-compose-creds")
+	cfg := func(credentials string) string {
+		return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_destination" "test" {
+  name              = %q
+  provider_name     = "Cloudflare"
+  endpoint          = "https://example.r2.cloudflarestorage.com"
+  bucket            = "acc"
+  region            = "auto"
+  access_key        = "AKIAACCEPTANCEONLY"
+  secret_access_key = "acceptance-only-not-a-real-secret"
+}
+
+resource "dokploy_compose" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.environments[0].id
+  deploy_on_change = false
+
+  raw = {
+    compose_file = "services:\n  db:\n    image: postgres:17\n"
+  }
+}
+
+resource "dokploy_backup" "nope" {
+  service_id            = dokploy_compose.test.id
+  service_type          = "compose"
+  compose_database_type = "postgres"
+  service_name          = "db"
+  database              = "app"
+  prefix                = "backups/acc/"
+  cron_expression       = "0 3 * * *"
+  destination_id        = dokploy_destination.test.id
+%s
+}
+`, name+"-proj", name+"-dest", name+"-compose", credentials)
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config:      cfg(""),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`(?s)compose_database_user.*required`),
+			},
+			{
+				Config: cfg(`
+  compose_database_user     = "app"
+  compose_database_password = "nope"`),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`(?s)compose_database_password.*only valid`),
 			},
 		},
 	})
