@@ -193,6 +193,42 @@ resource "dokploy_backup" "db" {
 All six [`dokploy_backup`](../resources/backup#schema) attributes in this
 example are required, `prefix` included.
 
+## Compose backup credentials
+
+A backup of a database inside a `dokploy_compose` service has no database
+record that Dokploy can read the credentials from, so the backup record
+carries them. `dokploy_backup` takes them in three attributes, and the engine
+in `compose_database_type` says which ones apply:
+
+- `postgres`: `compose_database_user`.
+- `mariadb` and `mongo`: `compose_database_user` and
+  `compose_database_password`.
+- `mysql`: `compose_database_root_password`.
+
+The two passwords have write-only companions, `compose_database_password_wo`
+and `compose_database_root_password_wo`. The Dokploy endpoint `backup.one`
+returns both passwords in cleartext, so the companions follow the rules above:
+the provider keeps the server value out of the state, and an update of another
+attribute resends the stored password, because the Dokploy update endpoint
+replaces the credentials as a whole.
+
+```hcl
+resource "dokploy_backup" "nextcloud_db" {
+  service_id            = dokploy_compose.nextcloud.id
+  service_type          = "compose"
+  compose_database_type = "mariadb"
+  service_name          = "nextcloud-db"
+  database              = "nextcloud"
+  prefix                = "/nextcloud"
+  cron_expression       = "0 0 * * *"
+  destination_id        = data.dokploy_destination.backups.id
+
+  compose_database_user                = "nextcloud"
+  compose_database_password_wo         = var.nextcloud_db_password
+  compose_database_password_wo_version = 1
+}
+```
+
 ## The state holds these values in cleartext
 
 The Terraform state stores attribute values in cleartext, sensitive values

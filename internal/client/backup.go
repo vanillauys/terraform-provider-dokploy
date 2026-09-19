@@ -24,12 +24,58 @@ type Backup struct {
 	ServiceName          *string `json:"serviceName"`
 	AppName              string  `json:"appName"`
 
+	// Metadata holds the credentials of a compose backup. backup.one returns
+	// it as stored: null for a record that never had one, {} for a record
+	// the Dokploy UI created for a database parent, and the engine object
+	// for a compose parent. The passwords come back in cleartext.
+	Metadata *BackupMetadata `json:"metadata"`
+
 	ComposeID  *string `json:"composeId"`
 	PostgresID *string `json:"postgresId"`
 	MysqlID    *string `json:"mysqlId"`
 	MariadbID  *string `json:"mariadbId"`
 	MongoID    *string `json:"mongoId"`
 	LibsqlID   *string `json:"libsqlId"`
+}
+
+// BackupMetadata is the `metadata` jsonb of a backup record. Dokploy reads
+// it for a compose backup only (packages/server/src/utils/backups/utils.ts,
+// generateBackupCommand, v0.30.7): a database backup takes its credentials
+// from the parent database record, and a compose backup has no such record,
+// so the user supplies them here. The key that Dokploy reads is the one that
+// databaseType names; the others are ignored. A compose backup whose key is
+// absent produces no dump command at all, so the backup run fails. Each
+// engine has its own shape:
+//
+//   - postgres: databaseUser
+//   - mariadb, mongo: databaseUser and databasePassword
+//   - mysql: databaseRootPassword
+//   - libsql: nothing; Dokploy has no compose dump for it
+//
+// The request schema types the field as `unknown`, so the server stores any
+// object. The Dokploy UI sends only the key of the selected engine, and so
+// does this client: an engine key that is nil stays out of the body.
+type BackupMetadata struct {
+	Postgres *BackupUserMetadata         `json:"postgres,omitempty"`
+	Mariadb  *BackupUserPasswordMetadata `json:"mariadb,omitempty"`
+	Mongo    *BackupUserPasswordMetadata `json:"mongo,omitempty"`
+	Mysql    *BackupRootPasswordMetadata `json:"mysql,omitempty"`
+}
+
+// BackupUserMetadata is the postgres entry of BackupMetadata.
+type BackupUserMetadata struct {
+	DatabaseUser string `json:"databaseUser"`
+}
+
+// BackupUserPasswordMetadata is the mariadb and mongo entry of BackupMetadata.
+type BackupUserPasswordMetadata struct {
+	DatabaseUser     string `json:"databaseUser"`
+	DatabasePassword string `json:"databasePassword"`
+}
+
+// BackupRootPasswordMetadata is the mysql entry of BackupMetadata.
+type BackupRootPasswordMetadata struct {
+	DatabaseRootPassword string `json:"databaseRootPassword"`
 }
 
 // BackupDatabaseTypes are the values backup.create's databaseType accepts.
@@ -136,6 +182,10 @@ type CreateBackupRequest struct {
 	IncludeEncryptionKey bool    `json:"includeEncryptionKey"`
 	ServiceName          *string `json:"serviceName"`
 
+	// Metadata is nil for a database parent: the endpoint accepts null, and
+	// Dokploy never reads the field for that backup type. See BackupMetadata.
+	Metadata *BackupMetadata `json:"metadata"`
+
 	ComposeID  *string `json:"composeId"`
 	PostgresID *string `json:"postgresId"`
 	MysqlID    *string `json:"mysqlId"`
@@ -161,19 +211,21 @@ type CreateBackupRequest struct {
 // the corruption is unreachable through the provider.
 //
 // Dialect A: a partial body 400s, and an explicit null clears serviceName,
-// keepLatestCount and enabled.
+// keepLatestCount, enabled and metadata. metadata replaces the stored object
+// as a whole (probed live, v0.30.7, 2026-09-19), so an update of a compose
+// backup must carry every credential again, the password included.
 type UpdateBackupRequest struct {
-	BackupID             string  `json:"backupId"`
-	Schedule             string  `json:"schedule"`
-	Database             string  `json:"database"`
-	Prefix               string  `json:"prefix"`
-	DestinationID        string  `json:"destinationId"`
-	Enabled              *bool   `json:"enabled"`
-	KeepLatestCount      *int64  `json:"keepLatestCount"`
-	IncludeEncryptionKey bool    `json:"includeEncryptionKey"`
-	ServiceName          *string `json:"serviceName"`
-	Metadata             any     `json:"metadata"`
-	DatabaseType         string  `json:"databaseType"`
+	BackupID             string          `json:"backupId"`
+	Schedule             string          `json:"schedule"`
+	Database             string          `json:"database"`
+	Prefix               string          `json:"prefix"`
+	DestinationID        string          `json:"destinationId"`
+	Enabled              *bool           `json:"enabled"`
+	KeepLatestCount      *int64          `json:"keepLatestCount"`
+	IncludeEncryptionKey bool            `json:"includeEncryptionKey"`
+	ServiceName          *string         `json:"serviceName"`
+	Metadata             *BackupMetadata `json:"metadata"`
+	DatabaseType         string          `json:"databaseType"`
 }
 
 // CreateBackup creates a backup and returns it.

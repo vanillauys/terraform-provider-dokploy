@@ -98,6 +98,11 @@ func TestUpgradeStateV1(t *testing.T) {
 	if _, ok := prior.Attributes["compose_database_type"]; ok {
 		t.Fatal("prior schema must not have compose_database_type")
 	}
+	for _, name := range credentialAttributes {
+		if _, ok := prior.Attributes[name]; ok {
+			t.Fatalf("prior schema must not have %s", name)
+		}
+	}
 
 	v1 := resourceModelV1{
 		ID:                   types.StringValue("b1"),
@@ -169,6 +174,57 @@ func TestValidateComposeDatabaseType(t *testing.T) {
 			err := validateComposeDatabaseType(m)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("validateComposeDatabaseType(%+v) error = %v, wantErr %v", m, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// TestValidateComposeCredentials pins the pairing rule between the engine
+// inside a compose parent and the three credential attributes (issue #71):
+// each engine needs exactly the attributes of its dump command, a database
+// parent needs none, and a write-only companion counts as the attribute.
+func TestValidateComposeCredentials(t *testing.T) {
+	set := types.StringValue("x")
+	null := types.StringNull()
+	cases := []struct {
+		name                 string
+		serviceType, engine  string
+		user, password, root types.String
+		passwordWo, rootWo   types.String
+		wantAttr             string
+	}{
+		{"postgres complete", "compose", "postgres", set, null, null, null, null, ""},
+		{"postgres without user", "compose", "postgres", null, null, null, null, null, "compose_database_user"},
+		{"postgres with password", "compose", "postgres", set, set, null, null, null, "compose_database_password"},
+		{"mariadb complete", "compose", "mariadb", set, set, null, null, null, ""},
+		{"mariadb with write-only password", "compose", "mariadb", set, null, null, set, null, ""},
+		{"mariadb without password", "compose", "mariadb", set, null, null, null, null, "compose_database_password"},
+		{"mongo without user", "compose", "mongo", null, set, null, null, null, "compose_database_user"},
+		{"mysql complete", "compose", "mysql", null, null, set, null, null, ""},
+		{"mysql with write-only root password", "compose", "mysql", null, null, null, null, set, ""},
+		{"mysql without root password", "compose", "mysql", null, null, null, null, null, "compose_database_root_password"},
+		{"mysql with user", "compose", "mysql", set, null, set, null, null, "compose_database_user"},
+		{"libsql with user", "compose", "libsql", set, null, null, null, null, "compose_database_user"},
+		{"libsql bare", "compose", "libsql", null, null, null, null, null, ""},
+		{"database parent bare", "postgres", "", null, null, null, null, null, ""},
+		{"database parent with user", "postgres", "", set, null, null, null, null, "compose_database_user"},
+		{"database parent with write-only root password", "mysql", "", null, null, null, null, set, "compose_database_root_password"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := resourceModel{
+				ServiceType:                 types.StringValue(tc.serviceType),
+				ComposeDatabaseType:         types.StringValue(tc.engine),
+				ComposeDatabaseUser:         tc.user,
+				ComposeDatabasePassword:     tc.password,
+				ComposeDatabaseRootPassword: tc.root,
+			}
+			cfg := m
+			cfg.ComposeDatabasePasswordWo = tc.passwordWo
+			cfg.ComposeDatabaseRootPasswordWo = tc.rootWo
+			attr, err := validateComposeCredentials(m, cfg)
+			if attr != tc.wantAttr || (err != nil) != (tc.wantAttr != "") {
+				t.Errorf("validateComposeCredentials() = (%q, %v), want attribute %q", attr, err, tc.wantAttr)
 			}
 		})
 	}

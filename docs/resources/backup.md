@@ -6,6 +6,7 @@ description: |-
   A scheduled logical dump of a database to an S3-compatible destination.
   ~> This resource does not support Redis. Dokploy has no logical dump for Redis. Use dokploy_volume_backup, which archives the volume and accepts a Redis parent.
   ~> This resource does not expose a backup of the Dokploy server itself (the Dokploy web-server backup type). That backup type has no parent service and needs a separate validation path.
+  ~> Dokploy stores and returns compose_database_password and compose_database_root_password in cleartext. Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server can read them. The compose_database_password_wo and compose_database_root_password_wo companions keep them out of the Terraform state.
 ---
 
 # dokploy_backup (Resource)
@@ -15,6 +16,8 @@ A scheduled logical dump of a database to an S3-compatible destination.
 ~> **This resource does not support Redis.** Dokploy has no logical dump for Redis. Use `dokploy_volume_backup`, which archives the volume and accepts a Redis parent.
 
 ~> This resource does not expose a backup of the Dokploy server itself (the Dokploy `web-server` backup type). That backup type has no parent service and needs a separate validation path.
+
+~> Dokploy stores and returns `compose_database_password` and `compose_database_root_password` in cleartext. Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server can read them. The `compose_database_password_wo` and `compose_database_root_password_wo` companions keep them out of the Terraform state.
 
 ## Example Usage
 
@@ -35,7 +38,11 @@ resource "dokploy_backup" "db_nightly" {
 
 # A database running inside a dokploy_compose service needs
 # compose_database_type as well: service_type alone cannot say both "the
-# parent is a compose service" and "the engine inside it is mariadb".
+# parent is a compose service" and "the engine inside it is mariadb". It also
+# needs the credentials of the dump command, because a compose service has no
+# database record that Dokploy can read them from: the user for postgres, the
+# user and the password for mariadb and mongo, the root password for mysql.
+# The write-only companion keeps the password out of the state.
 resource "dokploy_backup" "nextcloud_db" {
   service_id            = dokploy_compose.nextcloud.id
   service_type          = "compose"
@@ -45,6 +52,10 @@ resource "dokploy_backup" "nextcloud_db" {
   prefix                = "/nextcloud"
   cron_expression       = "0 0 * * *"
   destination_id        = dokploy_destination.backups.id
+
+  compose_database_user                = "nextcloud"
+  compose_database_password_wo         = var.nextcloud_db_password
+  compose_database_password_wo_version = 1
 
   keep_latest_count = 10
 }
@@ -64,7 +75,16 @@ resource "dokploy_backup" "nextcloud_db" {
 
 ### Optional
 
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
+- `compose_database_password` (String, Sensitive) Password of `compose_database_user`, for a compose parent whose `compose_database_type` is `mariadb` or `mongo`. Set this attribute or `compose_database_password_wo` for those engines; both are invalid otherwise.
+- `compose_database_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `compose_database_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Do not set it together with `compose_database_password`. A new value reaches the server only when `compose_database_password_wo_version` changes.
+- `compose_database_password_wo_version` (Number) Version of `compose_database_password_wo`. Change it to send the current `compose_database_password_wo` value to the server. It needs `compose_database_password_wo`.
+- `compose_database_root_password` (String, Sensitive) Root password of the MySQL server, for a compose parent whose `compose_database_type` is `mysql`. Set this attribute or `compose_database_root_password_wo` for that engine; both are invalid otherwise.
+- `compose_database_root_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `compose_database_root_password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Do not set it together with `compose_database_root_password`. A new value reaches the server only when `compose_database_root_password_wo_version` changes.
+- `compose_database_root_password_wo_version` (Number) Version of `compose_database_root_password_wo`. Change it to send the current `compose_database_root_password_wo` value to the server. It needs `compose_database_root_password_wo`.
 - `compose_database_type` (String) Real database engine running inside the compose service that `service_id` refers to: one of `postgres`, `mysql`, `mariadb`, `mongo`, `libsql`. Required when `service_type` is `compose`, and invalid otherwise. Dokploy's `backup.create` never accepts `compose` as a `databaseType` — even for a compose-parented backup it must be the actual engine, because that is what the server uses to build the dump command. `service_type` alone cannot describe both the backup's parent kind and the underlying engine for a compose parent, so this attribute carries the engine in that case. A change forces a replacement.
+- `compose_database_user` (String) User that the dump command authenticates as, for a compose parent whose `compose_database_type` is `postgres`, `mariadb`, or `mongo`. Required for those engines, and invalid otherwise: a database parent carries its own credentials, and Dokploy reads this value for a compose parent only. Without it, Dokploy builds no dump command, and every run of the backup fails.
 - `enabled` (Boolean) Whether the backup runs. Defaults to `true`. Dokploy leaves this field null for a record from the API alone, which is neither on nor off, and a backup in the configuration that never runs is the worse failure.
 - `include_encryption_key` (Boolean) Include the database encryption key in the dump. Defaults to `true`, the value that Dokploy stores for a new backup. The provider always sends the field: the Dokploy update endpoint stores `false` for an omitted field, so a request without it would turn the key off on a record that had it on.
 - `keep_latest_count` (Number) Number of dumps to keep. Omit it to keep all of them.

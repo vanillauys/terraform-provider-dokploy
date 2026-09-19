@@ -4379,6 +4379,14 @@
    "tier"
   ]
  },
+ "stripe.startFreeTrial": {
+  "fields": [
+   "tier"
+  ],
+  "required": [
+   "tier"
+  ]
+ },
  "stripe.updateInvoiceNotifications": {
   "fields": [
    "enabled"

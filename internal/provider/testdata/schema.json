@@ -727,7 +727,48 @@
             "computed": true
           },
           {
+            "name": "compose_database_password",
+            "type": "tftypes.String",
+            "optional": true,
+            "sensitive": true
+          },
+          {
+            "name": "compose_database_password_wo",
+            "type": "tftypes.String",
+            "optional": true,
+            "sensitive": true,
+            "write_only": true
+          },
+          {
+            "name": "compose_database_password_wo_version",
+            "type": "tftypes.Number",
+            "optional": true
+          },
+          {
+            "name": "compose_database_root_password",
+            "type": "tftypes.String",
+            "optional": true,
+            "sensitive": true
+          },
+          {
+            "name": "compose_database_root_password_wo",
+            "type": "tftypes.String",
+            "optional": true,
+            "sensitive": true,
+            "write_only": true
+          },
+          {
+            "name": "compose_database_root_password_wo_version",
+            "type": "tftypes.Number",
+            "optional": true
+          },
+          {
             "name": "compose_database_type",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "compose_database_user",
             "type": "tftypes.String",
             "optional": true
           },
