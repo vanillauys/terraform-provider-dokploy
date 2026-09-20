@@ -222,59 +222,6 @@ resource "dokploy_backup" "test" {
 // Dokploy actually populates for a compose parent).
 func TestAccBackup_composeParent(t *testing.T) {
 	name := acctest.RandomName("bk-compose")
-	cfg := func(credentials string) string {
-		return fmt.Sprintf(`
-resource "dokploy_project" "test" {
-  name = %q
-}
-
-resource "dokploy_destination" "test" {
-  name              = %q
-  provider_name     = "Cloudflare"
-  endpoint          = "https://example.r2.cloudflarestorage.com"
-  bucket            = "acc"
-  region            = "auto"
-  access_key        = "AKIAACCEPTANCEONLY"
-  secret_access_key = "acceptance-only-not-a-real-secret"
-}
-
-resource "dokploy_compose" "test" {
-  name             = %q
-  environment_id   = dokploy_project.test.environments[0].id
-  deploy_on_change = false
-
-  raw = {
-    compose_file = "services:\n  db:\n    image: mariadb:11\n"
-  }
-}
-
-resource "dokploy_backup" "test" {
-  service_id             = dokploy_compose.test.id
-  service_type           = "compose"
-  compose_database_type  = "mariadb"
-  service_name           = "db"
-  database               = "app"
-  prefix                 = "backups/acc/"
-  cron_expression        = "0 3 * * *"
-  destination_id         = dokploy_destination.test.id
-%s
-}
-`, name+"-proj", name+"-dest", name+"-compose", credentials)
-	}
-
-	// serverCredentials asserts the mariadb entry of the record's metadata:
-	// the value that Dokploy's dump command reads (issue #71).
-	serverCredentials := func(user, password string) resource.TestCheckFunc {
-		return checkServer("dokploy_backup.test", func(b *client.Backup) error {
-			if b.Metadata == nil || b.Metadata.Mariadb == nil {
-				return fmt.Errorf("server metadata = %+v, want a mariadb entry", b.Metadata)
-			}
-			if got := *b.Metadata.Mariadb; got.DatabaseUser != user || got.DatabasePassword != password {
-				return fmt.Errorf("server metadata.mariadb = %+v, want user %q and password %q", got, user, password)
-			}
-			return nil
-		})
-	}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -282,7 +229,7 @@ resource "dokploy_backup" "test" {
 		CheckDestroy:             checkDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: cfg(`
+				Config: composeConfig(name, `
   compose_database_user     = "app"
   compose_database_password = "app-pass-1"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -320,7 +267,7 @@ resource "dokploy_backup" "test" {
 			{
 				// backup.update replaces metadata as a whole: a user change
 				// must carry the password again.
-				Config: cfg(`
+				Config: composeConfig(name, `
   compose_database_user     = "app2"
   compose_database_password = "app-pass-1"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -338,19 +285,98 @@ resource "dokploy_backup" "test" {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
+		},
+	})
+}
+
+// composeConfig is a mariadb service inside a compose stack with a backup of
+// it; credentials is the attribute block of the backup.
+func composeConfig(name, credentials string) string {
+	return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_destination" "test" {
+  name              = %q
+  provider_name     = "Cloudflare"
+  endpoint          = "https://example.r2.cloudflarestorage.com"
+  bucket            = "acc"
+  region            = "auto"
+  access_key        = "AKIAACCEPTANCEONLY"
+  secret_access_key = "acceptance-only-not-a-real-secret"
+}
+
+resource "dokploy_compose" "test" {
+  name             = %q
+  environment_id   = dokploy_project.test.environments[0].id
+  deploy_on_change = false
+
+  raw = {
+    compose_file = "services:\n  db:\n    image: mariadb:11\n"
+  }
+}
+
+resource "dokploy_backup" "test" {
+  service_id             = dokploy_compose.test.id
+  service_type           = "compose"
+  compose_database_type  = "mariadb"
+  service_name           = "db"
+  database               = "app"
+  prefix                 = "backups/acc/"
+  cron_expression        = "0 3 * * *"
+  destination_id         = dokploy_destination.test.id
+%s
+}
+`, name+"-proj", name+"-dest", name+"-compose", credentials)
+}
+
+// serverCredentials asserts the mariadb entry of the record's metadata: the
+// value that Dokploy's dump command reads (issue #71).
+func serverCredentials(user, password string) resource.TestCheckFunc {
+	return checkServer("dokploy_backup.test", func(b *client.Backup) error {
+		if b.Metadata == nil || b.Metadata.Mariadb == nil {
+			return fmt.Errorf("server metadata = %+v, want a mariadb entry", b.Metadata)
+		}
+		if got := *b.Metadata.Mariadb; got.DatabaseUser != user || got.DatabasePassword != password {
+			return fmt.Errorf("server metadata.mariadb = %+v, want user %q and password %q", got, user, password)
+		}
+		return nil
+	})
+}
+
+// TestAccBackup_composeWriteOnlyPassword covers the write-only companion of
+// compose_database_password. It is a separate test because a write-only
+// value needs Terraform 1.11: the nightly matrix runs 1.5.7 too, where the
+// CLI rejects the attribute at validation.
+func TestAccBackup_composeWriteOnlyPassword(t *testing.T) {
+	name := acctest.RandomName("bk-compose-wo")
+
+	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks:   acctest.WriteOnlyVersionChecks(),
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: composeConfig(name, `
+  compose_database_user     = "app"
+  compose_database_password = "app-pass-1"`),
+				Check: serverCredentials("app", "app-pass-1"),
+			},
 			{
 				// The switch to the write-only companion: the new value
 				// reaches the server, and the state holds null for the plain
 				// attribute from then on.
-				Config: cfg(`
-  compose_database_user                = "app2"
+				Config: composeConfig(name, `
+  compose_database_user                = "app"
   compose_database_password_wo         = "app-pass-2"
   compose_database_password_wo_version = 1`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("dokploy_backup.test", "compose_database_password"),
 					resource.TestCheckNoResourceAttr("dokploy_backup.test", "compose_database_password_wo"),
 					resource.TestCheckResourceAttr("dokploy_backup.test", "compose_database_password_wo_version", "1"),
-					serverCredentials("app2", "app-pass-2"),
+					serverCredentials("app", "app-pass-2"),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
@@ -360,15 +386,15 @@ resource "dokploy_backup" "test" {
 				// An update of another attribute with the companion unchanged
 				// resends the stored password: the full metadata object goes
 				// out on every update, and the secret must survive it.
-				Config: cfg(`
+				Config: composeConfig(name, `
   keep_latest_count                    = 3
-  compose_database_user                = "app2"
+  compose_database_user                = "app"
   compose_database_password_wo         = "app-pass-2"
   compose_database_password_wo_version = 1`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("dokploy_backup.test", "keep_latest_count", "3"),
 					resource.TestCheckNoResourceAttr("dokploy_backup.test", "compose_database_password"),
-					serverCredentials("app2", "app-pass-2"),
+					serverCredentials("app", "app-pass-2"),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
