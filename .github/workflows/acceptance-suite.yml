@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --proto '=https' --tlsv1.2 -sSf -o "$RUNNER_TEMP/install.sh" https://dokploy.com/install.sh
-          echo "aa317e0cc1098029e771a544f9c955c3e50ec558e9ea1c0c5b3734f6fc8893e4  $RUNNER_TEMP/install.sh" | sha256sum -c -
+          echo "92749e5fe1678d1a2dc1e5bad193a1e113fcdbee3cf24193fc14ab85765b6b8a  $RUNNER_TEMP/install.sh" | sha256sum -c -
           sudo bash "$RUNNER_TEMP/install.sh"
       # No separate "wait for Dokploy" step: `GET /` answering is not a
       # readiness signal for the auth stack, which is what we actually need.
