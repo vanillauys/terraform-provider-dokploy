@@ -66,6 +66,7 @@ resource "dokploy_gitlab_provider" "internal" {
 - `secret` (String, Sensitive) Secret of the OAuth application. Set this attribute or `secret_wo`.
 - `secret_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `secret`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `secret` and `secret_wo`. A new value reaches the server only when `secret_wo_version` changes.
 - `secret_wo_version` (Number) Version of `secret_wo`. Change it to send the current `secret_wo` value to the server. It needs `secret_wo`.
+- `verify_connection` (Boolean) Test the connection with `gitlab.testConnection` after the provider creates or updates the record, because the endpoint takes the id of a stored record. Defaults to `false`. If the test fails, the apply fails with the server message, but the record stays on the server. After a failed create, Terraform marks the resource as tainted. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`.
 
 ### Read-Only
 

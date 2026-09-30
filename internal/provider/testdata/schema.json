@@ -80,6 +80,12 @@
             "name": "organization_id",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           }
         ]
       }
@@ -903,6 +909,12 @@
             "optional": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "workspace_name",
             "type": "tftypes.String",
             "optional": true
@@ -1375,6 +1387,12 @@
             "computed": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -1463,6 +1481,12 @@
             "name": "secret_access_key_wo_version",
             "type": "tftypes.Number",
             "optional": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           }
         ]
       }
@@ -1530,6 +1554,12 @@
           },
           {
             "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "verify_connection",
             "type": "tftypes.Bool",
             "optional": true,
             "computed": true
@@ -1776,6 +1806,12 @@
             "required": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -1921,6 +1957,12 @@
             "type": "tftypes.String",
             "optional": true,
             "computed": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           }
         ]
       }
@@ -1993,6 +2035,12 @@
             "name": "secret_wo_version",
             "type": "tftypes.Number",
             "optional": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           }
         ]
       }
@@ -2094,6 +2142,12 @@
             "required": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -2159,6 +2213,12 @@
           },
           {
             "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "verify_connection",
             "type": "tftypes.Bool",
             "optional": true,
             "computed": true
@@ -2609,6 +2669,12 @@
             "name": "username",
             "type": "tftypes.String",
             "optional": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "volume_backup",
@@ -3219,6 +3285,12 @@
             "required": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -3641,6 +3713,12 @@
             "optional": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -3891,6 +3969,12 @@
             "name": "username",
             "type": "tftypes.String",
             "required": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           }
         ]
       }
@@ -3983,6 +4067,12 @@
             "name": "to_addresses",
             "type": "tftypes.List[tftypes.String]",
             "required": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "volume_backup",
@@ -4261,6 +4351,12 @@
             "computed": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -4436,6 +4532,12 @@
             "computed": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -4547,6 +4649,12 @@
           },
           {
             "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "verify_connection",
             "type": "tftypes.Bool",
             "optional": true,
             "computed": true

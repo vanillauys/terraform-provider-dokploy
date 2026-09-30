@@ -57,6 +57,7 @@ resource "dokploy_ai" "local" {
 - `api_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `api_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `api_key` and `api_key_wo`. A new value reaches the server only when `api_key_wo_version` changes.
 - `api_key_wo_version` (Number) Version of `api_key_wo`. Change it to send the current `api_key_wo` value to the server. It needs `api_key_wo`.
 - `is_enabled` (Boolean) Whether Dokploy uses this configuration. Defaults to `true`.
+- `verify_connection` (Boolean) Test the connection with `ai.testConnection` before the provider creates or updates the record. Defaults to `false`. If the test fails, the apply fails with the server message, and the provider writes nothing. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`. The test sends a request to the endpoint with the key and the model, and it retries three times, so a failed test can take several seconds.
 
 ### Read-Only
 

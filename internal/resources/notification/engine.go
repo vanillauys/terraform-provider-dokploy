@@ -41,7 +41,9 @@ type Common struct {
 	DokployBackup   types.Bool   `tfsdk:"dokploy_backup"`
 	VolumeBackup    types.Bool   `tfsdk:"volume_backup"`
 	ServerThreshold types.Bool   `tfsdk:"server_threshold"`
-	CreatedAt       types.String `tfsdk:"created_at"`
+	// VerifyConnection is provider-only: Dokploy stores no value for it.
+	VerifyConnection types.Bool   `tfsdk:"verify_connection"`
+	CreatedAt        types.String `tfsdk:"created_at"`
 }
 
 // base maps the shared attributes onto the request base.
@@ -140,6 +142,14 @@ type Kind[M any] struct {
 	// Attributes are the channel's own attributes; the engine adds Common's
 	// and the write-only companions of Secrets.
 	Attributes map[string]schema.Attribute
+	// Test is the name of the connection-test endpoint after
+	// "notification.", for example "testSlackConnection". TestNote adds
+	// channel-specific text to the verify_connection description.
+	Test     string
+	TestNote string
+	// Request builds the create request of the channel from the model. The
+	// test endpoint takes the same channel fields, and it ignores the rest.
+	Request func(ctx context.Context, m *M) any
 
 	Common  func(*M) *Common
 	Create  func(ctx context.Context, c *client.Client, m *M) (*client.Notification, error)
@@ -181,11 +191,13 @@ func (r *genericResource[M]) Schema(_ context.Context, _ resource.SchemaRequest,
 	for k, v := range r.kind.Attributes {
 		attrs[k] = v
 	}
+	attrs["verify_connection"] = tfutil.VerifyConnectionAttribute("notification."+r.kind.Test, false,
+		"The test sends a real test message to the channel. "+r.kind.TestNote)
 	description := r.kind.Intro + "\n\n" +
 		"Each event attribute selects one Dokploy event that sends a message on this channel. All events default " +
 		"to `false`, so a new channel sends nothing until you enable one.\n\n" +
 		"~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and " +
-		"fails on the first message."
+		"fails on the first message. Set `verify_connection = true` to test the channel before the write."
 	for _, s := range r.kind.Secrets {
 		if _, ok := attrs[s.name].(schema.StringAttribute); !ok {
 			panic(fmt.Sprintf("%s: secret %q is not a string attribute", r.kind.Name, s.name))
@@ -221,6 +233,9 @@ func (r *genericResource[M]) Create(ctx context.Context, req resource.CreateRequ
 	}
 	inUse := r.resolveSecrets(ctx, req.Config, &plan, nil, resp.Private, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !r.verify(ctx, &plan, &resp.Diagnostics) {
 		return
 	}
 	n, err := r.kind.Create(ctx, r.client, &plan)
@@ -269,6 +284,9 @@ func (r *genericResource[M]) Update(ctx context.Context, req resource.UpdateRequ
 	}
 	inUse := r.resolveSecrets(ctx, req.Config, &plan, &state, resp.Private, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !r.verify(ctx, &plan, &resp.Diagnostics) {
 		return
 	}
 	id := r.kind.Common(&state).ID.ValueString()
@@ -361,4 +379,16 @@ func (r *genericResource[M]) Delete(ctx context.Context, req resource.DeleteRequ
 
 func (r *genericResource[M]) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(tfutil.ImportVerifyDefault(ctx, &resp.State)...)
+}
+
+// verify runs the channel test when verify_connection is true, with the
+// resolved secrets of the plan. It returns false after it adds an error.
+func (r *genericResource[M]) verify(ctx context.Context, plan *M, diags *diag.Diagnostics) bool {
+	secrets := make([]string, 0, len(r.kind.Secrets))
+	for _, s := range r.kind.Secrets {
+		secrets = append(secrets, s.plain(plan).ValueString())
+	}
+	return tfutil.VerifyConnection(ctx, diags, r.client, r.kind.Common(plan).VerifyConnection,
+		"notification."+r.kind.Test, r.kind.Label+" notification", r.kind.Request(ctx, plan), secrets...)
 }

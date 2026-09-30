@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -40,6 +41,7 @@ type resourceModel struct {
 	APITokenWo           types.String `tfsdk:"api_token_wo"`
 	APITokenWoVersion    types.Int64  `tfsdk:"api_token_wo_version"`
 	WorkspaceName        types.String `tfsdk:"workspace_name"`
+	VerifyConnection     types.Bool   `tfsdk:"verify_connection"`
 	CreatedAt            types.String `tfsdk:"created_at"`
 }
 
@@ -84,6 +86,7 @@ func (r *bitbucketResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			Optional:    true,
 			Description: "Bitbucket workspace whose repositories Dokploy lists. If you remove it from the configuration, the provider clears it.",
 		},
+		"verify_connection": tfutil.VerifyConnectionAttribute("bitbucket.testConnection", true, ""),
 		"created_at": schema.StringAttribute{
 			Computed:      true,
 			Description:   "Creation timestamp from the server.",
@@ -205,6 +208,15 @@ func (r *bitbucketResource) Create(ctx context.Context, req resource.CreateReque
 	flatten(created, &plan)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	r.verify(ctx, plan, &resp.Diagnostics)
+}
+
+// verify runs bitbucket.testConnection, which takes the id of the stored
+// record, so Create and Update call it after the write. The state is set
+// first: a failed check leaves the record on the server.
+func (r *bitbucketResource) verify(ctx context.Context, plan resourceModel, diags *diag.Diagnostics) {
+	tfutil.VerifyConnection(ctx, diags, r.client, plan.VerifyConnection, "bitbucket.testConnection", "Bitbucket",
+		map[string]string{"bitbucketId": plan.ID.ValueString()})
 }
 
 func (r *bitbucketResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -281,6 +293,7 @@ func (r *bitbucketResource) Update(ctx context.Context, req resource.UpdateReque
 	flatten(b, &plan)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	r.verify(ctx, plan, &resp.Diagnostics)
 }
 
 func (r *bitbucketResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -296,4 +309,5 @@ func (r *bitbucketResource) Delete(ctx context.Context, req resource.DeleteReque
 
 func (r *bitbucketResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(tfutil.ImportVerifyDefault(ctx, &resp.State)...)
 }

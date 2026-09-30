@@ -43,6 +43,7 @@ type resourceModel struct {
 	ImagePrefix       types.String `tfsdk:"image_prefix"`
 	RegistryType      types.String `tfsdk:"registry_type"`
 	OrganizationID    types.String `tfsdk:"organization_id"`
+	VerifyConnection  types.Bool   `tfsdk:"verify_connection"`
 	CreatedAt         types.String `tfsdk:"created_at"`
 }
 
@@ -90,6 +91,8 @@ func (r *registryResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			Description:   "Id of the organization that owns the registry.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+		"verify_connection": tfutil.VerifyConnectionAttribute("registry.testRegistry", false,
+			"Dokploy already runs `docker login` on create and on update, so this attribute adds an early check only."),
 		"created_at": schema.StringAttribute{
 			Computed:      true,
 			Description:   "Creation timestamp from the server.",
@@ -166,14 +169,18 @@ func (r *registryResource) Create(ctx context.Context, req resource.CreateReques
 	}
 	inUse := map[string]bool{"password": !cfg.PasswordWo.IsNull()}
 	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlags(ctx, resp.Private, secretNames, inUse)...)
-	created, err := r.client.CreateRegistry(ctx, client.CreateRegistryRequest{
+	body := client.CreateRegistryRequest{
 		RegistryName: plan.Name.ValueString(),
 		Username:     plan.Username.ValueString(),
 		Password:     tfutil.SecretToCreate(plan.Password, cfg.PasswordWo),
 		RegistryURL:  plan.URL.ValueString(),
 		RegistryType: plan.RegistryType.ValueString(),
 		ImagePrefix:  plan.ImagePrefix.ValueString(),
-	})
+	}
+	if !tfutil.VerifyConnection(ctx, &resp.Diagnostics, r.client, plan.VerifyConnection, "registry.testRegistry", "registry", body, body.Password) {
+		return
+	}
+	created, err := r.client.CreateRegistry(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Creating registry", err.Error())
 		return
@@ -227,7 +234,7 @@ func (r *registryResource) Update(ctx context.Context, req resource.UpdateReques
 		}
 		password = current
 	}
-	if err := r.client.UpdateRegistry(ctx, client.UpdateRegistryRequest{
+	body := client.UpdateRegistryRequest{
 		RegistryID:   plan.ID.ValueString(),
 		RegistryName: plan.Name.ValueString(),
 		Username:     plan.Username.ValueString(),
@@ -235,7 +242,11 @@ func (r *registryResource) Update(ctx context.Context, req resource.UpdateReques
 		RegistryURL:  plan.URL.ValueString(),
 		RegistryType: plan.RegistryType.ValueString(),
 		ImagePrefix:  plan.ImagePrefix.ValueString(),
-	}); err != nil {
+	}
+	if !tfutil.VerifyConnection(ctx, &resp.Diagnostics, r.client, plan.VerifyConnection, "registry.testRegistry", "registry", body, password) {
+		return
+	}
+	if err := r.client.UpdateRegistry(ctx, body); err != nil {
 		resp.Diagnostics.AddError("Updating registry", err.Error())
 		return
 	}
@@ -262,4 +273,5 @@ func (r *registryResource) Delete(ctx context.Context, req resource.DeleteReques
 
 func (r *registryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(tfutil.ImportVerifyDefault(ctx, &resp.State)...)
 }

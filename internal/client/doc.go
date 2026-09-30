@@ -1734,3 +1734,58 @@ package client
 // absent key is the dialect A 400 "expected nonoptional, received
 // undefined". So the resource sends the full object on every update, and a
 // write-only secret with nothing new to send resends the stored value.
+//
+// # v1.8.0 records (probed 2026-09-30 on a v0.30.8 rig)
+//
+// ## verify_connection on eighteen test endpoints (#67)
+//
+// Every test endpoint is a POST. Success is HTTP 200 with the body `true`.
+// Failure is HTTP 400 with {"message": ...} for every endpoint probed, and
+// HTTP 404 "Gitea Provider not found" for an unknown gitea id (gitlab and
+// bitbucket answer HTTP 400 "... Provider not found" for an unknown id). The
+// zod schema ignores a key that it does not know, so the create request of a
+// resource, with its name and event flags, is a valid body.
+//
+// Body takes the credentials (the provider calls these before the write):
+// registry.testRegistry {registryType "cloud", registryUrl, username,
+// password}; destination.testConnection {name, provider, accessKey,
+// secretAccessKey, bucket, region, endpoint}; ai.testConnection {apiUrl,
+// apiKey, model}; and the twelve notification tests, which need the
+// channel fields of the create request: slack {webhookUrl, channel},
+// discord {webhookUrl}, telegram {botToken, chatId, messageThreadId},
+// email {smtpServer, smtpPort, username, password, toAddresses,
+// fromAddress}, resend {apiKey, fromAddress, toAddresses}, gotify
+// {serverUrl, appToken, priority}, ntfy {serverUrl, topic, accessToken,
+// priority}, mattermost, lark and teams {webhookUrl}, pushover {userKey,
+// apiToken, priority}, custom {endpoint}. The endpoint names are
+// notification.test<Channel>Connection.
+//
+// Body takes the id of a stored record (the provider calls these after the
+// write): gitlab.testConnection {gitlabId}, bitbucket.testConnection
+// {bitbucketId}, gitea.testConnection {giteaId}. A record that exists but
+// cannot connect answers HTTP 400: gitlab "fetch failed" (unreachable URL),
+// bitbucket "Failed to fetch repositories: Service Unavailable", gitea "No
+// access token available. Please authorize with Gitea." A gitea record has
+// an access token only after a person authorizes the OAuth2 application in
+// the Dokploy UI, so a test right after the create always fails.
+//
+// Failure shapes probed: registry "Command failed with code 1. Stderr: Error
+// response from daemon: Get ... denied: denied" (wrong login) and "...
+// connection refused" (unreachable host); destination "Command execution
+// failed: Command failed: rclone ls --s3-access-key-id=... --s3-secret-
+// access-key=..." (the message holds both credentials in cleartext, so the
+// provider redacts them); ai "Failed after 3 attempts. Last error: Cannot
+// connect to API: bad port" (about six seconds); notification "Failed to send
+// slack notification fetch failed" (the same shape for discord and teams),
+// "fetch failed" (custom), "Error testing the
+// notification" (gotify, mattermost, pushover, with "...: fetch failed" for
+// ntfy), "Failed to send email notification connect ECONNREFUSED" (email),
+// and "Failed to send Resend notification API key is invalid".
+//
+// Every notification test sends a real message to the channel, so the
+// attribute description says so. Two tests cannot fail: telegram answers
+// `true` for a bot token that Telegram rejects, and lark answers `true` for
+// a webhook URL that it cannot reach. The docs of those two say so.
+//
+// The endpoints not in scope: github.testConnection, dnsProvider.
+// testConnection, domain.validateDomain, registry.testRegistryById.

@@ -5,7 +5,7 @@ subcategory: "Notifications"
 description: |-
   A Microsoft Teams notification channel (Settings > Notifications). Dokploy posts each message to an incoming webhook.
   Each event attribute selects one Dokploy event that sends a message on this channel. All events default to false, so a new channel sends nothing until you enable one.
-  ~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message.
+  ~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message. Set verify_connection = true to test the channel before the write.
   ~> Dokploy stores and returns webhook_url in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The webhook_url_wo companion keeps it out of the Terraform state.
 ---
 
@@ -15,7 +15,7 @@ A Microsoft Teams notification channel (Settings > Notifications). Dokploy posts
 
 Each event attribute selects one Dokploy event that sends a message on this channel. All events default to `false`, so a new channel sends nothing until you enable one.
 
-~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message.
+~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message. Set `verify_connection = true` to test the channel before the write.
 
 ~> **Dokploy stores and returns `webhook_url` in cleartext.** The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The `webhook_url_wo` companion keeps it out of the Terraform state.
 
@@ -52,6 +52,7 @@ resource "dokploy_teams_notification" "deploys" {
 - `dokploy_backup` (Boolean) Send a message when the Dokploy server backup runs. Defaults to `false`.
 - `dokploy_restart` (Boolean) Send a message when Dokploy restarts. Defaults to `false`.
 - `server_threshold` (Boolean) Send a message when a server crosses a resource threshold. Defaults to `false`.
+- `verify_connection` (Boolean) Test the connection with `notification.testTeamsConnection` before the provider creates or updates the record. Defaults to `false`. If the test fails, the apply fails with the server message, and the provider writes nothing. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`. The test sends a real test message to the channel.
 - `volume_backup` (Boolean) Send a message when a volume backup runs. Defaults to `false`.
 - `webhook_url` (String, Sensitive) Incoming webhook URL of the Teams channel. Set this attribute or `webhook_url_wo`.
 - `webhook_url_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `webhook_url`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `webhook_url` and `webhook_url_wo`. A new value reaches the server only when `webhook_url_wo_version` changes.

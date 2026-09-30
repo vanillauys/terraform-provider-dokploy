@@ -5,7 +5,7 @@ subcategory: "Notifications"
 description: |-
   A Gotify notification channel (Settings > Notifications). Dokploy pushes each message to a Gotify server.
   Each event attribute selects one Dokploy event that sends a message on this channel. All events default to false, so a new channel sends nothing until you enable one.
-  ~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message.
+  ~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message. Set verify_connection = true to test the channel before the write.
   ~> Dokploy stores and returns app_token in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The app_token_wo companion keeps it out of the Terraform state.
 ---
 
@@ -15,7 +15,7 @@ A Gotify notification channel (Settings > Notifications). Dokploy pushes each me
 
 Each event attribute selects one Dokploy event that sends a message on this channel. All events default to `false`, so a new channel sends nothing until you enable one.
 
-~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message.
+~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message. Set `verify_connection = true` to test the channel before the write.
 
 ~> **Dokploy stores and returns `app_token` in cleartext.** The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The `app_token_wo` companion keeps it out of the Terraform state.
 
@@ -60,6 +60,7 @@ resource "dokploy_gotify_notification" "phone" {
 - `dokploy_restart` (Boolean) Send a message when Dokploy restarts. Defaults to `false`.
 - `priority` (Number) Message priority, 1 or higher. Defaults to `5`.
 - `server_threshold` (Boolean) Send a message when a server crosses a resource threshold. Defaults to `false`.
+- `verify_connection` (Boolean) Test the connection with `notification.testGotifyConnection` before the provider creates or updates the record. Defaults to `false`. If the test fails, the apply fails with the server message, and the provider writes nothing. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`. The test sends a real test message to the channel.
 - `volume_backup` (Boolean) Send a message when a volume backup runs. Defaults to `false`.
 
 ### Read-Only

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -39,6 +40,7 @@ type resourceModel struct {
 	ClientSecretWoVersion types.Int64  `tfsdk:"client_secret_wo_version"`
 	RedirectURI           types.String `tfsdk:"redirect_uri"`
 	Scopes                types.String `tfsdk:"scopes"`
+	VerifyConnection      types.Bool   `tfsdk:"verify_connection"`
 	CreatedAt             types.String `tfsdk:"created_at"`
 }
 
@@ -82,6 +84,8 @@ func (r *giteaResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			Optional: true, Computed: true, Default: stringdefault.StaticString(client.GiteaDefaultScopes),
 			Description: "OAuth2 scopes that Dokploy requests, comma-separated. Defaults to `" + client.GiteaDefaultScopes + "`.",
 		},
+		"verify_connection": tfutil.VerifyConnectionAttribute("gitea.testConnection", true,
+			"Gitea answers the test only after you authorize the OAuth2 application in the Dokploy UI. A new record has no access token, so a test on the first apply always fails."),
 		"created_at": schema.StringAttribute{
 			Computed:      true,
 			Description:   "Creation timestamp from the server.",
@@ -164,6 +168,15 @@ func (r *giteaResource) Create(ctx context.Context, req resource.CreateRequest, 
 	flatten(created, &plan)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	r.verify(ctx, plan, &resp.Diagnostics)
+}
+
+// verify runs gitea.testConnection, which takes the id of the stored
+// record, so Create and Update call it after the write. The state is set
+// first: a failed check leaves the record on the server.
+func (r *giteaResource) verify(ctx context.Context, plan resourceModel, diags *diag.Diagnostics) {
+	tfutil.VerifyConnection(ctx, diags, r.client, plan.VerifyConnection, "gitea.testConnection", "Gitea",
+		map[string]string{"giteaId": plan.ID.ValueString()})
 }
 
 func (r *giteaResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -229,6 +242,7 @@ func (r *giteaResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	flatten(g, &plan)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	r.verify(ctx, plan, &resp.Diagnostics)
 }
 
 func (r *giteaResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -244,4 +258,5 @@ func (r *giteaResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 
 func (r *giteaResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(tfutil.ImportVerifyDefault(ctx, &resp.State)...)
 }

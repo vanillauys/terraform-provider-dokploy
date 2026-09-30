@@ -2,6 +2,8 @@ package notification
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -103,5 +105,60 @@ func TestCustomFlattenCollapsesEmptyHeaders(t *testing.T) {
 	}
 	if got := headersOf(context.Background(), types.MapNull(types.StringType)); got == nil || len(got) != 0 {
 		t.Errorf("headersOf(null) = %v, want an empty (non-nil) map, which the server accepts as no headers", got)
+	}
+}
+
+// requestKeys checks that a kind names its test endpoint and that its
+// request carries every field that the endpoint requires (the zod field
+// errors that the v0.30.8 probes recorded).
+func requestKeys[M any](t *testing.T, kind Kind[M], wantTest string, wantKeys ...string) {
+	t.Helper()
+	if kind.Test != wantTest {
+		t.Errorf("%s: Test = %q, want %q", kind.Name, kind.Test, wantTest)
+	}
+	var m M
+	raw, err := json.Marshal(kind.Request(context.Background(), &m))
+	if err != nil {
+		t.Fatalf("%s: marshal request: %v", kind.Name, err)
+	}
+	var got map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("%s: unmarshal request: %v", kind.Name, err)
+	}
+	for _, key := range wantKeys {
+		if _, ok := got[key]; !ok {
+			t.Errorf("%s: request misses %q: %s", kind.Name, key, raw)
+		}
+	}
+}
+
+func TestEveryKindBuildsItsTestRequest(t *testing.T) {
+	requestKeys(t, SlackKind(), "testSlackConnection", "webhookUrl", "channel")
+	requestKeys(t, DiscordKind(), "testDiscordConnection", "webhookUrl")
+	requestKeys(t, TelegramKind(), "testTelegramConnection", "botToken", "chatId", "messageThreadId")
+	requestKeys(t, EmailKind(), "testEmailConnection", "smtpServer", "smtpPort", "username", "password", "toAddresses", "fromAddress")
+	requestKeys(t, ResendKind(), "testResendConnection", "apiKey", "fromAddress", "toAddresses")
+	requestKeys(t, GotifyKind(), "testGotifyConnection", "serverUrl", "appToken", "priority")
+	requestKeys(t, NtfyKind(), "testNtfyConnection", "serverUrl", "topic", "accessToken", "priority")
+	requestKeys(t, MattermostKind(), "testMattermostConnection", "webhookUrl")
+	requestKeys(t, LarkKind(), "testLarkConnection", "webhookUrl")
+	requestKeys(t, TeamsKind(), "testTeamsConnection", "webhookUrl")
+	requestKeys(t, PushoverKind(), "testPushoverConnection", "userKey", "apiToken", "priority")
+	requestKeys(t, CustomKind(), "testCustomConnection", "endpoint")
+}
+
+func TestEverySchemaHasVerifyConnection(t *testing.T) {
+	ctx := context.Background()
+	for name, r := range allKinds() {
+		var resp resource.SchemaResponse
+		r.Schema(ctx, resource.SchemaRequest{}, &resp)
+		attr, ok := resp.Schema.Attributes["verify_connection"].(schema.BoolAttribute)
+		if !ok || !attr.Optional || !attr.Computed || attr.Default == nil {
+			t.Errorf("%s: verify_connection must be an Optional + Computed bool with a default", name)
+			continue
+		}
+		if !strings.Contains(attr.Description, "sends a real test message") {
+			t.Errorf("%s: description must say that the test sends a message: %q", name, attr.Description)
+		}
 	}
 }

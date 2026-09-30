@@ -48,6 +48,11 @@ type SlackModel struct {
 }
 
 func SlackKind() Kind[SlackModel] {
+	request := func(ctx context.Context, m *SlackModel) client.CreateSlackNotificationRequest {
+		return client.CreateSlackNotificationRequest{
+			NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(), Channel: m.Channel.ValueString(),
+		}
+	}
 	return Kind[SlackModel]{
 		Name: "slack_notification", Label: "Slack", Type: "slack",
 		Intro: "A Slack notification channel (Settings > Notifications). Dokploy posts each message to an incoming webhook.",
@@ -59,11 +64,11 @@ func SlackKind() Kind[SlackModel] {
 					"default channel. If you remove it from the configuration, the provider clears it.",
 			},
 		},
-		Common: func(m *SlackModel) *Common { return &m.Common },
+		Common:  func(m *SlackModel) *Common { return &m.Common },
+		Test:    "testSlackConnection",
+		Request: func(ctx context.Context, m *SlackModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *SlackModel) (*client.Notification, error) {
-			return c.CreateSlackNotification(ctx, client.CreateSlackNotificationRequest{
-				NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(), Channel: m.Channel.ValueString(),
-			})
+			return c.CreateSlackNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *SlackModel, n *client.Notification) error {
 			return c.UpdateSlackNotification(ctx, client.UpdateSlackNotificationRequest{
@@ -96,6 +101,11 @@ type DiscordModel struct {
 }
 
 func DiscordKind() Kind[DiscordModel] {
+	request := func(ctx context.Context, m *DiscordModel) client.CreateDiscordNotificationRequest {
+		return client.CreateDiscordNotificationRequest{
+			NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(), Decoration: m.Decoration.ValueBool(),
+		}
+	}
 	return Kind[DiscordModel]{
 		Name: "discord_notification", Label: "Discord", Type: "discord",
 		Intro: "A Discord notification channel (Settings > Notifications). Dokploy posts each message to a channel webhook.",
@@ -106,11 +116,11 @@ func DiscordKind() Kind[DiscordModel] {
 				Description: "Send the message as a rich embed with colors and the Dokploy icon. Defaults to `true`.",
 			},
 		},
-		Common: func(m *DiscordModel) *Common { return &m.Common },
+		Common:  func(m *DiscordModel) *Common { return &m.Common },
+		Test:    "testDiscordConnection",
+		Request: func(ctx context.Context, m *DiscordModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *DiscordModel) (*client.Notification, error) {
-			return c.CreateDiscordNotification(ctx, client.CreateDiscordNotificationRequest{
-				NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(), Decoration: m.Decoration.ValueBool(),
-			})
+			return c.CreateDiscordNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *DiscordModel, n *client.Notification) error {
 			return c.UpdateDiscordNotification(ctx, client.UpdateDiscordNotificationRequest{
@@ -144,6 +154,12 @@ type TelegramModel struct {
 }
 
 func TelegramKind() Kind[TelegramModel] {
+	request := func(ctx context.Context, m *TelegramModel) client.CreateTelegramNotificationRequest {
+		return client.CreateTelegramNotificationRequest{
+			NotificationBase: m.base(), BotToken: m.BotToken.ValueString(), ChatID: m.ChatID.ValueString(),
+			MessageThreadID: m.MessageThreadID.ValueString(),
+		}
+	}
 	return Kind[TelegramModel]{
 		Name: "telegram_notification", Label: "Telegram", Type: "telegram",
 		Intro: "A Telegram notification channel (Settings > Notifications). Dokploy sends each message through a bot to a chat.",
@@ -156,12 +172,12 @@ func TelegramKind() Kind[TelegramModel] {
 					"configuration, the provider clears it.",
 			},
 		},
-		Common: func(m *TelegramModel) *Common { return &m.Common },
+		Common:   func(m *TelegramModel) *Common { return &m.Common },
+		Test:     "testTelegramConnection",
+		TestNote: "Dokploy v0.30.8 reports success for a wrong bot token or chat id, so a passed test does not prove the channel works.",
+		Request:  func(ctx context.Context, m *TelegramModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *TelegramModel) (*client.Notification, error) {
-			return c.CreateTelegramNotification(ctx, client.CreateTelegramNotificationRequest{
-				NotificationBase: m.base(), BotToken: m.BotToken.ValueString(), ChatID: m.ChatID.ValueString(),
-				MessageThreadID: m.MessageThreadID.ValueString(),
-			})
+			return c.CreateTelegramNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *TelegramModel, n *client.Notification) error {
 			return c.UpdateTelegramNotification(ctx, client.UpdateTelegramNotificationRequest{
@@ -200,6 +216,13 @@ type EmailModel struct {
 }
 
 func EmailKind() Kind[EmailModel] {
+	request := func(ctx context.Context, m *EmailModel) client.CreateEmailNotificationRequest {
+		return client.CreateEmailNotificationRequest{
+			NotificationBase: m.base(), SMTPServer: m.SMTPServer.ValueString(), SMTPPort: m.SMTPPort.ValueInt64(),
+			Username: m.Username.ValueString(), Password: m.Password.ValueString(),
+			FromAddress: m.FromAddress.ValueString(), ToAddresses: stringsOf(ctx, m.ToAddresses),
+		}
+	}
 	return Kind[EmailModel]{
 		Name: "email_notification", Label: "Email", Type: "email",
 		Intro: "An email notification channel (Settings > Notifications). Dokploy sends each message through an SMTP server.",
@@ -218,13 +241,11 @@ func EmailKind() Kind[EmailModel] {
 				Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
 			},
 		},
-		Common: func(m *EmailModel) *Common { return &m.Common },
+		Common:  func(m *EmailModel) *Common { return &m.Common },
+		Test:    "testEmailConnection",
+		Request: func(ctx context.Context, m *EmailModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *EmailModel) (*client.Notification, error) {
-			return c.CreateEmailNotification(ctx, client.CreateEmailNotificationRequest{
-				NotificationBase: m.base(), SMTPServer: m.SMTPServer.ValueString(), SMTPPort: m.SMTPPort.ValueInt64(),
-				Username: m.Username.ValueString(), Password: m.Password.ValueString(),
-				FromAddress: m.FromAddress.ValueString(), ToAddresses: stringsOf(ctx, m.ToAddresses),
-			})
+			return c.CreateEmailNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *EmailModel, n *client.Notification) error {
 			return c.UpdateEmailNotification(ctx, client.UpdateEmailNotificationRequest{
@@ -264,6 +285,12 @@ type ResendModel struct {
 }
 
 func ResendKind() Kind[ResendModel] {
+	request := func(ctx context.Context, m *ResendModel) client.CreateResendNotificationRequest {
+		return client.CreateResendNotificationRequest{
+			NotificationBase: m.base(), APIKey: m.APIKey.ValueString(),
+			FromAddress: m.FromAddress.ValueString(), ToAddresses: stringsOf(ctx, m.ToAddresses),
+		}
+	}
 	return Kind[ResendModel]{
 		Name: "resend_notification", Label: "Resend", Type: "resend",
 		Intro: "A Resend notification channel (Settings > Notifications). Dokploy sends each message as an email through the Resend API.",
@@ -276,12 +303,11 @@ func ResendKind() Kind[ResendModel] {
 				Validators:  []validator.List{listvalidator.SizeAtLeast(1)},
 			},
 		},
-		Common: func(m *ResendModel) *Common { return &m.Common },
+		Common:  func(m *ResendModel) *Common { return &m.Common },
+		Test:    "testResendConnection",
+		Request: func(ctx context.Context, m *ResendModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *ResendModel) (*client.Notification, error) {
-			return c.CreateResendNotification(ctx, client.CreateResendNotificationRequest{
-				NotificationBase: m.base(), APIKey: m.APIKey.ValueString(),
-				FromAddress: m.FromAddress.ValueString(), ToAddresses: stringsOf(ctx, m.ToAddresses),
-			})
+			return c.CreateResendNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *ResendModel, n *client.Notification) error {
 			return c.UpdateResendNotification(ctx, client.UpdateResendNotificationRequest{
@@ -318,6 +344,12 @@ type GotifyModel struct {
 }
 
 func GotifyKind() Kind[GotifyModel] {
+	request := func(ctx context.Context, m *GotifyModel) client.CreateGotifyNotificationRequest {
+		return client.CreateGotifyNotificationRequest{
+			NotificationBase: m.base(), ServerURL: m.ServerURL.ValueString(), AppToken: m.AppToken.ValueString(),
+			Priority: m.Priority.ValueInt64(), Decoration: m.Decoration.ValueBool(),
+		}
+	}
 	return Kind[GotifyModel]{
 		Name: "gotify_notification", Label: "Gotify", Type: "gotify",
 		Intro: "A Gotify notification channel (Settings > Notifications). Dokploy pushes each message to a Gotify server.",
@@ -334,12 +366,11 @@ func GotifyKind() Kind[GotifyModel] {
 				Description: "Include emoji and formatting in the message. Defaults to `true`.",
 			},
 		},
-		Common: func(m *GotifyModel) *Common { return &m.Common },
+		Common:  func(m *GotifyModel) *Common { return &m.Common },
+		Test:    "testGotifyConnection",
+		Request: func(ctx context.Context, m *GotifyModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *GotifyModel) (*client.Notification, error) {
-			return c.CreateGotifyNotification(ctx, client.CreateGotifyNotificationRequest{
-				NotificationBase: m.base(), ServerURL: m.ServerURL.ValueString(), AppToken: m.AppToken.ValueString(),
-				Priority: m.Priority.ValueInt64(), Decoration: m.Decoration.ValueBool(),
-			})
+			return c.CreateGotifyNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *GotifyModel, n *client.Notification) error {
 			return c.UpdateGotifyNotification(ctx, client.UpdateGotifyNotificationRequest{
@@ -377,6 +408,12 @@ type NtfyModel struct {
 }
 
 func NtfyKind() Kind[NtfyModel] {
+	request := func(ctx context.Context, m *NtfyModel) client.CreateNtfyNotificationRequest {
+		return client.CreateNtfyNotificationRequest{
+			NotificationBase: m.base(), ServerURL: m.ServerURL.ValueString(), Topic: m.Topic.ValueString(),
+			AccessToken: m.AccessToken.ValueString(), Priority: m.Priority.ValueInt64(),
+		}
+	}
 	return Kind[NtfyModel]{
 		Name: "ntfy_notification", Label: "ntfy", Type: "ntfy",
 		Intro: "An ntfy notification channel (Settings > Notifications). Dokploy publishes each message to a topic on an ntfy server.",
@@ -391,12 +428,11 @@ func NtfyKind() Kind[NtfyModel] {
 				Validators:  []validator.Int64{int64validator.Between(1, 5)},
 			},
 		},
-		Common: func(m *NtfyModel) *Common { return &m.Common },
+		Common:  func(m *NtfyModel) *Common { return &m.Common },
+		Test:    "testNtfyConnection",
+		Request: func(ctx context.Context, m *NtfyModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *NtfyModel) (*client.Notification, error) {
-			return c.CreateNtfyNotification(ctx, client.CreateNtfyNotificationRequest{
-				NotificationBase: m.base(), ServerURL: m.ServerURL.ValueString(), Topic: m.Topic.ValueString(),
-				AccessToken: m.AccessToken.ValueString(), Priority: m.Priority.ValueInt64(),
-			})
+			return c.CreateNtfyNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *NtfyModel, n *client.Notification) error {
 			return c.UpdateNtfyNotification(ctx, client.UpdateNtfyNotificationRequest{
@@ -434,6 +470,12 @@ type MattermostModel struct {
 }
 
 func MattermostKind() Kind[MattermostModel] {
+	request := func(ctx context.Context, m *MattermostModel) client.CreateMattermostNotificationRequest {
+		return client.CreateMattermostNotificationRequest{
+			NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(),
+			Channel: m.Channel.ValueString(), Username: m.Username.ValueString(),
+		}
+	}
 	return Kind[MattermostModel]{
 		Name: "mattermost_notification", Label: "Mattermost", Type: "mattermost",
 		Intro: "A Mattermost notification channel (Settings > Notifications). Dokploy posts each message to an incoming webhook.",
@@ -448,12 +490,11 @@ func MattermostKind() Kind[MattermostModel] {
 				Description: "Display name of the poster. Omit it to use the webhook's default. If you remove it from the configuration, the provider clears it.",
 			},
 		},
-		Common: func(m *MattermostModel) *Common { return &m.Common },
+		Common:  func(m *MattermostModel) *Common { return &m.Common },
+		Test:    "testMattermostConnection",
+		Request: func(ctx context.Context, m *MattermostModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *MattermostModel) (*client.Notification, error) {
-			return c.CreateMattermostNotification(ctx, client.CreateMattermostNotificationRequest{
-				NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(),
-				Channel: m.Channel.ValueString(), Username: m.Username.ValueString(),
-			})
+			return c.CreateMattermostNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *MattermostModel, n *client.Notification) error {
 			return c.UpdateMattermostNotification(ctx, client.UpdateMattermostNotificationRequest{
@@ -487,17 +528,23 @@ type LarkModel struct {
 }
 
 func LarkKind() Kind[LarkModel] {
+	request := func(ctx context.Context, m *LarkModel) client.CreateLarkNotificationRequest {
+		return client.CreateLarkNotificationRequest{
+			NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(),
+		}
+	}
 	return Kind[LarkModel]{
 		Name: "lark_notification", Label: "Lark", Type: "lark",
 		Intro: "A Lark (Feishu) notification channel (Settings > Notifications). Dokploy posts each message to a group bot webhook.",
 		Attributes: map[string]schema.Attribute{
 			"webhook_url": secretAttribute("Webhook URL of the group bot. Set this attribute or `webhook_url_wo`."),
 		},
-		Common: func(m *LarkModel) *Common { return &m.Common },
+		Common:   func(m *LarkModel) *Common { return &m.Common },
+		Test:     "testLarkConnection",
+		TestNote: "Dokploy v0.30.8 reports success for a webhook URL that it cannot reach, so a passed test does not prove the channel works.",
+		Request:  func(ctx context.Context, m *LarkModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *LarkModel) (*client.Notification, error) {
-			return c.CreateLarkNotification(ctx, client.CreateLarkNotificationRequest{
-				NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(),
-			})
+			return c.CreateLarkNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *LarkModel, n *client.Notification) error {
 			return c.UpdateLarkNotification(ctx, client.UpdateLarkNotificationRequest{
@@ -526,17 +573,22 @@ type TeamsModel struct {
 }
 
 func TeamsKind() Kind[TeamsModel] {
+	request := func(ctx context.Context, m *TeamsModel) client.CreateTeamsNotificationRequest {
+		return client.CreateTeamsNotificationRequest{
+			NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(),
+		}
+	}
 	return Kind[TeamsModel]{
 		Name: "teams_notification", Label: "Microsoft Teams", Type: "teams",
 		Intro: "A Microsoft Teams notification channel (Settings > Notifications). Dokploy posts each message to an incoming webhook.",
 		Attributes: map[string]schema.Attribute{
 			"webhook_url": secretAttribute("Incoming webhook URL of the Teams channel. Set this attribute or `webhook_url_wo`."),
 		},
-		Common: func(m *TeamsModel) *Common { return &m.Common },
+		Common:  func(m *TeamsModel) *Common { return &m.Common },
+		Test:    "testTeamsConnection",
+		Request: func(ctx context.Context, m *TeamsModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *TeamsModel) (*client.Notification, error) {
-			return c.CreateTeamsNotification(ctx, client.CreateTeamsNotificationRequest{
-				NotificationBase: m.base(), WebhookURL: m.WebhookURL.ValueString(),
-			})
+			return c.CreateTeamsNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *TeamsModel, n *client.Notification) error {
 			return c.UpdateTeamsNotification(ctx, client.UpdateTeamsNotificationRequest{
@@ -571,6 +623,12 @@ type PushoverModel struct {
 }
 
 func PushoverKind() Kind[PushoverModel] {
+	request := func(ctx context.Context, m *PushoverModel) client.CreatePushoverNotificationRequest {
+		return client.CreatePushoverNotificationRequest{
+			NotificationBase: m.base(), UserKey: m.UserKey.ValueString(), APIToken: m.APIToken.ValueString(),
+			Priority: m.Priority.ValueInt64(), Retry: m.Retry.ValueInt64Pointer(), Expire: m.Expire.ValueInt64Pointer(),
+		}
+	}
 	return Kind[PushoverModel]{
 		Name: "pushover_notification", Label: "Pushover", Type: "pushover",
 		Intro: "A Pushover notification channel (Settings > Notifications). Dokploy sends each message through the Pushover API to a user or a group.",
@@ -593,12 +651,11 @@ func PushoverKind() Kind[PushoverModel] {
 				Validators:  []validator.Int64{int64validator.Between(1, 10800)},
 			},
 		},
-		Common: func(m *PushoverModel) *Common { return &m.Common },
+		Common:  func(m *PushoverModel) *Common { return &m.Common },
+		Test:    "testPushoverConnection",
+		Request: func(ctx context.Context, m *PushoverModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *PushoverModel) (*client.Notification, error) {
-			return c.CreatePushoverNotification(ctx, client.CreatePushoverNotificationRequest{
-				NotificationBase: m.base(), UserKey: m.UserKey.ValueString(), APIToken: m.APIToken.ValueString(),
-				Priority: m.Priority.ValueInt64(), Retry: m.Retry.ValueInt64Pointer(), Expire: m.Expire.ValueInt64Pointer(),
-			})
+			return c.CreatePushoverNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *PushoverModel, n *client.Notification) error {
 			return c.UpdatePushoverNotification(ctx, client.UpdatePushoverNotificationRequest{
@@ -654,6 +711,11 @@ func headersOf(ctx context.Context, m types.Map) map[string]string {
 }
 
 func CustomKind() Kind[CustomModel] {
+	request := func(ctx context.Context, m *CustomModel) client.CreateCustomNotificationRequest {
+		return client.CreateCustomNotificationRequest{
+			NotificationBase: m.base(), Endpoint: m.Endpoint.ValueString(), Headers: headersOf(ctx, m.Headers),
+		}
+	}
 	return Kind[CustomModel]{
 		Name: "custom_notification", Label: "Custom webhook", Type: "custom",
 		Intro: "A custom webhook notification channel (Settings > Notifications). Dokploy sends each message as a JSON POST to an endpoint of your own.",
@@ -665,11 +727,11 @@ func CustomKind() Kind[CustomModel] {
 					"sensitive because it usually holds a credential. If you remove it from the configuration, the provider clears it.",
 			},
 		},
-		Common: func(m *CustomModel) *Common { return &m.Common },
+		Common:  func(m *CustomModel) *Common { return &m.Common },
+		Test:    "testCustomConnection",
+		Request: func(ctx context.Context, m *CustomModel) any { return request(ctx, m) },
 		Create: func(ctx context.Context, c *client.Client, m *CustomModel) (*client.Notification, error) {
-			return c.CreateCustomNotification(ctx, client.CreateCustomNotificationRequest{
-				NotificationBase: m.base(), Endpoint: m.Endpoint.ValueString(), Headers: headersOf(ctx, m.Headers),
-			})
+			return c.CreateCustomNotification(ctx, request(ctx, m))
 		},
 		Update: func(ctx context.Context, c *client.Client, m *CustomModel, n *client.Notification) error {
 			return c.UpdateCustomNotification(ctx, client.UpdateCustomNotificationRequest{
