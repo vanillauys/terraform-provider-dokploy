@@ -5225,6 +5225,50 @@
           }
         ]
       }
+    },
+    "dokploy_web_server_backup": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "cron_expression",
+            "type": "tftypes.String",
+            "required": true
+          },
+          {
+            "name": "destination_id",
+            "type": "tftypes.String",
+            "required": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "include_encryption_key",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "keep_latest_count",
+            "type": "tftypes.Number",
+            "optional": true
+          },
+          {
+            "name": "prefix",
+            "type": "tftypes.String",
+            "required": true
+          }
+        ]
+      }
     }
   },
   "data_sources": {
