@@ -163,7 +163,10 @@ func TestAccDestination_upgradeFromV0_11(t *testing.T) {
 				ProtoV6ProviderFactories: acctest.ProviderFactories(),
 				Config:                   destinationWriteOnlyConfig(name, plain),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
-					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+					// The v0.11.0 state has no verify_connection (#67), so the first
+					// plan sets it to false in place. Nothing else changes.
+					PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_destination.test", plancheck.ResourceActionUpdate)},
+					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 				Check: resource.TestCheckResourceAttr("dokploy_destination.test", "secret_access_key", "acceptance-only-not-a-real-secret"),
 			},
