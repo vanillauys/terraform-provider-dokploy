@@ -1734,3 +1734,37 @@ package client
 // absent key is the dialect A 400 "expected nonoptional, received
 // undefined". So the resource sends the full object on every update, and a
 // write-only secret with nothing new to send resends the stored value.
+//
+// # v1.8.0 records: data source lookups (probed 2026-09-30 on a v0.30.8 rig)
+//
+// ## Listing the children of a service (#66)
+//
+// Only schedule.list and volumeBackups.list are list endpoints. Both need
+// the parent id (`id`) and the parent type (`scheduleType` or
+// `volumeBackupType`), and both answer [] for an unknown id of a type that
+// exists. schedule.list answers 404 "Server not found" for an unknown server
+// id. A mount, a backup, a port, a redirect, and a security record have no
+// list endpoint. The read of the parent embeds them:
+//
+//	application.one    mounts, ports, redirects, security
+//	postgres.one       mounts, backups (and the same for the other engines)
+//	compose.one        mounts, backups
+//
+// A new postgres service already embeds one mount, the data volume that
+// Dokploy creates for it. The embedded mount and backup objects carry the
+// same fields as mounts.one and backup.one. So a data source finds a child
+// in the embedded array, and it never takes the first of many matches.
+//
+// Names repeat for mounts (mount path), backups (prefix), schedules and
+// volume backups (name), ports (published port with tcp and udp), and
+// redirects (regex). A security record is the exception: security.create
+// answers HTTP 400 "Failed query: insert into security" for a second record
+// with the same username on one application.
+//
+// ## Notifications and AI
+//
+// notification.all returns the channel block of every record (slackId,
+// webhookUrl, and so on), so a lookup by name needs no second read. The
+// block of a channel other than the record type is absent. ai.getAll returns
+// apiKey in cleartext; the data source drops it. A notification lookup by id
+// checks notificationType, because notification.one answers any channel.
