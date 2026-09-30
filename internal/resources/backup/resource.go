@@ -54,8 +54,7 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		Description: "A scheduled logical dump of a database to an S3-compatible destination.\n\n" +
 			"~> **This resource does not support Redis.** Dokploy has no logical dump for Redis. Use " +
 			"`dokploy_volume_backup`, which archives the volume and accepts a Redis parent.\n\n" +
-			"~> This resource does not expose a backup of the Dokploy server itself (the Dokploy `web-server` backup type). " +
-			"That backup type has no parent service and needs a separate validation path.\n\n" +
+			"~> This resource does not back up the Dokploy server itself. Use `dokploy_web_server_backup` for that.\n\n" +
 			"~> Dokploy stores and returns `compose_database_password` and `compose_database_root_password` in cleartext. " +
 			"Both attributes are sensitive, so Terraform does not print them, but anyone with API access to the server " +
 			"can read them. The `compose_database_password_wo` and `compose_database_root_password_wo` companions keep " +

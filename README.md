@@ -161,9 +161,7 @@ The provider does not model these Dokploy features yet.
   account.
 - **`dokploy_backup` cannot back up Redis.** Dokploy has no logical dump for
   Redis. Use `dokploy_volume_backup`, which archives the volume and accepts a
-  Redis parent. The provider also does not expose a backup of the Dokploy
-  server itself (Dokploy's `web-server` backup type). That backup type has no
-  parent service and needs its own validation path.
+  Redis parent.
 - **`dokploy_redis` has no `database_name`, `database_user`, or
   `database_root_password` attribute.** The Dokploy data model for Redis has
   no credential field other than `database_password`. This is a gap in

@@ -104,6 +104,7 @@ var mustAlwaysSend = []struct {
 	{UpdateVolumeBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
 	{CreateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
 	{UpdateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
+	{CreateWebServerBackupRequest{}, []string{"keepLatestCount", "enabled"}},
 	// compose.update is dialect B at the endpoint level, but its fields
 	// split three ways (doc.go). Every managed field is listed: the dialect
 	// C group and the two enums because they must reach the wire as "" to

@@ -1,7 +1,11 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
@@ -95,5 +99,76 @@ func TestBackupMetadataRoundTrip(t *testing.T) {
 	}
 	if got := string(out); !strings.Contains(got, `"metadata":null`) {
 		t.Errorf("request without metadata = %s, want an explicit null", got)
+	}
+}
+
+// TestCreateWebServerBackupLocatesTheNewID: backup.create answers with a
+// null and a web-server backup has no parent, so the id comes from a diff of
+// user.getBackups around the call. The test also pins the wire body.
+func TestCreateWebServerBackupLocatesTheNewID(t *testing.T) {
+	var listCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/user.getBackups":
+			listCalls++
+			if listCalls == 1 {
+				_, _ = fmt.Fprint(w, `{"id":"u1","backups":[{"backupId":"old"}]}`)
+			} else {
+				_, _ = fmt.Fprint(w, `{"id":"u1","backups":[{"backupId":"old"},{"backupId":"w1"}]}`)
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/api/backup.create":
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Errorf("decoding body: %v", err)
+			}
+			want := map[string]any{
+				"schedule": "0 3 * * *", "database": "dokploy", "prefix": "p/", "destinationId": "d1",
+				"databaseType": "web-server", "backupType": "database", "enabled": true,
+				"keepLatestCount": nil, "includeEncryptionKey": true, "userId": "u1",
+			}
+			if !reflect.DeepEqual(body, want) {
+				t.Errorf("backup.create body = %v, want %v", body, want)
+			}
+			_, _ = fmt.Fprint(w, `null`)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/backup.one":
+			if got := r.URL.Query().Get("backupId"); got != "w1" {
+				t.Errorf("backup.one asked for %q, want the new w1", got)
+			}
+			_, _ = fmt.Fprint(w, `{"backupId":"w1","databaseType":"web-server","backupType":"database"}`)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	enabled := true
+	got, err := testClient(t, srv).CreateWebServerBackup(context.Background(), CreateWebServerBackupRequest{
+		Schedule: "0 3 * * *", Database: WebServerDatabaseName, Prefix: "p/", DestinationID: "d1",
+		DatabaseType: WebServerDatabaseType, BackupType: "database", Enabled: &enabled,
+		IncludeEncryptionKey: true, UserID: "u1",
+	})
+	if err != nil {
+		t.Fatalf("CreateWebServerBackup: %v", err)
+	}
+	if got.BackupID != "w1" {
+		t.Errorf("located %q, want w1", got.BackupID)
+	}
+}
+
+func TestCurrentUserID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/user.session" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		_, _ = fmt.Fprint(w, `{"user":{"id":"u1"},"session":{"activeOrganizationId":"o1"}}`)
+	}))
+	defer srv.Close()
+
+	got, err := testClient(t, srv).CurrentUserID(context.Background())
+	if err != nil {
+		t.Fatalf("CurrentUserID: %v", err)
+	}
+	if got != "u1" {
+		t.Errorf("CurrentUserID = %q, want u1", got)
 	}
 }
