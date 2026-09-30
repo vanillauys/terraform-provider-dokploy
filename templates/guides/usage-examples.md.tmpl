@@ -2,7 +2,7 @@
 page_title: "Usage examples"
 subcategory: ""
 description: |-
-  Short, complete configurations for the common Dokploy setups: an application from GitLab with Slack alerts, a remote worker server, private images from a registry, a teammate with limited access, nightly backups with an email alert, and environment variables as a map.
+  Short, complete configurations for the common Dokploy setups: an application from GitLab with Slack alerts, a remote worker server, private images from a registry, a teammate with limited access, nightly backups with an email alert, environment variables as a map, a highly available application with Swarm settings, a full stack, a backup of the Dokploy host, connection checks, and lookups.
 ---
 
 # Usage examples
@@ -253,6 +253,258 @@ resource "dokploy_environment_variables" "api" {
 
 A change to the map does not redeploy the application. Dokploy applies the
 variables on the next deploy.
+
+## A highly available application with Swarm settings
+
+The `swarm` attribute models the Docker Swarm service specification. This
+example runs two replicas, starts the new task before it stops the old task
+on an update, and checks the health of each container. Durations are in
+nanoseconds: `10000000000` is 10 seconds.
+
+```hcl
+resource "dokploy_project" "ha" {
+  name = "ha"
+}
+
+resource "dokploy_application" "api" {
+  name           = "api"
+  environment_id = dokploy_project.ha.production_environment_id
+
+  docker = {
+    image = "traefik/whoami:v1.10"
+  }
+
+  swarm = {
+    mode = {
+      replicated = { replicas = 2 }
+    }
+
+    update_config = {
+      parallelism = 1
+      order       = "start-first"
+    }
+
+    health_check = {
+      test         = ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80"]
+      interval     = 10000000000
+      timeout      = 5000000000
+      retries      = 3
+      start_period = 10000000000
+    }
+  }
+}
+```
+
+Set the replica count in `swarm.mode.replicated.replicas`. **The top-level
+`replicas` attribute and `swarm.mode` cannot both be set.** The provider
+rejects the pair at plan time, because Dokploy uses the mode and ignores
+`replicas`. Use `replicas` for a simple count, or `swarm.mode` for all other
+modes. Swarm cannot change the mode of a service that exists.
+
+A change to `swarm` reaches the service at the next deploy. See
+[Deploy semantics](deploy-semantics#swarm-changes-need-a-deploy). The six
+database resources take the same block. `dokploy_compose` has no `swarm`
+block, and `dokploy_libsql` does not accept `swarm.ulimits`.
+
+## A full stack: database, application, domain, and backup
+
+This stack uses an ephemeral password. The `hashicorp/random` provider makes
+the password during the run, and the write-only attribute
+`database_password_wo` sends it to Dokploy. Neither the plan nor the state
+holds the value. This needs Terraform 1.11 or later.
+
+```hcl
+terraform {
+  required_providers {
+    dokploy = {
+      source  = "vanillauys/dokploy"
+      version = "~> 1.8"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.7"
+    }
+  }
+}
+
+ephemeral "random_password" "db" {
+  length  = 32
+  special = false
+}
+
+resource "dokploy_project" "shop" {
+  name = "shop"
+}
+
+resource "dokploy_postgres" "db" {
+  name                         = "shop-db"
+  environment_id               = dokploy_project.shop.production_environment_id
+  database_name                = "shop"
+  database_user                = "shop"
+  database_password_wo         = ephemeral.random_password.db.result
+  database_password_wo_version = 1
+  docker_image                 = "postgres:16-alpine"
+}
+
+resource "dokploy_application" "web" {
+  name           = "web"
+  environment_id = dokploy_project.shop.production_environment_id
+
+  docker = {
+    image = "ghcr.io/my-org/shop:1.0.0"
+  }
+
+  env = <<-EOT
+    PORT=3000
+    DATABASE_URL=postgres://shop@${dokploy_postgres.db.app_name}:5432/shop
+  EOT
+}
+
+resource "dokploy_domain" "web" {
+  application_id   = dokploy_application.web.id
+  host             = "shop.example.com"
+  port             = 3000
+  https            = true
+  certificate_type = "letsencrypt"
+}
+
+resource "dokploy_destination" "backups" {
+  name                         = "backups"
+  provider_name                = "AWS"
+  endpoint                     = "https://s3.eu-west-1.amazonaws.com"
+  bucket                       = "shop-backups"
+  region                       = "eu-west-1"
+  access_key_wo                = var.s3_access_key
+  access_key_wo_version        = 1
+  secret_access_key_wo         = var.s3_secret_access_key
+  secret_access_key_wo_version = 1
+}
+
+resource "dokploy_backup" "db" {
+  service_id      = dokploy_postgres.db.id
+  service_type    = "postgres"
+  destination_id  = dokploy_destination.backups.id
+  database        = "shop"
+  prefix          = "shop/"
+  cron_expression = "0 3 * * *"
+}
+```
+
+The `env` attribute is not write-only, so it cannot hold an ephemeral
+value. The `DATABASE_URL` above has no password. To give the password to the
+application, use one sensitive variable for both resources: set
+`database_password_wo = var.db_password` and add `DB_PASSWORD=${var.db_password}` to
+`env`. The state then holds the value in `env`.
+[Secrets and sensitive values](secrets) explains the trade-off.
+
+## A backup of the Dokploy host
+
+`dokploy_web_server_backup` dumps the database and the configuration
+directory of Dokploy itself to a destination. It is a separate resource from
+`dokploy_backup`, because it has no parent service. The provider does not run
+a backup on demand.
+
+```hcl
+resource "dokploy_destination" "host" {
+  name                         = "host-backups"
+  provider_name                = "AWS"
+  endpoint                     = "https://s3.eu-west-1.amazonaws.com"
+  bucket                       = "dokploy-host-backups"
+  region                       = "eu-west-1"
+  access_key_wo                = var.s3_access_key
+  access_key_wo_version        = 1
+  secret_access_key_wo         = var.s3_secret_access_key
+  secret_access_key_wo_version = 1
+}
+
+resource "dokploy_web_server_backup" "nightly" {
+  destination_id  = dokploy_destination.host.id
+  cron_expression = "0 2 * * *"
+  prefix          = "dokploy/"
+
+  keep_latest_count = 14
+}
+```
+
+`include_encryption_key` is `true` by default, so the backup holds the key
+that decrypts the stored secrets. Store the destination bucket with the same
+care as the state.
+
+## Check a connection before the write
+
+`verify_connection = true` tests the credentials before the provider writes
+the record. A failed test fails the apply with the message of the server, and
+the provider writes nothing.
+
+```hcl
+resource "dokploy_registry" "ghcr" {
+  name                = "ghcr"
+  url                 = "ghcr.io"
+  username            = "my-org-bot"
+  password_wo         = var.ghcr_token
+  password_wo_version = 1
+
+  verify_connection = true
+}
+
+resource "dokploy_destination" "backups" {
+  name                         = "backups"
+  provider_name                = "AWS"
+  endpoint                     = "https://s3.eu-west-1.amazonaws.com"
+  bucket                       = "my-backups"
+  region                       = "eu-west-1"
+  access_key_wo                = var.s3_access_key
+  access_key_wo_version        = 1
+  secret_access_key_wo         = var.s3_secret_access_key
+  secret_access_key_wo_version = 1
+
+  verify_connection = true
+}
+```
+
+The [Secrets guide](secrets#verify-a-connection-before-the-write) lists the
+resources that take the attribute and the cases in which the test is not
+reliable.
+
+## Look up existing records
+
+The data sources give a second workspace a reference to a record without an
+import. A service child needs the id of its parent and one distinguishing
+attribute. A notification or an AI record needs an `id` or a `name`. No data
+source returns a secret.
+
+```hcl
+variable "application_id" {
+  type = string
+}
+
+data "dokploy_port" "http" {
+  application_id = var.application_id
+  published_port = 8080
+}
+
+data "dokploy_slack_notification" "deploys" {
+  name = "deploys"
+}
+
+data "dokploy_ai" "main" {
+  name = "openai"
+}
+
+output "port_id" {
+  value = data.dokploy_port.http.id
+}
+
+output "deploys_notification_id" {
+  value = data.dokploy_slack_notification.deploys.id
+}
+
+output "ai_model" {
+  value = data.dokploy_ai.main.model
+}
+```
+
+A lookup that matches no record, or more than one record, fails the plan.
 
 ## Where to go next
 

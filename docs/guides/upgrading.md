@@ -2,10 +2,47 @@
 page_title: "Upgrade guide"
 subcategory: ""
 description: |-
-  What each release since v0.11.0 needs from your configuration: nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
+  What each release since v0.11.0 needs from your configuration: nothing for v1.8, nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
 ---
 
 # Upgrade guide
+
+## Upgrade to v1.8
+
+v1.8.0 has nothing breaking. Each new attribute is `Optional` with no default,
+so a v1.7.0 state loads with an empty plan. The changes from v1.1.0 to v1.7.0
+are in the [changelog](changelog).
+
+1. Update the version constraint to `~> 1.8`.
+2. Run `terraform init -upgrade`.
+3. Run `terraform plan`. The plan must be empty.
+
+v1.8.0 adds four things:
+
+- `swarm` on `dokploy_application` and on the six database resources. The
+  block models the Docker Swarm service specification. A configuration
+  without the block keeps the null that Dokploy stores. See the
+  [usage example](usage-examples#a-highly-available-application-with-swarm-settings).
+- `verify_connection` on 18 resources. `null` and `false` both skip the test.
+  See the [Secrets guide](secrets#verify-a-connection-before-the-write).
+- The `dokploy_web_server_backup` resource, which backs up the Dokploy host.
+- Twenty data sources: `dokploy_mount`, `dokploy_port`, `dokploy_redirect`,
+  `dokploy_security`, `dokploy_backup`, `dokploy_volume_backup`,
+  `dokploy_schedule`, `dokploy_ai`, and the twelve
+  `dokploy_<channel>_notification` data sources.
+
+One new plan-time rule can reject a configuration. **A configuration that
+sets both `replicas` and `swarm.mode` fails validation.** Dokploy uses the
+mode and ignores `replicas`, so the pair never described a real setting. No
+v1.7.0 configuration can fail because of this rule, because `swarm` is new.
+Remove one of the two attributes when you add `swarm.mode`.
+
+`dokploy_compose` has no `swarm` block, because Dokploy stores no Swarm
+columns for a compose service. `dokploy_libsql` does not accept
+`swarm.ulimits`, because Dokploy has no such column for LibSQL.
+
+The provider now targets Dokploy v0.30.8. The endpoint census of v0.30.8 is
+identical to that of v0.30.7.
 
 ## Upgrade to v1.0
 

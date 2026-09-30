@@ -43,53 +43,63 @@ requests, generate a new key in the UI and leave the switch off. A retry does
 not help: the window is a day. The acceptance rig mints its key with
 `rateLimitEnabled: false` in `acceptance/bootstrap.sh`.
 
-## Configure the provider
+## Set the credentials
 
-```hcl
-terraform {
-  required_providers {
-    dokploy = {
-      source  = "vanillauys/dokploy"
-      version = "~> 1.0"
-    }
-  }
-}
+Export the endpoint and the API key. The provider reads both variables, so
+no secret enters a file.
 
-provider "dokploy" {
-  endpoint = "https://dokploy.example.com"
-  # The provider reads api_key from the DOKPLOY_API_KEY environment variable.
-}
+```bash
+export DOKPLOY_ENDPOINT=https://dokploy.example.com
+export DOKPLOY_API_KEY=...
 ```
 
-If `endpoint` is not set, the provider reads `DOKPLOY_ENDPOINT`. If `api_key`
-is not set, the provider reads `DOKPLOY_API_KEY`. Set `insecure = true` only
-when the server presents a self-signed certificate.
+Set `insecure = true` in the `provider` block only when the server presents a
+self-signed certificate. A `provider` block can also set `endpoint` and
+`api_key`, but the environment variables keep the key out of the file.
 
-The provider follows semantic versioning from v1.0.0. Pin the minor version,
-for example `version = "~> 1.0"`: a minor release adds resources and
-attributes and never changes what an existing attribute does. The
+## Write the configuration
+
+Copy this complete file to `main.tf`. It goes from an empty directory to a
+running application with a domain. The provider follows semantic versioning
+from v1.0.0. The constraint `~> 1.8` accepts each 1.x release from v1.8.0, and
+a minor release never changes what an existing attribute does. The
 [Upgrade guide](upgrading) lists what each release needs from your
 configuration.
-
-## A first configuration
 
 The Dokploy hierarchy is **project > environment > service**. Dokploy creates
 a `production` environment with each project, so you rarely need
 `dokploy_environment` on the first day.
 
 ```hcl
+terraform {
+  required_providers {
+    dokploy = {
+      source  = "vanillauys/dokploy"
+      version = "~> 1.8"
+    }
+  }
+}
+
+provider "dokploy" {}
+
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+
 resource "dokploy_project" "example" {
   name        = "example"
   description = "Managed by Terraform"
 }
 
 resource "dokploy_postgres" "db" {
-  name              = "app-db"
-  environment_id    = dokploy_project.example.production_environment_id
-  database_name     = "app"
-  database_user     = "app"
-  database_password = var.db_password
-  docker_image      = "postgres:16-alpine"
+  name                         = "app-db"
+  environment_id               = dokploy_project.example.production_environment_id
+  database_name                = "app"
+  database_user                = "app"
+  database_password_wo         = var.db_password
+  database_password_wo_version = 1
+  docker_image                 = "postgres:16-alpine"
 }
 
 resource "dokploy_application" "web" {
@@ -112,7 +122,34 @@ resource "dokploy_domain" "web" {
   https            = true
   certificate_type = "letsencrypt"
 }
+
+output "url" {
+  value = "https://${dokploy_domain.web.host}"
+}
 ```
+
+The domain `app.example.com` must point at the IP address of the Dokploy
+server, or Let's Encrypt cannot issue the certificate. Replace it with your
+own host name.
+
+The password uses the write-only attribute `database_password_wo`, which needs
+Terraform 1.11 or later. On Terraform 1.5 to 1.10, use `database_password =
+var.db_password` and remove the `_wo_version` line.
+
+## Apply
+
+Run these commands in the directory of `main.tf`:
+
+```bash
+export TF_VAR_db_password="$(openssl rand -base64 24)"
+terraform init
+terraform apply
+```
+
+The `TF_VAR_db_password` value is not in the file. Keep the value in a
+password manager, because the next run of `terraform` needs it again. The
+provider sends the password only when `database_password_wo_version`
+changes.
 
 The reference has the full schema of each resource:
 [`dokploy_project`](../resources/project),
@@ -131,7 +168,6 @@ from the list with a `for` expression: a project update marks the list unknown
 in the plan, and an unknown `environment_id` forces a replacement of the
 service.
 
-Declare `var.db_password` as a sensitive variable.
 [Secrets and sensitive values](secrets) explains why the provider does not
 mark `env` as sensitive.
 

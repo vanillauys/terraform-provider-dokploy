@@ -62,6 +62,22 @@ change waits for a manual deploy.
 If you leave the root password of MySQL or MariaDB unset, the server generates
 one.
 
+## Swarm changes need a deploy
+
+The `swarm` attribute of `dokploy_application` and of the six database
+resources writes to Dokploy on apply, but the Dokploy update endpoints do not
+deploy. A swarm change reaches the running service at the next deploy.
+
+A swarm change counts as a deploy trigger. With `deploy_on_change = true`, the
+default, the change starts the deploy that applies it. With
+`deploy_on_change = false`, the provider stores the change, and the change
+waits for a deploy that you start by other means.
+
+Set `replicas` or `swarm.mode`, not both. The provider rejects the pair at
+plan time, because Dokploy uses the mode and ignores `replicas`. Swarm cannot
+change the mode of a service that exists. `dokploy_compose` has no `swarm`
+block.
+
 ## Two engines whose default image does not exist
 
 The server-side default `docker_image` for MariaDB and MongoDB does not exist

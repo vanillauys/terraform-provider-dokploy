@@ -1,7 +1,7 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, environments, applications, compose stacks, databases, domains, backups, schedules, networks, remote servers, SSH keys, registries, certificates, git providers, notifications, vault providers, users, and API keys with Terraform.
+  Manage Dokploy projects, environments, applications, compose stacks, databases, Swarm settings, domains, backups, the Dokploy host backup, schedules, networks, remote servers, SSH keys, registries, certificates, git providers, notifications, vault providers, users, and API keys with Terraform.
 ---
 
 # Dokploy Provider
@@ -9,12 +9,12 @@ description: |-
 Manage [Dokploy](https://dokploy.com) resources with Terraform:
 
 - **Projects and environments**, with shared environment variables and tags
-- **Applications** from a GitHub App, a GitLab project, a Bitbucket repository, a Gitea repository, a plain git repository, or a Docker image, with preview deployment, rollback, and build server settings
+- **Applications** from a GitHub App, a GitLab project, a Bitbucket repository, a Gitea repository, a plain git repository, or a Docker image, with preview deployment, rollback, build server settings, and Docker Swarm settings (replicas, rolling updates, health checks, placement)
 - **Compose services**: `docker-compose` projects and Docker Swarm stacks, from the same sources or an inline compose file
-- **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, and LibSQL
+- **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, and LibSQL, with the same Swarm settings
 - **Routing**: domains, published ports, Traefik redirects, HTTP basic auth, and TLS certificates
 - **Storage**: bind, volume, and file mounts on any service
-- **Backups**: S3-compatible destinations, scheduled database dumps, and Docker volume archives
+- **Backups**: S3-compatible destinations, scheduled database dumps, Docker volume archives, and a scheduled backup of the Dokploy host
 - **Schedules**: cron jobs on a service, a remote server, or the Dokploy host
 - **Networks**: Docker bridge and overlay networks, attached to any service
 - **Servers**: remote worker and build servers, and the SSH keys that reach them
@@ -24,6 +24,8 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 - **Vault providers**: HashiCorp Vault or OpenBao, Infisical, AWS Secrets Manager, Doppler, Azure Key Vault, Scaleway, Phase.dev, and AWS Systems Manager Parameter Store connections for runtime secrets
 - **Organization and access**: the organization record, users with an initial password, per-user permissions, and API keys
 - **AI settings**: OpenAI-compatible endpoints for Dokploy's AI features
+- **Connection checks**: `verify_connection` tests the credentials of a registry, a destination, an AI endpoint, a git provider, or a notification channel before the write
+- **Lookups**: data sources for a record that Terraform does not own, including the children of a service (mounts, ports, redirects, security, backups, schedules), AI settings, and the notification channels
 
 Each service resource deploys on change. Each resource supports
 `terraform import`, except `dokploy_api_key`, whose key Dokploy returns only
@@ -53,7 +55,7 @@ The provider follows [semantic versioning](https://semver.org) from v1.0.0:
   warning at plan time before a major release removes it.
 - The Dokploy compatibility pin moves in minor releases.
 
-Pin the minor version, `~> 1.0`, to get fixes and additions without a
+Pin the minor version, for example `~> 1.8`, to get fixes and additions without a
 breaking change. The [changelog](guides/changelog) names every change in
 each release.
 
@@ -64,16 +66,17 @@ each release.
 - [Usage examples](guides/usage-examples): short, complete configurations
   for the common setups: an app from GitLab with Slack alerts, a worker
   server, private images, a teammate with limited access, nightly backups,
-  and variables as a map.
+  variables as a map, a highly available application with Swarm settings, a
+  full stack, the Dokploy host backup, connection checks, and lookups.
 - [Adopt an existing Dokploy server](guides/adopting-an-existing-instance):
   import a running server into the state without a rebuild.
 - [Deploy semantics](guides/deploy-semantics): `deploy_on_change`,
-  `deployment_timeout`, and deploy failures.
+  `deployment_timeout`, deploy failures, and Swarm changes.
 - [Secrets and sensitive values](guides/secrets): environment variables,
   database passwords, backup credentials, and the write-only companions
   that keep a secret out of the state.
 - [Upgrade guide](guides/upgrading): what each release needs from your
-  configuration. v1.0 has no change; v0.13 adds the coverage of this page;
+  configuration. v1.8 has nothing breaking; v1.0 has no change; v0.13 adds the coverage of this page;
   v0.12 adds the write-only companions; v0.11 had the breaking changes.
 - [Changelog](guides/changelog): every release, newest first, with the
   attributes it added, changed, or fixed.
@@ -98,8 +101,11 @@ These three problems cause the most failures:
 
 ```terraform
 provider "dokploy" {
+  # If endpoint is unset, the provider reads the DOKPLOY_ENDPOINT environment
+  # variable. If api_key is unset, it reads DOKPLOY_API_KEY.
   endpoint = "https://dokploy.example.com"
-  # The provider reads api_key from the DOKPLOY_API_KEY environment variable.
+
+  # Set insecure = true only for a server with a self-signed certificate.
 }
 ```
 

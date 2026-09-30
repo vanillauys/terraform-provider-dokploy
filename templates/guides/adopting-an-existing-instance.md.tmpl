@@ -123,6 +123,36 @@ throwaway state, generates the configuration, and requires an empty second
 plan. On success, it deletes its scratch directory. On failure, it keeps
 `dogfood/scratch/` for inspection.
 
+## Reference a record without an import
+
+A second Terraform workspace often needs only a reference to a record that
+the first workspace owns. Use a data source for this case. A data source
+reads the record and never changes it, so no import and no second owner are
+needed.
+
+- Service children: `dokploy_mount`, `dokploy_port`, `dokploy_redirect`,
+  `dokploy_security`, `dokploy_backup`, `dokploy_volume_backup`, and
+  `dokploy_schedule`. A lookup takes the id of the parent and one
+  distinguishing attribute.
+- `dokploy_ai` and the twelve `dokploy_<channel>_notification` data sources.
+  A lookup takes an `id` or a `name`.
+- The earlier data sources: projects, environments, services, domains,
+  destinations, registries, servers, and more.
+
+No data source returns a secret. The [usage example](usage-examples#look-up-existing-records)
+shows three lookups.
+
+The Dokploy host backup has a resource, `dokploy_web_server_backup`, and it
+supports `terraform import` with the id of the backup:
+
+```bash
+terraform import dokploy_web_server_backup.nightly <backup-id>
+```
+
+`generate_imports.py` does not list it. Set `include_encryption_key`,
+`enabled`, and `keep_latest_count` in the configuration to match the record,
+and run a plan: the plan must be empty.
+
 ## Two things that import cannot do
 
 **Provider-only attributes do not survive an import.** `deploy_on_change` and

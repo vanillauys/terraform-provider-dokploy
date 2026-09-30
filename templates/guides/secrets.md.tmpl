@@ -229,6 +229,62 @@ resource "dokploy_backup" "nextcloud_db" {
 }
 ```
 
+## Verify a connection before the write
+
+The resources that hold a credential for an outside service take the optional
+`verify_connection` attribute:
+
+- `dokploy_registry`, `dokploy_destination`, and `dokploy_ai`.
+- `dokploy_gitlab_provider`, `dokploy_bitbucket_provider`, and
+  `dokploy_gitea_provider`.
+- The twelve `dokploy_<channel>_notification` resources.
+
+Set `verify_connection = true` to run the Dokploy test endpoint of the
+resource. The attribute exists only in Terraform. `null` and `false` both
+skip the test, so a configuration without the attribute plans no change.
+`terraform import` leaves the attribute `null`.
+
+What the provider sends depends on the resource:
+
+- **Registry, destination, AI, and notification:** the test runs before the
+  write and carries the credentials of the configuration, which includes the
+  value of a write-only companion. A failed test fails the apply with the
+  message of the server, and the provider writes nothing.
+- **GitLab, Bitbucket, and Gitea:** the test sends only the id of the stored
+  record, so it runs after the write. A failed create taints the resource, and
+  the record stays on the server. A failed update keeps the new values in the
+  state.
+
+The provider removes the credentials from each error message. The test of a
+destination lists the bucket with `rclone`, and Dokploy puts the command line
+with both keys in its error message. The provider redacts both keys.
+
+Four cases need care:
+
+- **Gitea:** the test needs an OAuth access token. The token exists only after
+  a person authorizes the application in the Dokploy UI. A test on the first
+  apply always fails, so do not set `verify_connection` on a new
+  `dokploy_gitea_provider`.
+- **Notifications:** every test **sends a real message** to the channel.
+  Each apply with `verify_connection = true` that changes the resource sends
+  it again.
+- **Telegram and Lark:** the Dokploy test answers `true` for a wrong bot
+  token (Telegram) and for an unreachable URL (Lark). A pass does not prove
+  the credentials.
+- **Registry:** Dokploy already runs `docker login` when it stores the
+  record, so the attribute adds an early check only.
+
+```hcl
+resource "dokploy_slack_notification" "deploys" {
+  name                   = "deploys"
+  webhook_url_wo         = var.slack_webhook_url
+  webhook_url_wo_version = 1
+  app_deploy             = true
+
+  verify_connection = true
+}
+```
+
 ## The state holds these values in cleartext
 
 The Terraform state stores attribute values in cleartext, sensitive values
