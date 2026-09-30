@@ -2,6 +2,12 @@
 
 <!-- One paragraph. Name the resource or the area, and the Dokploy behavior that drives the change. -->
 
+## Checklist for every pull request
+
+- [ ] Every commit is signed and shows **Verified** on GitHub ([how to sign](https://github.com/vanillauys/terraform-provider-dokploy/blob/master/CONTRIBUTING.md#sign-your-commits))
+- [ ] `CHANGELOG.md`: a line under `## [Unreleased]`
+- [ ] `make test`, `make lint` (0 issues), and `make docs` pass
+
 ## Checklist for a resource or data source change
 
 - [ ] `internal/client/<name>.go` and its test: the endpoints and the wire shape
@@ -11,7 +17,7 @@
 - [ ] `internal/provider/provider.go`: the registration
 - [ ] `examples/resources/dokploy_<name>/`: `resource.tf` and `import.sh`
 - [ ] `make docs`: the generated page is committed
-- [ ] `templates/index.md.tmpl`, `README.md`, and `CHANGELOG.md`: the three files nothing in CI checks
+- [ ] `templates/index.md.tmpl` and `README.md`: the two files nothing in CI checks
 
 ## Verification
 
