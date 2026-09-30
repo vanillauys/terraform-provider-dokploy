@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.30.7 to v0.30.8. The
+  endpoint census of a fresh v0.30.8 install (2026-09-30) is byte-identical
+  to the v0.30.7 snapshot. The upstream v0.30.7...v0.30.8 diff agrees: it
+  changes only the Dokploy Cloud dashboard (a HubSpot chat widget).
+
 ## [1.7.0] - 2026-09-19
 
 ### Added

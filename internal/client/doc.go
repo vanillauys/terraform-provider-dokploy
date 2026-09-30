@@ -1711,6 +1711,13 @@ package client
 // trial email. Nothing below the request schema changed for a self-hosted
 // server.
 //
+// # v0.30.8 census (probed 2026-09-30)
+//
+// The pin moved from v0.30.7 to v0.30.8 against a fresh v0.30.8 rig. The
+// endpoint census is byte-identical to the v0.30.7 snapshot. The upstream
+// v0.30.7...v0.30.8 compare agrees: one commit, which loads the HubSpot chat
+// widget in the Dokploy Cloud dashboard. No API file changed.
+//
 // # v1.7.0 records (probed 2026-09-19 on the same v0.30.7 rig)
 //
 // ## backup metadata (#71)
