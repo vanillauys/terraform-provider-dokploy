@@ -42,7 +42,8 @@ import (
 //	json.dump(dict(sorted(out.items())),sys.stdout,indent=1)
 //	' > internal/client/testdata/endpoint-fields.json
 //
-// Snapshot taken against Dokploy v0.30.7 on 2026-09-19. It differs from the
+// Snapshot taken against Dokploy v0.30.8 on 2026-09-30. It is byte-identical
+// to the v0.30.7 snapshot of 2026-09-19. That snapshot differs from the
 // v0.30.6 snapshot of 2026-09-10 in one entry: the new stripe.startFreeTrial
 // endpoint (Dokploy Cloud billing, not a self-hosted feature). No endpoint
 // this client sends to gained or lost a request field. The v0.30.6 snapshot

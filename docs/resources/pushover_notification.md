@@ -5,7 +5,7 @@ subcategory: "Notifications"
 description: |-
   A Pushover notification channel (Settings > Notifications). Dokploy sends each message through the Pushover API to a user or a group.
   Each event attribute selects one Dokploy event that sends a message on this channel. All events default to false, so a new channel sends nothing until you enable one.
-  ~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message.
+  ~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message. Set verify_connection = true to test the channel before the write.
   ~> Dokploy stores and returns user_key in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The user_key_wo companion keeps it out of the Terraform state.
   ~> Dokploy stores and returns api_token in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The api_token_wo companion keeps it out of the Terraform state.
 ---
@@ -16,7 +16,7 @@ A Pushover notification channel (Settings > Notifications). Dokploy sends each m
 
 Each event attribute selects one Dokploy event that sends a message on this channel. All events default to `false`, so a new channel sends nothing until you enable one.
 
-~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message.
+~> Dokploy does not test the channel on create or update. A wrong URL or token applies successfully and fails on the first message. Set `verify_connection = true` to test the channel before the write.
 
 ~> **Dokploy stores and returns `user_key` in cleartext.** The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The `user_key_wo` companion keeps it out of the Terraform state.
 
@@ -70,6 +70,7 @@ resource "dokploy_pushover_notification" "oncall" {
 - `user_key` (String, Sensitive) User or group key from the Pushover dashboard. Set this attribute or `user_key_wo`.
 - `user_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `user_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `user_key` and `user_key_wo`. A new value reaches the server only when `user_key_wo_version` changes.
 - `user_key_wo_version` (Number) Version of `user_key_wo`. Change it to send the current `user_key_wo` value to the server. It needs `user_key_wo`.
+- `verify_connection` (Boolean) Test the connection with `notification.testPushoverConnection` before the provider creates or updates the record. If the test fails, the apply fails with the server message, and the provider writes nothing. The default is no check: `null` and `false` both skip the test. Dokploy stores no value for this attribute, so `terraform import` leaves it `null`. The test sends a real test message to the channel.
 - `volume_backup` (Boolean) Send a message when a volume backup runs. Defaults to `false`.
 
 ### Read-Only

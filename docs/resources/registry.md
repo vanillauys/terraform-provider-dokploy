@@ -33,6 +33,9 @@ resource "dokploy_registry" "ghcr" {
 
   # Images are pushed as ghcr.io/my-org/<app name>.
   image_prefix = "my-org"
+
+  # Test the login before the provider writes the record.
+  verify_connection = true
 }
 
 # Push the built image of an application to the registry.
@@ -76,6 +79,7 @@ resource "dokploy_registry" "internal" {
 - `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `password` and `password_wo`. A new value reaches the server only when `password_wo_version` changes.
 - `password_wo_version` (Number) Version of `password_wo`. Change it to send the current `password_wo` value to the server. It needs `password_wo`.
 - `registry_type` (String) Registry type. Dokploy v0.30.5 accepts only `cloud`, which covers every external registry. Defaults to `cloud`.
+- `verify_connection` (Boolean) Test the connection with `registry.testRegistry` before the provider creates or updates the record. If the test fails, the apply fails with the server message, and the provider writes nothing. The default is no check: `null` and `false` both skip the test. Dokploy stores no value for this attribute, so `terraform import` leaves it `null`. Dokploy already runs `docker login` on create and on update, so this attribute adds an early check only.
 
 ### Read-Only
 

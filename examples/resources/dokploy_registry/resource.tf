@@ -12,6 +12,9 @@ resource "dokploy_registry" "ghcr" {
 
   # Images are pushed as ghcr.io/my-org/<app name>.
   image_prefix = "my-org"
+
+  # Test the login before the provider writes the record.
+  verify_connection = true
 }
 
 # Push the built image of an application to the registry.

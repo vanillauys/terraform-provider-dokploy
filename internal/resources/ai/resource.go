@@ -34,12 +34,13 @@ type resourceModel struct {
 	APIKey types.String `tfsdk:"api_key"`
 	// The write-only companions (tfutil.WriteOnlyCompanions). Only the
 	// config carries a _wo value; the plan and the state hold null for it.
-	APIKeyWo        types.String `tfsdk:"api_key_wo"`
-	APIKeyWoVersion types.Int64  `tfsdk:"api_key_wo_version"`
-	Model           types.String `tfsdk:"model"`
-	IsEnabled       types.Bool   `tfsdk:"is_enabled"`
-	OrganizationID  types.String `tfsdk:"organization_id"`
-	CreatedAt       types.String `tfsdk:"created_at"`
+	APIKeyWo         types.String `tfsdk:"api_key_wo"`
+	APIKeyWoVersion  types.Int64  `tfsdk:"api_key_wo_version"`
+	Model            types.String `tfsdk:"model"`
+	IsEnabled        types.Bool   `tfsdk:"is_enabled"`
+	OrganizationID   types.String `tfsdk:"organization_id"`
+	VerifyConnection types.Bool   `tfsdk:"verify_connection"`
+	CreatedAt        types.String `tfsdk:"created_at"`
 }
 
 // secretNames lists the attributes with write-only companions.
@@ -76,6 +77,8 @@ func (r *aiResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 			Description:   "Id of the organization that owns the configuration.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+		"verify_connection": tfutil.VerifyConnectionAttribute("ai.testConnection", false,
+			"The test sends a request to the endpoint with the key and the model, and it retries three times, so a failed test can take several seconds."),
 		"created_at": schema.StringAttribute{
 			Computed:      true,
 			Description:   "Creation timestamp from the server.",
@@ -135,13 +138,17 @@ func (r *aiResource) Create(ctx context.Context, req resource.CreateRequest, res
 	}
 	inUse := map[string]bool{"api_key": !cfg.APIKeyWo.IsNull()}
 	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlags(ctx, resp.Private, secretNames, inUse)...)
-	created, err := r.client.CreateAI(ctx, client.CreateAIRequest{
+	body := client.CreateAIRequest{
 		Name:      plan.Name.ValueString(),
 		APIURL:    plan.APIURL.ValueString(),
 		APIKey:    tfutil.SecretToCreate(plan.APIKey, cfg.APIKeyWo),
 		Model:     plan.Model.ValueString(),
 		IsEnabled: plan.IsEnabled.ValueBool(),
-	})
+	}
+	if !tfutil.VerifyConnection(ctx, &resp.Diagnostics, r.client, plan.VerifyConnection, "ai.testConnection", "AI", body, body.APIKey) {
+		return
+	}
+	created, err := r.client.CreateAI(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Creating AI configuration", err.Error())
 		return
@@ -195,14 +202,18 @@ func (r *aiResource) Update(ctx context.Context, req resource.UpdateRequest, res
 		}
 		key = current.APIKey
 	}
-	if err := r.client.UpdateAI(ctx, client.UpdateAIRequest{
+	body := client.UpdateAIRequest{
 		AIID:      plan.ID.ValueString(),
 		Name:      plan.Name.ValueString(),
 		APIURL:    plan.APIURL.ValueString(),
 		APIKey:    key,
 		Model:     plan.Model.ValueString(),
 		IsEnabled: plan.IsEnabled.ValueBool(),
-	}); err != nil {
+	}
+	if !tfutil.VerifyConnection(ctx, &resp.Diagnostics, r.client, plan.VerifyConnection, "ai.testConnection", "AI", body, key) {
+		return
+	}
+	if err := r.client.UpdateAI(ctx, body); err != nil {
 		resp.Diagnostics.AddError("Updating AI configuration", err.Error())
 		return
 	}

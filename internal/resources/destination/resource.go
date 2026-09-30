@@ -44,6 +44,7 @@ type resourceModel struct {
 	SecretAccessKeyWo        types.String `tfsdk:"secret_access_key_wo"`
 	SecretAccessKeyWoVersion types.Int64  `tfsdk:"secret_access_key_wo_version"`
 	AdditionalFlags          types.List   `tfsdk:"additional_flags"`
+	VerifyConnection         types.Bool   `tfsdk:"verify_connection"`
 	CreatedAt                types.String `tfsdk:"created_at"`
 }
 
@@ -91,6 +92,8 @@ func (r *destinationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			),
 			Description: "Extra flags for the storage client. Defaults to an empty list. If you remove it from the configuration, the provider clears the flags.",
 		},
+		"verify_connection": tfutil.VerifyConnectionAttribute("destination.testConnection", false,
+			"The test lists the bucket with `rclone`, which needs an endpoint that the Dokploy server can reach."),
 		"created_at": schema.StringAttribute{
 			Computed:      true,
 			Description:   "Creation timestamp from the server.",
@@ -179,7 +182,7 @@ func (r *destinationResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	inUse := map[string]bool{"access_key": !cfg.AccessKeyWo.IsNull(), "secret_access_key": !cfg.SecretAccessKeyWo.IsNull()}
 	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlags(ctx, resp.Private, secretNames, inUse)...)
-	created, err := r.client.CreateDestination(ctx, client.CreateDestinationRequest{
+	body := client.CreateDestinationRequest{
 		Name:            plan.Name.ValueString(),
 		Provider:        plan.Provider.ValueString(),
 		Endpoint:        plan.Endpoint.ValueString(),
@@ -188,7 +191,11 @@ func (r *destinationResource) Create(ctx context.Context, req resource.CreateReq
 		AccessKey:       tfutil.SecretToCreate(plan.AccessKey, cfg.AccessKeyWo),
 		SecretAccessKey: tfutil.SecretToCreate(plan.SecretAccessKey, cfg.SecretAccessKeyWo),
 		AdditionalFlags: flagsRequest(ctx, plan.AdditionalFlags, &resp.Diagnostics),
-	})
+	}
+	if !tfutil.VerifyConnection(ctx, &resp.Diagnostics, r.client, plan.VerifyConnection, "destination.testConnection", "destination", body, body.AccessKey, body.SecretAccessKey) {
+		return
+	}
+	created, err := r.client.CreateDestination(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Creating destination", err.Error())
 		return
@@ -250,7 +257,7 @@ func (r *destinationResource) Update(ctx context.Context, req resource.UpdateReq
 			secret = current.SecretAccessKey
 		}
 	}
-	if err := r.client.UpdateDestination(ctx, client.UpdateDestinationRequest{
+	body := client.UpdateDestinationRequest{
 		DestinationID:   plan.ID.ValueString(),
 		Name:            plan.Name.ValueString(),
 		Provider:        plan.Provider.ValueString(),
@@ -260,7 +267,11 @@ func (r *destinationResource) Update(ctx context.Context, req resource.UpdateReq
 		AccessKey:       accessKey,
 		SecretAccessKey: secret,
 		AdditionalFlags: flagsRequest(ctx, plan.AdditionalFlags, &resp.Diagnostics),
-	}); err != nil {
+	}
+	if !tfutil.VerifyConnection(ctx, &resp.Diagnostics, r.client, plan.VerifyConnection, "destination.testConnection", "destination", body, accessKey, secret) {
+		return
+	}
+	if err := r.client.UpdateDestination(ctx, body); err != nil {
 		resp.Diagnostics.AddError("Updating destination", err.Error())
 		return
 	}

@@ -9,7 +9,7 @@
 [![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=vanillauys_terraform-provider-dokploy&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vanillauys_terraform-provider-dokploy)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/vanillauys/terraform-provider-dokploy/badge)](https://scorecard.dev/viewer/?uri=github.com/vanillauys/terraform-provider-dokploy)
 [![Go version](https://img.shields.io/github/go-mod/go-version/vanillauys/terraform-provider-dokploy?logo=go&logoColor=white)](go.mod)
-[![Dokploy v0.30.7](https://img.shields.io/badge/Dokploy-v0.30.7-0EA5E9)](https://github.com/Dokploy/dokploy/releases/tag/v0.30.7)
+[![Dokploy v0.30.8](https://img.shields.io/badge/Dokploy-v0.30.8-0EA5E9)](https://github.com/Dokploy/dokploy/releases/tag/v0.30.8)
 [![Terraform 1.5+](https://img.shields.io/badge/Terraform-1.5%2B-7B42BC?logo=terraform&logoColor=white)](https://developer.hashicorp.com/terraform)
 [![OpenTofu 1.12](https://img.shields.io/badge/OpenTofu-1.12-FFDA18?logo=opentofu&logoColor=black)](https://opentofu.org)
 [![License: MIT](https://img.shields.io/github/license/vanillauys/terraform-provider-dokploy)](LICENSE)
@@ -74,7 +74,7 @@ combinations in a few lines each.
 
 ## Compatibility
 
-This provider targets **Dokploy v0.30.7**. The acceptance suite installs
+This provider targets **Dokploy v0.30.8**. The acceptance suite installs
 Dokploy with the upstream `install.sh` script. That script installs the latest
 Dokploy release, so the suite tests each new version when it ships, on every
 pull request and every night. The suite does not test older versions. A server
@@ -161,9 +161,7 @@ The provider does not model these Dokploy features yet.
   account.
 - **`dokploy_backup` cannot back up Redis.** Dokploy has no logical dump for
   Redis. Use `dokploy_volume_backup`, which archives the volume and accepts a
-  Redis parent. The provider also does not expose a backup of the Dokploy
-  server itself (Dokploy's `web-server` backup type). That backup type has no
-  parent service and needs its own validation path.
+  Redis parent.
 - **`dokploy_redis` has no `database_name`, `database_user`, or
   `database_root_password` attribute.** The Dokploy data model for Redis has
   no credential field other than `database_password`. This is a gap in

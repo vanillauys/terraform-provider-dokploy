@@ -11,7 +11,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	dsai "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/ai"
 	dsapplication "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/application"
+	dsbackup "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/backup"
 	dscertificate "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/certificate"
 	dscompose "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/compose"
 	dsdatabase "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/database"
@@ -21,15 +23,22 @@ import (
 	dsgitprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitprovider"
 	dsgitproviders "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/gitproviders"
 	libsqldatasource "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/libsql"
+	dsmount "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/mount"
 	dsnetwork "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/network"
+	dsnotification "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/notification"
 	dsorganization "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/organization"
+	dsport "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/port"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
+	dsredirect "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/redirect"
 	dsregistry "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/registry"
+	dsschedule "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/schedule"
+	dssecurity "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/security"
 	dsserver "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/server"
 	dssshkey "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/sshkey"
 	dstag "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/tag"
 	dsuser "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/user"
 	dsvaultprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/vaultprovider"
+	dsvolumebackup "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/volumebackup"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/ai"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/apikey"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/appchild"
@@ -60,6 +69,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/userpermissions"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/volumebackup"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/webserverbackup"
 )
 
 var _ provider.Provider = (*DokployProvider)(nil)
@@ -239,6 +249,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		notification.NewResource(notification.TeamsKind()),
 		notification.NewResource(notification.PushoverKind()),
 		notification.NewResource(notification.CustomKind()),
+		webserverbackup.NewResource,
 	}
 }
 
@@ -282,5 +293,25 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsregistry.NewDataSource,
 		dsvaultprovider.NewDataSource,
 		dstag.NewDataSource,
+		dsmount.NewDataSource,
+		dsport.NewDataSource,
+		dsredirect.NewDataSource,
+		dssecurity.NewDataSource,
+		dsbackup.NewDataSource,
+		dsvolumebackup.NewDataSource,
+		dsschedule.NewDataSource,
+		dsai.NewDataSource,
+		dsnotification.NewDataSource(dsnotification.SlackKind()),
+		dsnotification.NewDataSource(dsnotification.DiscordKind()),
+		dsnotification.NewDataSource(dsnotification.TelegramKind()),
+		dsnotification.NewDataSource(dsnotification.EmailKind()),
+		dsnotification.NewDataSource(dsnotification.ResendKind()),
+		dsnotification.NewDataSource(dsnotification.GotifyKind()),
+		dsnotification.NewDataSource(dsnotification.NtfyKind()),
+		dsnotification.NewDataSource(dsnotification.MattermostKind()),
+		dsnotification.NewDataSource(dsnotification.LarkKind()),
+		dsnotification.NewDataSource(dsnotification.TeamsKind()),
+		dsnotification.NewDataSource(dsnotification.PushoverKind()),
+		dsnotification.NewDataSource(dsnotification.CustomKind()),
 	}
 }

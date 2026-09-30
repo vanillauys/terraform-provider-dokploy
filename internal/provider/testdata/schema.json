@@ -80,6 +80,11 @@
             "name": "organization_id",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
           }
         ]
       }
@@ -1273,6 +1278,11 @@
             "optional": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
+          },
+          {
             "name": "workspace_name",
             "type": "tftypes.String",
             "optional": true
@@ -1745,6 +1755,11 @@
             "computed": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -1833,6 +1848,11 @@
             "name": "secret_access_key_wo_version",
             "type": "tftypes.Number",
             "optional": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
           }
         ]
       }
@@ -1903,6 +1923,11 @@
             "type": "tftypes.Bool",
             "optional": true,
             "computed": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -2146,6 +2171,11 @@
             "required": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -2291,6 +2321,11 @@
             "type": "tftypes.String",
             "optional": true,
             "computed": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
           }
         ]
       }
@@ -2362,6 +2397,11 @@
           {
             "name": "secret_wo_version",
             "type": "tftypes.Number",
+            "optional": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
             "optional": true
           }
         ]
@@ -2464,6 +2504,11 @@
             "required": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -2532,6 +2577,11 @@
             "type": "tftypes.Bool",
             "optional": true,
             "computed": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -3718,6 +3768,11 @@
           {
             "name": "username",
             "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
             "optional": true
           },
           {
@@ -5069,6 +5124,11 @@
             "required": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -5861,6 +5921,11 @@
             "optional": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -6481,6 +6546,11 @@
             "name": "username",
             "type": "tftypes.String",
             "required": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
           }
         ]
       }
@@ -6573,6 +6643,11 @@
             "name": "to_addresses",
             "type": "tftypes.List[tftypes.String]",
             "required": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -6851,6 +6926,11 @@
             "computed": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -7026,6 +7106,11 @@
             "computed": true
           },
           {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
+          },
+          {
             "name": "volume_backup",
             "type": "tftypes.Bool",
             "optional": true,
@@ -7140,6 +7225,11 @@
             "type": "tftypes.Bool",
             "optional": true,
             "computed": true
+          },
+          {
+            "name": "verify_connection",
+            "type": "tftypes.Bool",
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -7815,9 +7905,97 @@
           }
         ]
       }
+    },
+    "dokploy_web_server_backup": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "cron_expression",
+            "type": "tftypes.String",
+            "required": true
+          },
+          {
+            "name": "destination_id",
+            "type": "tftypes.String",
+            "required": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "include_encryption_key",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "keep_latest_count",
+            "type": "tftypes.Number",
+            "optional": true
+          },
+          {
+            "name": "prefix",
+            "type": "tftypes.String",
+            "required": true
+          }
+        ]
+      }
     }
   },
   "data_sources": {
+    "dokploy_ai": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "api_url",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "is_enabled",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "model",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "organization_id",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_application": {
       "version": 0,
       "block": {
@@ -7987,6 +8165,82 @@
           {
             "name": "title",
             "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_backup": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "compose_database_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cron_expression",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "destination_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "include_encryption_key",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "keep_latest_count",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "prefix",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "service_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "service_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "service_type",
+            "type": "tftypes.String",
+            "optional": true,
             "computed": true
           }
         ]
@@ -8201,6 +8455,70 @@
         ]
       }
     },
+    "dokploy_custom_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_destination": {
       "version": 0,
       "block": {
@@ -8245,6 +8563,75 @@
           {
             "name": "region",
             "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_discord_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "decoration",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
             "computed": true
           }
         ]
@@ -8351,6 +8738,95 @@
           {
             "name": "unique_config_key",
             "type": "tftypes.Number",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_email_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "from_address",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "smtp_port",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "smtp_server",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "to_addresses",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "username",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
             "computed": true
           }
         ]
@@ -8533,6 +9009,149 @@
           },
           {
             "name": "shared_with_organization",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_gotify_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "decoration",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "priority",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "server_url",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_lark_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
             "type": "tftypes.Bool",
             "computed": true
           }
@@ -8765,6 +9384,80 @@
         ]
       }
     },
+    "dokploy_mattermost_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "channel",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "username",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_mongo": {
       "version": 0,
       "block": {
@@ -8854,6 +9547,63 @@
           },
           {
             "name": "status",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_mount": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "content",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "file_path",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "host_path",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "mount_path",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "service_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "service_type",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "volume_name",
             "type": "tftypes.String",
             "computed": true
           }
@@ -9021,6 +9771,85 @@
         ]
       }
     },
+    "dokploy_ntfy_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "priority",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "server_url",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "topic",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_organization": {
       "version": 0,
       "block": {
@@ -9060,6 +9889,46 @@
           {
             "name": "slug",
             "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_port": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "application_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "protocol",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "publish_mode",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "published_port",
+            "type": "tftypes.Number",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "target_port",
+            "type": "tftypes.Number",
             "computed": true
           }
         ]
@@ -9224,6 +10093,120 @@
         ]
       }
     },
+    "dokploy_pushover_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "expire",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "priority",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "retry",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_redirect": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "application_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "permanent",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "regex",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "replacement",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_redis": {
       "version": 0,
       "block": {
@@ -9358,6 +10341,186 @@
         ]
       }
     },
+    "dokploy_resend_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "from_address",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "to_addresses",
+            "type": "tftypes.List[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_schedule": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "command",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cron_expression",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "description",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "schedule_type",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "script",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "service_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "service_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "shell_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "timezone",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_security": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "application_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "username",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_server": {
       "version": 0,
       "block": {
@@ -9442,6 +10605,75 @@
         ]
       }
     },
+    "dokploy_slack_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "channel",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_ssh_key": {
       "version": 0,
       "block": {
@@ -9510,6 +10742,144 @@
           {
             "name": "organization_id",
             "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_teams_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_telegram_notification": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_build_error",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "app_deploy",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "chat_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "database_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "docker_cleanup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_backup",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "dokploy_restart",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "message_thread_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_threshold",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "volume_backup",
+            "type": "tftypes.Bool",
             "computed": true
           }
         ]
@@ -9606,6 +10976,87 @@
           },
           {
             "name": "provider_type",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_volume_backup": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "app_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "cron_expression",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "destination_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "keep_latest_count",
+            "type": "tftypes.Number",
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "prefix",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "service_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "service_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "service_type",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "turn_off",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "volume_name",
             "type": "tftypes.String",
             "computed": true
           }

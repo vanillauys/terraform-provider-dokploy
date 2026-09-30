@@ -1711,6 +1711,13 @@ package client
 // trial email. Nothing below the request schema changed for a self-hosted
 // server.
 //
+// # v0.30.8 census (probed 2026-09-30)
+//
+// The pin moved from v0.30.7 to v0.30.8 against a fresh v0.30.8 rig. The
+// endpoint census is byte-identical to the v0.30.7 snapshot. The upstream
+// v0.30.7...v0.30.8 compare agrees: one commit, which loads the HubSpot chat
+// widget in the Dokploy Cloud dashboard. No API file changed.
+//
 // # v1.7.0 records (probed 2026-09-19 on the same v0.30.7 rig)
 //
 // ## backup metadata (#71)
@@ -1798,3 +1805,124 @@ package client
 // that exists: a change from replicated to {Global: {}} left the service
 // replicated. The provider therefore rejects a configuration that sets both
 // `replicas` and `swarm.mode`.
+//
+// ## verify_connection on eighteen test endpoints (#67)
+//
+// Every test endpoint is a POST. Success is HTTP 200 with the body `true`.
+// Failure is HTTP 400 with {"message": ...} for every endpoint probed, and
+// HTTP 404 "Gitea Provider not found" for an unknown gitea id (gitlab and
+// bitbucket answer HTTP 400 "... Provider not found" for an unknown id). The
+// zod schema ignores a key that it does not know, so the create request of a
+// resource, with its name and event flags, is a valid body.
+//
+// Body takes the credentials (the provider calls these before the write):
+// registry.testRegistry {registryType "cloud", registryUrl, username,
+// password}; destination.testConnection {name, provider, accessKey,
+// secretAccessKey, bucket, region, endpoint}; ai.testConnection {apiUrl,
+// apiKey, model}; and the twelve notification tests, which need the
+// channel fields of the create request: slack {webhookUrl, channel},
+// discord {webhookUrl}, telegram {botToken, chatId, messageThreadId},
+// email {smtpServer, smtpPort, username, password, toAddresses,
+// fromAddress}, resend {apiKey, fromAddress, toAddresses}, gotify
+// {serverUrl, appToken, priority}, ntfy {serverUrl, topic, accessToken,
+// priority}, mattermost, lark and teams {webhookUrl}, pushover {userKey,
+// apiToken, priority}, custom {endpoint}. The endpoint names are
+// notification.test<Channel>Connection.
+//
+// Body takes the id of a stored record (the provider calls these after the
+// write): gitlab.testConnection {gitlabId}, bitbucket.testConnection
+// {bitbucketId}, gitea.testConnection {giteaId}. A record that exists but
+// cannot connect answers HTTP 400: gitlab "fetch failed" (unreachable URL),
+// bitbucket "Failed to fetch repositories: Service Unavailable", gitea "No
+// access token available. Please authorize with Gitea." A gitea record has
+// an access token only after a person authorizes the OAuth2 application in
+// the Dokploy UI, so a test right after the create always fails.
+//
+// Failure shapes probed: registry "Command failed with code 1. Stderr: Error
+// response from daemon: Get ... denied: denied" (wrong login) and "...
+// connection refused" (unreachable host); destination "Command execution
+// failed: Command failed: rclone ls --s3-access-key-id=... --s3-secret-
+// access-key=..." (the message holds both credentials in cleartext, so the
+// provider redacts them); ai "Failed after 3 attempts. Last error: Cannot
+// connect to API: bad port" (about six seconds); notification "Failed to send
+// slack notification fetch failed" (the same shape for discord and teams),
+// "fetch failed" (custom), "Error testing the
+// notification" (gotify, mattermost, pushover, with "...: fetch failed" for
+// ntfy), "Failed to send email notification connect ECONNREFUSED" (email),
+// and "Failed to send Resend notification API key is invalid".
+//
+// Every notification test sends a real message to the channel, so the
+// attribute description says so. Two tests cannot fail: telegram answers
+// `true` for a bot token that Telegram rejects, and lark answers `true` for
+// a webhook URL that it cannot reach. The docs of those two say so.
+//
+// The endpoints not in scope: github.testConnection, dnsProvider.
+// testConnection, domain.validateDomain, registry.testRegistryById.
+//
+// # v1.8.0 records: data source lookups (probed 2026-09-30 on a v0.30.8 rig)
+//
+// ## Listing the children of a service (#66)
+//
+// Only schedule.list and volumeBackups.list are list endpoints. Both need
+// the parent id (`id`) and the parent type (`scheduleType` or
+// `volumeBackupType`), and both answer [] for an unknown id of a type that
+// exists. schedule.list answers 404 "Server not found" for an unknown server
+// id. A mount, a backup, a port, a redirect, and a security record have no
+// list endpoint. The read of the parent embeds them:
+//
+//	application.one    mounts, ports, redirects, security
+//	postgres.one       mounts, backups (and the same for the other engines)
+//	compose.one        mounts, backups
+//
+// A new postgres service already embeds one mount, the data volume that
+// Dokploy creates for it. The embedded mount and backup objects carry the
+// same fields as mounts.one and backup.one. So a data source finds a child
+// in the embedded array, and it never takes the first of many matches.
+//
+// Names repeat for mounts (mount path), backups (prefix), schedules and
+// volume backups (name), ports (published port with tcp and udp), and
+// redirects (regex). A security record is the exception: security.create
+// answers HTTP 400 "Failed query: insert into security" for a second record
+// with the same username on one application.
+//
+// ## Notifications and AI
+//
+// notification.all returns the channel block of every record (slackId,
+// webhookUrl, and so on), so a lookup by name needs no second read. The
+// block of a channel other than the record type is absent. ai.getAll returns
+// apiKey in cleartext; the data source drops it. A notification lookup by id
+// checks notificationType, because notification.one answers any channel.
+//
+// ## web-server backup (#68)
+//
+// Probed live against the rig (v0.30.8, 2026-09-30).
+//
+// The web-server backup is backup.create with databaseType "web-server" and
+// backupType "database". It has no parent column: postgresId, mysqlId and
+// the others stay null. The required keys are schedule, prefix,
+// destinationId, database (one character or more, the provider sends
+// "dokploy"), databaseType and backupType. enabled, keepLatestCount and
+// includeEncryptionKey are optional, with the same defaults as a database
+// backup: enabled and keepLatestCount store null, includeEncryptionKey
+// stores true.
+//
+// The record needs the owner in `userId`. backup.create without it answers
+// HTTP 200 with a null and stores a record with a null userId. No endpoint
+// lists that record, so the record is lost. user.session returns the id of
+// the user that owns the API key.
+//
+// The response of backup.create is a literal null, as for a database backup.
+// user.getBackups returns the user record with a `backups` array of the
+// web-server backups, and createAndLocate finds the new id with a diff of
+// that array. backup.one reads a record by id and answers 404 for a missing
+// id. There is no list endpoint.
+//
+// More than one web-server backup can exist for a user: a second
+// backup.create with a different prefix answers 200 and adds a record.
+//
+// backup.update is DIALECT A and accepts the same body as for a database
+// backup (UpdateBackupRequest, databaseType "web-server"). A partial body
+// answers 400. An explicit null clears enabled and keepLatestCount, and
+// userId stays unchanged. backup.remove deletes the record and answers 200
+// with the removed record. The backup.manualBackupWebServer endpoint runs
+// one backup on demand. The provider does not call it.

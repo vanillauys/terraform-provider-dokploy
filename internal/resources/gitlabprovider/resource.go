@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -39,6 +40,7 @@ type resourceModel struct {
 	SecretWoVersion   types.Int64  `tfsdk:"secret_wo_version"`
 	GroupName         types.String `tfsdk:"group_name"`
 	RedirectURI       types.String `tfsdk:"redirect_uri"`
+	VerifyConnection  types.Bool   `tfsdk:"verify_connection"`
 	CreatedAt         types.String `tfsdk:"created_at"`
 }
 
@@ -86,6 +88,7 @@ func (r *gitlabResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				"built from the provider's `endpoint`. Register the same URI in GitLab.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+		"verify_connection": tfutil.VerifyConnectionAttribute("gitlab.testConnection", true, ""),
 		"created_at": schema.StringAttribute{
 			Computed:      true,
 			Description:   "Creation timestamp from the server.",
@@ -176,6 +179,15 @@ func (r *gitlabResource) Create(ctx context.Context, req resource.CreateRequest,
 	flatten(created, &plan)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	r.verify(ctx, plan, &resp.Diagnostics)
+}
+
+// verify runs gitlab.testConnection, which takes the id of the stored
+// record, so Create and Update call it after the write. The state is set
+// first: a failed check leaves the record on the server.
+func (r *gitlabResource) verify(ctx context.Context, plan resourceModel, diags *diag.Diagnostics) {
+	tfutil.VerifyConnection(ctx, diags, r.client, plan.VerifyConnection, "gitlab.testConnection", "GitLab",
+		map[string]string{"gitlabId": plan.ID.ValueString()})
 }
 
 func (r *gitlabResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -243,6 +255,7 @@ func (r *gitlabResource) Update(ctx context.Context, req resource.UpdateRequest,
 	flatten(g, &plan)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	r.verify(ctx, plan, &resp.Diagnostics)
 }
 
 func (r *gitlabResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
