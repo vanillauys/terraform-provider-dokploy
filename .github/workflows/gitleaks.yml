@@ -1,0 +1,115 @@
+name: gitleaks
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+# A new push to a pull request cancels the run of the previous push; a push
+# to master never cancels one, so every master commit keeps its scan.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  # Dependabot does not update these two values. Change them together: copy
+  # the sha256 of gitleaks_<version>_linux_x64.tar.gz from the
+  # gitleaks_<version>_checksums.txt file of the release.
+  GITLEAKS_VERSION: 8.30.1
+  GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The pull request scan reads every commit between the base and
+          # the head, so it needs the full history.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          curl --proto "=https" --tlsv1.2 -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            -o "$RUNNER_TEMP/gitleaks.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gitleaks" version
+      # The working tree scan finds a secret in the files as they are now.
+      # On a pull request, the commit scan also finds a secret that one
+      # commit adds and a later commit removes: the pull request keeps that
+      # commit on GitHub after the squash merge.
+      - name: Scan for secrets
+        id: scan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set +e
+          flags=(--redact --no-banner --no-color --verbose --exit-code 1)
+          output=$(gitleaks dir . "${flags[@]}" 2>&1)
+          exit_code=$?
+          if [ -n "$BASE_SHA" ]; then
+            commits=$(gitleaks git . --log-opts="${BASE_SHA}..${HEAD_SHA}" "${flags[@]}" 2>&1)
+            commits_exit=$?
+            output=$(printf '%s\n\n--- commits %s..%s ---\n%s' "$output" "${BASE_SHA:0:7}" "${HEAD_SHA:0:7}" "$commits")
+            if [ "$commits_exit" -ne 0 ]; then exit_code=$commits_exit; fi
+          fi
+          echo "$output"
+          delimiter="gitleaks_$(od -An -N16 -tx1 /dev/urandom | tr -d " \n")"
+          {
+            echo "output<<${delimiter}"
+            echo "${output:0:60000}"
+            echo "${delimiter}"
+          } >> "$GITHUB_OUTPUT"
+          exit $exit_code
+      # The token of a pull request from a fork is read-only, so the comment
+      # step runs for pull requests from this repository only. The findings
+      # of a fork pull request are in the log of the scan step.
+      - name: Update PR comment
+        if: >-
+          always() && github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SCAN_OUTPUT: ${{ steps.scan.outputs.output }}
+          SCAN_OUTCOME: ${{ steps.scan.outcome }}
+        with:
+          script: |
+            const marker = '<!-- gitleaks-scan -->';
+            const failed = process.env.SCAN_OUTCOME === 'failure';
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find(c => c.body?.includes(marker));
+
+            const body = failed
+              ? `${marker}\n### :warning: Secret scan failed\n\nThe scan found the findings below. Secrets are redacted. Check the file and line, or the commit, to identify what triggered the rule. Rotate a real secret: a force-push does not remove it from GitHub.\n\n\`\`\`\n${process.env.SCAN_OUTPUT}\n\`\`\``
+              : `${marker}\n### :white_check_mark: Secret scan passed\n\nNo secrets detected.`;
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
