@@ -60,7 +60,7 @@ resource "dokploy_telegram_notification" "alerts" {
 - `dokploy_restart` (Boolean) Send a message when Dokploy restarts. Defaults to `false`.
 - `message_thread_id` (String) Topic id inside a forum group. Omit it for a plain chat. If you remove it from the configuration, the provider clears it.
 - `server_threshold` (Boolean) Send a message when a server crosses a resource threshold. Defaults to `false`.
-- `verify_connection` (Boolean) Test the connection with `notification.testTelegramConnection` before the provider creates or updates the record. Defaults to `false`. If the test fails, the apply fails with the server message, and the provider writes nothing. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`. The test sends a real test message to the channel. Dokploy v0.30.8 reports success for a wrong bot token or chat id, so a passed test does not prove the channel works.
+- `verify_connection` (Boolean) Test the connection with `notification.testTelegramConnection` before the provider creates or updates the record. If the test fails, the apply fails with the server message, and the provider writes nothing. The default is no check: `null` and `false` both skip the test. Dokploy stores no value for this attribute, so `terraform import` leaves it `null`. The test sends a real test message to the channel. Dokploy v0.30.8 reports success for a wrong bot token or chat id, so a passed test does not prove the channel works.
 - `volume_backup` (Boolean) Send a message when a volume backup runs. Defaults to `false`.
 
 ### Read-Only

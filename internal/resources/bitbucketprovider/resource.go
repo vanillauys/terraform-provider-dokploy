@@ -309,5 +309,4 @@ func (r *bitbucketResource) Delete(ctx context.Context, req resource.DeleteReque
 
 func (r *bitbucketResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-	resp.Diagnostics.Append(tfutil.ImportVerifyDefault(ctx, &resp.State)...)
 }

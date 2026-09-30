@@ -50,7 +50,7 @@ resource "dokploy_destination" "backups" {
 - `secret_access_key` (String, Sensitive) S3 secret access key. Set this attribute or `secret_access_key_wo`.
 - `secret_access_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `secret_access_key`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `secret_access_key` and `secret_access_key_wo`. A new value reaches the server only when `secret_access_key_wo_version` changes.
 - `secret_access_key_wo_version` (Number) Version of `secret_access_key_wo`. Change it to send the current `secret_access_key_wo` value to the server. It needs `secret_access_key_wo`.
-- `verify_connection` (Boolean) Test the connection with `destination.testConnection` before the provider creates or updates the record. Defaults to `false`. If the test fails, the apply fails with the server message, and the provider writes nothing. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`. The test lists the bucket with `rclone`, which needs an endpoint that the Dokploy server can reach.
+- `verify_connection` (Boolean) Test the connection with `destination.testConnection` before the provider creates or updates the record. If the test fails, the apply fails with the server message, and the provider writes nothing. The default is no check: `null` and `false` both skip the test. Dokploy stores no value for this attribute, so `terraform import` leaves it `null`. The test lists the bucket with `rclone`, which needs an endpoint that the Dokploy server can reach.
 
 ### Read-Only
 

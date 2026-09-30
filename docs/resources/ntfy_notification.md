@@ -70,7 +70,7 @@ resource "dokploy_ntfy_notification" "public" {
 - `dokploy_restart` (Boolean) Send a message when Dokploy restarts. Defaults to `false`.
 - `priority` (Number) Message priority from 1 (min) to 5 (max). Defaults to `3`.
 - `server_threshold` (Boolean) Send a message when a server crosses a resource threshold. Defaults to `false`.
-- `verify_connection` (Boolean) Test the connection with `notification.testNtfyConnection` before the provider creates or updates the record. Defaults to `false`. If the test fails, the apply fails with the server message, and the provider writes nothing. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`. The test sends a real test message to the channel.
+- `verify_connection` (Boolean) Test the connection with `notification.testNtfyConnection` before the provider creates or updates the record. If the test fails, the apply fails with the server message, and the provider writes nothing. The default is no check: `null` and `false` both skip the test. Dokploy stores no value for this attribute, so `terraform import` leaves it `null`. The test sends a real test message to the channel.
 - `volume_backup` (Boolean) Send a message when a volume backup runs. Defaults to `false`.
 
 ### Read-Only

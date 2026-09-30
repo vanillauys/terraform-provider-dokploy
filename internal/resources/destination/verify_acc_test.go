@@ -47,7 +47,7 @@ func TestAccDestination_verifyConnection(t *testing.T) {
 			},
 			{
 				Config: verifyDestinationConfig(name, ""),
-				Check:  resource.TestCheckResourceAttr("dokploy_destination.test", "verify_connection", "false"),
+				Check:  resource.TestCheckNoResourceAttr("dokploy_destination.test", "verify_connection"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},

@@ -258,5 +258,4 @@ func (r *giteaResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 
 func (r *giteaResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-	resp.Diagnostics.Append(tfutil.ImportVerifyDefault(ctx, &resp.State)...)
 }

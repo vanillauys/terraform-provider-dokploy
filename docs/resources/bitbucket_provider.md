@@ -58,7 +58,7 @@ resource "dokploy_bitbucket_provider" "legacy" {
 - `app_password_wo_version` (Number) Version of `app_password_wo`. Change it to send the current `app_password_wo` value to the server. It needs `app_password_wo`.
 - `email` (String) Atlassian account email, for the API-token shape. Dokploy validates it as an address and cannot clear it, so a change replaces the resource.
 - `username` (String) Bitbucket username, for the app-password shape. Set `username` with `app_password` (or `app_password_wo`), or `email` with `api_token` (or `api_token_wo`).
-- `verify_connection` (Boolean) Test the connection with `bitbucket.testConnection` after the provider creates or updates the record, because the endpoint takes the id of a stored record. Defaults to `false`. If the test fails, the apply fails with the server message, but the record stays on the server. After a failed create, Terraform marks the resource as tainted. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`.
+- `verify_connection` (Boolean) Test the connection with `bitbucket.testConnection` after the provider creates or updates the record, because the endpoint takes the id of a stored record. If the test fails, the apply fails with the server message, but the record stays on the server. After a failed create, Terraform marks the resource as tainted. The default is no check: `null` and `false` both skip the test. Dokploy stores no value for this attribute, so `terraform import` leaves it `null`.
 - `workspace_name` (String) Bitbucket workspace whose repositories Dokploy lists. If you remove it from the configuration, the provider clears it.
 
 ### Read-Only

@@ -58,7 +58,7 @@ func TestAccNotification_verifyConnection(t *testing.T) {
 				},
 				{
 					Config:           channelConfig(tc.kind, name, tc.attrs, ""),
-					Check:            resource.TestCheckResourceAttr(addr, "verify_connection", "false"),
+					Check:            resource.TestCheckNoResourceAttr(addr, "verify_connection"),
 					ConfigPlanChecks: noDiff,
 				},
 				{
@@ -85,7 +85,7 @@ func TestAccNotification_verifyConnection(t *testing.T) {
 					},
 					{
 						Config:           channelConfig(tc.kind, name+"-renamed", tc.attrs, ""),
-						Check:            resource.TestCheckResourceAttr(addr, "verify_connection", "false"),
+						Check:            resource.TestCheckNoResourceAttr(addr, "verify_connection"),
 						ConfigPlanChecks: noDiff,
 					},
 					{

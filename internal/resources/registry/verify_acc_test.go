@@ -49,14 +49,14 @@ func TestAccRegistry_verifyConnection(t *testing.T) {
 				// The default: the attribute drops out of the configuration.
 				Config: registryConfig(name+"-renamed", url, plain),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("dokploy_registry.test", "verify_connection", "false"),
+					resource.TestCheckNoResourceAttr("dokploy_registry.test", "verify_connection"),
 					resource.TestCheckResourceAttr("dokploy_registry.test", "url", url),
 				),
 				ConfigPlanChecks: noDiff,
 			},
 			{
-				// Import seeds verify_connection with false. The read
-				// endpoint omits the password.
+				// Import leaves verify_connection null, like the config.
+				// The read endpoint omits the password.
 				ResourceName:            "dokploy_registry.test",
 				ImportState:             true,
 				ImportStateVerify:       true,

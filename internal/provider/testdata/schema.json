@@ -84,8 +84,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           }
         ]
       }
@@ -911,8 +910,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "workspace_name",
@@ -1389,8 +1387,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -1485,8 +1482,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           }
         ]
       }
@@ -1561,8 +1557,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -1808,8 +1803,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -1961,8 +1955,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           }
         ]
       }
@@ -2039,8 +2032,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           }
         ]
       }
@@ -2144,8 +2136,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -2220,8 +2211,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -2673,8 +2663,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -3287,8 +3276,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -3715,8 +3703,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -3973,8 +3960,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           }
         ]
       }
@@ -4071,8 +4057,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -4353,8 +4338,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -4534,8 +4518,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",
@@ -4656,8 +4639,7 @@
           {
             "name": "verify_connection",
             "type": "tftypes.Bool",
-            "optional": true,
-            "computed": true
+            "optional": true
           },
           {
             "name": "volume_backup",

@@ -271,5 +271,4 @@ func (r *gitlabResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 func (r *gitlabResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-	resp.Diagnostics.Append(tfutil.ImportVerifyDefault(ctx, &resp.State)...)
 }

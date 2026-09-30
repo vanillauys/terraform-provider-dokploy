@@ -32,7 +32,7 @@ func TestAccGitea_verifyConnection(t *testing.T) {
 			{
 				// The failed create tainted the resource, so this step replaces it.
 				Config:           config(name, plain),
-				Check:            resource.TestCheckResourceAttr("dokploy_gitea_provider.test", "verify_connection", "false"),
+				Check:            resource.TestCheckNoResourceAttr("dokploy_gitea_provider.test", "verify_connection"),
 				ConfigPlanChecks: noDiff,
 			},
 			{

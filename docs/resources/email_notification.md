@@ -66,7 +66,7 @@ resource "dokploy_email_notification" "ops" {
 - `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only form of `password`. Terraform keeps it out of the plan and the state. It needs Terraform 1.11 or later. Set exactly one of `password` and `password_wo`. A new value reaches the server only when `password_wo_version` changes.
 - `password_wo_version` (Number) Version of `password_wo`. Change it to send the current `password_wo` value to the server. It needs `password_wo`.
 - `server_threshold` (Boolean) Send a message when a server crosses a resource threshold. Defaults to `false`.
-- `verify_connection` (Boolean) Test the connection with `notification.testEmailConnection` before the provider creates or updates the record. Defaults to `false`. If the test fails, the apply fails with the server message, and the provider writes nothing. Dokploy stores no value for this attribute, so `terraform import` sets it to `false`. The test sends a real test message to the channel.
+- `verify_connection` (Boolean) Test the connection with `notification.testEmailConnection` before the provider creates or updates the record. If the test fails, the apply fails with the server message, and the provider writes nothing. The default is no check: `null` and `false` both skip the test. Dokploy stores no value for this attribute, so `terraform import` leaves it `null`. The test sends a real test message to the channel.
 - `volume_backup` (Boolean) Send a message when a volume backup runs. Defaults to `false`.
 
 ### Read-Only

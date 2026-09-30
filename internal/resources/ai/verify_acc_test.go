@@ -43,7 +43,7 @@ func TestAccAI_verifyConnection(t *testing.T) {
 			},
 			{
 				Config: verifyAIConfig(name, ""),
-				Check:  resource.TestCheckResourceAttr("dokploy_ai.test", "verify_connection", "false"),
+				Check:  resource.TestCheckNoResourceAttr("dokploy_ai.test", "verify_connection"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},

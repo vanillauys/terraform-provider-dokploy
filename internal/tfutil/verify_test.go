@@ -79,8 +79,11 @@ func TestVerifyConnectionFailureRedactsSecrets(t *testing.T) {
 func TestVerifyConnectionAttributeDescription(t *testing.T) {
 	before := VerifyConnectionAttribute("registry.testRegistry", false, "Extra note.")
 	after := VerifyConnectionAttribute("gitlab.testConnection", true, "")
-	if !before.Optional || !before.Computed || before.Default == nil {
-		t.Errorf("attribute must be Optional + Computed with a default: %+v", before)
+	if !before.Optional || before.Computed || before.Default != nil {
+		t.Errorf("attribute must be Optional only, with no Computed and no default: %+v", before)
+	}
+	if !strings.Contains(before.Description, "The default is no check") {
+		t.Errorf("description must say that the default is no check: %q", before.Description)
 	}
 	if !strings.Contains(before.Description, "`registry.testRegistry` before") || !strings.HasSuffix(before.Description, "Extra note.") {
 		t.Errorf("before description = %q", before.Description)

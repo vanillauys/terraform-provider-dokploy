@@ -205,13 +205,7 @@ resource "dokploy_backup" "test" {
 				ProtoV6ProviderFactories: acctest.ProviderFactories(),
 				Config:                   cfg("cron_expression"),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
-					// The v0.10.4 destination state has no verify_connection (#67), so the
-					// first plan sets it to false in place. The backup itself has no diff.
-					PreApply: []plancheck.PlanCheck{
-						plancheck.ExpectResourceAction("dokploy_destination.test", plancheck.ResourceActionUpdate),
-						plancheck.ExpectResourceAction("dokploy_backup.test", plancheck.ResourceActionNoop),
-					},
-					PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 				Check: resource.TestCheckResourceAttr("dokploy_backup.test", "cron_expression", "0 3 * * *"),
 			},

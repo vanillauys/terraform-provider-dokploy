@@ -153,8 +153,8 @@ func TestEverySchemaHasVerifyConnection(t *testing.T) {
 		var resp resource.SchemaResponse
 		r.Schema(ctx, resource.SchemaRequest{}, &resp)
 		attr, ok := resp.Schema.Attributes["verify_connection"].(schema.BoolAttribute)
-		if !ok || !attr.Optional || !attr.Computed || attr.Default == nil {
-			t.Errorf("%s: verify_connection must be an Optional + Computed bool with a default", name)
+		if !ok || !attr.Optional || attr.Computed || attr.Default != nil {
+			t.Errorf("%s: verify_connection must be an Optional-only bool", name)
 			continue
 		}
 		if !strings.Contains(attr.Description, "sends a real test message") {

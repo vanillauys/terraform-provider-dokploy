@@ -379,7 +379,6 @@ func (r *genericResource[M]) Delete(ctx context.Context, req resource.DeleteRequ
 
 func (r *genericResource[M]) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-	resp.Diagnostics.Append(tfutil.ImportVerifyDefault(ctx, &resp.State)...)
 }
 
 // verify runs the channel test when verify_connection is true, with the
