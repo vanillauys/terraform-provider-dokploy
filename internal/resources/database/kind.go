@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/swarm"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -211,6 +212,9 @@ type Object struct {
 	// embedded block every engine's read struct carries. ReplicaSets is
 	// meaningful only for a Kind with ReplicaSets set.
 	client.ServiceResources
+	// The Swarm service specification (v1.8.0, #69), the same embedded
+	// block every engine's read struct carries.
+	client.Swarm
 	ReplicaSets bool
 }
 
@@ -253,6 +257,9 @@ type UpdateSpec struct {
 	// explicit null and clears the stored value; Replicas always carries a
 	// concrete value; a nil Args clears.
 	client.ServiceResourcesUpdate
+	// The Swarm service specification (v1.8.0, #69): a nil column reaches
+	// the wire as an explicit null and clears the stored value.
+	client.Swarm
 	ReplicaSets bool
 }
 
@@ -398,11 +405,13 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 			Validators:  []validator.String{wholeNumber},
 		},
 		"replicas": schema.Int64Attribute{
-			Optional:    true,
-			Computed:    true,
-			Default:     int64default.StaticInt64(1),
-			Description: "Number of container replicas. Defaults to `1`. A change starts a redeploy.",
+			Optional: true,
+			Computed: true,
+			Default:  int64default.StaticInt64(1),
+			Description: "Number of container replicas. Defaults to `1`. A change starts a redeploy. " +
+				"If `swarm.mode` is set, Dokploy uses the mode and ignores this attribute. Set `replicas` or `swarm.mode`, not both: the provider rejects the pair at plan time.",
 		},
+		"swarm": swarm.Attribute(),
 		// status deliberately has NO UseStateForUnknown: it is genuinely
 		// server-mutable (a deploy moves it idle -> running -> done), so
 		// pinning the prior value as a *known* plan value makes Terraform core

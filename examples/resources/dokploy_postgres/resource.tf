@@ -20,4 +20,15 @@ resource "dokploy_postgres" "example" {
   # replicas        = 1
   # command         = "docker-entrypoint.sh"
   # args            = ["postgres", "-c", "max_connections=200"]
+
+  # The Docker Swarm service specification. Set swarm.mode or replicas, not
+  # both. Durations are in nanoseconds.
+  # swarm = {
+  #   mode      = { replicated = { replicas = 1 } }
+  #   placement = { constraints = ["node.labels.tier == db"] }
+  #   update_config = {
+  #     parallelism = 1
+  #     order       = "stop-first"
+  #   }
+  # }
 }

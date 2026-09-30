@@ -14,10 +14,8 @@ import (
 // bool (enableNamespaces) where CredentialAttr can only express strings, and
 // a create that returns literal `true` rather than the record.
 //
-// The ten *Swarm fields the endpoint also returns are deliberately not
-// modelled here, matching dokploy_application, which exposes the same six
-// operational attributes and none of the Swarm ones. They are exempted in
-// census_test.go with that reason.
+// The eleven *Swarm columns are modelled through the embedded Swarm struct
+// (v1.8.0, #69).
 type Libsql struct {
 	LibsqlID          string  `json:"libsqlId"`
 	Name              string  `json:"name"`
@@ -51,6 +49,9 @@ type Libsql struct {
 
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
+
+	// The Swarm service specification (v1.8.0, #69); see swarm.go.
+	Swarm
 }
 
 // CreateLibsqlRequest.
@@ -140,6 +141,10 @@ type UpdateLibsqlRequest struct {
 	// dialect B fields this task adds, not the dialect-A/C exceptions above.
 	NetworkIDs           *[]string `json:"networkIds"`
 	DetachDokployNetwork bool      `json:"detachDokployNetwork"`
+
+	// The Swarm service specification (v1.8.0, #69). A nil column marshals to
+	// an explicit null; see swarm.go.
+	Swarm
 }
 
 // CreateLibsql. libsql.create returns literal `true`, not the record, so the

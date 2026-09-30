@@ -278,30 +278,19 @@ var censusExempt = map[string]map[string]string{
 		"sourceType": "source is set by the follow-up compose.update the resource always issues on create",
 	},
 	// libsql.update is similar to compose.update: the endpoint accepts more
-	// fields than this client models. The Swarm fields are not exposed in
-	// Terraform (dokploy_application does not expose them either), and
+	// fields than this client models. The
 	// externalAdminPort, externalGRPCPort, externalPort are managed through a
 	// separate endpoint (libsql.saveExternalPorts, like compose.saveEnvironment
 	// handles env).
 	"libsql.update": {
-		"endpointSpecSwarm":    "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"healthCheckSwarm":     "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"labelsSwarm":          "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"modeSwarm":            "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"networkSwarm":         "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"placementSwarm":       "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"restartPolicySwarm":   "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"rollbackConfigSwarm":  "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"updateConfigSwarm":    "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"stopGracePeriodSwarm": "Docker Swarm orchestration surface; dokploy_application does not expose it either",
-		"appName":              "server-generated (suffixed for uniqueness on every create); Computed-only on the resource, so no config path exists to change it and libsql.update never needs to send it",
-		"applicationStatus":    "server-mutable status; a deploy moves it, Terraform must not write it",
-		"createdAt":            "server-generated; not user configuration",
-		"env":                  "set through libsql.saveEnvironment, which is the endpoint the Dokploy UI uses",
-		"environmentId":        "RequiresReplace on the resource; libsql.move is the supported retarget and is not modelled",
-		"externalAdminPort":    "managed through libsql.saveExternalPorts, not in the primary update endpoint",
-		"externalGRPCPort":     "managed through libsql.saveExternalPorts, not in the primary update endpoint",
-		"externalPort":         "managed through libsql.saveExternalPorts, not in the primary update endpoint",
+		"appName":           "server-generated (suffixed for uniqueness on every create); Computed-only on the resource, so no config path exists to change it and libsql.update never needs to send it",
+		"applicationStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
+		"createdAt":         "server-generated; not user configuration",
+		"env":               "set through libsql.saveEnvironment, which is the endpoint the Dokploy UI uses",
+		"environmentId":     "RequiresReplace on the resource; libsql.move is the supported retarget and is not modelled",
+		"externalAdminPort": "managed through libsql.saveExternalPorts, not in the primary update endpoint",
+		"externalGRPCPort":  "managed through libsql.saveExternalPorts, not in the primary update endpoint",
+		"externalPort":      "managed through libsql.saveExternalPorts, not in the primary update endpoint",
 	},
 	// Phase 2 records (probed 2026-09-05; see doc.go "Phase 2 records").
 	"sshKey.update": {
@@ -437,7 +426,6 @@ var censusExempt = map[string]map[string]string{
 		sameReason("set through application.saveEnvironment (dialect A), which the Dokploy UI uses",
 			"env", "buildArgs", "buildSecrets", "createEnvFile",
 		),
-		swarmExemptions(),
 	),
 	// better-auth's refill quota fields: not exposed in the Dokploy UI, and
 	// the resource models the rate limit through rateLimitMax and the window.
@@ -448,33 +436,19 @@ var censusExempt = map[string]map[string]string{
 	},
 }
 
-// swarmExemptions is the Docker Swarm orchestration surface every service
-// update endpoint accepts (eleven JSON columns). None of it is modelled yet;
-// the gap plan tracks it as a `swarm` block (item A9).
-func swarmExemptions() map[string]string {
-	return sameReason("Docker Swarm orchestration surface; not modelled yet (gap plan A9)",
-		"endpointSpecSwarm", "healthCheckSwarm", "labelsSwarm", "modeSwarm", "networkSwarm",
-		"placementSwarm", "restartPolicySwarm", "rollbackConfigSwarm", "stopGracePeriodSwarm",
-		"ulimitsSwarm", "updateConfigSwarm",
-	)
-}
-
 // databaseUpdateExemptions is the shared list for the five engine .update
 // endpoints (#51): the server-managed columns, the RequiresReplace
 // credentials named per engine, the two columns the resource writes through
-// the engine's own save* endpoints, and the swarm surface.
+// the engine's own save* endpoints.
 func databaseUpdateExemptions(engine string, replaceCredentials ...string) map[string]string {
-	out := mergeExemptions(
-		map[string]string{
-			"appName":           "server-generated (suffixed for uniqueness on every create); Computed-only on the resource, never updated",
-			"applicationStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
-			"createdAt":         "server-generated; not user configuration",
-			"environmentId":     "RequiresReplace on the resource; " + engine + ".move is the supported retarget and is not modelled",
-			"env":               "set through " + engine + ".saveEnvironment, which is the endpoint the Dokploy UI uses",
-			"externalPort":      "set through " + engine + ".saveExternalPort, which is the endpoint the Dokploy UI uses",
-		},
-		swarmExemptions(),
-	)
+	out := map[string]string{
+		"appName":           "server-generated (suffixed for uniqueness on every create); Computed-only on the resource, never updated",
+		"applicationStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
+		"createdAt":         "server-generated; not user configuration",
+		"environmentId":     "RequiresReplace on the resource; " + engine + ".move is the supported retarget and is not modelled",
+		"env":               "set through " + engine + ".saveEnvironment, which is the endpoint the Dokploy UI uses",
+		"externalPort":      "set through " + engine + ".saveExternalPort, which is the endpoint the Dokploy UI uses",
+	}
 	for _, c := range replaceCredentials {
 		out[c] = "RequiresReplace on the resource: an in-place change would not migrate the running database"
 	}

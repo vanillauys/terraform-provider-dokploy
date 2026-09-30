@@ -1734,3 +1734,67 @@ package client
 // absent key is the dialect A 400 "expected nonoptional, received
 // undefined". So the resource sends the full object on every update, and a
 // write-only secret with nothing new to send resends the stored value.
+//
+// # v1.8.0 records (probed 2026-09-30 on a v0.30.8 rig)
+//
+// ## The swarm columns (#69)
+//
+// Eleven JSON columns carry the Docker Swarm service specification:
+// healthCheckSwarm, restartPolicySwarm, placementSwarm, updateConfigSwarm,
+// rollbackConfigSwarm, modeSwarm, labelsSwarm, networkSwarm,
+// endpointSpecSwarm, ulimitsSwarm, and stopGracePeriodSwarm. The update
+// endpoints of application, postgres, mysql, mariadb, mongo, and redis
+// accept all eleven. libsql.update has ten: it has no ulimitsSwarm, and its
+// read shape has none either. compose.update and compose.one have none of
+// the eleven: compose.update answers 200 and ignores them, and compose.one
+// does not return them. So the swarm block exists on seven resources, not on
+// dokploy_compose.
+//
+// Every column is dialect B: an absent key keeps the stored value, and null
+// clears it. A column that is unset reads back as null. The zod schema of
+// each object rejects an unknown key ("Unrecognized key"). The keys are the
+// Docker API keys in PascalCase:
+//
+//   - healthCheckSwarm: Test (string array), Interval, Timeout, StartPeriod,
+//     Retries (numbers). All are optional.
+//   - restartPolicySwarm: Condition (string), Delay, MaxAttempts, Window.
+//   - placementSwarm: Constraints (string array), Preferences (array of
+//     {Spread: {SpreadDescriptor}}), MaxReplicas, Platforms (array of
+//     {Architecture, OS}; both are required).
+//   - updateConfigSwarm and rollbackConfigSwarm: Parallelism and Order are
+//     required when the object is present; Delay, FailureAction, Monitor,
+//     and MaxFailureRatio are optional.
+//   - modeSwarm: Replicated {Replicas}, Global {}, ReplicatedJob
+//     {MaxConcurrent, TotalCompletions}, GlobalJob {}.
+//   - labelsSwarm: an object of string values. networkSwarm: an array of
+//     {Target, Aliases, DriverOpts}. endpointSpecSwarm: {Mode, Ports}, where a
+//     port has Protocol, TargetPort, PublishedPort, and PublishMode.
+//   - ulimitsSwarm: an array of {Name, Soft, Hard}; all three are required.
+//   - stopGracePeriodSwarm: a number.
+//
+// The enum-like strings (Condition, Mode, Protocol, PublishMode, Order,
+// FailureAction) have no enum in the zod schema: the server stores any
+// string, and Docker rejects a wrong value only at deploy time. The
+// provider validates them with the Docker values. Every duration is in
+// nanoseconds. An empty object, an empty array, and an empty label object
+// are stored as given and read back as given, so they differ from null.
+// stopGracePeriodSwarm accepts 5000000000000000000 without an error.
+//
+// The update endpoints do not deploy. A change reaches the swarm service at
+// the next deploy: a deploy of an application with modeSwarm
+// {Replicated: {Replicas: 2}} gave a replicated service with 2/2 tasks, and
+// updateConfigSwarm, restartPolicySwarm, ulimitsSwarm, stopGracePeriodSwarm,
+// labelsSwarm (on the container spec), and healthCheckSwarm appeared in
+// `docker service inspect`.
+//
+// ## replicas and modeSwarm
+//
+// The replicas column and modeSwarm both describe the task count. Probed
+// with replicas 3 and modeSwarm {Replicated: {Replicas: 2}}: the deploy gave
+// a replicated service with 2 tasks, so modeSwarm wins. With modeSwarm
+// {} or {Replicated: {}} and replicas 3 the service ran with 1 replica, so
+// an empty mode also hides the replicas column. With modeSwarm null the
+// service ran with replicas 3. Docker cannot change the mode of a service
+// that exists: a change from replicated to {Global: {}} left the service
+// replicated. The provider therefore rejects a configuration that sets both
+// `replicas` and `swarm.mode`.

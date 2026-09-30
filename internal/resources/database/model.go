@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/swarm"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -73,6 +74,10 @@ type genericModel struct {
 
 	// The operational settings (#51), shared with the data-source model.
 	Operational
+
+	// The Swarm service specification (v1.8.0, #69; internal/swarm). It is
+	// not part of Operational because the data source does not expose it.
+	Swarm types.Object
 
 	// attrTypes is captured from the source Plan/State's actual object type
 	// (types.Object.AttributeTypes) so setModel can rebuild a types.Object
@@ -192,7 +197,8 @@ func deployNeeded(k Kind, plan, state genericModel) bool {
 		!plan.MemoryLimit.Equal(state.MemoryLimit) ||
 		!plan.MemoryReservation.Equal(state.MemoryReservation) ||
 		!plan.Replicas.Equal(state.Replicas) ||
-		!plan.ReplicaSets.Equal(state.ReplicaSets) {
+		!plan.ReplicaSets.Equal(state.ReplicaSets) ||
+		!plan.Swarm.Equal(state.Swarm) {
 		return true
 	}
 	for _, ca := range k.CredentialAttrs {
@@ -216,7 +222,7 @@ func (m genericModel) operationalSettingsSet() bool {
 	return !m.Command.IsNull() || !m.Args.IsNull() ||
 		!m.CPULimit.IsNull() || !m.CPUReservation.IsNull() ||
 		!m.MemoryLimit.IsNull() || !m.MemoryReservation.IsNull() ||
-		m.Replicas.ValueInt64() != 1
+		m.Replicas.ValueInt64() != 1 || !m.Swarm.IsNull()
 }
 
 // applyOperational copies the operational settings (#51) of the plan onto
@@ -233,6 +239,9 @@ func (m genericModel) applyOperational(ctx context.Context, s *UpdateSpec, diags
 	s.MemoryReservation = m.MemoryReservation.ValueStringPointer()
 	s.Replicas = m.Replicas.ValueInt64()
 	s.ReplicaSets = m.ReplicaSets.ValueBool()
+	var swarmDiags diag.Diagnostics
+	s.Swarm, swarmDiags = swarm.Expand(m.Swarm)
+	diags.Append(swarmDiags...)
 }
 
 // setComputed copies server-computed fields from the API object, keeping
@@ -426,6 +435,9 @@ func flatten(ctx context.Context, k Kind, obj *Object, m *genericModel, diags *d
 	m.NetworkIDs = tfutil.StringSetOrNull(ctx, obj.NetworkIDs, diags)
 	m.DetachDokployNetwork = types.BoolValue(obj.DetachDokployNetwork)
 	m.Operational = OperationalFromObject(ctx, k, obj, diags)
+	var swarmDiags diag.Diagnostics
+	m.Swarm, swarmDiags = swarm.Flatten(ctx, obj.Swarm, m.Swarm)
+	diags.Append(swarmDiags...)
 	if m.Credentials == nil {
 		m.Credentials = map[string]types.String{}
 	}
@@ -487,6 +499,7 @@ func getModel(ctx context.Context, k Kind, src getter) (genericModel, diag.Diagn
 		NetworkIDs:           a["network_ids"].(types.Set),
 		DetachDokployNetwork: a["detach_dokploy_network"].(types.Bool),
 		Operational:          OperationalFromAttributes(k, a),
+		Swarm:                a["swarm"].(types.Object),
 	}
 	for _, ca := range k.CredentialAttrs {
 		m.Credentials[ca.TFName] = a[ca.TFName].(types.String)
@@ -519,6 +532,7 @@ func setModel(ctx context.Context, dst setter, m genericModel) diag.Diagnostics 
 
 		"network_ids":            m.NetworkIDs,
 		"detach_dokploy_network": m.DetachDokployNetwork,
+		"swarm":                  m.Swarm,
 
 		// A write-only value never reaches the plan or the state. The
 		// framework nulls it there too; this only says so explicitly.

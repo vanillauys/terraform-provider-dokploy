@@ -102,6 +102,8 @@ type Application struct {
 	ApplicationPreview
 	ApplicationRollback
 	ApplicationBuildSettings
+	// The Swarm service specification (v1.8.0, #69); see swarm.go.
+	Swarm
 
 	// Embedded child collections. redirects.create and security.create
 	// return `true` rather than the record, so these arrays are the only
@@ -169,6 +171,7 @@ type UpdateApplicationRequest struct {
 	ApplicationPreviewUpdate
 	ApplicationRollback
 	ApplicationBuildSettings
+	Swarm
 }
 
 // SaveGithubProviderRequest.

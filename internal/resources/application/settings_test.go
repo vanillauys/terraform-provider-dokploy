@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/swarm"
 )
 
 func previewObject(t *testing.T, p previewModel) types.Object {
@@ -198,6 +200,28 @@ func TestFlattenRollbackFollowsPriorShape(t *testing.T) {
 	}
 }
 
+// fullSwarm flattens a record that holds all eleven swarm columns.
+func fullSwarm(t *testing.T) types.Object {
+	t.Helper()
+	obj, d := swarm.Flatten(context.Background(), client.Swarm{
+		HealthCheck:     json.RawMessage(`{"Test":["CMD","true"]}`),
+		RestartPolicy:   json.RawMessage(`{"Condition":"any"}`),
+		Placement:       json.RawMessage(`{"Constraints":["node.role == worker"]}`),
+		UpdateConfig:    json.RawMessage(`{"Parallelism":1,"Order":"start-first"}`),
+		RollbackConfig:  json.RawMessage(`{"Parallelism":1,"Order":"stop-first"}`),
+		Mode:            json.RawMessage(`{"Replicated":{"Replicas":2}}`),
+		Labels:          json.RawMessage(`{"a":"b"}`),
+		Network:         json.RawMessage(`[{"Target":"net"}]`),
+		EndpointSpec:    json.RawMessage(`{"Mode":"vip"}`),
+		Ulimits:         json.RawMessage(`[{"Name":"nofile","Soft":1,"Hard":2}]`),
+		StopGracePeriod: json.RawMessage(`5`),
+	}, types.ObjectNull(nil))
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	return obj
+}
+
 // updateRequest is dialect B: a field that no attribute feeds is a field
 // the resource can never change. Every non-embedded field and every field
 // of the three embedded blocks must come out non-zero from a fully
@@ -230,6 +254,7 @@ func TestUpdateRequestReadsEveryFieldFromTheModel(t *testing.T) {
 		BuildRegistryID: types.StringValue("reg-3"),
 		CleanCache:      types.BoolValue(true),
 		DropBuildPath:   types.StringValue("/drop"),
+		Swarm:           fullSwarm(t),
 	}
 	req, d := updateRequest(ctx, "app1", m, m)
 	if d.HasError() {

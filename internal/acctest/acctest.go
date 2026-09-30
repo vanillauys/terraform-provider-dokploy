@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -151,6 +152,16 @@ func rigDocker(rig string, inRig bool, args ...string) *exec.Cmd {
 		return exec.Command("docker", append([]string{"exec", rig, "docker"}, args...)...)
 	}
 	return exec.Command("docker", args...)
+}
+
+// ServiceMode returns the JSON of the swarm service mode of the service
+// that has the given app name, for example {"Replicated":{"Replicas":2}}. It
+// reads the swarm of the rig, so it shows what Docker runs, not what
+// Dokploy stores.
+func ServiceMode(appName string) (string, error) {
+	inRig := rigExists(rigContainer())
+	out, err := rigDocker(rigContainer(), inRig, "service", "inspect", "--format", "{{json .Spec.Mode}}", appName).Output()
+	return strings.TrimSpace(string(out)), err
 }
 
 // StartRigVault starts a disposable OpenBao dev-mode container as a sibling

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/swarm"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -62,6 +63,9 @@ type resourceModel struct {
 	BuildRegistryID    types.String `tfsdk:"build_registry_id"`
 	CleanCache         types.Bool   `tfsdk:"clean_cache"`
 	DropBuildPath      types.String `tfsdk:"drop_build_path"`
+
+	// v1.8.0 (#69): the Swarm service specification (internal/swarm).
+	Swarm types.Object `tfsdk:"swarm"`
 }
 
 type githubModel struct {
@@ -187,7 +191,8 @@ func deployNeeded(plan, state resourceModel) bool {
 		!plan.WatchPaths.Equal(state.WatchPaths) ||
 		!plan.EnableSubmodules.Equal(state.EnableSubmodules) ||
 		!plan.NetworkIDs.Equal(state.NetworkIDs) ||
-		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork)
+		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork) ||
+		!plan.Swarm.Equal(state.Swarm)
 }
 
 // unchangedExceptStatus reports whether plan and state agree on every
@@ -240,7 +245,8 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.BuildServerID.Equal(state.BuildServerID) &&
 		plan.BuildRegistryID.Equal(state.BuildRegistryID) &&
 		plan.CleanCache.Equal(state.CleanCache) &&
-		plan.DropBuildPath.Equal(state.DropBuildPath)
+		plan.DropBuildPath.Equal(state.DropBuildPath) &&
+		plan.Swarm.Equal(state.Swarm)
 }
 
 // strOrNull treats null and "" alike as unset. See tfutil.StringOrNull for
@@ -424,7 +430,8 @@ func operationalChanged(plan, state resourceModel) bool {
 		!plan.Args.Equal(state.Args) ||
 		!plan.RegistryID.Equal(state.RegistryID) ||
 		!plan.NetworkIDs.Equal(state.NetworkIDs) ||
-		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork)
+		!plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork) ||
+		!plan.Swarm.Equal(state.Swarm)
 }
 
 // updateRequest builds the application.update body. Dialect B: every key is
@@ -433,7 +440,10 @@ func operationalChanged(plan, state resourceModel) bool {
 // write-only preview build secret (see previewRequest).
 func updateRequest(ctx context.Context, id string, m, cfg resourceModel) (client.UpdateApplicationRequest, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	swarmColumns, swarmDiags := swarm.Expand(m.Swarm)
+	diags.Append(swarmDiags...)
 	return client.UpdateApplicationRequest{
+		Swarm:                    swarmColumns,
 		Title:                    m.Title.ValueStringPointer(),
 		Subtitle:                 m.Subtitle.ValueStringPointer(),
 		ApplicationPreviewUpdate: previewRequest(ctx, m.PreviewDeployments, cfg.PreviewDeployments, &diags),
@@ -559,6 +569,9 @@ func flatten(ctx context.Context, app *client.Application, m *resourceModel) dia
 	m.BuildRegistryID = strOrNull(app.BuildRegistryID)
 	m.CleanCache = types.BoolValue(app.CleanCache)
 	m.DropBuildPath = strOrNull(app.DropBuildPath)
+	swarmBlock, swarmDiags := swarm.Flatten(ctx, app.Swarm, m.Swarm)
+	diags.Append(swarmDiags...)
+	m.Swarm = swarmBlock
 
 	m.Github = types.ObjectNull(githubAttrTypes)
 	m.Git = types.ObjectNull(gitAttrTypes)

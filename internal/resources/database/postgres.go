@@ -84,6 +84,7 @@ func PostgresKind(c *client.Client) Kind {
 					NetworkIDs:             s.NetworkIDs,
 					DetachDokployNetwork:   s.DetachDokployNetwork,
 					ServiceResourcesUpdate: s.ServiceResourcesUpdate,
+					Swarm:                  s.Swarm,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -140,6 +141,7 @@ func postgresObject(pg *client.Postgres) *Object {
 		NetworkIDs:           pg.NetworkIDs,
 		DetachDokployNetwork: pg.DetachDokployNetwork,
 		ServiceResources:     pg.ServiceResources,
+		Swarm:                pg.Swarm,
 		Credentials: map[string]string{
 			"database_name": pg.DatabaseName,
 			"database_user": pg.DatabaseUser,

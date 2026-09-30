@@ -63,14 +63,198 @@ resource "dokploy_mongo" "example" {
 - `memory_reservation` (String) Reserved memory in bytes, as a whole number in a string: `"268435456"` is 256 MiB. Dokploy reads the value with `parseInt`, so a Docker-style suffix such as `512m` or a fraction such as `0.5` is not valid: the provider rejects it at plan time, because Dokploy would deploy `512m` as 512 bytes and `0.5` as no limit. A change starts a redeploy.
 - `network_ids` (Set of String) Ids of the Dokploy network records to attach this service to. The attachment applies on the next deploy. Omit it to keep only the default `dokploy-network`. An empty set is not valid. Omit the attribute instead.
 - `replica_sets` (Boolean) Run MongoDB as a replica set instead of a standalone instance. Defaults to `false`. Dokploy sends the value on create and on update, and a change applies on the next deploy, so it starts a redeploy.
-- `replicas` (Number) Number of container replicas. Defaults to `1`. A change starts a redeploy.
+- `replicas` (Number) Number of container replicas. Defaults to `1`. A change starts a redeploy. If `swarm.mode` is set, Dokploy uses the mode and ignores this attribute. Set `replicas` or `swarm.mode`, not both: the provider rejects the pair at plan time.
 - `server_id` (String) Id of the remote server that runs the service. Defaults to the Dokploy host.
+- `swarm` (Attributes) The Docker Swarm service specification. Each attribute maps to one Dokploy column and keeps the Docker field names in snake case. Omit the block to write null to every column. A change starts a redeploy when `deploy_on_change` is true. (see [below for nested schema](#nestedatt--swarm))
 
 ### Read-Only
 
 - `created_at` (String) Creation timestamp from the server.
 - `id` (String) MongoDB service id.
 - `status` (String) Service status from Dokploy.
+
+<a id="nestedatt--swarm"></a>
+### Nested Schema for `swarm`
+
+Optional:
+
+- `endpoint_spec` (Attributes) The endpoint of the service. (see [below for nested schema](#nestedatt--swarm--endpoint_spec))
+- `health_check` (Attributes) The container health check. (see [below for nested schema](#nestedatt--swarm--health_check))
+- `labels` (Map of String) Docker labels of the service containers.
+- `mode` (Attributes) The service mode. If this attribute is set, Dokploy uses it and ignores the top-level `replicas` attribute. Set `swarm.mode` or `replicas`, not both: the provider rejects the pair at plan time. Swarm cannot change the mode of a service that exists. (see [below for nested schema](#nestedatt--swarm--mode))
+- `network` (Attributes List) Swarm networks that the service joins. (see [below for nested schema](#nestedatt--swarm--network))
+- `placement` (Attributes) Where Swarm can place the tasks. (see [below for nested schema](#nestedatt--swarm--placement))
+- `restart_policy` (Attributes) The restart policy of the tasks. (see [below for nested schema](#nestedatt--swarm--restart_policy))
+- `rollback_config` (Attributes) The policy for a rollback after a failed update. (see [below for nested schema](#nestedatt--swarm--rollback_config))
+- `stop_grace_period` (Number) Time that Swarm waits after a stop signal before it kills a container, in nanoseconds.
+- `ulimits` (Attributes List) Ulimits of the containers. (see [below for nested schema](#nestedatt--swarm--ulimits))
+- `update_config` (Attributes) The rolling update policy. (see [below for nested schema](#nestedatt--swarm--update_config))
+
+<a id="nestedatt--swarm--endpoint_spec"></a>
+### Nested Schema for `swarm.endpoint_spec`
+
+Optional:
+
+- `mode` (String) Endpoint mode: `vip` or `dnsrr`.
+- `ports` (Attributes List) Published ports of the service. (see [below for nested schema](#nestedatt--swarm--endpoint_spec--ports))
+
+<a id="nestedatt--swarm--endpoint_spec--ports"></a>
+### Nested Schema for `swarm.endpoint_spec.ports`
+
+Optional:
+
+- `protocol` (String) Protocol: `tcp`, `udp`, or `sctp`.
+- `publish_mode` (String) Publish mode: `ingress` or `host`.
+- `published_port` (Number) Port on the host or on the routing mesh.
+- `target_port` (Number) Port in the container.
+
+
+
+<a id="nestedatt--swarm--health_check"></a>
+### Nested Schema for `swarm.health_check`
+
+Optional:
+
+- `interval` (Number) Time between two checks, in nanoseconds.
+- `retries` (Number) Number of failed checks after which the container is unhealthy.
+- `start_period` (Number) Time after the start in which a failed check does not count, in nanoseconds.
+- `test` (List of String) The check command, for example `["CMD", "curl", "-f", "http://localhost"]`.
+- `timeout` (Number) Time after which a check fails, in nanoseconds.
+
+
+<a id="nestedatt--swarm--mode"></a>
+### Nested Schema for `swarm.mode`
+
+Optional:
+
+- `global` (Attributes) Run one task on each node. Set the attribute to `{}`. (see [below for nested schema](#nestedatt--swarm--mode--global))
+- `global_job` (Attributes) Run a job once on each node. Set the attribute to `{}`. (see [below for nested schema](#nestedatt--swarm--mode--global_job))
+- `replicated` (Attributes) Run a set number of tasks. (see [below for nested schema](#nestedatt--swarm--mode--replicated))
+- `replicated_job` (Attributes) Run a job with a set number of completions. (see [below for nested schema](#nestedatt--swarm--mode--replicated_job))
+
+<a id="nestedatt--swarm--mode--global"></a>
+### Nested Schema for `swarm.mode.global`
+
+
+<a id="nestedatt--swarm--mode--global_job"></a>
+### Nested Schema for `swarm.mode.global_job`
+
+
+<a id="nestedatt--swarm--mode--replicated"></a>
+### Nested Schema for `swarm.mode.replicated`
+
+Optional:
+
+- `replicas` (Number) Number of tasks.
+
+
+<a id="nestedatt--swarm--mode--replicated_job"></a>
+### Nested Schema for `swarm.mode.replicated_job`
+
+Optional:
+
+- `max_concurrent` (Number) Maximum number of tasks that run at the same time.
+- `total_completions` (Number) Number of tasks that must complete.
+
+
+
+<a id="nestedatt--swarm--network"></a>
+### Nested Schema for `swarm.network`
+
+Optional:
+
+- `aliases` (List of String) Network aliases of the service.
+- `driver_opts` (Map of String) Driver options of the network attachment.
+- `target` (String) Name or ID of the network.
+
+
+<a id="nestedatt--swarm--placement"></a>
+### Nested Schema for `swarm.placement`
+
+Optional:
+
+- `constraints` (List of String) Placement constraints, for example `["node.labels.tier == app"]`.
+- `max_replicas` (Number) Maximum number of tasks on one node. The value `0` means no limit.
+- `platforms` (Attributes List) Platforms that Swarm can use. (see [below for nested schema](#nestedatt--swarm--placement--platforms))
+- `preferences` (Attributes List) Placement preferences. (see [below for nested schema](#nestedatt--swarm--placement--preferences))
+
+<a id="nestedatt--swarm--placement--platforms"></a>
+### Nested Schema for `swarm.placement.platforms`
+
+Required:
+
+- `architecture` (String) The CPU architecture, for example `amd64`.
+- `os` (String) The operating system, for example `linux`.
+
+
+<a id="nestedatt--swarm--placement--preferences"></a>
+### Nested Schema for `swarm.placement.preferences`
+
+Required:
+
+- `spread` (Attributes) Spread the tasks over the values of a node label. (see [below for nested schema](#nestedatt--swarm--placement--preferences--spread))
+
+<a id="nestedatt--swarm--placement--preferences--spread"></a>
+### Nested Schema for `swarm.placement.preferences.spread`
+
+Required:
+
+- `spread_descriptor` (String) The node label to spread over, for example `node.labels.zone`.
+
+
+
+
+<a id="nestedatt--swarm--restart_policy"></a>
+### Nested Schema for `swarm.restart_policy`
+
+Optional:
+
+- `condition` (String) Condition to restart a task: `none`, `on-failure`, or `any`.
+- `delay` (Number) Time between two restarts, in nanoseconds.
+- `max_attempts` (Number) Number of restarts before Swarm stops the attempts.
+- `window` (Number) Time to wait before Swarm decides that a restart worked, in nanoseconds.
+
+
+<a id="nestedatt--swarm--rollback_config"></a>
+### Nested Schema for `swarm.rollback_config`
+
+Required:
+
+- `order` (String) Order of the tasks: `start-first` or `stop-first`.
+- `parallelism` (Number) Number of tasks that roll back at the same time. The value `0` means all tasks at once.
+
+Optional:
+
+- `delay` (Number) Time between two batches, in nanoseconds.
+- `failure_action` (String) Action if a task fails: `continue`, `pause`, or `rollback`.
+- `max_failure_ratio` (Number) Fraction of failed tasks that the service tolerates, from `0` to `1`.
+- `monitor` (Number) Time to watch each task for a failure after it starts, in nanoseconds.
+
+
+<a id="nestedatt--swarm--ulimits"></a>
+### Nested Schema for `swarm.ulimits`
+
+Required:
+
+- `hard` (Number) The hard limit.
+- `name` (String) Name of the limit, for example `nofile`.
+- `soft` (Number) The soft limit.
+
+
+<a id="nestedatt--swarm--update_config"></a>
+### Nested Schema for `swarm.update_config`
+
+Required:
+
+- `order` (String) Order of the tasks: `start-first` or `stop-first`.
+- `parallelism` (Number) Number of tasks that update at the same time. The value `0` means all tasks at once.
+
+Optional:
+
+- `delay` (Number) Time between two batches, in nanoseconds.
+- `failure_action` (String) Action if a task fails: `continue`, `pause`, or `rollback`.
+- `max_failure_ratio` (Number) Fraction of failed tasks that the service tolerates, from `0` to `1`.
+- `monitor` (Number) Time to watch each task for a failure after it starts, in nanoseconds.
 
 ## Import
 

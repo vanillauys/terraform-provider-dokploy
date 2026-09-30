@@ -26,6 +26,7 @@ import (
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/deploy"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/swarm"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -56,6 +57,7 @@ func (r *applicationResource) ConfigValidators(_ context.Context) []resource.Con
 			path.MatchRoot("git"),
 			path.MatchRoot("docker"),
 		),
+		swarm.ReplicasConflict(),
 	}
 }
 
@@ -248,7 +250,8 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		},
 		"replicas": schema.Int64Attribute{
 			Optional: true, Computed: true, Default: int64default.StaticInt64(1),
-			Description: "Number of container replicas. The Dokploy schema has no null variant for this field, so it always has a value.",
+			Description: "Number of container replicas. The Dokploy schema has no null variant for this field, so it always has a value. " +
+				"If `swarm.mode` is set, Dokploy uses the mode and ignores this attribute. Set `replicas` or `swarm.mode`, not both: the provider rejects the pair at plan time.",
 		},
 		"cpu_limit": schema.StringAttribute{
 			Optional:    true,
@@ -430,6 +433,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
 	}
+	attrs["swarm"] = swarm.Attribute()
 	for k, v := range tfutil.DeployAttributes() {
 		attrs[k] = v
 	}

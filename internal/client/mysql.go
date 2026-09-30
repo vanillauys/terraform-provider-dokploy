@@ -39,6 +39,8 @@ type Mysql struct {
 
 	// The operational settings (#51); see ServiceResources.
 	ServiceResources
+	// The Swarm service specification (v1.8.0, #69); see swarm.go.
+	Swarm
 
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
@@ -139,6 +141,7 @@ type UpdateMysqlRequest struct {
 
 	// The operational settings (#51); see ServiceResourcesUpdate.
 	ServiceResourcesUpdate
+	Swarm
 }
 
 func (c *Client) CreateMysql(ctx context.Context, req CreateMysqlRequest) (*Mysql, error) {

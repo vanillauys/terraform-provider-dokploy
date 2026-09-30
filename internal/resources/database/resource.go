@@ -13,6 +13,7 @@ import (
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/deploy"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/swarm"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -20,6 +21,8 @@ var (
 	_ resource.Resource                = (*genericResource)(nil)
 	_ resource.ResourceWithConfigure   = (*genericResource)(nil)
 	_ resource.ResourceWithImportState = (*genericResource)(nil)
+
+	_ resource.ResourceWithConfigValidators = (*genericResource)(nil)
 )
 
 type genericResource struct {
@@ -47,6 +50,12 @@ func NewResource(k Kind) func() resource.Resource {
 
 func (r *genericResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_" + r.kind.Name
+}
+
+// ConfigValidators rejects a configuration that sets both replicas and
+// swarm.mode: Dokploy uses the mode and ignores the replicas column.
+func (r *genericResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{swarm.ReplicasConflict()}
 }
 
 func (r *genericResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

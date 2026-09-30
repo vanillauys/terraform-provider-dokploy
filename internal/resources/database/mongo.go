@@ -96,6 +96,7 @@ func MongoKind(c *client.Client) Kind {
 					NetworkIDs:             s.NetworkIDs,
 					DetachDokployNetwork:   s.DetachDokployNetwork,
 					ServiceResourcesUpdate: s.ServiceResourcesUpdate,
+					Swarm:                  s.Swarm,
 					ReplicaSets:            s.ReplicaSets,
 				})
 			},
@@ -149,6 +150,7 @@ func mongoObject(mo *client.Mongo) *Object {
 		NetworkIDs:           mo.NetworkIDs,
 		DetachDokployNetwork: mo.DetachDokployNetwork,
 		ServiceResources:     mo.ServiceResources,
+		Swarm:                mo.Swarm,
 		ReplicaSets:          mo.ReplicaSets,
 		Credentials: map[string]string{
 			"database_user": mo.DatabaseUser,

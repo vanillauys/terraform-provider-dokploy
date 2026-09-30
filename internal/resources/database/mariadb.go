@@ -104,6 +104,7 @@ func MariadbKind(c *client.Client) Kind {
 					NetworkIDs:             s.NetworkIDs,
 					DetachDokployNetwork:   s.DetachDokployNetwork,
 					ServiceResourcesUpdate: s.ServiceResourcesUpdate,
+					Swarm:                  s.Swarm,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -156,6 +157,7 @@ func mariadbObject(md *client.Mariadb) *Object {
 		NetworkIDs:           md.NetworkIDs,
 		DetachDokployNetwork: md.DetachDokployNetwork,
 		ServiceResources:     md.ServiceResources,
+		Swarm:                md.Swarm,
 		Credentials: map[string]string{
 			"database_name":          md.DatabaseName,
 			"database_user":          md.DatabaseUser,

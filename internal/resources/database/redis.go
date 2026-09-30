@@ -89,6 +89,7 @@ func RedisKind(c *client.Client) Kind {
 					NetworkIDs:             s.NetworkIDs,
 					DetachDokployNetwork:   s.DetachDokployNetwork,
 					ServiceResourcesUpdate: s.ServiceResourcesUpdate,
+					Swarm:                  s.Swarm,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -147,6 +148,7 @@ func redisObject(rd *client.Redis) *Object {
 		NetworkIDs:           rd.NetworkIDs,
 		DetachDokployNetwork: rd.DetachDokployNetwork,
 		ServiceResources:     rd.ServiceResources,
+		Swarm:                rd.Swarm,
 		Credentials:          map[string]string{},
 	}
 }

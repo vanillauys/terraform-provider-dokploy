@@ -705,6 +705,376 @@
             "optional": true
           },
           {
+            "name": "swarm",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "endpoint_spec",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "mode",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "ports",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "protocol",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "publish_mode",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "published_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "target_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "health_check",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "interval",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "retries",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "start_period",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "test",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "timeout",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.Map[tftypes.String]",
+                  "optional": true
+                },
+                {
+                  "name": "mode",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "global",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "global_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "replicas",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "max_concurrent",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "total_completions",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "network",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "aliases",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "driver_opts",
+                        "type": "tftypes.Map[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "target",
+                        "type": "tftypes.String",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "placement",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "constraints",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_replicas",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "platforms",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "architecture",
+                              "type": "tftypes.String",
+                              "required": true
+                            },
+                            {
+                              "name": "os",
+                              "type": "tftypes.String",
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "preferences",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "spread",
+                              "nested": {
+                                "nesting": "SINGLE",
+                                "attributes": [
+                                  {
+                                    "name": "spread_descriptor",
+                                    "type": "tftypes.String",
+                                    "required": true
+                                  }
+                                ]
+                              },
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "restart_policy",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "condition",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_attempts",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "window",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "rollback_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "stop_grace_period",
+                  "type": "tftypes.Number",
+                  "optional": true
+                },
+                {
+                  "name": "ulimits",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "hard",
+                        "type": "tftypes.Number",
+                        "required": true
+                      },
+                      {
+                        "name": "name",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "soft",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "update_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
+          },
+          {
             "name": "title",
             "type": "tftypes.String",
             "optional": true
@@ -2359,6 +2729,376 @@
             "name": "status",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "swarm",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "endpoint_spec",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "mode",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "ports",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "protocol",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "publish_mode",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "published_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "target_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "health_check",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "interval",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "retries",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "start_period",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "test",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "timeout",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.Map[tftypes.String]",
+                  "optional": true
+                },
+                {
+                  "name": "mode",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "global",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "global_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "replicas",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "max_concurrent",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "total_completions",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "network",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "aliases",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "driver_opts",
+                        "type": "tftypes.Map[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "target",
+                        "type": "tftypes.String",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "placement",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "constraints",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_replicas",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "platforms",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "architecture",
+                              "type": "tftypes.String",
+                              "required": true
+                            },
+                            {
+                              "name": "os",
+                              "type": "tftypes.String",
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "preferences",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "spread",
+                              "nested": {
+                                "nesting": "SINGLE",
+                                "attributes": [
+                                  {
+                                    "name": "spread_descriptor",
+                                    "type": "tftypes.String",
+                                    "required": true
+                                  }
+                                ]
+                              },
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "restart_policy",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "condition",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_attempts",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "window",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "rollback_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "stop_grace_period",
+                  "type": "tftypes.Number",
+                  "optional": true
+                },
+                {
+                  "name": "ulimits",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "hard",
+                        "type": "tftypes.Number",
+                        "required": true
+                      },
+                      {
+                        "name": "name",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "soft",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "update_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
           }
         ]
       }
@@ -2535,6 +3275,376 @@
             "name": "status",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "swarm",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "endpoint_spec",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "mode",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "ports",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "protocol",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "publish_mode",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "published_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "target_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "health_check",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "interval",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "retries",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "start_period",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "test",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "timeout",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.Map[tftypes.String]",
+                  "optional": true
+                },
+                {
+                  "name": "mode",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "global",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "global_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "replicas",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "max_concurrent",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "total_completions",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "network",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "aliases",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "driver_opts",
+                        "type": "tftypes.Map[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "target",
+                        "type": "tftypes.String",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "placement",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "constraints",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_replicas",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "platforms",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "architecture",
+                              "type": "tftypes.String",
+                              "required": true
+                            },
+                            {
+                              "name": "os",
+                              "type": "tftypes.String",
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "preferences",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "spread",
+                              "nested": {
+                                "nesting": "SINGLE",
+                                "attributes": [
+                                  {
+                                    "name": "spread_descriptor",
+                                    "type": "tftypes.String",
+                                    "required": true
+                                  }
+                                ]
+                              },
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "restart_policy",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "condition",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_attempts",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "window",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "rollback_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "stop_grace_period",
+                  "type": "tftypes.Number",
+                  "optional": true
+                },
+                {
+                  "name": "ulimits",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "hard",
+                        "type": "tftypes.Number",
+                        "required": true
+                      },
+                      {
+                        "name": "name",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "soft",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "update_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
           }
         ]
       }
@@ -2791,6 +3901,376 @@
             "name": "status",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "swarm",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "endpoint_spec",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "mode",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "ports",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "protocol",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "publish_mode",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "published_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "target_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "health_check",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "interval",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "retries",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "start_period",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "test",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "timeout",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.Map[tftypes.String]",
+                  "optional": true
+                },
+                {
+                  "name": "mode",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "global",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "global_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "replicas",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "max_concurrent",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "total_completions",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "network",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "aliases",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "driver_opts",
+                        "type": "tftypes.Map[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "target",
+                        "type": "tftypes.String",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "placement",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "constraints",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_replicas",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "platforms",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "architecture",
+                              "type": "tftypes.String",
+                              "required": true
+                            },
+                            {
+                              "name": "os",
+                              "type": "tftypes.String",
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "preferences",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "spread",
+                              "nested": {
+                                "nesting": "SINGLE",
+                                "attributes": [
+                                  {
+                                    "name": "spread_descriptor",
+                                    "type": "tftypes.String",
+                                    "required": true
+                                  }
+                                ]
+                              },
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "restart_policy",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "condition",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_attempts",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "window",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "rollback_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "stop_grace_period",
+                  "type": "tftypes.Number",
+                  "optional": true
+                },
+                {
+                  "name": "ulimits",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "hard",
+                        "type": "tftypes.Number",
+                        "required": true
+                      },
+                      {
+                        "name": "name",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "soft",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "update_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
           }
         ]
       }
@@ -3019,6 +4499,376 @@
             "name": "status",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "swarm",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "endpoint_spec",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "mode",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "ports",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "protocol",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "publish_mode",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "published_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "target_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "health_check",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "interval",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "retries",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "start_period",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "test",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "timeout",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.Map[tftypes.String]",
+                  "optional": true
+                },
+                {
+                  "name": "mode",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "global",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "global_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "replicas",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "max_concurrent",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "total_completions",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "network",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "aliases",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "driver_opts",
+                        "type": "tftypes.Map[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "target",
+                        "type": "tftypes.String",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "placement",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "constraints",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_replicas",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "platforms",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "architecture",
+                              "type": "tftypes.String",
+                              "required": true
+                            },
+                            {
+                              "name": "os",
+                              "type": "tftypes.String",
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "preferences",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "spread",
+                              "nested": {
+                                "nesting": "SINGLE",
+                                "attributes": [
+                                  {
+                                    "name": "spread_descriptor",
+                                    "type": "tftypes.String",
+                                    "required": true
+                                  }
+                                ]
+                              },
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "restart_policy",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "condition",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_attempts",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "window",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "rollback_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "stop_grace_period",
+                  "type": "tftypes.Number",
+                  "optional": true
+                },
+                {
+                  "name": "ulimits",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "hard",
+                        "type": "tftypes.Number",
+                        "required": true
+                      },
+                      {
+                        "name": "name",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "soft",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "update_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
           }
         ]
       }
@@ -3462,6 +5312,376 @@
             "name": "status",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "swarm",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "endpoint_spec",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "mode",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "ports",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "protocol",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "publish_mode",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "published_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "target_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "health_check",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "interval",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "retries",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "start_period",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "test",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "timeout",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.Map[tftypes.String]",
+                  "optional": true
+                },
+                {
+                  "name": "mode",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "global",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "global_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "replicas",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "max_concurrent",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "total_completions",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "network",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "aliases",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "driver_opts",
+                        "type": "tftypes.Map[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "target",
+                        "type": "tftypes.String",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "placement",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "constraints",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_replicas",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "platforms",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "architecture",
+                              "type": "tftypes.String",
+                              "required": true
+                            },
+                            {
+                              "name": "os",
+                              "type": "tftypes.String",
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "preferences",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "spread",
+                              "nested": {
+                                "nesting": "SINGLE",
+                                "attributes": [
+                                  {
+                                    "name": "spread_descriptor",
+                                    "type": "tftypes.String",
+                                    "required": true
+                                  }
+                                ]
+                              },
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "restart_policy",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "condition",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_attempts",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "window",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "rollback_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "stop_grace_period",
+                  "type": "tftypes.Number",
+                  "optional": true
+                },
+                {
+                  "name": "ulimits",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "hard",
+                        "type": "tftypes.Number",
+                        "required": true
+                      },
+                      {
+                        "name": "name",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "soft",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "update_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
           }
         ]
       }
@@ -3825,6 +6045,376 @@
             "name": "status",
             "type": "tftypes.String",
             "computed": true
+          },
+          {
+            "name": "swarm",
+            "nested": {
+              "nesting": "SINGLE",
+              "attributes": [
+                {
+                  "name": "endpoint_spec",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "mode",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "ports",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "protocol",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "publish_mode",
+                              "type": "tftypes.String",
+                              "optional": true
+                            },
+                            {
+                              "name": "published_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "target_port",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "health_check",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "interval",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "retries",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "start_period",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "test",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "timeout",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "labels",
+                  "type": "tftypes.Map[tftypes.String]",
+                  "optional": true
+                },
+                {
+                  "name": "mode",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "global",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "global_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": null
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "replicas",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "replicated_job",
+                        "nested": {
+                          "nesting": "SINGLE",
+                          "attributes": [
+                            {
+                              "name": "max_concurrent",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            },
+                            {
+                              "name": "total_completions",
+                              "type": "tftypes.Number",
+                              "optional": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "network",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "aliases",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "driver_opts",
+                        "type": "tftypes.Map[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "target",
+                        "type": "tftypes.String",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "placement",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "constraints",
+                        "type": "tftypes.List[tftypes.String]",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_replicas",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "platforms",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "architecture",
+                              "type": "tftypes.String",
+                              "required": true
+                            },
+                            {
+                              "name": "os",
+                              "type": "tftypes.String",
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      },
+                      {
+                        "name": "preferences",
+                        "nested": {
+                          "nesting": "LIST",
+                          "attributes": [
+                            {
+                              "name": "spread",
+                              "nested": {
+                                "nesting": "SINGLE",
+                                "attributes": [
+                                  {
+                                    "name": "spread_descriptor",
+                                    "type": "tftypes.String",
+                                    "required": true
+                                  }
+                                ]
+                              },
+                              "required": true
+                            }
+                          ]
+                        },
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "restart_policy",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "condition",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_attempts",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "window",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "rollback_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "stop_grace_period",
+                  "type": "tftypes.Number",
+                  "optional": true
+                },
+                {
+                  "name": "ulimits",
+                  "nested": {
+                    "nesting": "LIST",
+                    "attributes": [
+                      {
+                        "name": "hard",
+                        "type": "tftypes.Number",
+                        "required": true
+                      },
+                      {
+                        "name": "name",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "soft",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                },
+                {
+                  "name": "update_config",
+                  "nested": {
+                    "nesting": "SINGLE",
+                    "attributes": [
+                      {
+                        "name": "delay",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "failure_action",
+                        "type": "tftypes.String",
+                        "optional": true
+                      },
+                      {
+                        "name": "max_failure_ratio",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "monitor",
+                        "type": "tftypes.Number",
+                        "optional": true
+                      },
+                      {
+                        "name": "order",
+                        "type": "tftypes.String",
+                        "required": true
+                      },
+                      {
+                        "name": "parallelism",
+                        "type": "tftypes.Number",
+                        "required": true
+                      }
+                    ]
+                  },
+                  "optional": true
+                }
+              ]
+            },
+            "optional": true
           }
         ]
       }

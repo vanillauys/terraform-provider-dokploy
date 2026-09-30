@@ -99,6 +99,7 @@ func MysqlKind(c *client.Client) Kind {
 					NetworkIDs:             s.NetworkIDs,
 					DetachDokployNetwork:   s.DetachDokployNetwork,
 					ServiceResourcesUpdate: s.ServiceResourcesUpdate,
+					Swarm:                  s.Swarm,
 				})
 			},
 			SaveEnvironment: func(ctx context.Context, id string, env *string) error {
@@ -151,6 +152,7 @@ func mysqlObject(my *client.Mysql) *Object {
 		NetworkIDs:           my.NetworkIDs,
 		DetachDokployNetwork: my.DetachDokployNetwork,
 		ServiceResources:     my.ServiceResources,
+		Swarm:                my.Swarm,
 		Credentials: map[string]string{
 			"database_name":          my.DatabaseName,
 			"database_user":          my.DatabaseUser,

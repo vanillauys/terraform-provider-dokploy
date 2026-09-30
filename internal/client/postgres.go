@@ -28,6 +28,8 @@ type Postgres struct {
 
 	// The operational settings (#51); see ServiceResources.
 	ServiceResources
+	// The Swarm service specification (v1.8.0, #69); see swarm.go.
+	Swarm
 
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
@@ -72,6 +74,7 @@ type UpdatePostgresRequest struct {
 
 	// The operational settings (#51); see ServiceResourcesUpdate.
 	ServiceResourcesUpdate
+	Swarm
 }
 
 func (c *Client) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (*Postgres, error) {

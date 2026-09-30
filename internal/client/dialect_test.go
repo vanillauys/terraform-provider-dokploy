@@ -132,6 +132,14 @@ var mustAlwaysSend = []struct {
 	// update-if-present shape, not nullable-clear fields, so this row
 	// does not guard them. See libsql.go's UpdateLibsqlRequest doc
 	// comment for the field-by-field reasoning.
+	// The eleven swarm columns (#69) are embedded in every service update
+	// request. A nil column must marshal to an explicit null: an absent key
+	// would keep the stored value (dialect B).
+	{Swarm{}, []string{
+		"healthCheckSwarm", "restartPolicySwarm", "placementSwarm", "updateConfigSwarm",
+		"rollbackConfigSwarm", "modeSwarm", "labelsSwarm", "networkSwarm",
+		"endpointSpecSwarm", "ulimitsSwarm", "stopGracePeriodSwarm",
+	}},
 	{UpdateLibsqlRequest{}, []string{
 		"description", "sqldPrimaryUrl", "command", "cpuLimit",
 		"cpuReservation", "memoryLimit", "memoryReservation",

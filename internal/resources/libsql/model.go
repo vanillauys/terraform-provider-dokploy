@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/swarm"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
@@ -51,6 +52,9 @@ type resourceModel struct {
 	// internal/resources/database).
 	NetworkIDs           types.Set  `tfsdk:"network_ids"`
 	DetachDokployNetwork types.Bool `tfsdk:"detach_dokploy_network"`
+
+	// The Swarm service specification (v1.8.0, #69; internal/swarm).
+	Swarm types.Object `tfsdk:"swarm"`
 }
 
 // flatten maps the full API object into the model (Read/refresh). It takes
@@ -85,6 +89,9 @@ func flatten(ctx context.Context, c *client.Libsql, m *resourceModel, diags *dia
 	m.CreatedAt = types.StringValue(c.CreatedAt)
 	m.NetworkIDs = tfutil.StringSetOrNull(ctx, c.NetworkIDs, diags)
 	m.DetachDokployNetwork = types.BoolValue(c.DetachDokployNetwork)
+	swarmBlock, swarmDiags := swarm.Flatten(ctx, c.Swarm, m.Swarm)
+	diags.Append(swarmDiags...)
+	m.Swarm = swarmBlock
 }
 
 func int64OrNull(v *int64) types.Int64 {
@@ -142,7 +149,10 @@ func expandCreate(m *resourceModel, password string) client.CreateLibsqlRequest 
 func expandUpdate(ctx context.Context, m *resourceModel, password string, diags *diag.Diagnostics) client.UpdateLibsqlRequest {
 	enable := m.EnableNamespaces.ValueBool()
 	replicas := m.Replicas.ValueInt64()
+	swarmColumns, swarmDiags := swarm.Expand(m.Swarm)
+	diags.Append(swarmDiags...)
 	return client.UpdateLibsqlRequest{
+		Swarm:                swarmColumns,
 		LibsqlID:             m.ID.ValueString(),
 		Name:                 m.Name.ValueString(),
 		Description:          strPtr(m.Description),

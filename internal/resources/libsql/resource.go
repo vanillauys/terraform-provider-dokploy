@@ -48,14 +48,16 @@ import (
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/deploy"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/swarm"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 var (
-	_ resource.Resource                   = (*libsqlResource)(nil)
-	_ resource.ResourceWithConfigure      = (*libsqlResource)(nil)
-	_ resource.ResourceWithImportState    = (*libsqlResource)(nil)
-	_ resource.ResourceWithValidateConfig = (*libsqlResource)(nil)
+	_ resource.Resource                     = (*libsqlResource)(nil)
+	_ resource.ResourceWithConfigure        = (*libsqlResource)(nil)
+	_ resource.ResourceWithImportState      = (*libsqlResource)(nil)
+	_ resource.ResourceWithValidateConfig   = (*libsqlResource)(nil)
+	_ resource.ResourceWithConfigValidators = (*libsqlResource)(nil)
 )
 
 type libsqlResource struct {
@@ -64,6 +66,21 @@ type libsqlResource struct {
 }
 
 func NewResource() resource.Resource { return &libsqlResource{} }
+
+// libsqlSwarm is the shared swarm attribute with one note: Dokploy has no
+// ulimits column for libsql, and the provider rejects `ulimits` at plan time.
+func libsqlSwarm() schema.SingleNestedAttribute {
+	attr := swarm.Attribute()
+	attr.Description += " This service type has no `ulimits` column, so the provider rejects that attribute."
+	return attr
+}
+
+// ConfigValidators rejects a configuration that sets both replicas and
+// swarm.mode (Dokploy uses the mode and ignores the replicas column), and one
+// that sets swarm.ulimits (libsql has no such column).
+func (r *libsqlResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{swarm.ReplicasConflict(), swarm.RejectUlimits()}
+}
 
 func (r *libsqlResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_libsql"
@@ -213,11 +230,13 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		// the wire field (client.Libsql.Replicas) is a plain int64, never
 		// null.
 		"replicas": schema.Int64Attribute{
-			Optional:    true,
-			Computed:    true,
-			Default:     int64default.StaticInt64(1),
-			Description: "Number of container replicas. Defaults to `1`.",
+			Optional: true,
+			Computed: true,
+			Default:  int64default.StaticInt64(1),
+			Description: "Number of container replicas. Defaults to `1`. " +
+				"If `swarm.mode` is set, Dokploy uses the mode and ignores this attribute. Set `replicas` or `swarm.mode`, not both: the provider rejects the pair at plan time.",
 		},
+		"swarm": libsqlSwarm(),
 		// network_ids and detach_dokploy_network are the v0.30.0 network
 		// attachment attributes, worded identically to every other engine
 		// (internal/resources/database/kind.go's schemaAttributes,
