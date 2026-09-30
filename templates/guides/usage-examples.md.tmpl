@@ -308,10 +308,8 @@ block, and `dokploy_libsql` does not accept `swarm.ulimits`.
 
 ## A full stack: database, application, domain, and backup
 
-This stack uses an ephemeral password. The `hashicorp/random` provider makes
-the password during the run, and the write-only attribute
-`database_password_wo` sends it to Dokploy. Neither the plan nor the state
-holds the value. This needs Terraform 1.11 or later.
+This stack makes one random password and gives it to the database and to
+the application. The application reads the database URL through `env`.
 
 ```hcl
 terraform {
@@ -327,7 +325,7 @@ terraform {
   }
 }
 
-ephemeral "random_password" "db" {
+resource "random_password" "db" {
   length  = 32
   special = false
 }
@@ -337,13 +335,12 @@ resource "dokploy_project" "shop" {
 }
 
 resource "dokploy_postgres" "db" {
-  name                         = "shop-db"
-  environment_id               = dokploy_project.shop.production_environment_id
-  database_name                = "shop"
-  database_user                = "shop"
-  database_password_wo         = ephemeral.random_password.db.result
-  database_password_wo_version = 1
-  docker_image                 = "postgres:16-alpine"
+  name              = "shop-db"
+  environment_id    = dokploy_project.shop.production_environment_id
+  database_name     = "shop"
+  database_user     = "shop"
+  database_password = random_password.db.result
+  docker_image      = "postgres:16-alpine"
 }
 
 resource "dokploy_application" "web" {
@@ -356,7 +353,7 @@ resource "dokploy_application" "web" {
 
   env = <<-EOT
     PORT=3000
-    DATABASE_URL=postgres://shop@${dokploy_postgres.db.app_name}:5432/shop
+    DATABASE_URL=postgres://shop:${random_password.db.result}@${dokploy_postgres.db.app_name}:5432/shop
   EOT
 }
 
@@ -390,12 +387,14 @@ resource "dokploy_backup" "db" {
 }
 ```
 
-The `env` attribute is not write-only, so it cannot hold an ephemeral
-value. The `DATABASE_URL` above has no password. To give the password to the
-application, use one sensitive variable for both resources: set
-`database_password_wo = var.db_password` and add `DB_PASSWORD=${var.db_password}` to
-`env`. The state then holds the value in `env`.
-[Secrets and sensitive values](secrets) explains the trade-off.
+**The `env` attribute is not write-only, so the password is in the state.**
+The `random_password` resource keeps the value in the state, and Dokploy
+returns it on read. Use a state backend with encryption at rest, and limit who
+can read it. [Secrets and sensitive values](secrets) explains the trade-off.
+
+For a database that no application reads through `env`, keep the password
+out of the state with the
+[write-only attributes](secrets#write-only-companions).
 
 ## A backup of the Dokploy host
 
