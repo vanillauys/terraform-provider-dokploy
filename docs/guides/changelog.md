@@ -11,7 +11,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.8.0] - 2026-09-30
+
+### Added
+
+- `swarm` on `dokploy_application` and on the six database resources
+  (`dokploy_postgres`, `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`,
+  `dokploy_redis`, and `dokploy_libsql`) (#69): the Docker Swarm settings of
+  the service, as typed attributes with the Docker key names. The eleven
+  attributes are `health_check`, `restart_policy`, `placement`,
+  `update_config`, `rollback_config`, `mode`, `labels`, `network`,
+  `endpoint_spec`, `ulimits`, and `stop_grace_period`; durations are in
+  nanoseconds, as Docker takes them. An omitted block clears every setting,
+  and a state from v1.7.0 plans no change. The update endpoints do not
+  deploy, so a swarm change reaches the service at the next deploy and
+  counts as a change for `deploy_on_change`.
+- A plan-time error when a configuration sets both `replicas` and
+  `swarm.mode` (#69). Dokploy uses the mode and ignores `replicas`, so the
+  pair has no single meaning. Set `swarm.mode.replicated.replicas` instead.
+- `verify_connection` on `dokploy_registry`, `dokploy_destination`,
+  `dokploy_ai`, `dokploy_gitlab_provider`, `dokploy_bitbucket_provider`,
+  `dokploy_gitea_provider`, and the twelve `dokploy_<channel>_notification`
+  resources (#67). When it is `true`, the provider calls the Dokploy test
+  endpoint of the record and a failure stops the apply with the server
+  message. The registry, destination, AI, and notification checks run
+  before the write; the three git provider checks take the id of a stored
+  record, so they run after it. A notification check sends a real test
+  message. A Gitea check fails until a person authorizes the OAuth
+  application in the Dokploy UI. The attribute is optional without a
+  default, so a state from v1.7.0 plans no change. The error text of a
+  failed destination check has both credentials redacted.
+- `dokploy_web_server_backup` resource (#68): a scheduled backup of the
+  Dokploy host itself (its internal database and configuration directory)
+  to a `dokploy_destination`, with `cron_expression`, `prefix`, `enabled`,
+  `include_encryption_key`, and `keep_latest_count`. It is a separate type
+  from `dokploy_backup` because it has no parent service. More than one
+  web-server backup can exist.
+- Twenty data sources for the records that had none (#66):
+  - the service children `dokploy_mount`, `dokploy_port`,
+    `dokploy_redirect`, `dokploy_security`, `dokploy_backup`,
+    `dokploy_volume_backup`, and `dokploy_schedule`, each looked up by `id`
+    or by the parent id and a distinguishing attribute;
+  - `dokploy_ai`, by `id` or `name`, without `api_key`;
+  - the twelve `dokploy_<channel>_notification` data sources, by `id` or
+    `name`, without the webhook URL, token, password, or custom headers.
+
+  No data source exposes a secret: `dokploy_security` has no password and
+  `dokploy_backup` has none of the compose database credentials.
 
 ### Changed
 
@@ -19,6 +65,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   endpoint census of a fresh v0.30.8 install (2026-09-30) is byte-identical
   to the v0.30.7 snapshot. The upstream v0.30.7...v0.30.8 diff agrees: it
   changes only the Dokploy Cloud dashboard (a HubSpot chat widget).
+- The documentation: every resource page shows an `import` block before
+  the CLI command, and the pages of `dokploy_application`,
+  `dokploy_postgres`, `dokploy_registry`, `dokploy_destination`,
+  `dokploy_slack_notification`, `dokploy_web_server_backup`, and
+  `dokploy_domain` have a second, complete example. The guides cover
+  swarm, the connection checks, the Dokploy host backup, and the new data
+  sources, and the upgrade guide has a v1.8.0 section. The README and
+  CONTRIBUTING.md are rewritten; CONTRIBUTING.md explains the pull request
+  steps and the signed-commit rule.
+
+### Fixed
+
+- The examples of `dokploy_server` and of its data source, and the import
+  addresses of the twelve notification resources, did not match the
+  schema.
 
 ## [1.7.0] - 2026-09-19
 
