@@ -48,6 +48,15 @@ resource "dokploy_security" "staging_gate" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = dokploy_security.staging_gate
+  id = "s1a2b3c4d5e6f7g8h9i0j"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell

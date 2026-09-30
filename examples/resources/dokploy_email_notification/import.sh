@@ -1,1 +1,1 @@
-terraform import dokploy_email_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_email_notification.ops INt_PYqh9apo8mmDIoixZ

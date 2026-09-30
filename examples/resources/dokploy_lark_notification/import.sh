@@ -1,1 +1,1 @@
-terraform import dokploy_lark_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_lark_notification.deploys INt_PYqh9apo8mmDIoixZ

@@ -73,9 +73,18 @@ resource "dokploy_mount" "config" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Mounts import by their own id; the parent service is recovered from the record.
+import {
+  to = dokploy_mount.uploads
+  id = "m1a2b3c4d5e6f7g8h9i0j"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Mounts import by their own id; the parent service is recovered from the record.
 terraform import dokploy_mount.uploads m1a2b3c4d5e6f7g8h9i0j
 ```

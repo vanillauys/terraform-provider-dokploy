@@ -29,6 +29,13 @@ resource "dokploy_libsql" "example" {
   external_port       = 8080
   external_admin_port = 8081
   external_grpc_port  = 8082
+
+  # The Docker Swarm service specification. Set swarm.mode or replicas, not
+  # both. Durations are in nanoseconds.
+  # swarm = {
+  #   mode      = { replicated = { replicas = 1 } }
+  #   placement = { constraints = ["node.labels.tier == db"] }
+  # }
 }
 
 # A replica follows a primary in the same environment. On Dokploy v0.30.5 the
@@ -278,8 +285,17 @@ Optional:
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = dokploy_libsql.example
+  id = "V1StGXR8_Z5jdHi6B-myT"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import dokploy_libsql.example <libsqlId>
+terraform import dokploy_libsql.example V1StGXR8_Z5jdHi6B-myT
 ```

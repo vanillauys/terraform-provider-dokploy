@@ -43,6 +43,10 @@ resource "dokploy_postgres" "db" {
   name           = "db"
   environment_id = dokploy_project.app.production_environment_id
   server_id      = dokploy_server.worker.id
+
+  database_name     = "app"
+  database_user     = "app"
+  database_password = var.db_password # use a sensitive variable
 }
 
 # A build server only builds images. Set the SSH port and user when they
@@ -90,6 +94,15 @@ resource "dokploy_server" "builder" {
 ## Import
 
 Import is supported using the following syntax:
+
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = dokploy_server.worker
+  id = "cnWbR6INlpglaAu8MML5X"
+}
+```
 
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 

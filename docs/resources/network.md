@@ -84,10 +84,19 @@ Optional:
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Networks created in the Dokploy UI (including UI-imported Docker networks)
+# can be adopted by id:
+import {
+  to = dokploy_network.backend
+  id = "V1StGXR8_Z5jdHi6B-myT"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Networks created in the Dokploy UI (including UI-imported Docker networks)
-# can be adopted by id:
-terraform import dokploy_network.backend <network-id>
+terraform import dokploy_network.backend V1StGXR8_Z5jdHi6B-myT
 ```

@@ -1,1 +1,1 @@
-terraform import dokploy_mongo.example <mongoId>
+terraform import dokploy_mongo.example V1StGXR8_Z5jdHi6B-myT

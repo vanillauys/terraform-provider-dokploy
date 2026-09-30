@@ -69,8 +69,17 @@ Read-Only:
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = dokploy_project.example
+  id = "V1StGXR8_Z5jdHi6B-myT"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import dokploy_project.example <projectId>
+terraform import dokploy_project.example V1StGXR8_Z5jdHi6B-myT
 ```

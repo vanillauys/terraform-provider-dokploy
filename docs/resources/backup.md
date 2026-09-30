@@ -99,6 +99,15 @@ resource "dokploy_backup" "nextcloud_db" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = dokploy_backup.db_nightly
+  id = "b1a2b3c4d5e6f7g8h9i0j"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell

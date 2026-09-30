@@ -72,9 +72,18 @@ resource "dokploy_user_permissions" "contractor" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Import by the user id.
+import {
+  to = dokploy_user_permissions.contractor
+  id = "rM64isnUKMgqgOnwm7zE3"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Import by the user id.
 terraform import dokploy_user_permissions.contractor rM64isnUKMgqgOnwm7zE3
 ```

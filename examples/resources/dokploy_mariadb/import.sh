@@ -1,1 +1,1 @@
-terraform import dokploy_mariadb.example <mariadbId>
+terraform import dokploy_mariadb.example V1StGXR8_Z5jdHi6B-myT

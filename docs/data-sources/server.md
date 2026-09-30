@@ -53,6 +53,8 @@ resource "dokploy_redis" "cache" {
   name           = "cache"
   environment_id = dokploy_project.app.production_environment_id
   server_id      = data.dokploy_server.worker.id
+
+  database_password = var.redis_password # use a sensitive variable
 }
 ```
 

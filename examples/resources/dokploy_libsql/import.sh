@@ -1,1 +1,1 @@
-terraform import dokploy_libsql.example <libsqlId>
+terraform import dokploy_libsql.example V1StGXR8_Z5jdHi6B-myT

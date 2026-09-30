@@ -1,1 +1,1 @@
-terraform import dokploy_application.example <applicationId>
+terraform import dokploy_application.example V1StGXR8_Z5jdHi6B-myT

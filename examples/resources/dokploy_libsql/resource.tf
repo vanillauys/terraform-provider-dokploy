@@ -8,6 +8,13 @@ resource "dokploy_libsql" "example" {
   external_port       = 8080
   external_admin_port = 8081
   external_grpc_port  = 8082
+
+  # The Docker Swarm service specification. Set swarm.mode or replicas, not
+  # both. Durations are in nanoseconds.
+  # swarm = {
+  #   mode      = { replicated = { replicas = 1 } }
+  #   placement = { constraints = ["node.labels.tier == db"] }
+  # }
 }
 
 # A replica follows a primary in the same environment. On Dokploy v0.30.5 the

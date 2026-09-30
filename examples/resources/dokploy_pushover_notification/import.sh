@@ -1,1 +1,1 @@
-terraform import dokploy_pushover_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_pushover_notification.oncall INt_PYqh9apo8mmDIoixZ

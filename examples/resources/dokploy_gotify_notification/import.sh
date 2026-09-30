@@ -1,1 +1,1 @@
-terraform import dokploy_gotify_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_gotify_notification.phone INt_PYqh9apo8mmDIoixZ

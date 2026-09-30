@@ -82,8 +82,17 @@ resource "dokploy_ntfy_notification" "public" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = dokploy_ntfy_notification.phone
+  id = "INt_PYqh9apo8mmDIoixZ"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import dokploy_ntfy_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_ntfy_notification.phone INt_PYqh9apo8mmDIoixZ
 ```

@@ -1,1 +1,1 @@
-terraform import dokploy_mysql.example <mysqlId>
+terraform import dokploy_mysql.example V1StGXR8_Z5jdHi6B-myT
