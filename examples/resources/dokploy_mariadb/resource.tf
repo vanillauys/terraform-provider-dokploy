@@ -9,4 +9,11 @@ resource "dokploy_mariadb" "example" {
   env = <<-EOT
     TZ=UTC
   EOT
+
+  # The Docker Swarm service specification. Set swarm.mode or replicas, not
+  # both. Durations are in nanoseconds.
+  # swarm = {
+  #   mode      = { replicated = { replicas = 1 } }
+  #   placement = { constraints = ["node.labels.tier == db"] }
+  # }
 }

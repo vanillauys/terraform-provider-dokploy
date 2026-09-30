@@ -54,9 +54,18 @@ resource "dokploy_environment" "staging" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Environments are imported by their environment id.
+import {
+  to = dokploy_environment.staging
+  id = "Ux7kFq2mNp4RtWvYzAbCd"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Environments are imported by their environment id.
 terraform import dokploy_environment.staging Ux7kFq2mNp4RtWvYzAbCd
 ```

@@ -1,1 +1,1 @@
-terraform import dokploy_postgres.example <postgresId>
+terraform import dokploy_postgres.example V1StGXR8_Z5jdHi6B-myT

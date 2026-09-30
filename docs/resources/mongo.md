@@ -27,6 +27,13 @@ resource "dokploy_mongo" "example" {
   # Run as a replica set instead of a standalone instance. A change starts
   # a redeploy and converges in place.
   # replica_sets = true
+
+  # The Docker Swarm service specification. Set swarm.mode or replicas, not
+  # both. Durations are in nanoseconds.
+  # swarm = {
+  #   mode      = { replicated = { replicas = 1 } }
+  #   placement = { constraints = ["node.labels.tier == db"] }
+  # }
 }
 ```
 
@@ -260,8 +267,17 @@ Optional:
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = dokploy_mongo.example
+  id = "V1StGXR8_Z5jdHi6B-myT"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import dokploy_mongo.example <mongoId>
+terraform import dokploy_mongo.example V1StGXR8_Z5jdHi6B-myT
 ```

@@ -272,16 +272,22 @@ Optional:
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Dokploy masks every secret field as "********" on every read. Import
+# cannot recover the config block, so the imported state holds a null block.
+# Write the block for the type of the provider in the configuration: hashicorp,
+# infisical, aws, doppler, azure, or scaleway. The first apply after the
+# import is a full update. It is not an empty plan.
+import {
+  to = dokploy_vault_provider.secrets
+  id = "v1a2b3c4d5e6f7g8h9i0j"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Vault providers import by their own id.
-#
-# Dokploy masks every secret field as "********" on every read, so no
-# config block can be recovered by
-# import - it is left null in the imported state. Re-supply the block
-# matching the provider's actual type (hashicorp, infisical, aws, doppler,
-# azure, or scaleway) in configuration; the first `terraform apply` after
-# import is a full-body update, not an empty plan.
 terraform import dokploy_vault_provider.secrets v1a2b3c4d5e6f7g8h9i0j
 ```

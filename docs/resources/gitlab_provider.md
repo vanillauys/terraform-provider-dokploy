@@ -78,9 +78,18 @@ resource "dokploy_gitlab_provider" "internal" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Import by the gitlabId, the id that gitlab.one takes.
+import {
+  to = dokploy_gitlab_provider.main
+  id = "c_59BSJGjfG2UAG-cima_"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Import by the gitlabId, the id that gitlab.one takes.
 terraform import dokploy_gitlab_provider.main c_59BSJGjfG2UAG-cima_
 ```

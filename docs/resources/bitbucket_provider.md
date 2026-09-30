@@ -71,9 +71,18 @@ resource "dokploy_bitbucket_provider" "legacy" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Import by the bitbucketId, the id that bitbucket.one takes.
+import {
+  to = dokploy_bitbucket_provider.main
+  id = "s7LQWsCjXLEgsT7rexTyL"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Import by the bitbucketId, the id that bitbucket.one takes.
 terraform import dokploy_bitbucket_provider.main s7LQWsCjXLEgsT7rexTyL
 ```

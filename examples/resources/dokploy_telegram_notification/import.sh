@@ -1,1 +1,1 @@
-terraform import dokploy_telegram_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_telegram_notification.alerts INt_PYqh9apo8mmDIoixZ

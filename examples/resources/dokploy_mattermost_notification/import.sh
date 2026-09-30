@@ -1,1 +1,1 @@
-terraform import dokploy_mattermost_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_mattermost_notification.deploys INt_PYqh9apo8mmDIoixZ

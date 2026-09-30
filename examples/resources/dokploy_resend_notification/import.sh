@@ -1,1 +1,1 @@
-terraform import dokploy_resend_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_resend_notification.ops INt_PYqh9apo8mmDIoixZ

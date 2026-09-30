@@ -1,1 +1,1 @@
-terraform import dokploy_redis.example <redisId>
+terraform import dokploy_redis.example V1StGXR8_Z5jdHi6B-myT

@@ -72,8 +72,17 @@ resource "dokploy_gotify_notification" "phone" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+import {
+  to = dokploy_gotify_notification.phone
+  id = "INt_PYqh9apo8mmDIoixZ"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-terraform import dokploy_gotify_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_gotify_notification.phone INt_PYqh9apo8mmDIoixZ
 ```

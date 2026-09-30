@@ -12,4 +12,11 @@ resource "dokploy_mongo" "example" {
   # Run as a replica set instead of a standalone instance. A change starts
   # a redeploy and converges in place.
   # replica_sets = true
+
+  # The Docker Swarm service specification. Set swarm.mode or replicas, not
+  # both. Durations are in nanoseconds.
+  # swarm = {
+  #   mode      = { replicated = { replicas = 1 } }
+  #   placement = { constraints = ["node.labels.tier == db"] }
+  # }
 }

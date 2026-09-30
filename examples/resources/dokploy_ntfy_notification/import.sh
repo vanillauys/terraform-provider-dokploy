@@ -1,1 +1,1 @@
-terraform import dokploy_ntfy_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_ntfy_notification.phone INt_PYqh9apo8mmDIoixZ

@@ -1,1 +1,1 @@
-terraform import dokploy_discord_notification.example INt_PYqh9apo8mmDIoixZ
+terraform import dokploy_discord_notification.backups INt_PYqh9apo8mmDIoixZ

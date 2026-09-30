@@ -72,10 +72,19 @@ resource "dokploy_user_permissions" "dev" {
 
 Import is supported using the following syntax:
 
+In Terraform v1.5.0 and later, the [`import` block](https://developer.hashicorp.com/terraform/language/import) can be used with the `id` attribute, for example:
+
+```terraform
+# Import by the user id. The password cannot be recovered: add
+# lifecycle { ignore_changes = [password] } after the import.
+import {
+  to = dokploy_user.dev
+  id = "rM64isnUKMgqgOnwm7zE3"
+}
+```
+
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Import by the user id. The password cannot be recovered: add
-# lifecycle { ignore_changes = [password] } after the import.
 terraform import dokploy_user.dev rM64isnUKMgqgOnwm7zE3
 ```
