@@ -92,3 +92,39 @@ func TestVerifyConnectionAttributeDescription(t *testing.T) {
 		t.Errorf("after description = %q", after.Description)
 	}
 }
+
+// MoveIfChanged calls <router>.move only for a changed environment, and a
+// failed move stops the update with an error.
+func TestMoveIfChanged(t *testing.T) {
+	var calls int32
+	status := http.StatusOK
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		if r.Method != http.MethodPost || r.URL.Path != "/api/compose.move" {
+			t.Errorf("request = %s %s, want POST /api/compose.move", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	c, err := client.New(srv.URL, "test-key", false, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	if !MoveIfChanged(ctx, &diags, c, "compose", "c1", types.StringValue("env1"), types.StringValue("env1")) || calls != 0 {
+		t.Errorf("an unchanged environment: calls = %d, want 0", calls)
+	}
+	if !MoveIfChanged(ctx, &diags, c, "compose", "c1", types.StringValue("env2"), types.StringValue("env1")) || calls != 1 {
+		t.Errorf("a changed environment: calls = %d, want 1", calls)
+	}
+	if diags.HasError() {
+		t.Fatalf("diags = %v", diags)
+	}
+	status = http.StatusBadRequest
+	if MoveIfChanged(ctx, &diags, c, "compose", "c1", types.StringValue("env3"), types.StringValue("env1")) || !diags.HasError() {
+		t.Error("a failed move returned true or added no error")
+	}
+}
