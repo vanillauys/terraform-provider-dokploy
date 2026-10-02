@@ -56,7 +56,7 @@ The provider follows [semantic versioning](https://semver.org) from v1.0.0:
   warning at plan time before a major release removes it.
 - The Dokploy compatibility pin moves in minor releases.
 
-Pin the minor version, for example `~> 1.8`, to get fixes and additions without a
+Pin the minor version, for example `~> 1.9`, to get fixes and additions without a
 breaking change. The [changelog](guides/changelog) names every change in
 each release.
 
@@ -77,7 +77,7 @@ each release.
   database passwords, backup credentials, and the write-only companions
   that keep a secret out of the state.
 - [Upgrade guide](guides/upgrading): what each release needs from your
-  configuration. v1.8 has nothing breaking; v1.0 has no change; v0.13 adds the coverage of this page;
+  configuration. v1.9 and v1.8 have nothing breaking; v1.0 has no change; v0.13 adds the coverage of this page;
   v0.12 adds the write-only companions; v0.11 had the breaking changes.
 - [Changelog](guides/changelog): every release, newest first, with the
   attributes it added, changed, or fixed.

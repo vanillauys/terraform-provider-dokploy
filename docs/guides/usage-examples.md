@@ -316,7 +316,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 1.8"
+      version = "~> 1.9"
     }
     random = {
       source  = "hashicorp/random"

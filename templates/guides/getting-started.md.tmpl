@@ -61,7 +61,7 @@ self-signed certificate. A `provider` block can also set `endpoint` and
 
 Copy this complete file to `main.tf`. It goes from an empty directory to a
 running application with a domain. The provider follows semantic versioning
-from v1.0.0. The constraint `~> 1.8` accepts each 1.x release from v1.8.0, and
+from v1.0.0. The constraint `~> 1.9` accepts each 1.x release from v1.9.0, and
 a minor release never changes what an existing attribute does. The
 [Upgrade guide](upgrading) lists what each release needs from your
 configuration.
@@ -75,7 +75,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "vanillauys/dokploy"
-      version = "~> 1.8"
+      version = "~> 1.9"
     }
   }
 }

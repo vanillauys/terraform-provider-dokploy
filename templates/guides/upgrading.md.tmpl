@@ -2,10 +2,39 @@
 page_title: "Upgrade guide"
 subcategory: ""
 description: |-
-  What each release since v0.11.0 needs from your configuration: nothing for v1.8, nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
+  What each release since v0.11.0 needs from your configuration: nothing for v1.9 and v1.8, nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
 ---
 
 # Upgrade guide
+
+## Upgrade to v1.9
+
+v1.9.0 has nothing breaking. Each new attribute is optional, so a v1.8.0
+state loads with an empty plan.
+
+1. Update the version constraint to `~> 1.9`.
+2. Run `terraform init -upgrade`.
+3. Run `terraform plan`. The plan must be empty.
+
+v1.9.0 adds four things:
+
+- The `dokploy_web_server_settings` resource for the Dokploy host: the
+  dashboard domain, the server IP, the Docker and access-log cleanup, and the
+  build concurrency. Declare it once. `terraform destroy` removes it from the
+  state only.
+- The `dokploy_patch` resource and data source: a file change that Dokploy
+  applies to the repository of a service before each build.
+- `shared_with_organization` on the GitLab, Bitbucket, and Gitea providers.
+  If you omit it, the provider keeps the value that the server holds.
+- `icon` on `dokploy_application`.
+
+One behavior changes, and it removes a risk. **A change of `environment_id`
+now moves the service in place.** Before v1.9.0, the change destroyed the
+service and created a new one, and a database lost its data. Now the plan
+shows an update, Dokploy moves the record, and the container, its volumes,
+and `app_name` stay. The move does not deploy. This applies to
+`dokploy_application`, `dokploy_compose`, `dokploy_libsql`, and the five
+classic databases.
 
 ## Upgrade to v1.8
 

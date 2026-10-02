@@ -56,7 +56,7 @@ them, deploys them, and keeps them in sync.
      required_providers {
        dokploy = {
          source  = "vanillauys/dokploy"
-         version = "~> 1.8"
+         version = "~> 1.9"
        }
      }
    }
@@ -113,7 +113,7 @@ that it stays out of your repository.
 
 | Provider | Dokploy pin |
 |----------|-------------|
-| 1.8.x | v0.30.8 |
+| 1.8.x – 1.9.x | v0.30.8 |
 | 1.7.x | v0.30.7 |
 | 1.1.1 – 1.6.x | v0.30.6 |
 | 1.0.x – 1.1.0 | v0.30.5 |
@@ -230,7 +230,7 @@ The provider follows [semantic versioning](https://semver.org) from v1.0.0:
 - The Dokploy compatibility pin moves in minor releases, with the census of
   the upstream changes in the [changelog](CHANGELOG.md).
 
-Pin the minor version, for example `~> 1.8`, to get fixes and additions
+Pin the minor version, for example `~> 1.9`, to get fixes and additions
 without a breaking change.
 
 ## Contributing
