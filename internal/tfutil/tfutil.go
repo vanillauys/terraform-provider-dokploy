@@ -322,19 +322,24 @@ func SharedWithOrganizationAttribute() schema.BoolAttribute {
 // from have, the value on the server. It returns the value the server holds
 // after the call. A failed call adds an error to diags; the caller still
 // sets the state, because the record exists on the server.
-func ApplyShare(ctx context.Context, diags *diag.Diagnostics, c *client.Client, gitProviderID string, want types.Bool, have bool) types.Bool {
-	if want.IsNull() || want.IsUnknown() || want.ValueBool() == have {
-		return types.BoolValue(have)
+// ApplyShare calls gitProvider.toggleShare when want is known and differs
+// from the flag of gp, the record that the server returned, and then sets
+// that flag, so a flatten of the record reads the new value. A failed call
+// adds an error to diags; the caller still sets the state, because the
+// record exists on the server.
+func ApplyShare(ctx context.Context, diags *diag.Diagnostics, c *client.Client, gp *client.GitProvider, want types.Bool) {
+	if want.IsNull() || want.IsUnknown() || want.ValueBool() == gp.SharedWithOrganization {
+		return
 	}
 	err := c.ToggleGitProviderShare(ctx, client.ToggleGitProviderShareRequest{
-		GitProviderID:          gitProviderID,
+		GitProviderID:          gp.GitProviderID,
 		SharedWithOrganization: want.ValueBool(),
 	})
 	if err != nil {
 		diags.AddError("Sharing the git provider", err.Error())
-		return types.BoolValue(have)
+		return
 	}
-	return want
+	gp.SharedWithOrganization = want.ValueBool()
 }
 
 // AppNamePrefix returns the part of a stored app name before the suffix that

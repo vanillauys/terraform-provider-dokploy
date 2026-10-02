@@ -316,16 +316,17 @@ func TestApplyShare(t *testing.T) {
 	ctx := context.Background()
 	var diags diag.Diagnostics
 
+	gp := &client.GitProvider{GitProviderID: "gp1", SharedWithOrganization: true}
 	for _, want := range []types.Bool{types.BoolNull(), types.BoolUnknown(), types.BoolValue(true)} {
-		if got := ApplyShare(ctx, &diags, c, "gp1", want, true); !got.ValueBool() {
-			t.Errorf("want %v: got %v, want the server value true", want, got)
+		if ApplyShare(ctx, &diags, c, gp, want); !gp.SharedWithOrganization {
+			t.Errorf("want %v: the flag changed to false", want)
 		}
 	}
 	if len(bodies) != 0 {
 		t.Fatalf("calls = %v, want none", bodies)
 	}
-	if got := ApplyShare(ctx, &diags, c, "gp1", types.BoolValue(false), true); got.ValueBool() {
-		t.Errorf("got %v, want false", got)
+	if ApplyShare(ctx, &diags, c, gp, types.BoolValue(false)); gp.SharedWithOrganization {
+		t.Error("the flag is still true, want false")
 	}
 	if len(bodies) != 1 || bodies[0] != `{"gitProviderId":"gp1","sharedWithOrganization":false}` {
 		t.Errorf("bodies = %v", bodies)

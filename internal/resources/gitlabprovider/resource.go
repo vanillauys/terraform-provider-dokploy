@@ -54,6 +54,7 @@ func (r *gitlabResource) Metadata(_ context.Context, req resource.MetadataReques
 
 func (r *gitlabResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	attrs := map[string]schema.Attribute{
+		"shared_with_organization": tfutil.SharedWithOrganizationAttribute(),
 		"id": schema.StringAttribute{
 			Computed:      true,
 			Description:   "The `gitlabId`. The `gitlab.gitlab_id` of an application or a compose references it.",
@@ -96,7 +97,6 @@ func (r *gitlabResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			Description:   "Creation timestamp from the server.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
-		"shared_with_organization": tfutil.SharedWithOrganizationAttribute(),
 	}
 	for name, attr := range tfutil.WriteOnlyCompanions("secret", tfutil.WriteOnlyOptions{ExactlyOne: true}) {
 		attrs[name] = attr
@@ -180,9 +180,8 @@ func (r *gitlabResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Creating GitLab provider", err.Error())
 		return
 	}
-	want := plan.SharedWithOrganization
+	tfutil.ApplyShare(ctx, &resp.Diagnostics, r.client, &created.GitProvider, plan.SharedWithOrganization)
 	flatten(created, &plan)
-	plan.SharedWithOrganization = tfutil.ApplyShare(ctx, &resp.Diagnostics, r.client, created.GitProviderID, want, created.GitProvider.SharedWithOrganization)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	r.verify(ctx, plan, &resp.Diagnostics)
@@ -258,9 +257,8 @@ func (r *gitlabResource) Update(ctx context.Context, req resource.UpdateRequest,
 		resp.Diagnostics.AddError("Reading GitLab provider after update", err.Error())
 		return
 	}
-	want := plan.SharedWithOrganization
+	tfutil.ApplyShare(ctx, &resp.Diagnostics, r.client, &g.GitProvider, plan.SharedWithOrganization)
 	flatten(g, &plan)
-	plan.SharedWithOrganization = tfutil.ApplyShare(ctx, &resp.Diagnostics, r.client, g.GitProviderID, want, g.GitProvider.SharedWithOrganization)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	r.verify(ctx, plan, &resp.Diagnostics)
