@@ -119,6 +119,9 @@ func MariadbKind(c *client.Client) Kind {
 			Delete: func(ctx context.Context, id string) error {
 				return c.DeleteMariadb(ctx, id)
 			},
+			Move: func(ctx context.Context, id, target string) error {
+				return c.MoveService(ctx, "mariadb", id, target)
+			},
 			// ListByEnvironment mirrors PostgresKind's/MysqlKind's: one
 			// client.EnvironmentServices call (itself one environment.one
 			// request), mapping its Mariadb []client.ServiceRef into partial

@@ -114,6 +114,9 @@ func MysqlKind(c *client.Client) Kind {
 			Delete: func(ctx context.Context, id string) error {
 				return c.DeleteMysql(ctx, id)
 			},
+			Move: func(ctx context.Context, id, target string) error {
+				return c.MoveService(ctx, "mysql", id, target)
+			},
 			// ListByEnvironment mirrors PostgresKind's: one
 			// client.EnvironmentServices call (itself one environment.one
 			// request), mapping its Mysql []client.ServiceRef into partial

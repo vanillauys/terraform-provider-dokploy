@@ -43,7 +43,7 @@ resource "dokploy_mongo" "example" {
 ### Required
 
 - `database_user` (String) MongoDB user.
-- `environment_id` (String) Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.
+- `environment_id` (String) Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment. A change moves the service to the new environment in place, with its container and data. The move does not deploy: references to environment variables resolve at the next deploy.
 - `name` (String) Display name of the database service.
 
 ### Optional

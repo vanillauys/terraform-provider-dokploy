@@ -99,6 +99,9 @@ func PostgresKind(c *client.Client) Kind {
 			Delete: func(ctx context.Context, id string) error {
 				return c.DeletePostgres(ctx, id)
 			},
+			Move: func(ctx context.Context, id, target string) error {
+				return c.MoveService(ctx, "postgres", id, target)
+			},
 			// ListByEnvironment keeps the exact mechanism the postgres data
 			// source used before Task 4 folded it into the generic engine:
 			// one client.EnvironmentServices call (which itself is one

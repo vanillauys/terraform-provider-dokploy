@@ -909,3 +909,22 @@ resource "dokploy_application" "test" {
 		},
 	})
 }
+
+// A change of environment_id moves the application in place (v1.9.0).
+func TestAccApplication_move(t *testing.T) {
+	name := acctest.RandomName("move-app")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		Steps: acctest.MoveSteps(name, "dokploy_application.test", func(environmentID string) string {
+			return fmt.Sprintf(`
+resource "dokploy_application" "test" {
+  name             = %q
+  environment_id   = %s
+  docker           = { image = "traefik/whoami:v1.10" }
+  deploy_on_change = false
+}
+`, name, environmentID)
+		}),
+	})
+}

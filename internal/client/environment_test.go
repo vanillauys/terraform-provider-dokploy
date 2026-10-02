@@ -210,3 +210,23 @@ func TestEnvironmentServicesDecodesLibsql(t *testing.T) {
 		t.Errorf("Libsql[0] = %+v, want {lib-1 edge}", es.Libsql[0])
 	}
 }
+
+// MoveService posts {<router>Id, targetEnvironmentId} to <router>.move.
+func TestMoveService(t *testing.T) {
+	var body string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/postgres.move" {
+			t.Errorf("request = %s %s, want POST /api/postgres.move", r.Method, r.URL.Path)
+		}
+		b, _ := io.ReadAll(r.Body)
+		body = string(b)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	if err := testClient(t, srv).MoveService(context.Background(), "postgres", "pg1", "env2"); err != nil {
+		t.Fatalf("MoveService: %v", err)
+	}
+	if body != `{"postgresId":"pg1","targetEnvironmentId":"env2"}` {
+		t.Errorf("body = %s", body)
+	}
+}

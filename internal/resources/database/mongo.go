@@ -112,6 +112,9 @@ func MongoKind(c *client.Client) Kind {
 			Delete: func(ctx context.Context, id string) error {
 				return c.DeleteMongo(ctx, id)
 			},
+			Move: func(ctx context.Context, id, target string) error {
+				return c.MoveService(ctx, "mongo", id, target)
+			},
 			// ListByEnvironment mirrors every other engine's: one
 			// client.EnvironmentServices call (itself one environment.one
 			// request), mapping its Mongo []client.ServiceRef into partial

@@ -702,3 +702,25 @@ func TestAccCompose_freshVolumes(t *testing.T) {
 		},
 	})
 }
+
+// A change of environment_id moves the compose service in place (v1.9.0).
+func TestAccCompose_move(t *testing.T) {
+	name := acctest.RandomName("move-compose")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		Steps: acctest.MoveSteps(name, "dokploy_compose.test", func(environmentID string) string {
+			return fmt.Sprintf(`
+resource "dokploy_compose" "test" {
+  name             = %q
+  environment_id   = %s
+  deploy_on_change = false
+
+  raw = {
+    compose_file = "services:\n  web:\n    image: nginx:alpine\n"
+  }
+}
+`, name, environmentID)
+		}),
+	})
+}

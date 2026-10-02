@@ -275,6 +275,8 @@ type KindClient struct {
 	SaveExternalPort func(ctx context.Context, id string, port *int64) error
 	Deploy           func(ctx context.Context, id string) error
 	Delete           func(ctx context.Context, id string) error
+	// Move sets the environment of the service through <engine>.move.
+	Move func(ctx context.Context, id, targetEnvironmentID string) error
 	// ListByEnvironment lists this engine's services in one environment, for
 	// the data source's by-name lookup (Task 4). It is added to KindClient
 	// rather than left as a bespoke per-package call because the generic
@@ -313,9 +315,9 @@ func schemaAttributes(k Kind) map[string]schema.Attribute {
 		},
 		"name": schema.StringAttribute{Required: true, Description: "Display name of the database service."},
 		"environment_id": schema.StringAttribute{
-			Required:      true,
-			Description:   "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.",
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			Required: true,
+			Description: "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment. " +
+				tfutil.EnvironmentMoveNote,
 		},
 		// database_password is Optional, not Required, only because its
 		// write-only companion can replace it: the ExactlyOneOf validator on

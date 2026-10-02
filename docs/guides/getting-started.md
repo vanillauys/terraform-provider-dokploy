@@ -165,8 +165,12 @@ response, and the provider does not sort it, so `environments[0]` is not fixed
 to `production`. Use the list, or the `dokploy_environment` data source, only
 for an environment that is not the default. Do not derive `environment_id`
 from the list with a `for` expression: a project update marks the list unknown
-in the plan, and an unknown `environment_id` forces a replacement of the
-service.
+in the plan, and an unknown `environment_id` shows a change on every service
+in that plan.
+
+A change of `environment_id` moves the service to the new environment in
+place, with its container and data. The move does not deploy. Before v1.9.0,
+the change replaced the service.
 
 [Secrets and sensitive values](secrets) explains why the provider does not
 mark `env` as sensitive.

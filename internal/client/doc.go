@@ -1967,3 +1967,12 @@ package client
 // is. A parent key on patch.update is accepted and ignored. patch.one and
 // patch.delete answer 404 for a missing id. patch.byEntityId lists the
 // patches of one parent.
+//
+// ## move (v1.9.0)
+//
+// Probed live against the rig (v0.30.8, 2026-10-02). application.move,
+// compose.move, libsql.move and the five engine .move endpoints take
+// {<router>Id, targetEnvironmentId} and set only the environmentId column.
+// A deployed postgres kept its Docker service id and its running task
+// across a move, and nothing deployed. The environment can belong to
+// another project. MoveService covers all eight endpoints.

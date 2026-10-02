@@ -271,7 +271,7 @@ environment_id = [for e in dokploy_project.example.environments : e.id if e.name
 That expression forces a replacement of the service on every project update.
 `environments` is a computed list, so a change to the project description
 marks it unknown in the plan. The `for` expression becomes unknown too, and
-an unknown `environment_id` forces a replacement of the service. A live
+an unknown `environment_id` forced a replacement of the service before v1.9.0. A live
 check on Dokploy v0.30.5 planned a destroy and re-create of an application
 after a description change.
 

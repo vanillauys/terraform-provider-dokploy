@@ -75,9 +75,9 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 		"name":        schema.StringAttribute{Required: true, Description: "Display name of the application."},
 		"description": schema.StringAttribute{Optional: true, Description: "Free-form description."},
 		"environment_id": schema.StringAttribute{
-			Required:      true,
-			Description:   "Id of the environment that holds this application. Use `dokploy_project.production_environment_id` for the default environment.",
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			Required: true,
+			Description: "Id of the environment that holds this application. Use `dokploy_project.production_environment_id` for the default environment. " +
+				tfutil.EnvironmentMoveNote,
 		},
 		"app_name":        tfutil.AppNameAttribute(),
 		"app_name_prefix": tfutil.AppNamePrefixAttribute(),
@@ -795,6 +795,9 @@ func (r *applicationResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID
+	if !tfutil.MoveIfChanged(ctx, &resp.Diagnostics, r.client, "application", id, plan.EnvironmentID, state.EnvironmentID) {
+		return
+	}
 
 	// application.update carries name, description and every operational
 	// setting. It is dialect B, so a field left out of the body keeps its

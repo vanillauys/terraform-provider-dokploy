@@ -104,6 +104,9 @@ func RedisKind(c *client.Client) Kind {
 			Delete: func(ctx context.Context, id string) error {
 				return c.DeleteRedis(ctx, id)
 			},
+			Move: func(ctx context.Context, id, target string) error {
+				return c.MoveService(ctx, "redis", id, target)
+			},
 			// ListByEnvironment mirrors PostgresKind's/MysqlKind's: one
 			// client.EnvironmentServices call (itself one environment.one
 			// request), mapping its Redis []client.ServiceRef into partial

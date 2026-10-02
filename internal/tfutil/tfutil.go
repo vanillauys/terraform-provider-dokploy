@@ -316,13 +316,6 @@ func SharedWithOrganizationAttribute() schema.BoolAttribute {
 }
 
 // ApplyShare calls gitProvider.toggleShare when want is known and differs
-// from have, the value on the server. It returns the value the server holds
-// after the call.
-// ApplyShare calls gitProvider.toggleShare when want is known and differs
-// from have, the value on the server. It returns the value the server holds
-// after the call. A failed call adds an error to diags; the caller still
-// sets the state, because the record exists on the server.
-// ApplyShare calls gitProvider.toggleShare when want is known and differs
 // from the flag of gp, the record that the server returned, and then sets
 // that flag, so a flatten of the record reads the new value. A failed call
 // adds an error to diags; the caller still sets the state, because the
@@ -340,6 +333,25 @@ func ApplyShare(ctx context.Context, diags *diag.Diagnostics, c *client.Client, 
 		return
 	}
 	gp.SharedWithOrganization = want.ValueBool()
+}
+
+// EnvironmentMoveNote ends the environment_id description of every service
+// resource. A change calls <router>.move (MoveService), which keeps the
+// container and its data.
+const EnvironmentMoveNote = "A change moves the service to the new environment in place, with its container and data. " +
+	"The move does not deploy: references to environment variables resolve at the next deploy."
+
+// MoveIfChanged moves a service when the planned environment differs from
+// the state. Update calls it before its other writes.
+func MoveIfChanged(ctx context.Context, diags *diag.Diagnostics, c *client.Client, router, id string, plan, state types.String) bool {
+	if plan.Equal(state) {
+		return true
+	}
+	if err := c.MoveService(ctx, router, id, plan.ValueString()); err != nil {
+		diags.AddError("Moving the service to environment "+plan.ValueString(), err.Error())
+		return false
+	}
+	return true
 }
 
 // AppNamePrefix returns the part of a stored app name before the suffix that

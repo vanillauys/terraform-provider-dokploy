@@ -77,9 +77,9 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 		"name":        schema.StringAttribute{Required: true, Description: "Display name of the compose service."},
 		"description": schema.StringAttribute{Optional: true, Description: "Free-form description."},
 		"environment_id": schema.StringAttribute{
-			Required:      true,
-			Description:   "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.",
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			Required: true,
+			Description: "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment. " +
+				tfutil.EnvironmentMoveNote,
 		},
 		"app_name":        tfutil.AppNameAttribute(),
 		"app_name_prefix": tfutil.AppNamePrefixAttribute(),
@@ -516,6 +516,9 @@ func (r *composeResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID
+	if !tfutil.MoveIfChanged(ctx, &resp.Diagnostics, r.client, "compose", id, plan.EnvironmentID, state.EnvironmentID) {
+		return
+	}
 
 	// compose.update carries name, the whole source block and every
 	// operational flag. It is dialect B, so a field left out of the body

@@ -1246,3 +1246,23 @@ resource "dokploy_libsql" "test" {
 		},
 	})
 }
+
+// A change of environment_id moves the libsql service in place (v1.9.0).
+func TestAccLibsql_move(t *testing.T) {
+	name := acctest.RandomName("move-libsql")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		Steps: acctest.MoveSteps(name, "dokploy_libsql.test", func(environmentID string) string {
+			return fmt.Sprintf(`
+resource "dokploy_libsql" "test" {
+  name              = %q
+  environment_id    = %s
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  deploy_on_change  = false
+}
+`, name, environmentID)
+		}),
+	})
+}

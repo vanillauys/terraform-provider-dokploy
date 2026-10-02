@@ -406,3 +406,37 @@ func checkGitProviderShared(addr string, want bool) resource.TestCheckFunc {
 		return fmt.Errorf("git provider %s not on the server", id)
 	}
 }
+
+// MoveSteps prove that a change of environment_id moves a service in
+// place. service renders the resource block at addr with the given
+// environment_id expression. The steps create the service in the default
+// environment of a new project, then move it to a second environment: the
+// plan must update, never replace, and the next plan must be empty.
+func MoveSteps(name, addr string, service func(environmentID string) string) []resource.TestStep {
+	config := func(environmentID string) string {
+		return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_environment" "second" {
+  project_id = dokploy_project.test.id
+  name       = "second"
+}
+`, name) + service(environmentID)
+	}
+	return []resource.TestStep{
+		{
+			Config: config("dokploy_project.test.environments[0].id"),
+			Check:  resource.TestCheckResourceAttrPair(addr, "environment_id", "dokploy_project.test", "environments.0.id"),
+		},
+		{
+			Config: config("dokploy_environment.second.id"),
+			ConfigPlanChecks: resource.ConfigPlanChecks{
+				PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction(addr, plancheck.ResourceActionUpdate)},
+				PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+			},
+			Check: resource.TestCheckResourceAttrPair(addr, "environment_id", "dokploy_environment.second", "id"),
+		},
+	}
+}

@@ -95,9 +95,9 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		},
 		"name": schema.StringAttribute{Required: true, Description: "Display name of the libsql service."},
 		"environment_id": schema.StringAttribute{
-			Required:      true,
-			Description:   "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment.",
-			PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			Required: true,
+			Description: "Id of the environment that holds this service. Use `dokploy_project.production_environment_id` for the default environment. " +
+				tfutil.EnvironmentMoveNote,
 		},
 		"description": schema.StringAttribute{Optional: true, Description: "Free-form description."},
 		"database_user": schema.StringAttribute{
@@ -580,6 +580,9 @@ func (r *libsqlResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID
+	if !tfutil.MoveIfChanged(ctx, &resp.Diagnostics, r.client, "libsql", id, plan.EnvironmentID, state.EnvironmentID) {
+		return
+	}
 	// "" when the write-only password has nothing new to send:
 	// UpdateLibsqlRequest drops an empty databasePassword (omitempty), and
 	// an absent key keeps the stored value (doc.go, probed 2026-09-05). An

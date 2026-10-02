@@ -346,6 +346,12 @@ func (r *genericResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID
+	if !plan.EnvironmentID.Equal(state.EnvironmentID) {
+		if err := r.kind.Client.Move(ctx, id, plan.EnvironmentID.ValueString()); err != nil {
+			resp.Diagnostics.AddError(fmt.Sprintf("Moving %s", r.kind.Name), err.Error())
+			return
+		}
+	}
 	plan.takeSecrets(r.kind, cfg)
 	resp.Diagnostics.Append(plan.storeWriteOnlyFlags(ctx, r.kind, resp.Private)...)
 

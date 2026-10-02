@@ -191,6 +191,18 @@ func (c *Client) EnvironmentServices(ctx context.Context, environmentID string) 
 	return out, nil
 }
 
+// MoveService moves a service to another environment through
+// <router>.move, where router is application, compose, postgres, mysql,
+// mariadb, mongo, redis or libsql. The endpoint sets only the
+// environmentId column: the container, its volumes and appName stay as
+// they are, and nothing deploys (the routers, v0.30.8).
+func (c *Client) MoveService(ctx context.Context, router, id, targetEnvironmentID string) error {
+	return c.Post(ctx, "/"+router+".move", map[string]string{
+		router + "Id":         id,
+		"targetEnvironmentId": targetEnvironmentID,
+	}, nil)
+}
+
 // FindServiceByName resolves an exact service name to its id. It errors on
 // multiple matches rather than picking one: Dokploy does not enforce unique
 // service names within an environment.

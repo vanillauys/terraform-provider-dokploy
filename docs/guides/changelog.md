@@ -35,6 +35,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   final newline to a non-empty content when it updates the patch; the
   provider treats the two values as equal.
 
+### Changed
+
+- A change of `environment_id` on `dokploy_application`, `dokploy_compose`,
+  `dokploy_postgres`, `dokploy_mysql`, `dokploy_mariadb`, `dokploy_mongo`,
+  `dokploy_redis`, and `dokploy_libsql` now moves the service in place
+  through the Dokploy `move` endpoint. Before, the change replaced the
+  service, and a database lost its data. The container, its volumes, and
+  `app_name` stay as they are, and the move does not deploy.
+
 ## [1.8.0] - 2026-09-30
 
 ### Added
