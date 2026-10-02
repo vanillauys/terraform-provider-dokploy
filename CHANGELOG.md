@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `dokploy_web_server_settings` resource: the settings of the Dokploy host.
+  It manages the dashboard domain (`host`, `https`, `certificate_type`,
+  `lets_encrypt_email`), `server_ip`, `enable_docker_cleanup`,
+  `log_cleanup_cron`, and `builds_concurrency`. Declare it once for each
+  installation. `terraform destroy` removes it from the state only, and the
+  server keeps the current values.
+
 ## [1.8.0] - 2026-09-30
 
 ### Added

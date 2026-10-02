@@ -17,7 +17,7 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 - **Backups**: S3-compatible destinations, scheduled database dumps, Docker volume archives, and a scheduled backup of the Dokploy host
 - **Schedules**: cron jobs on a service, a remote server, or the Dokploy host
 - **Networks**: Docker bridge and overlay networks, attached to any service
-- **Servers**: remote worker and build servers, and the SSH keys that reach them
+- **Servers**: remote worker and build servers, the SSH keys that reach them, and the settings of the Dokploy host (dashboard domain, server IP, cleanup, build concurrency)
 - **Git providers**: GitLab, Bitbucket, and Gitea connections, and lookups of GitHub Apps
 - **Registries**: container registry logins for private images and built images
 - **Notifications**: Slack, Discord, Telegram, email, Resend, Gotify, ntfy, Mattermost, Lark, Microsoft Teams, Pushover, and custom webhooks

@@ -70,6 +70,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/volumebackup"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/webserverbackup"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/webserversettings"
 )
 
 var _ provider.Provider = (*DokployProvider)(nil)
@@ -250,6 +251,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		notification.NewResource(notification.PushoverKind()),
 		notification.NewResource(notification.CustomKind()),
 		webserverbackup.NewResource,
+		webserversettings.NewResource,
 	}
 }
 

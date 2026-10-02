@@ -7949,6 +7949,64 @@
           }
         ]
       }
+    },
+    "dokploy_web_server_settings": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "builds_concurrency",
+            "type": "tftypes.Number",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "certificate_type",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "enable_docker_cleanup",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "host",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "https",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "lets_encrypt_email",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "log_cleanup_cron",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "server_ip",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          }
+        ]
+      }
     }
   },
   "data_sources": {

@@ -1926,3 +1926,25 @@ package client
 // userId stays unchanged. backup.remove deletes the record and answers 200
 // with the removed record. The backup.manualBackupWebServer endpoint runs
 // one backup on demand. The provider does not call it.
+//
+// ## web server settings
+//
+// Probed live against the rig (v0.30.8, 2026-10-02).
+//
+// settings.getWebServerSettings returns the one webServerSettings row of the
+// Dokploy host. Each group of columns has its own write endpoint, and every
+// endpoint answers 200:
+//
+//   - settings.assignDomainServer writes host, certificateType, https and
+//     letsEncryptEmail, and rewrites the Traefik route of the dashboard.
+//     host and certificateType are required; host rejects null, so "" clears
+//     it. https and letsEncryptEmail are dialect B: an absent key keeps the
+//     stored value, and null clears letsEncryptEmail.
+//   - settings.updateServerIp requires serverIp, rejects null, and stores "".
+//   - settings.updateLogCleanup requires cronExpression. null stops the
+//     access-log cleanup and stores null. The server stores any string,
+//     "not a cron" too.
+//   - settings.updateDockerCleanup without serverId writes the host column.
+//   - settings.updateBuildsConcurrency takes 1 to 100.
+//
+// The row has no delete endpoint. Dokploy Cloud returns null for the row.

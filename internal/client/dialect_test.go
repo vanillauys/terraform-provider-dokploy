@@ -105,6 +105,13 @@ var mustAlwaysSend = []struct {
 	{CreateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
 	{UpdateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
 	{CreateWebServerBackupRequest{}, []string{"keepLatestCount", "enabled"}},
+	// The web server settings: host clears with "", letsEncryptEmail and
+	// cronExpression clear with null, and https is dialect B.
+	{AssignWebServerDomainRequest{}, []string{"host", "certificateType", "letsEncryptEmail", "https"}},
+	{UpdateWebServerIPRequest{}, []string{"serverIp"}},
+	{UpdateLogCleanupRequest{}, []string{"cronExpression"}},
+	{UpdateWebServerDockerCleanupRequest{}, []string{"enableDockerCleanup"}},
+	{UpdateWebServerBuildsConcurrencyRequest{}, []string{"buildsConcurrency"}},
 	// compose.update is dialect B at the endpoint level, but its fields
 	// split three ways (doc.go). Every managed field is listed: the dialect
 	// C group and the two enums because they must reach the wire as "" to
