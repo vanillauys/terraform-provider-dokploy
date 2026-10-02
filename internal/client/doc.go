@@ -1948,3 +1948,22 @@ package client
 //   - settings.updateBuildsConcurrency takes 1 to 100.
 //
 // The row has no delete endpoint. Dokploy Cloud returns null for the row.
+//
+// ## patch
+//
+// Probed live against the rig (v0.30.8, 2026-10-02).
+//
+// A patch is a file change that Dokploy applies to the repository of an
+// application or a compose service before the build. patch.create takes
+// applicationId or composeId (a null for the other is accepted; neither is
+// an HTTP 400), filePath, content, and an optional type (create, update or
+// delete; default update). It returns the record. It stores enabled = true
+// whatever the body says. A second patch for the same filePath on one
+// parent fails with an HTTP 500 from the database constraint.
+//
+// patch.update is DIALECT B: an absent key keeps the stored value, content
+// rejects null and stores "". updatePatch appends "\n" to a non-empty
+// content that does not end with one; patch.create stores the content as it
+// is. A parent key on patch.update is accepted and ignored. patch.one and
+// patch.delete answer 404 for a missing id. patch.byEntityId lists the
+// patches of one parent.

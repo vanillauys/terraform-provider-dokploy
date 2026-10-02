@@ -27,6 +27,7 @@ import (
 	dsnetwork "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/network"
 	dsnotification "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/notification"
 	dsorganization "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/organization"
+	dspatch "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/patch"
 	dsport "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/port"
 	dsproject "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/project"
 	dsredirect "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/redirect"
@@ -59,6 +60,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/network"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/notification"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/organization"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/patch"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/project"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/registry"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/schedule"
@@ -213,6 +215,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		application.NewResource,
 		domain.NewResource,
 		mount.NewResource,
+		patch.NewResource,
 		destination.NewResource,
 		sshkey.NewResource,
 		server.NewResource,
@@ -296,6 +299,7 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsvaultprovider.NewDataSource,
 		dstag.NewDataSource,
 		dsmount.NewDataSource,
+		dspatch.NewDataSource,
 		dsport.NewDataSource,
 		dsredirect.NewDataSource,
 		dssecurity.NewDataSource,

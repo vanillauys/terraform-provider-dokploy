@@ -100,6 +100,8 @@ var endpointStructs = map[string]any{
 	"tag.bulkAssign":                    BulkAssignTagsRequest{},
 	"settings.assignDomainServer":       AssignWebServerDomainRequest{},
 	"gitProvider.toggleShare":           ToggleGitProviderShareRequest{},
+	"patch.create":                      CreatePatchRequest{},
+	"patch.update":                      UpdatePatchRequest{},
 	"settings.updateServerIp":           UpdateWebServerIPRequest{},
 	"settings.updateLogCleanup":         UpdateLogCleanupRequest{},
 	"settings.updateDockerCleanup":      UpdateWebServerDockerCleanupRequest{},
@@ -326,6 +328,15 @@ var censusExempt = map[string]map[string]string{
 	// dokploy_server sets that column through server.update.
 	"settings.updateDockerCleanup": {
 		"serverId": "dokploy_web_server_settings targets the Dokploy host; dokploy_server writes the remote-server column through server.update",
+	},
+	// patch.create stores enabled = true whatever the body says; the
+	// resource writes enabled through patch.update.
+	"patch.create": {
+		"enabled": "patch.create stores true whatever the body says; the resource sets it through patch.update",
+	},
+	"patch.update": {
+		"createdAt": "server-generated; not user configuration",
+		"updatedAt": "server-generated; the server rewrites it on every update",
 	},
 	"registry.update": {
 		"serverId":       "registry.one does not return it; a write-only field cannot round-trip",

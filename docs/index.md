@@ -11,6 +11,7 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 - **Projects and environments**, with shared environment variables and tags
 - **Applications** from a GitHub App, a GitLab project, a Bitbucket repository, a Gitea repository, a plain git repository, or a Docker image, with preview deployment, rollback, build server settings, and Docker Swarm settings (replicas, rolling updates, health checks, placement)
 - **Compose services**: `docker-compose` projects and Docker Swarm stacks, from the same sources or an inline compose file
+- **Patches**: file changes that Dokploy applies to the repository of an application or a compose service before each build
 - **Databases**: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, and LibSQL, with the same Swarm settings
 - **Routing**: domains, published ports, Traefik redirects, HTTP basic auth, and TLS certificates
 - **Storage**: bind, volume, and file mounts on any service

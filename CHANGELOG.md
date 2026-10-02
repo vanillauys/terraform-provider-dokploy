@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   provider with every member of the organization, through
   `gitProvider.toggleShare`. If you omit the attribute, the provider keeps
   the server value, so a provider shared in the Dokploy UI plans no change.
+- `dokploy_patch` resource and data source: a file change that Dokploy
+  applies to the repository of an application or a compose service before
+  each build (`create`, `update`, or `delete` one file). Dokploy adds a
+  final newline to a non-empty content when it updates the patch; the
+  provider treats the two values as equal.
 
 ## [1.8.0] - 2026-09-30
 

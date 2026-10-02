@@ -5203,6 +5203,56 @@
         ]
       }
     },
+    "dokploy_patch": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "application_id",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "compose_id",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "content",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "file_path",
+            "type": "tftypes.String",
+            "required": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "type",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          }
+        ]
+      }
+    },
     "dokploy_port": {
       "version": 0,
       "block": {
@@ -9974,6 +10024,52 @@
           },
           {
             "name": "slug",
+            "type": "tftypes.String",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_patch": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "application_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "compose_id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "content",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "file_path",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "type",
             "type": "tftypes.String",
             "computed": true
           }

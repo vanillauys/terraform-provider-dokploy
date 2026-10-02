@@ -114,6 +114,9 @@ var mustAlwaysSend = []struct {
 	{UpdateWebServerBuildsConcurrencyRequest{}, []string{"buildsConcurrency"}},
 	// An absent sharedWithOrganization stores false.
 	{ToggleGitProviderShareRequest{}, []string{"sharedWithOrganization"}},
+	// patch.update is dialect B; content clears with "".
+	{CreatePatchRequest{}, []string{"applicationId", "composeId", "content", "type"}},
+	{UpdatePatchRequest{}, []string{"filePath", "content", "type", "enabled"}},
 	// compose.update is dialect B at the endpoint level, but its fields
 	// split three ways (doc.go). Every managed field is listed: the dialect
 	// C group and the two enums because they must reach the wire as "" to
