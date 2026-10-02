@@ -55,6 +55,7 @@ resource "dokploy_gitea_provider" "main" {
 - `gitea_internal_url` (String) URL that the Dokploy server uses to reach Gitea when it differs from `gitea_url`, for example an address on a private network. If you remove it from the configuration, the provider clears it.
 - `redirect_uri` (String) Redirect URI of the OAuth2 application. Defaults to `<endpoint>/api/providers/gitea/callback`, built from the provider's `endpoint`. Register the same URI in Gitea.
 - `scopes` (String) OAuth2 scopes that Dokploy requests, comma-separated. Defaults to `repo,repo:status,read:user,read:org`.
+- `shared_with_organization` (Boolean) Share the provider with every member of the organization. Dokploy sets `false` on a new provider, which only its owner can use. If you omit the attribute, the provider keeps the server value.
 - `verify_connection` (Boolean) Test the connection with `gitea.testConnection` after the provider creates or updates the record, because the endpoint takes the id of a stored record. If the test fails, the apply fails with the server message, but the record stays on the server. After a failed create, Terraform marks the resource as tainted. The default is no check: `null` and `false` both skip the test. Dokploy stores no value for this attribute, so `terraform import` leaves it `null`. Gitea answers the test only after you authorize the OAuth2 application in the Dokploy UI. A new record has no access token, so a test on the first apply always fails.
 
 ### Read-Only

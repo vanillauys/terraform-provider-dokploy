@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -296,6 +297,44 @@ func AppNamePrefixAttribute() schema.StringAttribute {
 		Validators:    AppNamePrefixValidators(),
 		PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
 	}
+}
+
+// SharedWithOrganizationAttribute is the `shared_with_organization`
+// attribute of the GitLab, Bitbucket, and Gitea providers. The flag has its
+// own endpoint (gitProvider.toggleShare), so it follows builds_concurrency
+// on dokploy_server: Optional+Computed without a default, and an omitted
+// value keeps the server value. A provider shared in the Dokploy UI before
+// the attribute existed therefore plans no change.
+func SharedWithOrganizationAttribute() schema.BoolAttribute {
+	return schema.BoolAttribute{
+		Optional: true,
+		Computed: true,
+		Description: "Share the provider with every member of the organization. Dokploy sets `false` on a new " +
+			"provider, which only its owner can use. If you omit the attribute, the provider keeps the server value.",
+		PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+	}
+}
+
+// ApplyShare calls gitProvider.toggleShare when want is known and differs
+// from have, the value on the server. It returns the value the server holds
+// after the call.
+// ApplyShare calls gitProvider.toggleShare when want is known and differs
+// from have, the value on the server. It returns the value the server holds
+// after the call. A failed call adds an error to diags; the caller still
+// sets the state, because the record exists on the server.
+func ApplyShare(ctx context.Context, diags *diag.Diagnostics, c *client.Client, gitProviderID string, want types.Bool, have bool) types.Bool {
+	if want.IsNull() || want.IsUnknown() || want.ValueBool() == have {
+		return types.BoolValue(have)
+	}
+	err := c.ToggleGitProviderShare(ctx, client.ToggleGitProviderShareRequest{
+		GitProviderID:          gitProviderID,
+		SharedWithOrganization: want.ValueBool(),
+	})
+	if err != nil {
+		diags.AddError("Sharing the git provider", err.Error())
+		return types.BoolValue(have)
+	}
+	return want
 }
 
 // AppNamePrefix returns the part of a stored app name before the suffix that

@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `icon` on `dokploy_application` and on the `dokploy_application` data
   source: the service icon in the Dokploy UI, as on `dokploy_compose`. An
   omitted `icon` clears the icon, and a state from v1.8.0 plans no change.
+- `shared_with_organization` on `dokploy_gitlab_provider`,
+  `dokploy_bitbucket_provider`, and `dokploy_gitea_provider`: share the
+  provider with every member of the organization, through
+  `gitProvider.toggleShare`. If you omit the attribute, the provider keeps
+  the server value, so a provider shared in the Dokploy UI plans no change.
 
 ## [1.8.0] - 2026-09-30
 

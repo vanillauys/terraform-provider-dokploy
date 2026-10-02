@@ -178,3 +178,15 @@ func TestAccBitbucketProvider_rejectsAMixedShape(t *testing.T) {
 		},
 	})
 }
+
+func TestAccBitbucketProvider_share(t *testing.T) {
+	name := acctest.RandomName("bb")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkDestroy,
+		Steps: acctest.GitProviderShareSteps("dokploy_bitbucket_provider.test", func(extra string) string {
+			return config(name, "  username       = \"bbuser\"\n  app_password   = \"app-pass-1\"\n  workspace_name = \"acme\"\n"+extra)
+		}),
+	})
+}

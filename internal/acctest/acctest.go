@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	sdkacctest "github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
@@ -337,5 +338,71 @@ func ImportStateAttr(name, want string) resource.ImportStateCheckFunc {
 			return fmt.Errorf("imported %s = %q, want %q", name, got, want)
 		}
 		return nil
+	}
+}
+
+// GitProviderShareSteps are the shared_with_organization steps of the
+// GitLab, Bitbucket, and Gitea providers. config renders the resource with
+// extra attribute lines. The attribute is Optional+Computed without a
+// default, so a removal keeps the server value; the steps prove that, the
+// write in both directions, and a clean import.
+func GitProviderShareSteps(addr string, config func(extra string) string) []resource.TestStep {
+	emptyPlan := resource.ConfigPlanChecks{PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}
+	return []resource.TestStep{
+		{
+			Config:           config("  shared_with_organization = true"),
+			ConfigPlanChecks: emptyPlan,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr(addr, "shared_with_organization", "true"),
+				checkGitProviderShared(addr, true),
+			),
+		},
+		{
+			Config:           config(""),
+			ConfigPlanChecks: emptyPlan,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr(addr, "shared_with_organization", "true"),
+				checkGitProviderShared(addr, true),
+			),
+		},
+		{
+			Config:           config("  shared_with_organization = false"),
+			ConfigPlanChecks: emptyPlan,
+			Check:            checkGitProviderShared(addr, false),
+		},
+		{
+			ResourceName:      addr,
+			ImportState:       true,
+			ImportStateVerify: true,
+		},
+	}
+}
+
+// checkGitProviderShared reads the flag through gitProvider.getAll, the list
+// that holds the generic record of every type.
+func checkGitProviderShared(addr string, want bool) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[addr]
+		if !ok {
+			return fmt.Errorf("%s not in state", addr)
+		}
+		c, err := ClientFromEnv()
+		if err != nil {
+			return err
+		}
+		all, err := c.ListGitProviders(context.Background())
+		if err != nil {
+			return err
+		}
+		id := rs.Primary.Attributes["git_provider_id"]
+		for _, p := range all {
+			if p.GitProviderID == id {
+				if p.SharedWithOrganization != want {
+					return fmt.Errorf("server sharedWithOrganization = %v, want %v", p.SharedWithOrganization, want)
+				}
+				return nil
+			}
+		}
+		return fmt.Errorf("git provider %s not on the server", id)
 	}
 }

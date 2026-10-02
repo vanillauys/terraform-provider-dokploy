@@ -1278,6 +1278,12 @@
             "required": true
           },
           {
+            "name": "shared_with_organization",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "username",
             "type": "tftypes.String",
             "optional": true
@@ -2328,6 +2334,12 @@
             "computed": true
           },
           {
+            "name": "shared_with_organization",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "verify_connection",
             "type": "tftypes.Bool",
             "optional": true
@@ -2403,6 +2415,12 @@
             "name": "secret_wo_version",
             "type": "tftypes.Number",
             "optional": true
+          },
+          {
+            "name": "shared_with_organization",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "verify_connection",

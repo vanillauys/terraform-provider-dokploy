@@ -99,6 +99,7 @@ var endpointStructs = map[string]any{
 	"tag.update":                        UpdateTagRequest{},
 	"tag.bulkAssign":                    BulkAssignTagsRequest{},
 	"settings.assignDomainServer":       AssignWebServerDomainRequest{},
+	"gitProvider.toggleShare":           ToggleGitProviderShareRequest{},
 	"settings.updateServerIp":           UpdateWebServerIPRequest{},
 	"settings.updateLogCleanup":         UpdateLogCleanupRequest{},
 	"settings.updateDockerCleanup":      UpdateWebServerDockerCleanupRequest{},

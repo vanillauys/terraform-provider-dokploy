@@ -98,3 +98,18 @@ func (c *Client) ListGitProviders(ctx context.Context) ([]GitProviderSummary, er
 func (c *Client) RemoveGitProvider(ctx context.Context, gitProviderID string) error {
 	return c.Post(ctx, "/gitProvider.remove", map[string]string{"gitProviderId": gitProviderID}, nil)
 }
+
+// ToggleGitProviderShareRequest is the body of gitProvider.toggleShare.
+// Probed live (v0.30.8, 2026-10-02): a body without sharedWithOrganization
+// answers 200 and stores false, so the key is sent on every call. The
+// type-specific .update endpoints keep the flag.
+type ToggleGitProviderShareRequest struct {
+	GitProviderID          string `json:"gitProviderId"`
+	SharedWithOrganization bool   `json:"sharedWithOrganization"`
+}
+
+// ToggleGitProviderShare shares a provider of any type with the whole
+// organization, or makes it private to its owner again.
+func (c *Client) ToggleGitProviderShare(ctx context.Context, req ToggleGitProviderShareRequest) error {
+	return c.Post(ctx, "/gitProvider.toggleShare", req, nil)
+}

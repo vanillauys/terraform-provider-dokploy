@@ -148,3 +148,15 @@ func TestAccGiteaProvider_writeOnlyClientSecret(t *testing.T) {
 		},
 	})
 }
+
+func TestAccGiteaProvider_share(t *testing.T) {
+	name := acctest.RandomName("gitea")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkDestroy,
+		Steps: acctest.GitProviderShareSteps("dokploy_gitea_provider.test", func(extra string) string {
+			return config(name, "  client_secret = \"oauth-secret\"\n"+extra)
+		}),
+	})
+}

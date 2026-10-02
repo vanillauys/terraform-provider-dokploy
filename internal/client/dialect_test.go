@@ -112,6 +112,8 @@ var mustAlwaysSend = []struct {
 	{UpdateLogCleanupRequest{}, []string{"cronExpression"}},
 	{UpdateWebServerDockerCleanupRequest{}, []string{"enableDockerCleanup"}},
 	{UpdateWebServerBuildsConcurrencyRequest{}, []string{"buildsConcurrency"}},
+	// An absent sharedWithOrganization stores false.
+	{ToggleGitProviderShareRequest{}, []string{"sharedWithOrganization"}},
 	// compose.update is dialect B at the endpoint level, but its fields
 	// split three ways (doc.go). Every managed field is listed: the dialect
 	// C group and the two enums because they must reach the wire as "" to

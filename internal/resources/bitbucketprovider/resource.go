@@ -43,6 +43,8 @@ type resourceModel struct {
 	WorkspaceName        types.String `tfsdk:"workspace_name"`
 	VerifyConnection     types.Bool   `tfsdk:"verify_connection"`
 	CreatedAt            types.String `tfsdk:"created_at"`
+
+	SharedWithOrganization types.Bool `tfsdk:"shared_with_organization"`
 }
 
 var secretNames = []string{"app_password", "api_token"}
@@ -92,6 +94,7 @@ func (r *bitbucketResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			Description:   "Creation timestamp from the server.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+		"shared_with_organization": tfutil.SharedWithOrganizationAttribute(),
 	}
 	for _, name := range secretNames {
 		for k, v := range tfutil.WriteOnlyCompanions(name, tfutil.WriteOnlyOptions{}) {
@@ -168,6 +171,7 @@ func flatten(b *client.BitbucketProvider, m *resourceModel) {
 	m.APIToken = tfutil.StringOrNull(&b.APIToken)
 	m.WorkspaceName = tfutil.StringOrNull(&b.BitbucketWorkspaceName)
 	m.CreatedAt = types.StringValue(b.GitProvider.CreatedAt)
+	m.SharedWithOrganization = types.BoolValue(b.GitProvider.SharedWithOrganization)
 }
 
 func emailRequest(v types.String) *string {
@@ -205,7 +209,9 @@ func (r *bitbucketResource) Create(ctx context.Context, req resource.CreateReque
 		resp.Diagnostics.AddError("Creating Bitbucket provider", err.Error())
 		return
 	}
+	want := plan.SharedWithOrganization
 	flatten(created, &plan)
+	plan.SharedWithOrganization = tfutil.ApplyShare(ctx, &resp.Diagnostics, r.client, created.GitProviderID, want, created.GitProvider.SharedWithOrganization)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	r.verify(ctx, plan, &resp.Diagnostics)
@@ -290,7 +296,9 @@ func (r *bitbucketResource) Update(ctx context.Context, req resource.UpdateReque
 		resp.Diagnostics.AddError("Reading Bitbucket provider after update", err.Error())
 		return
 	}
+	want := plan.SharedWithOrganization
 	flatten(b, &plan)
+	plan.SharedWithOrganization = tfutil.ApplyShare(ctx, &resp.Diagnostics, r.client, b.GitProviderID, want, b.GitProvider.SharedWithOrganization)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	r.verify(ctx, plan, &resp.Diagnostics)

@@ -151,3 +151,15 @@ func TestAccGitlabProvider_writeOnlySecret(t *testing.T) {
 		},
 	})
 }
+
+func TestAccGitlabProvider_share(t *testing.T) {
+	name := acctest.RandomName("gitlab")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkDestroy,
+		Steps: acctest.GitProviderShareSteps("dokploy_gitlab_provider.test", func(extra string) string {
+			return config(name, "  secret = \"oauth-secret\"\n"+extra)
+		}),
+	})
+}

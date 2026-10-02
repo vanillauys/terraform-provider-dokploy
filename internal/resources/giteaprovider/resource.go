@@ -42,6 +42,8 @@ type resourceModel struct {
 	Scopes                types.String `tfsdk:"scopes"`
 	VerifyConnection      types.Bool   `tfsdk:"verify_connection"`
 	CreatedAt             types.String `tfsdk:"created_at"`
+
+	SharedWithOrganization types.Bool `tfsdk:"shared_with_organization"`
 }
 
 var secretNames = []string{"client_secret"}
@@ -91,6 +93,7 @@ func (r *giteaResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			Description:   "Creation timestamp from the server.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+		"shared_with_organization": tfutil.SharedWithOrganizationAttribute(),
 	}
 	for name, attr := range tfutil.WriteOnlyCompanions("client_secret", tfutil.WriteOnlyOptions{ExactlyOne: true}) {
 		attrs[name] = attr
@@ -134,6 +137,7 @@ func flatten(g *client.GiteaProvider, m *resourceModel) {
 	m.RedirectURI = types.StringValue(g.RedirectURI)
 	m.Scopes = types.StringValue(g.Scopes)
 	m.CreatedAt = types.StringValue(g.GitProvider.CreatedAt)
+	m.SharedWithOrganization = types.BoolValue(g.GitProvider.SharedWithOrganization)
 }
 
 func (r *giteaResource) redirectURI(v types.String) string {
@@ -165,7 +169,9 @@ func (r *giteaResource) Create(ctx context.Context, req resource.CreateRequest, 
 		resp.Diagnostics.AddError("Creating Gitea provider", err.Error())
 		return
 	}
+	want := plan.SharedWithOrganization
 	flatten(created, &plan)
+	plan.SharedWithOrganization = tfutil.ApplyShare(ctx, &resp.Diagnostics, r.client, created.GitProviderID, want, created.GitProvider.SharedWithOrganization)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	r.verify(ctx, plan, &resp.Diagnostics)
@@ -239,7 +245,9 @@ func (r *giteaResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		resp.Diagnostics.AddError("Reading Gitea provider after update", err.Error())
 		return
 	}
+	want := plan.SharedWithOrganization
 	flatten(g, &plan)
+	plan.SharedWithOrganization = tfutil.ApplyShare(ctx, &resp.Diagnostics, r.client, g.GitProviderID, want, g.GitProvider.SharedWithOrganization)
 	hideWriteOnly(&plan, inUse)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	r.verify(ctx, plan, &resp.Diagnostics)
