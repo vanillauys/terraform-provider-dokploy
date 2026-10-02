@@ -56,6 +56,7 @@ resource "dokploy_application" "test" {
 	full := app(false, `
   title    = "Preview app"
   subtitle = "Acceptance"
+  icon     = "lucide:rocket"
 
   preview_deployments = {
     enabled                          = true
@@ -130,6 +131,7 @@ resource "dokploy_application" "test" {
 						for field, got := range map[string]struct{ have, want any }{
 							"title":                                 {str(a.Title), "Preview app"},
 							"subtitle":                              {str(a.Subtitle), "Acceptance"},
+							"icon":                                  {str(a.Icon), "lucide:rocket"},
 							"isPreviewDeploymentsActive":            {a.IsPreviewDeploymentsActive, true},
 							"previewEnv":                            {str(a.PreviewEnv), "PREVIEW=1"},
 							"previewBuildArgs":                      {str(a.PreviewBuildArgs), "ARG=1"},
@@ -169,6 +171,7 @@ resource "dokploy_application" "test" {
 					resource.TestCheckResourceAttr("dokploy_application.test", "preview_deployments.certificate_type", "none"),
 					resource.TestCheckNoResourceAttr("dokploy_application.test", "preview_deployments.wildcard"),
 					resource.TestCheckNoResourceAttr("dokploy_application.test", "subtitle"),
+					resource.TestCheckNoResourceAttr("dokploy_application.test", "icon"),
 					resource.TestCheckNoResourceAttr("dokploy_application.test", "rollback.registry_id"),
 					fetchApplication(func(a *client.Application) error {
 						if a.PreviewLimit != 2 || a.PreviewPort != 8080 || a.PreviewCertificateType != "none" || a.PreviewPath != "/" {
@@ -178,7 +181,7 @@ resource "dokploy_application" "test" {
 							return errors.New("server preview bools did not revert to their defaults")
 						}
 						for field, v := range map[string]*string{
-							"subtitle": a.Subtitle, "previewEnv": a.PreviewEnv, "previewBuildSecrets": a.PreviewBuildSecrets,
+							"subtitle": a.Subtitle, "icon": a.Icon, "previewEnv": a.PreviewEnv, "previewBuildSecrets": a.PreviewBuildSecrets,
 							"previewWildcard": a.PreviewWildcard, "rollbackRegistryId": a.RollbackRegistryID,
 							"buildRegistryId": a.BuildRegistryID, "dropBuildPath": a.DropBuildPath,
 						} {

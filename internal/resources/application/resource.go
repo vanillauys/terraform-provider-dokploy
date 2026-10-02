@@ -307,6 +307,10 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			Optional:    true,
 			Description: "Display subtitle in the Dokploy UI.",
 		},
+		"icon": schema.StringAttribute{
+			Optional:    true,
+			Description: "Service icon for the Dokploy UI: an icon name or a data URI, up to 2 MB.",
+		},
 		// preview_deployments and rollback are plain Optional, like the
 		// source blocks, for the reason given on `build`: an Optional+Computed
 		// nested attribute makes every config-null Computed attribute unknown

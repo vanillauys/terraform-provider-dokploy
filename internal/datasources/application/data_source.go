@@ -39,6 +39,7 @@ type dataSourceModel struct {
 	// source exposes no secret that this provider did not write.
 	Title              types.String `tfsdk:"title"`
 	Subtitle           types.String `tfsdk:"subtitle"`
+	Icon               types.String `tfsdk:"icon"`
 	PreviewDeployments types.Object `tfsdk:"preview_deployments"`
 	Rollback           types.Object `tfsdk:"rollback"`
 	BuildServerID      types.String `tfsdk:"build_server_id"`
@@ -105,6 +106,7 @@ func (d *applicationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			},
 			"title":    schema.StringAttribute{Computed: true, Description: "Display title in the Dokploy UI, or null."},
 			"subtitle": schema.StringAttribute{Computed: true, Description: "Display subtitle in the Dokploy UI, or null."},
+			"icon":     schema.StringAttribute{Computed: true, Description: "Service icon for the Dokploy UI, or null."},
 			"preview_deployments": schema.SingleNestedAttribute{
 				Computed:    true,
 				Description: "Preview deployment settings. The build secrets are not part of the data source.",
@@ -191,6 +193,7 @@ func (d *applicationDataSource) Read(ctx context.Context, req datasource.ReadReq
 	config.Env = tfutil.StringOrNull(app.Env)
 	config.Title = tfutil.StringOrNull(app.Title)
 	config.Subtitle = tfutil.StringOrNull(app.Subtitle)
+	config.Icon = tfutil.StringOrNull(app.Icon)
 	config.BuildServerID = tfutil.StringOrNull(app.BuildServerID)
 	config.BuildRegistryID = tfutil.StringOrNull(app.BuildRegistryID)
 	config.CleanCache = types.BoolValue(app.CleanCache)

@@ -42,7 +42,7 @@ var mustAlwaysSend = []struct {
 	{UpdateMongoRequest{}, []string{"description", "networkIds", "detachDokployNetwork", "replicaSets", "command", "args", "cpuLimit", "cpuReservation", "memoryLimit", "memoryReservation", "replicas"}},
 	{UpdateApplicationRequest{}, []string{
 		"description", "networkIds", "detachDokployNetwork",
-		"title", "subtitle",
+		"title", "subtitle", "icon",
 		"isPreviewDeploymentsActive", "previewEnv", "previewBuildArgs", "previewBuildSecrets",
 		"previewCertificateType", "previewCustomCertResolver", "previewHttps", "previewLabels",
 		"previewLimit", "previewPath", "previewPort", "previewRequireCollaboratorPermissions", "previewWildcard",

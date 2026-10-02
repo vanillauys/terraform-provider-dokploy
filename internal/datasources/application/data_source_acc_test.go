@@ -56,6 +56,7 @@ data "dokploy_application" "by_name" {
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "source_type", "docker"),
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "title", "Data source fixture"),
 					resource.TestCheckNoResourceAttr("data.dokploy_application.test", "subtitle"),
+					resource.TestCheckNoResourceAttr("data.dokploy_application.test", "icon"),
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "preview_deployments.enabled", "false"),
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "preview_deployments.limit", "5"),
 					resource.TestCheckResourceAttr("data.dokploy_application.test", "preview_deployments.port", "3000"),

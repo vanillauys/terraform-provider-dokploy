@@ -363,7 +363,7 @@ func TestUpdateApplicationRequestCarriesPreviewRollbackAndBuildKeys(t *testing.T
 		t.Fatal(err)
 	}
 	for key, want := range map[string]string{
-		"title": "null", "subtitle": "null",
+		"title": "null", "subtitle": "null", "icon": "null",
 		"isPreviewDeploymentsActive": "false", "previewEnv": "null", "previewBuildArgs": "null",
 		"previewBuildSecrets": "null", "previewCertificateType": `""`, "previewCustomCertResolver": "null",
 		"previewHttps": "false", "previewLabels": "null", "previewLimit": "0", "previewPath": `""`,

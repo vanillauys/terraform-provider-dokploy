@@ -545,6 +545,11 @@
             "optional": true
           },
           {
+            "name": "icon",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "id",
             "type": "tftypes.String",
             "computed": true
@@ -8103,6 +8108,11 @@
             "name": "environment_id",
             "type": "tftypes.String",
             "optional": true,
+            "computed": true
+          },
+          {
+            "name": "icon",
+            "type": "tftypes.String",
             "computed": true
           },
           {

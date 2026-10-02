@@ -246,6 +246,7 @@ func TestUpdateRequestReadsEveryFieldFromTheModel(t *testing.T) {
 		DetachDokployNetwork: types.BoolValue(true),
 		Title:                types.StringValue("Web"),
 		Subtitle:             types.StringValue("Site"),
+		Icon:                 types.StringValue("lucide:globe"),
 		PreviewDeployments:   preview,
 		Rollback: types.ObjectValueMust(rollbackAttrTypes, map[string]attr.Value{
 			"enabled": types.BoolValue(true), "registry_id": types.StringValue("reg-2"),

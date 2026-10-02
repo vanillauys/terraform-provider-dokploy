@@ -99,6 +99,7 @@ type Application struct {
 	// v1.4.0 (#52). See application_settings.go.
 	Title    *string `json:"title"`
 	Subtitle *string `json:"subtitle"`
+	Icon     *string `json:"icon"`
 	ApplicationPreview
 	ApplicationRollback
 	ApplicationBuildSettings
@@ -168,6 +169,7 @@ type UpdateApplicationRequest struct {
 	// default semantics of each column.
 	Title    *string `json:"title"`
 	Subtitle *string `json:"subtitle"`
+	Icon     *string `json:"icon"`
 	ApplicationPreviewUpdate
 	ApplicationRollback
 	ApplicationBuildSettings

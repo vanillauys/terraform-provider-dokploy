@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `log_cleanup_cron`, and `builds_concurrency`. Declare it once for each
   installation. `terraform destroy` removes it from the state only, and the
   server keeps the current values.
+- `icon` on `dokploy_application` and on the `dokploy_application` data
+  source: the service icon in the Dokploy UI, as on `dokploy_compose`. An
+  omitted `icon` clears the icon, and a state from v1.8.0 plans no change.
 
 ## [1.8.0] - 2026-09-30
 

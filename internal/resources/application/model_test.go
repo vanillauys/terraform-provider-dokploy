@@ -223,6 +223,7 @@ func TestUnchangedExceptStatusCoversEveryField(t *testing.T) {
 		DetachDokployNetwork: types.BoolValue(true),
 		Title:                types.StringValue("Web"),
 		Subtitle:             types.StringValue("Site"),
+		Icon:                 types.StringValue("lucide:globe"),
 		PreviewDeployments:   types.ObjectNull(previewAttrTypes),
 		Rollback:             types.ObjectNull(rollbackAttrTypes),
 		BuildServerID:        types.StringValue("srv"),

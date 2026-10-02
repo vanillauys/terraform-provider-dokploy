@@ -57,6 +57,7 @@ type resourceModel struct {
 	// build settings that application.update carries.
 	Title              types.String `tfsdk:"title"`
 	Subtitle           types.String `tfsdk:"subtitle"`
+	Icon               types.String `tfsdk:"icon"`
 	PreviewDeployments types.Object `tfsdk:"preview_deployments"`
 	Rollback           types.Object `tfsdk:"rollback"`
 	BuildServerID      types.String `tfsdk:"build_server_id"`
@@ -240,6 +241,7 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.DetachDokployNetwork.Equal(state.DetachDokployNetwork) &&
 		plan.Title.Equal(state.Title) &&
 		plan.Subtitle.Equal(state.Subtitle) &&
+		plan.Icon.Equal(state.Icon) &&
 		plan.PreviewDeployments.Equal(state.PreviewDeployments) &&
 		plan.Rollback.Equal(state.Rollback) &&
 		plan.BuildServerID.Equal(state.BuildServerID) &&
@@ -415,6 +417,7 @@ func operationalChanged(plan, state resourceModel) bool {
 	return !plan.AutoDeploy.Equal(state.AutoDeploy) ||
 		!plan.Title.Equal(state.Title) ||
 		!plan.Subtitle.Equal(state.Subtitle) ||
+		!plan.Icon.Equal(state.Icon) ||
 		!plan.PreviewDeployments.Equal(state.PreviewDeployments) ||
 		!plan.Rollback.Equal(state.Rollback) ||
 		!plan.BuildServerID.Equal(state.BuildServerID) ||
@@ -446,6 +449,7 @@ func updateRequest(ctx context.Context, id string, m, cfg resourceModel) (client
 		Swarm:                    swarmColumns,
 		Title:                    m.Title.ValueStringPointer(),
 		Subtitle:                 m.Subtitle.ValueStringPointer(),
+		Icon:                     m.Icon.ValueStringPointer(),
 		ApplicationPreviewUpdate: previewRequest(ctx, m.PreviewDeployments, cfg.PreviewDeployments, &diags),
 		ApplicationRollback:      rollbackRequest(ctx, m.Rollback, &diags),
 		ApplicationBuildSettings: buildSettingsRequest(m),
@@ -563,6 +567,7 @@ func flatten(ctx context.Context, app *client.Application, m *resourceModel) dia
 	m.DetachDokployNetwork = types.BoolValue(app.DetachDokployNetwork)
 	m.Title = strOrNull(app.Title)
 	m.Subtitle = strOrNull(app.Subtitle)
+	m.Icon = strOrNull(app.Icon)
 	m.PreviewDeployments = flattenPreview(ctx, app, m.PreviewDeployments, &diags)
 	m.Rollback = flattenRollback(ctx, app, m.Rollback, &diags)
 	m.BuildServerID = strOrNull(app.BuildServerID)

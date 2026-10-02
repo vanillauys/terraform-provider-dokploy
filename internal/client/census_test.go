@@ -419,7 +419,6 @@ var censusExempt = map[string]map[string]string{
 			"environmentId":     "RequiresReplace on the resource; application.move is the supported retarget and is not modelled",
 			"refreshToken":      "server-generated webhook token; rotating it is an imperative operation",
 			"enabled":           "start/stop state; a desired_state attribute needs its own design (gap plan D1)",
-			"icon":              "display icon; not modelled on dokploy_application (dokploy_compose models it)",
 		},
 		sameReason("set through the application.save*Provider endpoints (dialect A), which the Dokploy UI uses",
 			"sourceType", "triggerType", "watchPaths", "enableSubmodules",
