@@ -12,6 +12,8 @@ jobs:
   # us with no change on our side. It runs the suite once per CLI the README
   # promises: the oldest supported Terraform, the latest Terraform, and the
   # latest OpenTofu. The pull request run covers the pinned Terraform only.
+  # OpenTofu stays on 1.12.7 until opentofu/opentofu#4644 is fixed: 1.13
+  # parses an import ID that starts with '-' as a flag.
   acceptance:
     strategy:
       fail-fast: false
@@ -22,7 +24,7 @@ jobs:
           - tool: terraform
             version: latest
           - tool: opentofu
-            version: latest
+            version: "1.12.7"
     uses: ./.github/workflows/acceptance-suite.yml
     with:
       tool: ${{ matrix.tool }}
