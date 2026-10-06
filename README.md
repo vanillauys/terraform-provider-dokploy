@@ -126,7 +126,7 @@ that it stays out of your repository.
 - **Terraform:** 1.5 or later. The write-only attributes (`<name>_wo`) need
   1.11 or later. The nightly run tests Terraform 1.5.7 and the latest
   release.
-- **OpenTofu:** the nightly run tests OpenTofu 1.12.7 with the Terraform
+- **OpenTofu:** the nightly run tests OpenTofu 1.12.6 with the Terraform
   Registry address `vanillauys/dokploy`. OpenTofu 1.13 cannot import an ID
   that starts with `-`
   ([opentofu/opentofu#4644](https://github.com/opentofu/opentofu/issues/4644)).
