@@ -11,6 +11,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The Go toolchain moves to 1.26.9, and x/net moves to v0.60.0.
+  `govulncheck` reported nine reachable vulnerabilities in the Go 1.26.6
+  standard library (`net/http`, `net/textproto`, and `crypto/tls`). It
+  reports none now.
+
 ## [1.9.0] - 2026-10-02
 
 ### Added
