@@ -514,6 +514,18 @@ func (r *composeResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	only, err := tfutil.OnlyProviderAttributesChanged(req, "deploy_on_change", "deployment_timeout", "fresh_volumes")
+	if err != nil {
+		resp.Diagnostics.AddError("Updating compose service", err.Error())
+		return
+	}
+	if only {
+		state.DeployOnChange = plan.DeployOnChange
+		state.DeploymentTimeout = plan.DeploymentTimeout
+		state.FreshVolumes = plan.FreshVolumes
+		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+		return
+	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID
 	if !tfutil.MoveIfChanged(ctx, &resp.Diagnostics, r.client, "compose", id, plan.EnvironmentID, state.EnvironmentID) {

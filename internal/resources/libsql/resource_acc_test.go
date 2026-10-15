@@ -1266,3 +1266,38 @@ resource "dokploy_libsql" "test" {
 		}),
 	})
 }
+
+
+// A change of deploy_on_change or deployment_timeout alone starts no deploy.
+// libsql has no deployment history, so the swarm service version on the rig
+// is the marker.
+func TestAccLibsql_providerOnlyChangeNoDeploy(t *testing.T) {
+	name := acctest.RandomName("libsql-po")
+	config := func(extra string) string {
+		return fmt.Sprintf(`
+resource "dokploy_project" "test" {
+  name = %q
+}
+
+resource "dokploy_libsql" "test" {
+  name              = %q
+  environment_id    = dokploy_project.test.environments[0].id
+  database_user     = "acc"
+  database_password = "acc-password-1"
+  docker_image      = %q
+%s
+}`, name+"-proj", name, libsqlImage, extra)
+	}
+	version := func(s *terraform.State) (string, error) {
+		return acctest.ServiceVersion(s.RootModule().Resources["dokploy_libsql.test"].Primary.Attributes["app_name"])
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkLibsqlDestroy,
+		Steps: acctest.ProviderOnlySteps("dokploy_libsql.test", config, version,
+			"  deployment_timeout = \"20m\"\n",
+			"  deploy_on_change = false\n",
+		),
+	})
+}
