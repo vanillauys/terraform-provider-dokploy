@@ -21,12 +21,14 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -36,6 +38,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
@@ -88,6 +91,35 @@ func ImportDeployDefaults(ctx context.Context, state *tfsdk.State) diag.Diagnost
 	diags.Append(state.SetAttribute(ctx, path.Root("deploy_on_change"), DefaultDeployOnChange)...)
 	diags.Append(state.SetAttribute(ctx, path.Root("deployment_timeout"), DefaultDeploymentTimeout)...)
 	return diags
+}
+
+
+// OnlyProviderAttributesChanged reports whether an update changes nothing
+// but the named provider-only attributes. Dokploy stores no value for them,
+// so such an update needs no API call and no deploy. A planned value that is
+// unknown while the configuration leaves it null is a computed value, not a
+// change. Any other difference returns false, and the caller then does its
+// normal update.
+func OnlyProviderAttributesChanged(req resource.UpdateRequest, names ...string) (bool, error) {
+	var plan, state, config map[string]tftypes.Value
+	if err := req.Plan.Raw.As(&plan); err != nil {
+		return false, err
+	}
+	if err := req.State.Raw.As(&state); err != nil {
+		return false, err
+	}
+	if err := req.Config.Raw.As(&config); err != nil {
+		return false, err
+	}
+	for name, planned := range plan {
+		if slices.Contains(names, name) || (!planned.IsKnown() && config[name].IsNull()) {
+			continue
+		}
+		if !planned.Equal(state[name]) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // ClientFromProviderData converts a provider's ProviderData into a
