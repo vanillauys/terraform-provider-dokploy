@@ -86,7 +86,7 @@ func TestCreateGetAndListVaultProvider(t *testing.T) {
 func TestGetVaultProviderNotFound(t *testing.T) {
 	srv := testRoutes(t, route{
 		Method: http.MethodGet, Path: "/api/vaultProvider.one", Status: http.StatusNotFound,
-		Body: `{"message":"Vault provider not found","code":"NOT_FOUND"}`,
+		Body: missingRecordErrorFixture("vaultProvider.one", 404),
 	})
 	defer srv.Close()
 

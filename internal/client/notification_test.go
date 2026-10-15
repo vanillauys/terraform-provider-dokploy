@@ -175,7 +175,7 @@ func TestGetListDeleteNotification(t *testing.T) {
 
 func TestGetNotificationNotFound(t *testing.T) {
 	srv := testRoutes(t,
-		route{Method: http.MethodGet, Path: "/api/notification.one", Status: 404, Body: `{"message":"Notification not found","code":"NOT_FOUND"}`},
+		route{Method: http.MethodGet, Path: "/api/notification.one", Status: 404, Body: missingRecordErrorFixture("notification.one", 404)},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)

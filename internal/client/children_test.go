@@ -12,6 +12,7 @@ import (
 func childrenServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	parentBody := `{
+ "applicationId":"app1", "postgresId":"pg1",
 		"mounts": [{"mountId": "m1", "type": "volume", "mountPath": "/data", "hostPath": null, "volumeName": "vol", "filePath": null, "content": null, "serviceType": "postgres", "postgresId": "pg1"}],
 		"backups": [{"backupId": "b1", "prefix": "nightly", "schedule": "0 0 * * *", "database": "app", "databaseType": "postgres", "backupType": "database", "postgresId": "pg1"}],
 		"ports": [{"portId": "p1", "applicationId": "app1", "publishedPort": 8080, "targetPort": 80, "protocol": "tcp", "publishMode": "host"}],

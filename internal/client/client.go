@@ -159,21 +159,33 @@ func (c *Client) attempt(ctx context.Context, method, u, path string, payload []
 		return true, fmt.Errorf("%s %s: %w", method, path, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
 		return true, fmt.Errorf("%s %s: reading response: %w", method, path, err)
 	}
+	if len(raw) > maxResponseBytes {
+		return false, responseProblem(method, path, "response exceeds size limit")
+	}
 	switch {
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
-		if out == nil || len(bytes.TrimSpace(raw)) == 0 {
+		if out == nil {
+			if len(bytes.TrimSpace(raw)) > 0 && strictJSON(raw) != nil {
+				return false, responseProblem(method, path, "malformed success body")
+			}
 			return false, nil
 		}
-		if err := json.Unmarshal(raw, out); err != nil {
-			return false, fmt.Errorf("%s %s: decoding response: %w", method, path, err)
+		if err := validateResponse(method, path, req.URL.Query(), raw); err != nil {
+			return false, err
+		}
+		if err := decodeResponse(raw, out); err != nil {
+			return false, responseProblem(method, path, "invalid response type")
 		}
 		return false, nil
-	case resp.StatusCode == http.StatusNotFound:
-		return false, fmt.Errorf("%s %s: %w", method, path, ErrNotFound)
+	case resp.StatusCode == http.StatusNotFound || (resp.StatusCode == http.StatusBadRequest && path == "/port.one"):
+		if confirmedNotFound(method, path, req.URL.Query(), payload, resp.StatusCode, raw) {
+			return false, fmt.Errorf("%s %s: %w", method, path, ErrNotFound)
+		}
+		return false, apiError(method, path, resp.StatusCode, raw)
 	default:
 		return resp.StatusCode >= 500, apiError(method, path, resp.StatusCode, raw)
 	}

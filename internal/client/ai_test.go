@@ -64,7 +64,7 @@ func TestGetListUpdateDeleteAI(t *testing.T) {
 
 func TestGetAINotFound(t *testing.T) {
 	srv := testRoutes(t,
-		route{Method: http.MethodGet, Path: "/api/ai.one", Status: 404, Body: `{"message":"AI settings not found","code":"NOT_FOUND"}`},
+		route{Method: http.MethodGet, Path: "/api/ai.one", Status: 404, Body: missingRecordErrorFixture("ai.one", 404)},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)

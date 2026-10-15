@@ -66,7 +66,7 @@ func TestCreateGetListCertificate(t *testing.T) {
 
 func TestGetCertificateNotFound(t *testing.T) {
 	srv := testRoutes(t,
-		route{Method: http.MethodGet, Path: "/api/certificates.one", Status: 404, Body: `{"message":"Certificate not found","code":"NOT_FOUND"}`},
+		route{Method: http.MethodGet, Path: "/api/certificates.one", Status: 404, Body: missingRecordErrorFixture("certificates.one", 404)},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)

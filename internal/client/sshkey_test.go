@@ -78,7 +78,7 @@ func TestGetListUpdateDeleteSSHKey(t *testing.T) {
 
 func TestGetSSHKeyNotFound(t *testing.T) {
 	srv := testRoutes(t,
-		route{Method: http.MethodGet, Path: "/api/sshKey.one", Status: 404, Body: `{"message":"SSH Key not found","code":"NOT_FOUND"}`},
+		route{Method: http.MethodGet, Path: "/api/sshKey.one", Status: 404, Body: missingRecordErrorFixture("sshKey.one", 404)},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)

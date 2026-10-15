@@ -63,9 +63,9 @@ func TestCreateLibsqlRequestMarshalsExplicitNulls(t *testing.T) {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/environment.one":
 			listCalls++
 			if listCalls == 1 {
-				_, _ = fmt.Fprint(w, `{"libsql":[]}`)
+				_, _ = fmt.Fprint(w, `{"environmentId":"e1","name":"production","projectId":"p1","description":null,"env":"","isDefault":true,"libsql":[]}`)
 			} else {
-				_, _ = fmt.Fprint(w, `{"libsql":[{"libsqlId":"lib1","name":"x"}]}`)
+				_, _ = fmt.Fprint(w, `{"environmentId":"e1","name":"production","projectId":"p1","description":null,"env":"","isDefault":true,"libsql":[{"libsqlId":"lib1","name":"x"}]}`)
 			}
 		case r.Method == http.MethodPost && r.URL.Path == "/api/libsql.create":
 			raw, _ := io.ReadAll(r.Body)

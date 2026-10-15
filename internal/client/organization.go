@@ -2,10 +2,7 @@ package client
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/url"
-	"strings"
 )
 
 // Organization is one Dokploy organization. Dokploy stores organizations
@@ -64,17 +61,10 @@ func (c *Client) CreateOrganization(ctx context.Context, req CreateOrganizationR
 	return &o, nil
 }
 
-// GetOrganization reads one organization. The server answers 403 "You are
-// not a member of this organization" for an unknown or deleted id, never
-// 404; that message maps to ErrNotFound so that a deleted organization
-// leaves the state like any other record.
+// GetOrganization preserves authorization errors: membership loss does not prove absence.
 func (c *Client) GetOrganization(ctx context.Context, id string) (*Organization, error) {
 	var o Organization
 	if err := c.Get(ctx, "/organization.one", url.Values{"organizationId": {id}}, &o); err != nil {
-		var apiErr *DokployError
-		if errors.As(err, &apiErr) && apiErr.HTTPStatus == 403 && strings.Contains(apiErr.Message, "not a member") {
-			return nil, fmt.Errorf("organization %s: %w", id, ErrNotFound)
-		}
 		return nil, err
 	}
 	return &o, nil

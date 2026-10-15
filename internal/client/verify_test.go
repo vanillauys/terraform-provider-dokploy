@@ -46,8 +46,8 @@ func TestTestConnectionCarriesServerMessage(t *testing.T) {
 }
 
 // gitea.testConnection answers HTTP 404 for an id that does not exist. The
-// client maps every 404 to ErrNotFound, so the server message is lost.
-func TestTestConnectionMapsHTTP404ToNotFound(t *testing.T) {
+// operation is not a resource lookup; its failure must remain a diagnostic.
+func TestTestConnectionDoesNotTreatOperation404AsResourceAbsence(t *testing.T) {
 	srv := testRoutes(t, route{
 		Method: http.MethodPost, Path: "/api/gitea.testConnection", Status: http.StatusNotFound,
 		Body: `{"message":"Gitea Provider not found","code":"NOT_FOUND"}`,
@@ -55,7 +55,7 @@ func TestTestConnectionMapsHTTP404ToNotFound(t *testing.T) {
 	defer srv.Close()
 
 	err := testClient(t, srv).TestConnection(context.Background(), "gitea.testConnection", map[string]string{"giteaId": "nope"})
-	if !errors.Is(err, ErrNotFound) {
-		t.Errorf("err = %v, want ErrNotFound", err)
+	if err == nil || errors.Is(err, ErrNotFound) {
+		t.Errorf("err = %v, want an operation diagnostic", err)
 	}
 }

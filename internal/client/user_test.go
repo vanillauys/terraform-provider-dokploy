@@ -94,15 +94,15 @@ func TestOrganizationEndpoints(t *testing.T) {
 	}
 }
 
-// TestGetOrganizationMapsTheMembershipForbidden pins the one record whose
+// TestGetOrganizationPreservesMembershipForbidden pins the one record whose
 // "gone" answer is a 403, not a 404.
-func TestGetOrganizationMapsTheMembershipForbidden(t *testing.T) {
+func TestGetOrganizationPreservesMembershipForbidden(t *testing.T) {
 	srv := testRoutes(t,
 		route{Method: http.MethodGet, Path: "/api/organization.one", Status: 403, Body: `{"message":"You are not a member of this organization","code":"FORBIDDEN"}`},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)
-	if _, err := c.GetOrganization(context.Background(), "gone"); !errors.Is(err, ErrNotFound) {
-		t.Errorf("GetOrganization(deleted) = %v, want ErrNotFound", err)
+	if _, err := c.GetOrganization(context.Background(), "gone"); err == nil || errors.Is(err, ErrNotFound) {
+		t.Errorf("GetOrganization(unavailable membership) = %v, want authorization diagnostic", err)
 	}
 }

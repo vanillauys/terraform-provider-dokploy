@@ -74,7 +74,7 @@ func TestCreateGetListServer(t *testing.T) {
 
 func TestGetServerNotFound(t *testing.T) {
 	srv := testRoutes(t,
-		route{Method: http.MethodGet, Path: "/api/server.one", Status: 404, Body: `{"message":"Server not found","code":"NOT_FOUND"}`},
+		route{Method: http.MethodGet, Path: "/api/server.one", Status: 404, Body: missingRecordErrorFixture("server.one", 404)},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)

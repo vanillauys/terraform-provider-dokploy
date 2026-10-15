@@ -14,6 +14,7 @@ const projectJSON = `{
 	"projectId": "p1",
 	"name": "demo",
 	"description": "a demo",
+ "env":"", "projectTags":[],
 	"createdAt": "2026-07-23T10:00:00.000Z",
 	"environments": [{"environmentId": "e1", "name": "production", "projectId": "p1", "isDefault": true}]
 }`
@@ -154,7 +155,7 @@ func TestProjectEnvRoundTrip(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/project.one":
-			_, _ = fmt.Fprint(w, `{"projectId":"p1","name":"demo","description":null,"env":"SHARED=1","createdAt":"2026-09-17T00:00:00.000Z","environments":[]}`)
+			_, _ = fmt.Fprint(w, `{"projectId":"p1","name":"demo","description":null,"env":"SHARED=1","createdAt":"2026-09-17T00:00:00.000Z","projectTags":[],"environments":[{"environmentId":"e1","projectId":"p1","name":"production","isDefault":true}]}`)
 		case r.Method == http.MethodPost && r.URL.Path == "/api/project.update":
 			raw, _ := io.ReadAll(r.Body)
 			_ = json.Unmarshal(raw, &updateBody)

@@ -141,7 +141,7 @@ func TestGetUpdateGitlabBitbucketGitea(t *testing.T) {
 
 func TestGetGitlabNotFound(t *testing.T) {
 	srv := testRoutes(t,
-		route{Method: http.MethodGet, Path: "/api/gitlab.one", Status: 404, Body: `{"message":"Gitlab Provider not found","code":"NOT_FOUND"}`},
+		route{Method: http.MethodGet, Path: "/api/gitlab.one", Status: 404, Body: missingRecordErrorFixture("gitlab.one", 404)},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)

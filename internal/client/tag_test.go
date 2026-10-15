@@ -64,7 +64,7 @@ func TestTagDecodesNullColor(t *testing.T) {
 
 func TestGetTagNotFound(t *testing.T) {
 	srv := testRoutes(t,
-		route{Method: http.MethodGet, Path: "/api/tag.one", Status: 404, Body: `{"message":"Tag not found","code":"NOT_FOUND"}`},
+		route{Method: http.MethodGet, Path: "/api/tag.one", Status: 404, Body: missingRecordErrorFixture("tag.one", 404)},
 	)
 	defer srv.Close()
 	if _, err := testClient(t, srv).GetTag(context.Background(), "nope"); !errors.Is(err, ErrNotFound) {

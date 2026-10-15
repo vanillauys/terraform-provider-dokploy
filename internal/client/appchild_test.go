@@ -252,7 +252,7 @@ func TestChildUpdatesSendTheFullFieldSet(t *testing.T) {
 func TestGetPortMapsIts400NotFound(t *testing.T) {
 	srv := testRoutes(t, route{
 		Method: http.MethodGet, Path: "/api/port.one", Status: http.StatusBadRequest,
-		Body: `{"message":"Port not found","code":"BAD_REQUEST"}`,
+		Body: missingRecordErrorFixture("port.one", 400),
 	})
 	defer srv.Close()
 

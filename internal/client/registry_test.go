@@ -59,7 +59,7 @@ func TestCreateGetListRegistry(t *testing.T) {
 
 func TestGetRegistryNotFound(t *testing.T) {
 	srv := testRoutes(t,
-		route{Method: http.MethodGet, Path: "/api/registry.one", Status: 404, Body: `{"message":"Registry not found","code":"NOT_FOUND"}`},
+		route{Method: http.MethodGet, Path: "/api/registry.one", Status: 404, Body: missingRecordErrorFixture("registry.one", 404)},
 	)
 	defer srv.Close()
 	c := testClient(t, srv)

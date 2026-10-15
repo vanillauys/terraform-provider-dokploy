@@ -31,7 +31,7 @@ func TestGetSendsAuthHeadersAndQuery(t *testing.T) {
 		gotKey = r.Header.Get("x-api-key")
 		gotUA = r.Header.Get("User-Agent")
 		gotProjectID = r.URL.Query().Get("projectId")
-		_, _ = fmt.Fprint(w, `{"ok":true}`)
+		_, _ = fmt.Fprint(w, projectJSON)
 	}))
 	defer srv.Close()
 
@@ -52,7 +52,7 @@ func TestGetSendsAuthHeadersAndQuery(t *testing.T) {
 	if gotProjectID != "p1" {
 		t.Errorf("projectId = %q, want p1", gotProjectID)
 	}
-	if out["ok"] != true {
+	if out["projectId"] != "p1" {
 		t.Errorf("decoded out = %v", out)
 	}
 }
@@ -83,10 +83,11 @@ func TestPostSendsJSONBody(t *testing.T) {
 func TestNotFoundMapsToSentinel(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
+		_, _ = fmt.Fprint(w, `{"message":"Project not found","code":"NOT_FOUND","data":{"code":"NOT_FOUND","httpStatus":404,"path":"project.one"}}`)
 	}))
 	defer srv.Close()
 
-	err := testClient(t, srv).Get(context.Background(), "/project.one", nil, nil)
+	err := testClient(t, srv).Get(context.Background(), "/project.one", url.Values{"projectId": {"p1"}}, nil)
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
 	}

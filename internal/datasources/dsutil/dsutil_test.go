@@ -55,7 +55,7 @@ func TestResolveService(t *testing.T) {
 		if r.URL.Path != "/api/environment.one" || r.URL.Query().Get("environmentId") != "e1" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL)
 		}
-		_, _ = w.Write([]byte(`{"compose":[{"composeId":"co1","name":"stack"},{"composeId":"co2","name":"twin"},{"composeId":"co3","name":"twin"}]}`))
+		_, _ = w.Write([]byte(`{"environmentId":"e1","name":"production","projectId":"p1","description":null,"env":"","isDefault":true,"compose":[{"composeId":"co1","name":"stack"},{"composeId":"co2","name":"twin"},{"composeId":"co3","name":"twin"}]}`))
 	}))
 	defer srv.Close()
 	c, err := client.New(srv.URL, "k", false, "test")

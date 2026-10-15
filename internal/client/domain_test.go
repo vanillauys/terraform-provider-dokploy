@@ -18,7 +18,7 @@ const domainResponse = `{
   "createdAt":"2026-07-26T16:41:14.242Z","composeId":null,
   "customCertResolver":null,"applicationId":"a1",
   "certificateType":"letsencrypt","internalPath":"/","stripPath":false,
-  "middlewares":[],"forwardAuthEnabled":false
+  "middlewares":[],"forwardAuthEnabled":false,"enabled":true
 }`
 
 func TestGetDomainDecodesEveryField(t *testing.T) {
@@ -118,7 +118,7 @@ func TestListDomainsByApplicationAndCompose(t *testing.T) {
 		return fmt.Sprintf(`{"domainId":%q,"host":%q,"path":"/","internalPath":"/","port":3000,"https":false,
 			"stripPath":false,"certificateType":"none","customCertResolver":null,"customEntrypoint":null,
 			"serviceName":null,"forwardAuthEnabled":false,"enabled":true,"middlewares":[],"domainType":"application",
-			"uniqueConfigKey":1,"applicationId":null,"composeId":null,%q:%q,"createdAt":"2026-09-16T00:00:00.000Z",
+			"uniqueConfigKey":1,%q:%q,"createdAt":"2026-09-16T00:00:00.000Z",
 			"application":{"applicationId":%q,"name":"web"},"compose":null,"previewDeploymentId":null}`,
 			id, host, parentKey, parentID, parentID)
 	}
