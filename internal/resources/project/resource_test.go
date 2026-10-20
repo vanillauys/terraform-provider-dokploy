@@ -18,6 +18,7 @@ func TestFlatten(t *testing.T) {
 		Environments: []client.Environment{
 			{EnvironmentID: "e0", Name: "staging", ProjectID: "p1"},
 			{EnvironmentID: "e1", Name: "renamed", ProjectID: "p1", IsDefault: true},
+			{EnvironmentID: "e2", Name: "dev", ProjectID: "p1"},
 		},
 	}
 	var m resourceModel
@@ -38,7 +39,10 @@ func TestFlatten(t *testing.T) {
 	}
 	var envs []environmentModel
 	m.Environments.ElementsAs(context.Background(), &envs, false)
-	if len(envs) != 2 || envs[1].ID.ValueString() != "e1" || envs[1].Name.ValueString() != "renamed" {
+	// Dokploy returns the environments in no fixed order. The list puts the
+	// default first, then sorts by name.
+	if len(envs) != 3 || envs[0].ID.ValueString() != "e1" || envs[0].Name.ValueString() != "renamed" ||
+		envs[1].ID.ValueString() != "e2" || envs[2].ID.ValueString() != "e0" {
 		t.Errorf("environments = %+v", envs)
 	}
 }

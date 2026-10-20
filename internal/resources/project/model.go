@@ -1,8 +1,10 @@
 package project
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -53,8 +55,21 @@ var EnvironmentObjectType = types.ObjectType{
 	},
 }
 
-// BuildEnvironments converts API environments into the TF list value.
+// BuildEnvironments converts API environments into the TF list value. Dokploy
+// returns them in no fixed order, so the list puts the default environment
+// first, then sorts by name and id. Without this, a refresh can reorder the
+// list and environments[0] can change.
 func BuildEnvironments(envs []client.Environment) (types.List, diag.Diagnostics) {
+	envs = slices.Clone(envs)
+	slices.SortFunc(envs, func(a, b client.Environment) int {
+		if a.IsDefault != b.IsDefault {
+			if a.IsDefault {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.EnvironmentID, b.EnvironmentID))
+	})
 	values := make([]attr.Value, 0, len(envs))
 	var diags diag.Diagnostics
 	for _, e := range envs {
