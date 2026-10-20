@@ -77,7 +77,7 @@ each release.
   database passwords, backup credentials, and the write-only companions
   that keep a secret out of the state.
 - [Upgrade guide](guides/upgrading): what each release needs from your
-  configuration. v1.9 and v1.8 have nothing breaking; v1.0 has no change; v0.13 adds the coverage of this page;
+  configuration. v1.10, v1.9, and v1.8 have nothing breaking; v1.0 has no change; v0.13 adds the coverage of this page;
   v0.12 adds the write-only companions; v0.11 had the breaking changes.
 - [Changelog](guides/changelog): every release, newest first, with the
   attributes it added, changed, or fixed.

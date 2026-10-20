@@ -2,10 +2,31 @@
 page_title: "Upgrade guide"
 subcategory: ""
 description: |-
-  What each release since v0.11.0 needs from your configuration: nothing for v1.9 and v1.8, nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
+  What each release since v0.11.0 needs from your configuration: nothing for v1.10, v1.9, and v1.8, nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
 ---
 
 # Upgrade guide
+
+## Upgrade to v1.10
+
+v1.10.0 has nothing breaking. A v1.9 state loads with an empty plan.
+
+1. Update the version constraint to `~> 1.10`.
+2. Run `terraform init -upgrade`.
+3. Run `terraform plan`. The plan must be empty.
+
+v1.10.0 adds `delete_volumes` on `dokploy_compose`. The default is `true`, so
+`terraform destroy` still deletes the volumes of the stack. Set it to `false`
+to keep the volumes.
+
+Two behaviors change:
+
+- A change of only `deploy_on_change`, `deployment_timeout`,
+  `fresh_volumes`, or `delete_volumes` on `dokploy_compose` or
+  `dokploy_libsql` does not call Dokploy and does not deploy.
+- The `environments` list of `dokploy_project` has a fixed order. The default
+  environment is first, then the others sort by name. The first refresh can
+  show the list in the new order. It is not a change to your resources.
 
 ## Upgrade to v1.9
 

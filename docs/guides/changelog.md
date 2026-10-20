@@ -13,12 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-20
+
 ### Added
 
 - Compose `delete_volumes`: set it explicitly to `false` to retain volumes
   when deleting a stack. The default remains `true`, including on import.
   Changing this policy alone does not call Dokploy or deploy the stack.
   Retained volumes need separate backup and cleanup ownership.
+
+### Changed
+
+- golang.org/x/crypto moves to v0.58.0.
 
 ### Fixed
 
