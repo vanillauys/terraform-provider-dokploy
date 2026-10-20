@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"testing"
@@ -725,7 +726,6 @@ resource "dokploy_compose" "test" {
 	})
 }
 
-
 // A change of deploy_on_change, deployment_timeout or fresh_volumes alone
 // starts no deploy: the deployment count stays the same.
 func TestAccCompose_providerOnlyChangeNoDeploy(t *testing.T) {
@@ -750,5 +750,53 @@ func TestAccCompose_providerOnlyChangeNoDeploy(t *testing.T) {
 			"  fresh_volumes = true\n",
 			"  deploy_on_change = false\n",
 		),
+	})
+}
+
+// The deletion policy is provider-only: changing or removing it must not
+// produce a deployment. Import seeds the historical true default.
+func TestAccCompose_deleteVolumesPolicy(t *testing.T) {
+	projectName := acctest.RandomName("retention-proj")
+	name := acctest.RandomName("retention")
+	var initialDeployments int
+	checkDeployments := func(capture bool) resource.TestCheckFunc {
+		return func(s *terraform.State) error {
+			rs, ok := s.RootModule().Resources["dokploy_compose.test"]
+			if !ok {
+				return fmt.Errorf("compose missing from state")
+			}
+			c, err := acctest.ClientFromEnv()
+			if err != nil {
+				return err
+			}
+			var records []map[string]any
+			if err := c.Get(context.Background(), "/deployment.allByCompose", url.Values{"composeId": {rs.Primary.ID}}, &records); err != nil {
+				return err
+			}
+			if capture {
+				initialDeployments = len(records)
+				if initialDeployments == 0 {
+					return fmt.Errorf("expected initial deployment")
+				}
+				return nil
+			}
+			if len(records) != initialDeployments {
+				return fmt.Errorf("policy change deployed: before=%d after=%d", initialDeployments, len(records))
+			}
+			return nil
+		}
+	}
+	defaults := rawConfigDeploy(projectName, name, "", true)
+	retain := rawConfigDeploy(projectName, name, "  delete_volumes = false", true)
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() { acctest.PreCheck(t) }, ProtoV6ProviderFactories: acctest.ProviderFactories(), CheckDestroy: checkComposeDestroy,
+		Steps: []resource.TestStep{
+			{Config: defaults, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("dokploy_compose.test", "delete_volumes", "true"), checkDeployments(true))},
+			{ResourceName: "dokploy_compose.test", ImportState: true, ImportStateVerify: true},
+			{Config: retain, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("dokploy_compose.test", "delete_volumes", "false"), checkDeployments(false))},
+			{Config: retain, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+			{Config: defaults, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("dokploy_compose.test", "delete_volumes", "true"), checkDeployments(false))},
+			{Config: defaults, ConfigPlanChecks: resource.ConfigPlanChecks{PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()}}},
+		},
 	})
 }

@@ -1446,6 +1446,12 @@
             "computed": true
           },
           {
+            "name": "delete_volumes",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
             "name": "deploy_on_change",
             "type": "tftypes.Bool",
             "optional": true,

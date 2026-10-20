@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Compose `delete_volumes`: set it explicitly to `false` to retain volumes
+  when deleting a stack. The default remains `true`, including on import.
+  Changing this policy alone does not call Dokploy or deploy the stack.
+  Retained volumes need separate backup and cleanup ownership.
+
 ### Fixed
 
 - `dokploy_compose` and `dokploy_libsql`: a change of only `deploy_on_change`,

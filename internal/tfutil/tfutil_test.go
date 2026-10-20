@@ -373,3 +373,17 @@ func TestOnlyProviderAttributesChanged(t *testing.T) {
 		}
 	}
 }
+
+func TestOnlyProviderAttributesChangedRejectsNonObject(t *testing.T) {
+	obj := tftypes.NewValue(tftypes.Object{AttributeTypes: map[string]tftypes.Type{}}, map[string]tftypes.Value{})
+	bad := tftypes.NewValue(tftypes.String, "x")
+	for desc, req := range map[string]resource.UpdateRequest{
+		"plan":   {Plan: tfsdk.Plan{Raw: bad}, State: tfsdk.State{Raw: obj}, Config: tfsdk.Config{Raw: obj}},
+		"state":  {Plan: tfsdk.Plan{Raw: obj}, State: tfsdk.State{Raw: bad}, Config: tfsdk.Config{Raw: obj}},
+		"config": {Plan: tfsdk.Plan{Raw: obj}, State: tfsdk.State{Raw: obj}, Config: tfsdk.Config{Raw: bad}},
+	} {
+		if got, err := OnlyProviderAttributesChanged(req); err == nil || got {
+			t.Errorf("%s: got %v, %v; want an error", desc, got, err)
+		}
+	}
+}
