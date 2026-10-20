@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
@@ -523,26 +522,18 @@ func (r *composeResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// This flag changes only deletion policy. Persist a flag-only change
-	// without rewriting or deploying the remote service. Normalize the
-	// server-computed fields because Terraform can mark them unknown.
-	if !plan.DeleteVolumes.Equal(state.DeleteVolumes) {
-		comparison := plan
-		comparison.ID = state.ID
-		comparison.AppName = state.AppName
-		comparison.Status = state.Status
-		comparison.CreatedAt = state.CreatedAt
-		comparison.DeleteVolumes = state.DeleteVolumes
-		candidate := tfsdk.State{Schema: req.State.Schema}
-		resp.Diagnostics.Append(candidate.Set(ctx, &comparison)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if candidate.Raw.Equal(req.State.Raw) {
-			comparison.DeleteVolumes = plan.DeleteVolumes
-			resp.Diagnostics.Append(resp.State.Set(ctx, &comparison)...)
-			return
-		}
+	only, err := tfutil.OnlyProviderAttributesChanged(req, "deploy_on_change", "deployment_timeout", "fresh_volumes", "delete_volumes")
+	if err != nil {
+		resp.Diagnostics.AddError("Updating compose service", err.Error())
+		return
+	}
+	if only {
+		state.DeployOnChange = plan.DeployOnChange
+		state.DeploymentTimeout = plan.DeploymentTimeout
+		state.FreshVolumes = plan.FreshVolumes
+		state.DeleteVolumes = plan.DeleteVolumes
+		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+		return
 	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID

@@ -589,6 +589,17 @@ func (r *libsqlResource) Update(ctx context.Context, req resource.UpdateRequest,
 	// explicit "" on the wire would clear it.
 	password, _ := tfutil.SecretToUpdate(plan.DatabasePassword, cfg.DatabasePasswordWo, state.DatabasePassword, plan.DatabasePasswordWoVersion, state.DatabasePasswordWoVersion)
 	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlag(ctx, resp.Private, "database_password", !cfg.DatabasePasswordWo.IsNull())...)
+	only, err := tfutil.OnlyProviderAttributesChanged(req, "deploy_on_change", "deployment_timeout")
+	if err != nil {
+		resp.Diagnostics.AddError("Updating libsql service", err.Error())
+		return
+	}
+	if only {
+		state.DeployOnChange = plan.DeployOnChange
+		state.DeploymentTimeout = plan.DeploymentTimeout
+		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+		return
+	}
 
 	// Ordering rule: a transition INTO "replica" must clear any external
 	// ports BEFORE UpdateLibsql flips sqldNode, not after. A replica

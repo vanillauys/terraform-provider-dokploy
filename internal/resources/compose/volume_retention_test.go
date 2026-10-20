@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
 
@@ -245,10 +246,9 @@ func TestVolumeRetentionPolicyAndNameUpdateIsNotSkipped(t *testing.T) {
 	}
 }
 
-// The existing fresh_volumes description claims a policy-only change starts no
-// deploy. This control demonstrates Update does start one; the new guard is
-// deliberately limited to delete_volumes and does not change that behavior.
-func TestVolumeRetentionControlFreshVolumesStillTriggersDeploy(t *testing.T) {
+// A change of fresh_volumes alone is provider-only, as its description says:
+// it makes no update request and starts no deploy.
+func TestVolumeRetentionFreshVolumesOnlyMakesNoRequests(t *testing.T) {
 	ctx := context.Background()
 	updates, deploys := 0, 0
 	r := volumeResource(t, func(w http.ResponseWriter, req *http.Request) {
@@ -275,8 +275,23 @@ func TestVolumeRetentionControlFreshVolumesStillTriggersDeploy(t *testing.T) {
 	p := volumeState(t, m)
 	resp := resource.UpdateResponse{State: state}
 	r.Update(ctx, resource.UpdateRequest{State: state, Plan: tfsdk.Plan(p)}, &resp)
-	if !resp.Diagnostics.HasError() || updates != 1 || deploys != 1 {
+	if resp.Diagnostics.HasError() || updates != 0 || deploys != 0 {
 		t.Fatalf("updates=%d deploys=%d diag=%v", updates, deploys, resp.Diagnostics)
+	}
+}
+
+func TestVolumeRetentionUnreadableConfigFailsUpdate(t *testing.T) {
+	r := volumeResource(t, func(w http.ResponseWriter, req *http.Request) {
+		t.Errorf("unexpected %s", req.URL.Path)
+		w.WriteHeader(400)
+	})
+	m := resourceModel{ID: types.StringValue("existing-id"), Name: types.StringValue("synthetic"), DeleteVolumes: types.BoolValue(true)}
+	state := volumeState(t, m)
+	resp := resource.UpdateResponse{State: state}
+	config := tfsdk.Config{Schema: state.Schema, Raw: tftypes.NewValue(tftypes.String, "x")}
+	r.Update(context.Background(), resource.UpdateRequest{State: state, Plan: tfsdk.Plan(state), Config: config}, &resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("want an error diagnostic")
 	}
 }
 

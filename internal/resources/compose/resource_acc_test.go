@@ -726,6 +726,33 @@ resource "dokploy_compose" "test" {
 	})
 }
 
+// A change of deploy_on_change, deployment_timeout or fresh_volumes alone
+// starts no deploy: the deployment count stays the same.
+func TestAccCompose_providerOnlyChangeNoDeploy(t *testing.T) {
+	projectName := acctest.RandomName("compose-po-proj")
+	name := acctest.RandomName("compose-po")
+	deployments := func(s *terraform.State) (string, error) {
+		c, err := acctest.ClientFromEnv()
+		if err != nil {
+			return "", err
+		}
+		ds, err := c.ListDeployments(context.Background(), "compose", s.RootModule().Resources["dokploy_compose.test"].Primary.ID)
+		return fmt.Sprint(len(ds)), err
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		CheckDestroy:             checkComposeDestroy,
+		Steps: acctest.ProviderOnlySteps("dokploy_compose.test",
+			func(extra string) string { return rawConfigDeploy(projectName, name, extra, true) },
+			deployments,
+			"  deployment_timeout = \"20m\"\n",
+			"  fresh_volumes = true\n",
+			"  deploy_on_change = false\n",
+		),
+	})
+}
+
 // The deletion policy is provider-only: changing or removing it must not
 // produce a deployment. Import seeds the historical true default.
 func TestAccCompose_deleteVolumesPolicy(t *testing.T) {

@@ -440,3 +440,46 @@ resource "dokploy_environment" "second" {
 		},
 	}
 }
+
+
+// ServiceVersion returns the version index of the swarm service appName on
+// the rig. Each deploy updates the service and raises the index.
+func ServiceVersion(appName string) (string, error) {
+	inRig := rigExists(rigContainer())
+	out, err := rigDocker(rigContainer(), inRig, "service", "inspect", "--format", "{{.Version.Index}}", appName).Output()
+	return strings.TrimSpace(string(out)), err
+}
+
+// ProviderOnlySteps prove that a change of provider-only attributes alone
+// starts no deploy. config renders the configuration with extra attribute
+// lines. marker reads a value from the server that changes on each deploy.
+// The steps create the service, apply each change, and then go back to the
+// first configuration. After each change the marker must be the same as
+// after the create, and the next plan must be empty.
+func ProviderOnlySteps(addr string, config func(extra string) string, marker func(s *terraform.State) (string, error), changes ...string) []resource.TestStep {
+	var first string
+	steps := []resource.TestStep{{
+		Config: config(""),
+		Check: func(s *terraform.State) (err error) {
+			first, err = marker(s)
+			return err
+		},
+	}}
+	for _, extra := range append(changes, "") {
+		steps = append(steps, resource.TestStep{
+			Config: config(extra),
+			ConfigPlanChecks: resource.ConfigPlanChecks{
+				PreApply:             []plancheck.PlanCheck{plancheck.ExpectResourceAction(addr, plancheck.ResourceActionUpdate)},
+				PostApplyPostRefresh: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+			},
+			Check: func(s *terraform.State) error {
+				got, err := marker(s)
+				if err == nil && got != first {
+					err = fmt.Errorf("a provider-only change deployed %s: marker %q, want %q", addr, got, first)
+				}
+				return err
+			},
+		})
+	}
+	return steps
+}

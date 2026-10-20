@@ -11,10 +11,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
@@ -333,5 +336,54 @@ func TestApplyShare(t *testing.T) {
 	}
 	if diags.HasError() {
 		t.Errorf("diags = %v", diags)
+	}
+}
+
+
+func TestOnlyProviderAttributesChanged(t *testing.T) {
+	objType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"name": tftypes.String, "status": tftypes.String, "deploy_on_change": tftypes.Bool,
+	}}
+	str := func(v any) tftypes.Value { return tftypes.NewValue(tftypes.String, v) }
+	unknown := str(tftypes.UnknownValue)
+	obj := func(name, status tftypes.Value, deploy bool) tftypes.Value {
+		return tftypes.NewValue(objType, map[string]tftypes.Value{
+			"name": name, "status": status, "deploy_on_change": tftypes.NewValue(tftypes.Bool, deploy),
+		})
+	}
+	state := obj(str("a"), str("done"), true)
+	for _, tc := range []struct {
+		desc         string
+		plan, config tftypes.Value
+		want         bool
+	}{
+		{"provider-only change", obj(str("a"), str("done"), false), obj(str("a"), str(nil), false), true},
+		{"computed value unknown", obj(str("a"), unknown, false), obj(str("a"), str(nil), false), true},
+		{"server attribute changed", obj(str("b"), str("done"), false), obj(str("b"), str(nil), false), false},
+		{"configured value unknown", obj(unknown, str("done"), false), obj(unknown, str(nil), false), false},
+	} {
+		req := resource.UpdateRequest{
+			Plan:   tfsdk.Plan{Raw: tc.plan},
+			State:  tfsdk.State{Raw: state},
+			Config: tfsdk.Config{Raw: tc.config},
+		}
+		got, err := OnlyProviderAttributesChanged(req, "deploy_on_change")
+		if err != nil || got != tc.want {
+			t.Errorf("%s: got %v, %v; want %v", tc.desc, got, err, tc.want)
+		}
+	}
+}
+
+func TestOnlyProviderAttributesChangedRejectsNonObject(t *testing.T) {
+	obj := tftypes.NewValue(tftypes.Object{AttributeTypes: map[string]tftypes.Type{}}, map[string]tftypes.Value{})
+	bad := tftypes.NewValue(tftypes.String, "x")
+	for desc, req := range map[string]resource.UpdateRequest{
+		"plan":   {Plan: tfsdk.Plan{Raw: bad}, State: tfsdk.State{Raw: obj}, Config: tfsdk.Config{Raw: obj}},
+		"state":  {Plan: tfsdk.Plan{Raw: obj}, State: tfsdk.State{Raw: bad}, Config: tfsdk.Config{Raw: obj}},
+		"config": {Plan: tfsdk.Plan{Raw: obj}, State: tfsdk.State{Raw: obj}, Config: tfsdk.Config{Raw: bad}},
+	} {
+		if got, err := OnlyProviderAttributesChanged(req); err == nil || got {
+			t.Errorf("%s: got %v, %v; want an error", desc, got, err)
+		}
 	}
 }
