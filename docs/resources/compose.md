@@ -145,6 +145,7 @@ resource "dokploy_compose" "from_gitea" {
 - `compose_path` (String) Path to the compose file inside the repository. Defaults to `./docker-compose.yml`. An empty string is not valid. The `raw` source ignores it.
 - `compose_type` (String) How Dokploy runs the service: as a `docker-compose` project or as a Docker Swarm `stack`. Defaults to `docker-compose`.
 - `create_env_file` (Boolean) Write the environment variables to a `.env` file for the compose project. Defaults to `true`, the Dokploy default for a new service.
+- `delete_volumes` (Boolean) Delete the stack volumes when this compose service is destroyed. Defaults to `true`. Set to `false` to retain them; retained volumes need separate lifecycle and cleanup ownership. Changing this setting alone does not deploy the service.
 - `deploy_on_change` (Boolean) Deploy after a create, and after a change to an attribute that starts a deploy. Defaults to `true`.
 - `deployment_timeout` (String) The maximum wait for a deploy to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout, the apply fails, but the deploy continues on the server.
 - `description` (String) Free-form description.

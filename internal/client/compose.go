@@ -250,9 +250,8 @@ func (c *Client) DeployCompose(ctx context.Context, req DeployComposeRequest) er
 // DeleteCompose. deleteVolumes is sent by choice, not by requirement: the
 // OpenAPI document lists it as required, but a live compose.delete carrying
 // only composeId succeeds (v0.29.13, 2026-07-29) - one of the places that
-// document and the server disagree. The resource passes true, because
-// deleting a compose service while leaving its Docker volumes behind would
-// accumulate orphans on the host across every destroy.
+// document and the server disagree. The resource defaults to true and allows
+// an explicit false to retain volumes under separate lifecycle ownership.
 func (c *Client) DeleteCompose(ctx context.Context, id string, deleteVolumes bool) error {
 	return c.Post(ctx, "/compose.delete", map[string]any{
 		"composeId": id, "deleteVolumes": deleteVolumes,

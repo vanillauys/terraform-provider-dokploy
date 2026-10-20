@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
@@ -306,6 +307,11 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"Defaults to `false`. The data in the volumes is lost on such a deploy. A change of this attribute alone starts no deploy.",
 	}
 
+	attrs["delete_volumes"] = schema.BoolAttribute{
+		Optional: true, Computed: true, Default: booldefault.StaticBool(true),
+		Description: "Delete the stack volumes when this compose service is destroyed. Defaults to `true`. Set to `false` to retain them; retained volumes need separate lifecycle and cleanup ownership. Changing this setting alone does not deploy the service.",
+	}
+
 	resp.Schema = schema.Schema{
 		// Version 1 (v0.11.0) removed isolated_deployment and
 		// isolated_deployments_volume; see UpgradeState.
@@ -504,6 +510,9 @@ func (r *composeResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if state.FreshVolumes.IsNull() {
 		state.FreshVolumes = types.BoolValue(false)
 	}
+	if state.DeleteVolumes.IsNull() {
+		state.DeleteVolumes = types.BoolValue(true)
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -513,6 +522,27 @@ func (r *composeResource) Update(ctx context.Context, req resource.UpdateRequest
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+	// This flag changes only deletion policy. Persist a flag-only change
+	// without rewriting or deploying the remote service. Normalize the
+	// server-computed fields because Terraform can mark them unknown.
+	if !plan.DeleteVolumes.Equal(state.DeleteVolumes) {
+		comparison := plan
+		comparison.ID = state.ID
+		comparison.AppName = state.AppName
+		comparison.Status = state.Status
+		comparison.CreatedAt = state.CreatedAt
+		comparison.DeleteVolumes = state.DeleteVolumes
+		candidate := tfsdk.State{Schema: req.State.Schema}
+		resp.Diagnostics.Append(candidate.Set(ctx, &comparison)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if candidate.Raw.Equal(req.State.Raw) {
+			comparison.DeleteVolumes = plan.DeleteVolumes
+			resp.Diagnostics.Append(resp.State.Set(ctx, &comparison)...)
+			return
+		}
 	}
 	id := state.ID.ValueString()
 	plan.ID = state.ID
@@ -568,16 +598,24 @@ func (r *composeResource) Update(ctx context.Context, req resource.UpdateRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// Delete passes deleteVolumes=true. Removing the service while leaving its
-// Docker volumes behind would accumulate orphans on the host across every
-// destroy, and Terraform's contract is that destroy leaves nothing behind.
+// Delete removes volumes by default. An explicit delete_volumes=false retains
+// them for separate lifecycle ownership. Old states without this field retain
+// the historical deletion behavior.
 func (r *composeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state resourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	err := r.client.DeleteCompose(ctx, state.ID.ValueString(), true)
+	if state.DeleteVolumes.IsUnknown() {
+		resp.Diagnostics.AddError("Deleting compose service", "delete_volumes must be known before deletion")
+		return
+	}
+	deleteVolumes := true
+	if !state.DeleteVolumes.IsNull() {
+		deleteVolumes = state.DeleteVolumes.ValueBool()
+	}
+	err := r.client.DeleteCompose(ctx, state.ID.ValueString(), deleteVolumes)
 	if err != nil && !errors.Is(err, client.ErrNotFound) {
 		resp.Diagnostics.AddError("Deleting compose service", err.Error())
 	}
@@ -590,6 +628,7 @@ func (r *composeResource) ImportState(ctx context.Context, req resource.ImportSt
 	// their schema defaults or the plan after an import is never empty.
 	resp.Diagnostics.Append(tfutil.ImportDeployDefaults(ctx, &resp.State)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("fresh_volumes"), false)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("delete_volumes"), true)...)
 }
 
 // removedInV1 lists the version 0 attributes that the current schema no
