@@ -526,7 +526,7 @@ resource "dokploy_mysql" "test" {
   database_root_password  = "acc-root-password-isolated"
   deploy_on_change        = true
 }`, name+"-proj", name, poisonImage),
-				ExpectError: regexp.MustCompile(`manifest for .* not found|manifest unknown`),
+				ExpectError: regexp.MustCompile(`(?s)manifest for .* not found|manifest unknown|failed to resolve reference.*not found`),
 			},
 		},
 	})
