@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-10-24
+
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.30.8 to v0.30.10. The
+  endpoint census of a fresh v0.30.10 install (2026-10-24) is byte-identical
+  to the v0.30.8 snapshot. The upstream v0.30.8...v0.30.10 diff agrees: it
+  moves Node to 24.22.1 and fixes a template card in the UI.
+- The Go toolchain moves to 1.26.10. `govulncheck` reported GO-2026-6809 in
+  the Go 1.26.9 `crypto/x509` package. It reports none now.
+
 ### Fixed
 
 - Retain state on ambiguous missing-record responses and invalid resource
