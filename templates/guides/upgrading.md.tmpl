@@ -28,6 +28,11 @@ Two behaviors change:
   environment is first, then the others sort by name. The first refresh can
   show the list in the new order. It is not a change to your resources.
 
+v1.10.1 changes how a refresh treats a 404. The provider removes a resource
+from the state only when Dokploy confirms that the record is gone. A 404 from
+a reverse proxy or a wrong endpoint is now an error, and the state stays as
+it was.
+
 ## Upgrade to v1.9
 
 v1.9.0 has nothing breaking. Each new attribute is optional, so a v1.8.0
