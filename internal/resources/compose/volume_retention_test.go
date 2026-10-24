@@ -295,7 +295,7 @@ func TestVolumeRetentionUnreadableConfigFailsUpdate(t *testing.T) {
 	}
 }
 
-// A complete wire record is needed now that Read rejects partial bodies.
+// A complete wire record keeps the fixture valid for every Read path.
 func retentionReadFixture() []byte {
 	raw, _ := json.Marshal(client.Compose{ComposeID: "existing-id", Name: "synthetic", AppName: "synthetic-abcdef", EnvironmentID: "env-id", ComposeType: "docker-compose", SourceType: "raw", ComposeFile: "services: {}", ComposePath: "./docker-compose.yml", ComposeStatus: "done", CreateEnvFile: true, CreatedAt: "2026-10-15T00:00:00Z"})
 	return raw
