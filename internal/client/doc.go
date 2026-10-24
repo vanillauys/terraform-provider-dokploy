@@ -1711,6 +1711,14 @@ package client
 // trial email. Nothing below the request schema changed for a self-hosted
 // server.
 //
+// # v0.30.10 census (probed 2026-10-24)
+//
+// The pin moved from v0.30.8 to v0.30.10 against a fresh v0.30.10 rig. The
+// endpoint census is byte-identical to the v0.30.8 snapshot. The upstream
+// v0.30.8...v0.30.10 compare agrees: it moves Node to 24.22.1 and fixes the
+// tag overflow on the template cards. No API file changed. v0.30.9 has the
+// same API.
+//
 // # v0.30.8 census (probed 2026-09-30)
 //
 // The pin moved from v0.30.7 to v0.30.8 against a fresh v0.30.8 rig. The

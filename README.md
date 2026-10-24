@@ -2,7 +2,7 @@
 
 [![Terraform Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.terraform.io%2Fv1%2Fproviders%2Fvanillauys%2Fdokploy&query=%24.version&prefix=v&label=registry&color=7B42BC&logo=terraform&logoColor=white)](https://registry.terraform.io/providers/vanillauys/dokploy/latest)
 [![Registry downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.terraform.io%2Fv2%2Fproviders%2Fvanillauys%2Fdokploy&query=%24.data.attributes.downloads&label=downloads&color=7B42BC)](https://registry.terraform.io/providers/vanillauys/dokploy/latest)
-[![Dokploy v0.30.8](https://img.shields.io/badge/Dokploy-v0.30.8-0EA5E9)](https://github.com/Dokploy/dokploy/releases/tag/v0.30.8)
+[![Dokploy v0.30.10](https://img.shields.io/badge/Dokploy-v0.30.10-0EA5E9)](https://github.com/Dokploy/dokploy/releases/tag/v0.30.10)
 [![test](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/test.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/test.yml)
 [![nightly acceptance](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/nightly.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/nightly.yml)
 [![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=vanillauys_terraform-provider-dokploy&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vanillauys_terraform-provider-dokploy)
