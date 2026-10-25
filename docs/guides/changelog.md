@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The indirect Go modules move to their latest versions, among them
+  golang.org/x/net v0.61.0, google.golang.org/grpc v1.84.0 and
+  github.com/hashicorp/go-plugin v1.8.0.
+
 ## [1.10.1] - 2026-10-24
 
 ### Changed

@@ -24,7 +24,7 @@ jobs:
           # Pinned: the action resolves the linter at runtime otherwise, so the
           # ruleset (and whether this job passes at all) could change without a
           # commit. Verified green against this exact version locally.
-          version: v2.12.2
+          version: v2.15.0
   unit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
