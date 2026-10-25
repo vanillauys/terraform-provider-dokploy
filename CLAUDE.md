@@ -50,3 +50,10 @@ Dokploy server.
 - The SonarQube Cloud gate fails above 3% duplicated new lines. Put a
   shared schema shape in `internal/tfutil` or `internal/datasources/dsutil`
   rather than a copy per resource.
+- **The `master` ruleset requires an up-to-date branch.** After each merge,
+  run `gh pr update-branch <n>` on the next PR and wait for a new CI run.
+  The `sonar` job skips a fork PR, so push its head SHA to a
+  `sonar/pr-<n>` branch and open a draft PR to get the required check.
+- **CI downloads `https://dokploy.com/install.sh` and checks a sha256 pin**
+  in `.github/workflows/acceptance-suite.yml`. If the check fails, read the
+  upstream change in `Dokploy/website`, then move the pin.
