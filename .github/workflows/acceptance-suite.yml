@@ -16,7 +16,7 @@ on:
         default: terraform
       version:
         type: string
-        default: "1.16.1"
+        default: "1.17.0"
     outputs:
       coverage-artifact:
         value: ${{ jobs.acceptance.outputs.coverage-artifact }}
