@@ -109,6 +109,17 @@ jobs:
             cli="$(command -v terraform)"
           fi
           COVERDIR="$GITHUB_WORKSPACE/coverage" TF_ACC_TERRAFORM_PATH="$cli" make testacc
+      # A failed run prints the state of the Dokploy server, so a crash of the
+      # server (for example an OOM kill) shows its cause in the log.
+      - name: Dump Dokploy diagnostics
+        if: failure()
+        run: |
+          free -m || true
+          sudo dmesg | grep -iE 'out of memory|oom|killed process' || true
+          docker ps -a || true
+          docker service ls || true
+          docker service ps --no-trunc dokploy || true
+          docker service logs --timestamps --tail 300 dokploy || true
       - id: artifact
         env:
           TOOL: ${{ inputs.tool }}
