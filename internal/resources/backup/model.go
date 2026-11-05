@@ -21,6 +21,7 @@ type resourceModel struct {
 	IncludeEncryptionKey types.Bool   `tfsdk:"include_encryption_key"`
 	ServiceName          types.String `tfsdk:"service_name"`
 	AppName              types.String `tfsdk:"app_name"`
+	CustomName           types.String `tfsdk:"custom_name"`
 
 	// The credentials of a compose parent (client.BackupMetadata). The
 	// write-only companions (tfutil.WriteOnlyCompanions) carry a value in
@@ -270,6 +271,7 @@ func flatten(b *client.Backup, out *resourceModel) {
 	out.DestinationID = types.StringValue(b.DestinationID)
 	out.ServiceName = tfutil.StringOrNull(b.ServiceName)
 	out.AppName = types.StringValue(b.AppName)
+	out.CustomName = tfutil.StringOrNull(b.CustomName)
 	out.IncludeEncryptionKey = types.BoolValue(b.IncludeEncryptionKey)
 
 	// The server returns the compose credentials in cleartext. The caller
@@ -321,6 +323,7 @@ func createRequest(m resourceModel, metadata *client.BackupMetadata) client.Crea
 		KeepLatestCount:      m.KeepLatestCount.ValueInt64Pointer(),
 		IncludeEncryptionKey: m.IncludeEncryptionKey.ValueBool(),
 		ServiceName:          m.ServiceName.ValueStringPointer(),
+		CustomName:           m.CustomName.ValueString(),
 		Metadata:             metadata,
 		PostgresID:           ref.ColumnFor("postgres"),
 		MysqlID:              ref.ColumnFor("mysql"),
@@ -353,6 +356,7 @@ func updateRequest(m resourceModel, metadata *client.BackupMetadata) client.Upda
 		KeepLatestCount:      m.KeepLatestCount.ValueInt64Pointer(),
 		IncludeEncryptionKey: m.IncludeEncryptionKey.ValueBool(),
 		ServiceName:          m.ServiceName.ValueStringPointer(),
+		CustomName:           m.CustomName.ValueString(),
 		Metadata:             metadata,
 	}
 }

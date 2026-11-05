@@ -23,6 +23,10 @@ type Backup struct {
 	IncludeEncryptionKey bool    `json:"includeEncryptionKey"`
 	ServiceName          *string `json:"serviceName"`
 	AppName              string  `json:"appName"`
+	// CustomName (v0.31.0) is the middle part of each backup file name,
+	// between the fixed prefix and the timestamp. A record from before
+	// v0.31.0 reads null.
+	CustomName *string `json:"customName"`
 
 	// Metadata holds the credentials of a compose backup. backup.one returns
 	// it as stored: null for a record that never had one, {} for a record
@@ -181,6 +185,9 @@ type CreateBackupRequest struct {
 	KeepLatestCount      *int64  `json:"keepLatestCount"`
 	IncludeEncryptionKey bool    `json:"includeEncryptionKey"`
 	ServiceName          *string `json:"serviceName"`
+	// CustomName (v0.31.0) rejects null; "" stores no custom name. See
+	// UpdateBackupRequest.
+	CustomName string `json:"customName"`
 
 	// Metadata is nil for a database parent: the endpoint accepts null, and
 	// Dokploy never reads the field for that backup type. See BackupMetadata.
@@ -226,6 +233,9 @@ type UpdateBackupRequest struct {
 	ServiceName          *string         `json:"serviceName"`
 	Metadata             *BackupMetadata `json:"metadata"`
 	DatabaseType         string          `json:"databaseType"`
+	// CustomName (v0.31.0) is a plain string, never null: the zod schema is
+	// optional, not nullable, so null is an HTTP 400 and "" clears.
+	CustomName string `json:"customName"`
 }
 
 // CreateBackup creates a backup and returns it.
@@ -288,6 +298,7 @@ type CreateWebServerBackupRequest struct {
 	Enabled              *bool  `json:"enabled"`
 	KeepLatestCount      *int64 `json:"keepLatestCount"`
 	IncludeEncryptionKey bool   `json:"includeEncryptionKey"`
+	CustomName           string `json:"customName"`
 	UserID               string `json:"userId"`
 }
 

@@ -42,7 +42,16 @@ import (
 //	json.dump(dict(sorted(out.items())),sys.stdout,indent=1)
 //	' > internal/client/testdata/endpoint-fields.json
 //
-// Snapshot taken against Dokploy v0.30.10 on 2026-10-24. It is byte-identical
+// Snapshot taken against Dokploy v0.31.0 on 2026-11-05. Against the v0.30.10
+// snapshot it adds the telemetryProvider, serverSecurity, and account
+// deletion endpoints, backup.getDownloadUrl, settings.togglePanelPort and
+// settings.updateTraefik. backup.create and backup.update gain customName,
+// compose.update gains pullImages, mounts.update gains expectedContent, and
+// ai.testConnection gains aiId. certificates.create no longer accepts
+// certificatePath, and compose.delete no longer requires deleteVolumes. See
+// doc.go "# v0.31.0 census".
+//
+// The v0.30.10 snapshot of 2026-10-24 is byte-identical
 // to the v0.30.8 snapshot of 2026-09-30, which is byte-identical to the
 // v0.30.7 snapshot of 2026-09-19. That snapshot differs from the
 // v0.30.6 snapshot of 2026-09-10 in one entry: the new stripe.startFreeTrial
@@ -110,6 +119,8 @@ var endpointStructs = map[string]any{
 	"compose.deploy":                    DeployComposeRequest{},
 	"certificates.create":               CreateCertificateRequest{},
 	"certificates.update":               UpdateCertificateRequest{},
+	"telemetryProvider.create":          CreateTelemetryProviderRequest{},
+	"telemetryProvider.update":          UpdateTelemetryProviderRequest{},
 	"ai.create":                         CreateAIRequest{},
 	"ai.update":                         UpdateAIRequest{},
 	"registry.create":                   CreateRegistryRequest{},
@@ -206,15 +217,16 @@ var censusExempt = map[string]map[string]string{
 	// attributes RequiresReplace instead, so the client never needs to
 	// express a retarget and deliberately cannot.
 	"mounts.update": {
-		"serviceType":   "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"applicationId": "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"composeId":     "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"postgresId":    "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"mysqlId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"mariadbId":     "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"mongoId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"redisId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"libsqlId":      "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"expectedContent": "v0.31.0 edit guard of the UI file editor; the provider sends the full content",
+		"serviceType":     "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"applicationId":   "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"composeId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"postgresId":      "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"mysqlId":         "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"mariadbId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"mongoId":         "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"redisId":         "parent is RequiresReplace; mounts.update corrupts on retarget",
+		"libsqlId":        "parent is RequiresReplace; mounts.update corrupts on retarget",
 	},
 	// destination.create/update accept serverId, but destination.one and
 	// destination.all never return it (verified live, v0.29.13,
@@ -307,8 +319,7 @@ var censusExempt = map[string]map[string]string{
 		"lastUsedAt": "server-managed; the server rewrites it whenever a remote server uses the key",
 	},
 	"certificates.create": {
-		"certificateId":   "server-generated; the create endpoint assigns it",
-		"certificatePath": "server-generated; not user configuration",
+		"certificateId": "server-generated; the create endpoint assigns it",
 	},
 	"ai.update": {
 		"createdAt": "server-generated; not user configuration",

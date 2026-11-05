@@ -6,11 +6,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `dokploy_telemetry_provider` resource and data source (Dokploy v0.31.0): a
+  destination for the container logs and the host metrics that a Vector agent
+  ships. The nine types are Loki, Datadog, Better Stack, Elasticsearch,
+  Splunk HEC, AWS CloudWatch, Prometheus remote write, New Relic, and
+  InfluxDB. `api_key` and `api_secret` have write-only companions. Dokploy
+  never returns `endpoint`, `api_key`, or `api_secret`, so each update sends
+  them again, and an import leaves them null.
+- `telemetry_provider_ids` on `dokploy_web_server_settings` starts the Vector
+  agent on the Dokploy host with the selected providers. An empty set stops
+  the agent.
+- `pull_images` on `dokploy_compose` and its data source: each deploy pulls
+  the latest images. Defaults to `false`.
+- `custom_name` on `dokploy_backup`, `dokploy_web_server_backup`, and the
+  `dokploy_backup` data source: the name part of each backup file.
+
 ### Changed
 
+- The stated compatibility pin moves from Dokploy v0.30.10 to v0.31.0. The
+  endpoint census of a fresh v0.31.0 install (2026-11-05) agrees with the
+  upstream v0.30.10...v0.31.0 diff. The new server security, service
+  transfer, backup download, and account deletion endpoints, and the
+  optional OVH `zone` of the DNS providers, stay unmodeled. See
+  `internal/client/doc.go`, "v0.31.0 census".
+- `dokploy_ai` keeps `api_key` from the configuration. Dokploy v0.31.0
+  returns the key masked, so an import leaves `api_key` null.
 - The indirect Go modules move to their latest versions, among them
   golang.org/x/net v0.61.0, google.golang.org/grpc v1.84.0 and
   github.com/hashicorp/go-plugin v1.8.0.
+
+### Fixed
+
+- `dokploy_libsql` creates a service on Dokploy v0.31.0 without
+  `docker_image`. Dokploy v0.31.0 rejects a create without the image, so the
+  provider now sends the Dokploy default,
+  `ghcr.io/tursodatabase/libsql-server:v0.24.32`. With v1.10.1 and earlier,
+  set `docker_image` to create a LibSQL service on v0.31.0.
+- `dokploy_ai` no longer fails with "inconsistent values for sensitive
+  attribute" on Dokploy v0.31.0, which masks `api_key` on each read.
+- The `dokploy_domain` data source with `host` alone skips a service that
+  another client deletes during the lookup. Dokploy v0.31.0 answers HTTP 404
+  for the domains of a deleted service.
 
 ## [1.10.1] - 2026-10-24
 

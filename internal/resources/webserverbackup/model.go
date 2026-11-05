@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
 )
 
 type resourceModel struct {
@@ -14,6 +15,7 @@ type resourceModel struct {
 	Enabled              types.Bool   `tfsdk:"enabled"`
 	IncludeEncryptionKey types.Bool   `tfsdk:"include_encryption_key"`
 	KeepLatestCount      types.Int64  `tfsdk:"keep_latest_count"`
+	CustomName           types.String `tfsdk:"custom_name"`
 }
 
 func flatten(b *client.Backup, out *resourceModel) {
@@ -22,6 +24,7 @@ func flatten(b *client.Backup, out *resourceModel) {
 	out.CronExpression = types.StringValue(b.Schedule)
 	out.Prefix = types.StringValue(b.Prefix)
 	out.IncludeEncryptionKey = types.BoolValue(b.IncludeEncryptionKey)
+	out.CustomName = tfutil.StringOrNull(b.CustomName)
 
 	// enabled is nullable on the server but has a default here, so a null
 	// read resolves to false. Dokploy produces null only for a record that
@@ -46,6 +49,7 @@ func createRequest(m resourceModel, userID string) client.CreateWebServerBackupR
 		Enabled:              m.Enabled.ValueBoolPointer(),
 		KeepLatestCount:      m.KeepLatestCount.ValueInt64Pointer(),
 		IncludeEncryptionKey: m.IncludeEncryptionKey.ValueBool(),
+		CustomName:           m.CustomName.ValueString(),
 		UserID:               userID,
 	}
 }
@@ -63,5 +67,6 @@ func updateRequest(m resourceModel) client.UpdateBackupRequest {
 		Enabled:              m.Enabled.ValueBoolPointer(),
 		KeepLatestCount:      m.KeepLatestCount.ValueInt64Pointer(),
 		IncludeEncryptionKey: m.IncludeEncryptionKey.ValueBool(),
+		CustomName:           m.CustomName.ValueString(),
 	}
 }

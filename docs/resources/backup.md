@@ -31,6 +31,9 @@ resource "dokploy_backup" "db_nightly" {
   destination_id  = dokploy_destination.backups.id
 
   keep_latest_count = 30
+
+  # The files are named app-<timestamp>.sql.gz.
+  custom_name = "app"
 }
 
 # Redis has no logical dump in Dokploy. This resource rejects a Redis parent
@@ -85,6 +88,7 @@ resource "dokploy_backup" "nextcloud_db" {
 - `compose_database_root_password_wo_version` (Number) Version of `compose_database_root_password_wo`. Change it to send the current `compose_database_root_password_wo` value to the server. It needs `compose_database_root_password_wo`.
 - `compose_database_type` (String) Real database engine running inside the compose service that `service_id` refers to: one of `postgres`, `mysql`, `mariadb`, `mongo`, `libsql`. Required when `service_type` is `compose`, and invalid otherwise. Dokploy's `backup.create` never accepts `compose` as a `databaseType` — even for a compose-parented backup it must be the actual engine, because that is what the server uses to build the dump command. `service_type` alone cannot describe both the backup's parent kind and the underlying engine for a compose parent, so this attribute carries the engine in that case. A change forces a replacement.
 - `compose_database_user` (String) User that the dump command authenticates as, for a compose parent whose `compose_database_type` is `postgres`, `mariadb`, or `mongo`. Required for those engines, and invalid otherwise: a database parent carries its own credentials, and Dokploy reads this value for a compose parent only. Without it, Dokploy builds no dump command, and every run of the backup fails.
+- `custom_name` (String) Name part of each backup file, before the timestamp: `<custom_name>-<timestamp>.sql.gz` for a database and `webserver-backup-<custom_name>-<timestamp>.zip` for the Dokploy host. It starts with a letter or a digit, and it has only letters, digits, `.`, `_`, and `-`, at most 100 characters. Omit it for file names without a custom part. Dokploy v0.31.0 added this attribute.
 - `enabled` (Boolean) Whether the backup runs. Defaults to `true`. Dokploy leaves this field null for a record from the API alone, which is neither on nor off, and a backup in the configuration that never runs is the worse failure.
 - `include_encryption_key` (Boolean) Include the database encryption key in the dump. Defaults to `true`, the value that Dokploy stores for a new backup. The provider always sends the field: the Dokploy update endpoint stores `false` for an omitted field, so a request without it would turn the key off on a record that had it on.
 - `keep_latest_count` (Number) Number of dumps to keep. Omit it to keep all of them.

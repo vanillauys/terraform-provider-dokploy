@@ -85,6 +85,7 @@
  },
  "ai.testConnection": {
   "fields": [
+   "aiId",
    "apiKey",
    "apiUrl",
    "model"
@@ -533,6 +534,7 @@
   "fields": [
    "backupType",
    "composeId",
+   "customName",
    "database",
    "databaseType",
    "destinationId",
@@ -556,6 +558,16 @@
    "destinationId",
    "prefix",
    "schedule"
+  ]
+ },
+ "backup.getDownloadUrl": {
+  "fields": [
+   "backupId",
+   "fileName"
+  ],
+  "required": [
+   "backupId",
+   "fileName"
   ]
  },
  "backup.manualBackupCompose": {
@@ -625,6 +637,7 @@
  "backup.update": {
   "fields": [
    "backupId",
+   "customName",
    "database",
    "databaseType",
    "destinationId",
@@ -702,7 +715,6 @@
    "autoRenew",
    "certificateData",
    "certificateId",
-   "certificatePath",
    "name",
    "organizationId",
    "privateKey",
@@ -789,8 +801,7 @@
    "deleteVolumes"
   ],
   "required": [
-   "composeId",
-   "deleteVolumes"
+   "composeId"
   ]
  },
  "compose.deploy": {
@@ -986,6 +997,7 @@
    "isolatedDeploymentsVolume",
    "name",
    "owner",
+   "pullImages",
    "randomize",
    "refreshToken",
    "repository",
@@ -2177,6 +2189,7 @@
    "applicationId",
    "composeId",
    "content",
+   "expectedContent",
    "filePath",
    "hostPath",
    "libsqlId",
@@ -4074,6 +4087,89 @@
    "serverId"
   ]
  },
+ "serverSecurity.banIp": {
+  "fields": [
+   "ip",
+   "serverId"
+  ],
+  "required": [
+   "ip",
+   "serverId"
+  ]
+ },
+ "serverSecurity.configureFail2ban": {
+  "fields": [
+   "bantime",
+   "findtime",
+   "ignoreip",
+   "maxretry",
+   "serverId"
+  ],
+  "required": [
+   "bantime",
+   "findtime",
+   "ignoreip",
+   "maxretry",
+   "serverId"
+  ]
+ },
+ "serverSecurity.disconnectSession": {
+  "fields": [
+   "banIp",
+   "serverId",
+   "terminal"
+  ],
+  "required": [
+   "serverId",
+   "terminal"
+  ]
+ },
+ "serverSecurity.removeAuthorizedKey": {
+  "fields": [
+   "fingerprint",
+   "serverId"
+  ],
+  "required": [
+   "fingerprint",
+   "serverId"
+  ]
+ },
+ "serverSecurity.setFail2banEnabled": {
+  "fields": [
+   "enabled",
+   "serverId"
+  ],
+  "required": [
+   "enabled",
+   "serverId"
+  ]
+ },
+ "serverSecurity.unbanIp": {
+  "fields": [
+   "ip",
+   "jail",
+   "serverId"
+  ],
+  "required": [
+   "ip",
+   "jail",
+   "serverId"
+  ]
+ },
+ "serverSecurity.updateSshSettings": {
+  "fields": [
+   "maxAuthTries",
+   "passwordAuthentication",
+   "permitRootLogin",
+   "serverId"
+  ],
+  "required": [
+   "maxAuthTries",
+   "passwordAuthentication",
+   "permitRootLogin",
+   "serverId"
+  ]
+ },
  "settings.assignDomainServer": {
   "fields": [
    "certificateType",
@@ -4149,6 +4245,14 @@
   ],
   "required": []
  },
+ "settings.togglePanelPort": {
+  "fields": [
+   "enable"
+  ],
+  "required": [
+   "enable"
+  ]
+ },
  "settings.toggleRequests": {
   "fields": [
    "enable"
@@ -4213,6 +4317,12 @@
   "required": [
    "serverIp"
   ]
+ },
+ "settings.updateTraefik": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
  },
  "settings.updateTraefikConfig": {
   "fields": [
@@ -4466,6 +4576,87 @@
    "tagId"
   ]
  },
+ "telemetryProvider.create": {
+  "fields": [
+   "apiKey",
+   "apiSecret",
+   "enabled",
+   "endpoint",
+   "extraConfig",
+   "name",
+   "providerType",
+   "signals"
+  ],
+  "required": [
+   "name",
+   "providerType",
+   "signals"
+  ]
+ },
+ "telemetryProvider.deployOnServer": {
+  "fields": [
+   "providerIds",
+   "serverId"
+  ],
+  "required": [
+   "providerIds"
+  ]
+ },
+ "telemetryProvider.remove": {
+  "fields": [
+   "telemetryProviderId"
+  ],
+  "required": [
+   "telemetryProviderId"
+  ]
+ },
+ "telemetryProvider.removeOnServer": {
+  "fields": [
+   "serverId"
+  ],
+  "required": []
+ },
+ "telemetryProvider.testConnection": {
+  "fields": [
+   "apiKey",
+   "apiSecret",
+   "enabled",
+   "endpoint",
+   "extraConfig",
+   "name",
+   "providerType",
+   "signals"
+  ],
+  "required": [
+   "providerType",
+   "signals"
+  ]
+ },
+ "telemetryProvider.testConnectionById": {
+  "fields": [
+   "signals",
+   "telemetryProviderId"
+  ],
+  "required": [
+   "telemetryProviderId"
+  ]
+ },
+ "telemetryProvider.update": {
+  "fields": [
+   "apiKey",
+   "apiSecret",
+   "enabled",
+   "endpoint",
+   "extraConfig",
+   "name",
+   "providerType",
+   "signals",
+   "telemetryProviderId"
+  ],
+  "required": [
+   "telemetryProviderId"
+  ]
+ },
  "user.assignPermissions": {
   "fields": [
    "accessedEnvironments",
@@ -4536,6 +4727,22 @@
    "role"
   ]
  },
+ "user.deleteAccount": {
+  "fields": [
+   "code"
+  ],
+  "required": [
+   "code"
+  ]
+ },
+ "user.deleteAccountByEmail": {
+  "fields": [
+   "email"
+  ],
+  "required": [
+   "email"
+  ]
+ },
  "user.deleteApiKey": {
   "fields": [
    "apiKeyId"
@@ -4551,6 +4758,12 @@
   "required": [
    "userId"
   ]
+ },
+ "user.requestAccountDeletionCode": {
+  "fields": [
+   "password"
+  ],
+  "required": []
  },
  "user.revokeSession": {
   "fields": [

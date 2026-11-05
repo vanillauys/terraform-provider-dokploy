@@ -103,9 +103,11 @@ resource "dokploy_backup" "test" {
 				// backup.create returns a literal null, so simply getting a
 				// usable id here exercises createAndLocate end to end.
 				Config: cfg("0 3 * * *", `keep_latest_count = 5
-  service_name      = "primary"`),
+  service_name      = "primary"
+  custom_name       = "nightly.db"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("dokploy_backup.test", "id"),
+					resource.TestCheckResourceAttr("dokploy_backup.test", "custom_name", "nightly.db"),
 					resource.TestCheckResourceAttr("dokploy_backup.test", "keep_latest_count", "5"),
 					// Both Optional+Computed defaults must land concretely.
 					resource.TestCheckResourceAttr("dokploy_backup.test", "enabled", "true"),
@@ -121,6 +123,9 @@ resource "dokploy_backup" "test" {
 						}
 						if b.BackupType != "database" {
 							return fmt.Errorf("server backupType = %q, want database", b.BackupType)
+						}
+						if b.CustomName == nil || *b.CustomName != "nightly.db" {
+							return fmt.Errorf("server customName = %v, want nightly.db", b.CustomName)
 						}
 						if !b.IncludeEncryptionKey {
 							return errors.New("server includeEncryptionKey = false, want true")
@@ -153,6 +158,9 @@ resource "dokploy_backup" "test" {
 						}
 						if b.ServiceName != nil && *b.ServiceName != "" {
 							return fmt.Errorf("server serviceName = %q, want cleared", *b.ServiceName)
+						}
+						if b.CustomName != nil && *b.CustomName != "" {
+							return fmt.Errorf("server customName = %q, want cleared", *b.CustomName)
 						}
 						return nil
 					}),
@@ -208,6 +216,46 @@ resource "dokploy_backup" "test" {
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 				Check: resource.TestCheckResourceAttr("dokploy_backup.test", "cron_expression", "0 3 * * *"),
+			},
+		},
+	})
+}
+
+// TestAccBackup_upgradeFromV1_10 creates the backup with v1.10.1, the last
+// release without custom_name, then runs the local build against that state.
+// The plan must be empty: the attribute reads null from a record without a
+// custom name.
+func TestAccBackup_upgradeFromV1_10(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
+	name := acctest.RandomName("bk-up")
+	config := base(name) + `
+resource "dokploy_backup" "test" {
+  service_id      = dokploy_postgres.test.id
+  service_type    = "postgres"
+  database        = "accdb"
+  prefix          = "backups/acc/"
+  cron_expression = "0 3 * * *"
+  destination_id  = dokploy_destination.test.id
+}
+`
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "1.10.1"},
+				},
+				Config: config,
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   config,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckNoResourceAttr("dokploy_backup.test", "custom_name"),
 			},
 		},
 	})

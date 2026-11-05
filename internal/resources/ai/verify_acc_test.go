@@ -53,9 +53,12 @@ func TestAccAI_verifyConnection(t *testing.T) {
 				ExpectError: failure,
 			},
 			{
-				ResourceName:      "dokploy_ai.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				// Dokploy v0.31.0 masks the key on read, so an import cannot
+				// fill api_key.
+				ResourceName:            "dokploy_ai.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"api_key"},
 			},
 		},
 	})

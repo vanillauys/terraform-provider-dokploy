@@ -124,7 +124,7 @@ func TestCreateWebServerBackupLocatesTheNewID(t *testing.T) {
 			want := map[string]any{
 				"schedule": "0 3 * * *", "database": "dokploy", "prefix": "p/", "destinationId": "d1",
 				"databaseType": "web-server", "backupType": "database", "enabled": true,
-				"keepLatestCount": nil, "includeEncryptionKey": true, "userId": "u1",
+				"keepLatestCount": nil, "includeEncryptionKey": true, "customName": "nightly", "userId": "u1",
 			}
 			if !reflect.DeepEqual(body, want) {
 				t.Errorf("backup.create body = %v, want %v", body, want)
@@ -145,7 +145,7 @@ func TestCreateWebServerBackupLocatesTheNewID(t *testing.T) {
 	got, err := testClient(t, srv).CreateWebServerBackup(context.Background(), CreateWebServerBackupRequest{
 		Schedule: "0 3 * * *", Database: WebServerDatabaseName, Prefix: "p/", DestinationID: "d1",
 		DatabaseType: WebServerDatabaseType, BackupType: "database", Enabled: &enabled,
-		IncludeEncryptionKey: true, UserID: "u1",
+		IncludeEncryptionKey: true, CustomName: "nightly", UserID: "u1",
 	})
 	if err != nil {
 		t.Fatalf("CreateWebServerBackup: %v", err)

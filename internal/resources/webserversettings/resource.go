@@ -13,9 +13,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/tfutil"
@@ -38,7 +40,7 @@ func (r *webServerSettingsResource) Metadata(_ context.Context, req resource.Met
 func (r *webServerSettingsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "The settings of the Dokploy host: the dashboard domain, the server IP, the Docker and " +
-			"access-log cleanup, and the number of concurrent builds. Use `dokploy_server` for a remote server.\n\n" +
+			"access-log cleanup, the number of concurrent builds, and the telemetry providers of the Vector agent. Use `dokploy_server` for a remote server.\n\n" +
 			"~> Each Dokploy installation has one settings record. Declare this resource once. " +
 			"`terraform destroy` removes the resource from the state only: the server keeps the current values. " +
 			"Dokploy Cloud has no web server settings.",
@@ -90,6 +92,14 @@ func (r *webServerSettingsResource) Schema(_ context.Context, _ resource.SchemaR
 				Description: "Number of builds that run at the same time on the Dokploy host, from 1 to 100. Defaults to `1`.",
 				Validators:  []validator.Int64{int64validator.Between(1, 100)},
 			},
+			"telemetry_provider_ids": schema.SetAttribute{
+				Optional: true, Computed: true, ElementType: types.StringType,
+				Default: setdefault.StaticValue(types.SetValueMust(types.StringType, nil)),
+				Description: "Ids of the `dokploy_telemetry_provider` records that the Vector agent on the Dokploy " +
+					"host sends data to. A change starts or updates the agent, which can take a minute while Docker " +
+					"pulls the image. An empty set stops the agent. Defaults to an empty set. Each provider must have " +
+					"`enabled = true`. Dokploy v0.31.0 added this attribute.",
+			},
 		},
 	}
 }
@@ -138,6 +148,18 @@ func (r *webServerSettingsResource) apply(ctx context.Context, plan *resourceMod
 	if !plan.BuildsConcurrency.Equal(have.BuildsConcurrency) {
 		req := client.UpdateWebServerBuildsConcurrencyRequest{BuildsConcurrency: plan.BuildsConcurrency.ValueInt64()}
 		if err := r.client.UpdateWebServerBuildsConcurrency(ctx, req); err != nil {
+			return err
+		}
+	}
+	if !plan.TelemetryProviders.IsUnknown() && !plan.TelemetryProviders.Equal(have.TelemetryProviders) {
+		ids := telemetryProviderIDs(plan.TelemetryProviders)
+		// deployOnServer rejects an empty selection; removeOnServer clears it.
+		if len(ids) == 0 {
+			err = r.client.RemoveLocalVectorAgent(ctx)
+		} else {
+			err = r.client.DeployLocalVectorAgent(ctx, ids)
+		}
+		if err != nil {
 			return err
 		}
 	}

@@ -99,9 +99,11 @@ func TestAccWebServerBackup_lifecycle(t *testing.T) {
 				// here exercises createAndLocate end to end.
 				Config: cfg(name, "0 3 * * *", `enabled                = false
   include_encryption_key = false
-  keep_latest_count      = 5`),
+  keep_latest_count      = 5
+  custom_name            = "host"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(res, "id"),
+					resource.TestCheckResourceAttr(res, "custom_name", "host"),
 					resource.TestCheckResourceAttr(res, "keep_latest_count", "5"),
 					resource.TestCheckResourceAttr(res, "enabled", "false"),
 					resource.TestCheckResourceAttr(res, "include_encryption_key", "false"),
@@ -114,6 +116,9 @@ func TestAccWebServerBackup_lifecycle(t *testing.T) {
 						}
 						if b.IncludeEncryptionKey {
 							return errors.New("server includeEncryptionKey = true, want false")
+						}
+						if b.CustomName == nil || *b.CustomName != "host" {
+							return fmt.Errorf("server customName = %v, want host", b.CustomName)
 						}
 						return nil
 					}),
@@ -140,6 +145,9 @@ func TestAccWebServerBackup_lifecycle(t *testing.T) {
 						}
 						if !b.IncludeEncryptionKey {
 							return errors.New("server includeEncryptionKey = false, want true")
+						}
+						if b.CustomName != nil && *b.CustomName != "" {
+							return fmt.Errorf("server customName = %q, want cleared", *b.CustomName)
 						}
 						return nil
 					}),

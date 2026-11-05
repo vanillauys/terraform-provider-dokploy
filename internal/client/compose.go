@@ -68,6 +68,7 @@ type Compose struct {
 	AutoDeploy                *bool    `json:"autoDeploy"`
 	EnableSubmodules          *bool    `json:"enableSubmodules"`
 	Randomize                 *bool    `json:"randomize"`
+	PullImages                *bool    `json:"pullImages"`
 	IsolatedDeployment        *bool    `json:"isolatedDeployment"`
 	IsolatedDeploymentsVolume *bool    `json:"isolatedDeploymentsVolume"`
 	WatchPaths                []string `json:"watchPaths"`
@@ -181,6 +182,10 @@ type UpdateComposeRequest struct {
 	EnableSubmodules          *bool     `json:"enableSubmodules"`
 	Randomize                 *bool     `json:"randomize"`
 	WatchPaths                *[]string `json:"watchPaths"`
+
+	// v0.31.0. Each deploy runs `docker compose up --pull always`. The column
+	// is NOT NULL with a false default, like enableSubmodules.
+	PullImages *bool `json:"pullImages"`
 
 	// v0.30.0, nullable - null clears. See doc.go's "serviceNetworks and
 	// icon on compose.update" section: a fresh create returns

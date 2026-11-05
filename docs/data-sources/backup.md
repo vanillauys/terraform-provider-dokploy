@@ -60,6 +60,7 @@ data "dokploy_backup" "nightly" {
 - `app_name` (String) Internal name of the backup.
 - `compose_database_type` (String) Database engine of a compose service, or null for a database service.
 - `cron_expression` (String) Cron expression of the backup schedule.
+- `custom_name` (String) Name part of each backup file, or null.
 - `database` (String) Name of the database to back up.
 - `destination_id` (String) Id of the destination that stores the backup.
 - `enabled` (Boolean) Whether the backup runs.

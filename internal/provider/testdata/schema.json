@@ -1158,6 +1158,11 @@
             "required": true
           },
           {
+            "name": "custom_name",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "database",
             "type": "tftypes.String",
             "required": true
@@ -1625,6 +1630,12 @@
             "name": "name",
             "type": "tftypes.String",
             "required": true
+          },
+          {
+            "name": "pull_images",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
           },
           {
             "name": "randomize",
@@ -7319,6 +7330,95 @@
         ]
       }
     },
+    "dokploy_telemetry_provider": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "api_key",
+            "type": "tftypes.String",
+            "optional": true,
+            "sensitive": true
+          },
+          {
+            "name": "api_key_wo",
+            "type": "tftypes.String",
+            "optional": true,
+            "sensitive": true,
+            "write_only": true
+          },
+          {
+            "name": "api_key_wo_version",
+            "type": "tftypes.Number",
+            "optional": true
+          },
+          {
+            "name": "api_secret",
+            "type": "tftypes.String",
+            "optional": true,
+            "sensitive": true
+          },
+          {
+            "name": "api_secret_wo",
+            "type": "tftypes.String",
+            "optional": true,
+            "sensitive": true,
+            "write_only": true
+          },
+          {
+            "name": "api_secret_wo_version",
+            "type": "tftypes.Number",
+            "optional": true
+          },
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "endpoint",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
+            "name": "extra_config",
+            "type": "tftypes.Map[tftypes.String]",
+            "optional": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "required": true
+          },
+          {
+            "name": "organization_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "provider_type",
+            "type": "tftypes.String",
+            "required": true
+          },
+          {
+            "name": "signals",
+            "type": "tftypes.Set[tftypes.String]",
+            "required": true
+          }
+        ]
+      }
+    },
     "dokploy_user": {
       "version": 0,
       "block": {
@@ -7995,6 +8095,11 @@
             "required": true
           },
           {
+            "name": "custom_name",
+            "type": "tftypes.String",
+            "optional": true
+          },
+          {
             "name": "destination_id",
             "type": "tftypes.String",
             "required": true
@@ -8081,6 +8186,12 @@
           {
             "name": "server_ip",
             "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "telemetry_provider_ids",
+            "type": "tftypes.Set[tftypes.String]",
             "optional": true,
             "computed": true
           }
@@ -8332,6 +8443,11 @@
             "computed": true
           },
           {
+            "name": "custom_name",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
             "name": "database",
             "type": "tftypes.String",
             "computed": true
@@ -8557,6 +8673,11 @@
             "name": "name",
             "type": "tftypes.String",
             "optional": true,
+            "computed": true
+          },
+          {
+            "name": "pull_images",
+            "type": "tftypes.Bool",
             "computed": true
           },
           {
@@ -11068,6 +11189,55 @@
           {
             "name": "volume_backup",
             "type": "tftypes.Bool",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "dokploy_telemetry_provider": {
+      "version": 0,
+      "block": {
+        "attributes": [
+          {
+            "name": "created_at",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "enabled",
+            "type": "tftypes.Bool",
+            "computed": true
+          },
+          {
+            "name": "extra_config",
+            "type": "tftypes.Map[tftypes.String]",
+            "computed": true
+          },
+          {
+            "name": "id",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "name",
+            "type": "tftypes.String",
+            "optional": true,
+            "computed": true
+          },
+          {
+            "name": "organization_id",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "provider_type",
+            "type": "tftypes.String",
+            "computed": true
+          },
+          {
+            "name": "signals",
+            "type": "tftypes.List[tftypes.String]",
             "computed": true
           }
         ]

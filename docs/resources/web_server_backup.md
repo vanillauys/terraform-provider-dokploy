@@ -64,6 +64,7 @@ resource "dokploy_web_server_backup" "host" {
 
 ### Optional
 
+- `custom_name` (String) Name part of each backup file, before the timestamp: `<custom_name>-<timestamp>.sql.gz` for a database and `webserver-backup-<custom_name>-<timestamp>.zip` for the Dokploy host. It starts with a letter or a digit, and it has only letters, digits, `.`, `_`, and `-`, at most 100 characters. Omit it for file names without a custom part. Dokploy v0.31.0 added this attribute.
 - `enabled` (Boolean) Whether the backup runs. Defaults to `true`. Dokploy leaves this field null for a record from the API alone, which is neither on nor off.
 - `include_encryption_key` (Boolean) Include the encryption key in the backup. Defaults to `true`, the value that Dokploy stores for a new backup. The provider always sends the field, because the Dokploy update endpoint stores `false` for an omitted field.
 - `keep_latest_count` (Number) Number of backups to keep. Omit it to keep all of them.

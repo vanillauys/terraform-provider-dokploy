@@ -102,9 +102,13 @@ var mustAlwaysSend = []struct {
 	{UpdateScheduleRequest{}, []string{"description", "script", "enabled", "timezone", "serviceName"}},
 	{CreateVolumeBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
 	{UpdateVolumeBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled"}},
-	{CreateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
-	{UpdateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata"}},
-	{CreateWebServerBackupRequest{}, []string{"keepLatestCount", "enabled"}},
+	{CreateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata", "customName"}},
+	{UpdateBackupRequest{}, []string{"serviceName", "keepLatestCount", "enabled", "metadata", "customName"}},
+	{CreateWebServerBackupRequest{}, []string{"keepLatestCount", "enabled", "customName"}},
+	// telemetryProvider.update is dialect B, and no read returns endpoint,
+	// apiKey or apiSecret, so each update sends every field; null clears.
+	{CreateTelemetryProviderRequest{}, []string{"endpoint", "apiKey", "apiSecret", "extraConfig", "enabled"}},
+	{UpdateTelemetryProviderRequest{}, []string{"endpoint", "apiKey", "apiSecret", "extraConfig", "enabled"}},
 	// The web server settings: host clears with "", letsEncryptEmail and
 	// cronExpression clear with null, and https is dialect B.
 	{AssignWebServerDomainRequest{}, []string{"host", "certificateType", "letsEncryptEmail", "https"}},
@@ -126,7 +130,7 @@ var mustAlwaysSend = []struct {
 		"composeType", "sourceType",
 		"description", "repository", "owner", "branch", "githubId",
 		"customGitUrl", "customGitBranch", "customGitSSHKeyId",
-		"triggerType", "autoDeploy", "enableSubmodules", "randomize",
+		"triggerType", "autoDeploy", "enableSubmodules", "randomize", "pullImages",
 		"watchPaths", "icon", "serviceNetworks",
 	}},
 	{SaveComposeEnvironmentRequest{}, []string{"env", "createEnvFile"}},

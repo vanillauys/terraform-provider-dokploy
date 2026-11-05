@@ -130,6 +130,7 @@ func (r *backupResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Optional:    true,
 				Description: "Name of the specific container, for compose services with more than one.",
 			},
+			"custom_name": tfutil.BackupCustomNameAttribute(),
 			"compose_database_user": schema.StringAttribute{
 				Optional: true,
 				Description: "User that the dump command authenticates as, for a compose parent whose " +
@@ -483,12 +484,13 @@ func schemaV0(ctx context.Context) schema.Schema {
 }
 
 // schemaV1 derives the version 1 schema from the current one: identical
-// except `compose_database_type` and the credential attributes do not exist
-// yet. The upgrader models (resourceModelV0, resourceModelV1) carry none of
+// except `compose_database_type`, `custom_name` and the credential attributes
+// do not exist yet. The upgrader models (resourceModelV0, resourceModelV1) carry none of
 // them, and a prior schema with an attribute the model lacks fails the read.
 func schemaV1(ctx context.Context) schema.Schema {
 	s := currentSchema(ctx)
 	delete(s.Attributes, "compose_database_type")
+	delete(s.Attributes, "custom_name")
 	for _, name := range credentialAttributes {
 		delete(s.Attributes, name)
 	}

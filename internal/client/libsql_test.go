@@ -43,8 +43,7 @@ const libsqlOneJSON = `{
 // CreateLibsqlRequest against the dialect libsql.create actually speaks
 // (probed live, v0.29.13, 2026-08-12): every dialect-A field - including
 // serverId and appName - must reach the server, nil or not, as an explicit
-// JSON null or a real value; only dockerImage (a real omit-or-400-on-null
-// third dialect) may be absent from the body.
+// JSON null or a real value. dockerImage is a plain string, never null.
 //
 // This test exists because ServerID originally carried `omitempty`, which
 // silently dropped the key instead of sending null - a bug no other test in
@@ -116,10 +115,10 @@ func TestCreateLibsqlRequestMarshalsExplicitNulls(t *testing.T) {
 		t.Errorf("serverId = %v (present=%v), want an explicit null", v, present)
 	}
 
-	// dockerImage is the one dialect-A-adjacent field allowed to be absent:
-	// omitting it lets the server apply its own default image.
-	if _, present := createBody["dockerImage"]; present {
-		t.Errorf("empty dockerImage must be omitted so the server applies its default: %v", createBody)
+	// dockerImage is required since v0.31.0, so it is always present. The
+	// resource fills the server default when the attribute is unset.
+	if _, present := createBody["dockerImage"]; !present {
+		t.Errorf("dockerImage must be present: v0.31.0 rejects an omitted key: %v", createBody)
 	}
 
 	// appName must reach the server as the real value the caller supplied -

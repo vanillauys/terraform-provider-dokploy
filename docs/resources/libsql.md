@@ -76,7 +76,7 @@ resource "dokploy_libsql" "replica" {
 - `deployment_timeout` (String) The maximum wait for a deploy to reach a terminal status, as a Go duration string. Defaults to `"15m"`. On timeout, the apply fails, but the deploy continues on the server.
 - `description` (String) Free-form description.
 - `detach_dokploy_network` (Boolean) Detach the shared `dokploy-network` from this service. Defaults to `false`. It has an effect only together with `network_ids`, and it applies on the next deploy.
-- `docker_image` (String) LibSQL Docker image, for example `ghcr.io/tursodatabase/libsql-server:v0.24.32`. That tag is also the server default when you omit the attribute, and it exists in the registry.
+- `docker_image` (String) LibSQL Docker image, for example `ghcr.io/tursodatabase/libsql-server:v0.24.32`. If you omit the attribute, the provider sends that tag, which is also the Dokploy default.
 - `enable_namespaces` (Boolean) Enable sqld namespaces, the multi-database mode. Defaults to `false`.
 - `env` (String) Extra environment variables in the native Dokploy multiline `KEY=value` format. Use Terraform sensitive variables for secret values. An omitted value and `""` both read back as null. Omit the attribute to clear it.
 - `external_admin_port` (Number) Host port for the libsql admin interface. Not permitted when `sqld_node` is `replica`.

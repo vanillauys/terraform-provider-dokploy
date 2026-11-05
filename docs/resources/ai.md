@@ -4,7 +4,7 @@ page_title: "dokploy_ai Resource - dokploy"
 subcategory: "Vault providers and AI"
 description: |-
   An AI provider configuration (Settings > AI): an OpenAI-compatible endpoint that Dokploy's AI features call, for example to suggest a compose file or to analyze a deployment log.
-  ~> Dokploy stores and returns api_key in cleartext. The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The api_key_wo companion keeps it out of the Terraform state.
+  ~> Dokploy masks api_key on each read. Terraform cannot detect a change of the key outside Terraform, and an import leaves api_key null. The attribute is sensitive, so Terraform does not print it. The api_key_wo companion keeps it out of the Terraform state.
   ~> Dokploy does not test the endpoint on create or update. A wrong URL, key, or model applies successfully and fails on the first AI request.
 ---
 
@@ -12,7 +12,7 @@ description: |-
 
 An AI provider configuration (Settings > AI): an OpenAI-compatible endpoint that Dokploy's AI features call, for example to suggest a compose file or to analyze a deployment log.
 
-~> **Dokploy stores and returns `api_key` in cleartext.** The attribute is sensitive, so Terraform does not print it, but anyone with API access to the server can read it. The `api_key_wo` companion keeps it out of the Terraform state.
+~> **Dokploy masks `api_key` on each read.** Terraform cannot detect a change of the key outside Terraform, and an import leaves `api_key` null. The attribute is sensitive, so Terraform does not print it. The `api_key_wo` companion keeps it out of the Terraform state.
 
 ~> Dokploy does not test the endpoint on create or update. A wrong URL, key, or model applies successfully and fails on the first AI request.
 

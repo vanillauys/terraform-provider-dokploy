@@ -247,6 +247,12 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
 			Description: "Randomize the generated resource names with `suffix`. Defaults to `false`.",
 		},
+		"pull_images": schema.BoolAttribute{
+			Optional: true, Computed: true, Default: booldefault.StaticBool(false),
+			Description: "Pull the latest version of each image on each deploy (`docker compose up --pull always`), " +
+				"so a moving tag such as `latest` gets the new image. Dokploy applies it to a `docker-compose` " +
+				"service only, not to a `stack`. Defaults to `false`. Dokploy v0.31.0 added this attribute.",
+		},
 		// isolated_deployment and isolated_deployments_volume were removed in
 		// v0.11.0 (schema version 1): Dokploy deprecated them in v0.30.0 and
 		// service_networks replaces them. See UpgradeState.
