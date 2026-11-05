@@ -2,10 +2,25 @@
 page_title: "Upgrade guide"
 subcategory: ""
 description: |-
-  What each release since v0.11.0 needs from your configuration: nothing for v1.10, v1.9, and v1.8, nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
+  What each release since v0.11.0 needs from your configuration: nothing for v1.11, v1.10, v1.9, and v1.8, nothing for v1.0, the new resources of v0.13, the write-only companions of v0.12, and the breaking changes of v0.11.
 ---
 
 # Upgrade guide
+
+## Upgrade to v1.11
+
+v1.11.0 has nothing breaking for the configuration. A v1.10 state loads with
+an empty plan. v1.11.0 targets Dokploy v0.31.0. Upgrade the provider when you
+upgrade Dokploy, because v1.10.1 fails on v0.31.0 for `dokploy_libsql` and
+`dokploy_ai`.
+
+1. Update the version constraint to `~> 1.11`.
+2. Run `terraform init -upgrade`.
+3. Run `terraform plan`. The plan must be empty.
+
+Dokploy v0.31.0 returns the `api_key` of `dokploy_ai` masked. The provider
+keeps the value from your configuration. An import of `dokploy_ai` leaves
+`api_key` null, so set it in the configuration after the import.
 
 ## Upgrade to v1.10
 
