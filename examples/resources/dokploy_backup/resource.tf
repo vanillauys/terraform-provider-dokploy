@@ -7,6 +7,9 @@ resource "dokploy_backup" "db_nightly" {
   destination_id  = dokploy_destination.backups.id
 
   keep_latest_count = 30
+
+  # The files are named app-<timestamp>.sql.gz.
+  custom_name = "app"
 }
 
 # Redis has no logical dump in Dokploy. This resource rejects a Redis parent

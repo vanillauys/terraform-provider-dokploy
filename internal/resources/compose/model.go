@@ -96,6 +96,7 @@ type resourceModel struct {
 	WatchPaths       types.List   `tfsdk:"watch_paths"`
 	EnableSubmodules types.Bool   `tfsdk:"enable_submodules"`
 	Randomize        types.Bool   `tfsdk:"randomize"`
+	PullImages       types.Bool   `tfsdk:"pull_images"`
 
 	Status    types.String `tfsdk:"status"`
 	CreatedAt types.String `tfsdk:"created_at"`
@@ -158,6 +159,7 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 	// match; leaving them null here would diff against that default forever.
 	m.EnableSubmodules = boolOrFalse(c.EnableSubmodules)
 	m.Randomize = boolOrFalse(c.Randomize)
+	m.PullImages = boolOrFalse(c.PullImages)
 
 	paths, pathDiags := types.ListValueFrom(ctx, types.StringType, c.WatchPaths)
 	diags.Append(pathDiags...)
@@ -319,6 +321,7 @@ func expandUpdate(ctx context.Context, m *resourceModel) (client.UpdateComposeRe
 		AutoDeploy:       m.AutoDeploy.ValueBoolPointer(),
 		EnableSubmodules: m.EnableSubmodules.ValueBoolPointer(),
 		Randomize:        m.Randomize.ValueBoolPointer(),
+		PullImages:       m.PullImages.ValueBoolPointer(),
 	}
 
 	// Every source column is sent on every call, including the ones for the

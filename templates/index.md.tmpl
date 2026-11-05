@@ -1,7 +1,7 @@
 ---
 page_title: "Dokploy Provider"
 description: |-
-  Manage Dokploy projects, environments, applications, compose stacks, databases, Swarm settings, domains, backups, the Dokploy host backup, schedules, networks, remote servers, SSH keys, registries, certificates, git providers, notifications, vault providers, users, and API keys with Terraform.
+  Manage Dokploy projects, environments, applications, compose stacks, databases, Swarm settings, domains, backups, the Dokploy host backup, schedules, networks, remote servers, SSH keys, registries, certificates, git providers, notifications, vault providers, telemetry providers, users, and API keys with Terraform.
 ---
 
 # Dokploy Provider
@@ -18,7 +18,8 @@ Manage [Dokploy](https://dokploy.com) resources with Terraform:
 - **Backups**: S3-compatible destinations, scheduled database dumps, Docker volume archives, and a scheduled backup of the Dokploy host
 - **Schedules**: cron jobs on a service, a remote server, or the Dokploy host
 - **Networks**: Docker bridge and overlay networks, attached to any service
-- **Servers**: remote worker and build servers, the SSH keys that reach them, and the settings of the Dokploy host (dashboard domain, server IP, cleanup, build concurrency)
+- **Servers**: remote worker and build servers, the SSH keys that reach them, and the settings of the Dokploy host (dashboard domain, server IP, cleanup, build concurrency, telemetry providers)
+- **Telemetry**: Loki, Datadog, Better Stack, Elasticsearch, Splunk HEC, AWS CloudWatch, Prometheus remote write, New Relic, and InfluxDB destinations for the container logs and host metrics that a Vector agent on the Dokploy host ships
 - **Git providers**: GitLab, Bitbucket, and Gitea connections, and lookups of GitHub Apps
 - **Registries**: container registry logins for private images and built images
 - **Notifications**: Slack, Discord, Telegram, email, Resend, Gotify, ntfy, Mattermost, Lark, Microsoft Teams, Pushover, and custom webhooks
@@ -35,7 +36,7 @@ once.
 The provider works with Terraform 1.5 or later and with OpenTofu. The
 write-only companions of the secret attributes (`<name>_wo`) need Terraform
 1.11 or later; a configuration without them works on 1.5. The provider targets
-**Dokploy v0.30.10**. The acceptance suite tests the latest Dokploy release on
+**Dokploy v0.31.0**. The acceptance suite tests the latest Dokploy release on
 every pull request and every night. The suite does not test older releases. A
 server older than the pinned version can reject a field that a newer Dokploy
 introduced. If your server is older, upgrade it to the pinned version or later

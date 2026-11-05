@@ -90,14 +90,10 @@ type Libsql struct {
 // on an unknown value reads as "", and omitempty then dropped the key the
 // server requires.
 //
-// DockerImage is a plain string with omitempty, NOT a *string. This is a
-// third dialect, distinct from both A and B: the key may be OMITTED (the
-// server then stores its own default,
-// ghcr.io/tursodatabase/libsql-server:v0.24.32, a real pinned tag that
-// pulls), but sending it as an explicit null 400s with "expected string,
-// received null". A *string with omitempty would drop a nil, which is
-// correct, but it would also permit a caller to send an explicit null, which
-// the server rejects. The plain string forecloses that.
+// DockerImage is a plain string, NOT a *string: an explicit null 400s with
+// "expected string, received null". Up to v0.30.10 the key could also be
+// omitted, and the server then stored its own default; v0.31.0 rejects an
+// omitted key (see the field).
 type CreateLibsqlRequest struct {
 	Name             string  `json:"name"`
 	AppName          string  `json:"appName"`
@@ -109,8 +105,16 @@ type CreateLibsqlRequest struct {
 	SqldPrimaryURL   *string `json:"sqldPrimaryUrl"`
 	ServerID         *string `json:"serverId"`
 	EnableNamespaces bool    `json:"enableNamespaces"`
-	DockerImage      string  `json:"dockerImage,omitempty"`
+	// DockerImage is required since v0.31.0: an omitted key is an HTTP 400
+	// "expected nonoptional, received undefined" (probed live, 2026-11-05),
+	// although the zod schema still declares LibsqlDefaultDockerImage as
+	// its default. The resource sends that default when the attribute is
+	// unset.
+	DockerImage string `json:"dockerImage"`
 }
+
+// LibsqlDefaultDockerImage is the dockerImage default of the libsql schema.
+const LibsqlDefaultDockerImage = "ghcr.io/tursodatabase/libsql-server:v0.24.32"
 
 // UpdateLibsqlRequest is dialect B: an omitted key keeps the stored value,
 // an explicit null clears. Verified live that databaseUser, databasePassword,

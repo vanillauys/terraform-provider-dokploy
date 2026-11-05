@@ -91,9 +91,9 @@ func (r *aiResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *r
 	resp.Schema = schema.Schema{
 		Description: "An AI provider configuration (Settings > AI): an OpenAI-compatible endpoint that Dokploy's AI " +
 			"features call, for example to suggest a compose file or to analyze a deployment log.\n\n" +
-			"~> **Dokploy stores and returns `api_key` in cleartext.** The attribute is sensitive, so Terraform does not " +
-			"print it, but anyone with API access to the server can read it. The `api_key_wo` companion keeps it out of " +
-			"the Terraform state.\n\n" +
+			"~> **Dokploy masks `api_key` on each read.** Terraform cannot detect a change of the key outside Terraform, " +
+			"and an import leaves `api_key` null. The attribute is sensitive, so Terraform does not print it. The " +
+			"`api_key_wo` companion keeps it out of the Terraform state.\n\n" +
 			"~> Dokploy does not test the endpoint on create or update. A wrong URL, key, or model applies successfully " +
 			"and fails on the first AI request.",
 		Attributes: attrs,
@@ -120,7 +120,11 @@ func flatten(a *client.AI, m *resourceModel) {
 	m.ID = types.StringValue(a.AIID)
 	m.Name = types.StringValue(a.Name)
 	m.APIURL = types.StringValue(a.APIURL)
-	m.APIKey = types.StringValue(a.APIKey)
+	// Since Dokploy v0.31.0 the read returns the mask, so the key keeps its
+	// planned or prior value. An import leaves it null.
+	if a.APIKey != client.AISecretMask {
+		m.APIKey = types.StringValue(a.APIKey)
+	}
 	m.Model = types.StringValue(a.Model)
 	m.IsEnabled = types.BoolValue(a.IsEnabled)
 	m.OrganizationID = types.StringValue(a.OrganizationID)
@@ -193,8 +197,9 @@ func (r *aiResource) Update(ctx context.Context, req resource.UpdateRequest, res
 	key, send := tfutil.SecretToUpdate(plan.APIKey, cfg.APIKeyWo, state.APIKey, plan.APIKeyWoVersion, state.APIKeyWoVersion)
 	if !send {
 		// ai.update is an upsert that needs the full body (client/ai.go), so
-		// a write-only key with nothing new to send resends the stored one,
-		// which the API returns in cleartext.
+		// a write-only key with nothing new to send resends the stored one.
+		// Dokploy v0.31.0 and later return the mask, and an update with the
+		// mask keeps the stored key; older servers return the key itself.
 		current, err := r.client.GetAI(ctx, plan.ID.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("Reading AI configuration before update", err.Error())

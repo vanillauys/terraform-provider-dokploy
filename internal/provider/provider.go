@@ -37,6 +37,7 @@ import (
 	dsserver "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/server"
 	dssshkey "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/sshkey"
 	dstag "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/tag"
+	dstelemetryprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/telemetryprovider"
 	dsuser "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/user"
 	dsvaultprovider "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/vaultprovider"
 	dsvolumebackup "github.com/vanillauys/terraform-provider-dokploy/internal/datasources/volumebackup"
@@ -67,6 +68,7 @@ import (
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/server"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/sshkey"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/tag"
+	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/telemetryprovider"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/user"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/userpermissions"
 	"github.com/vanillauys/terraform-provider-dokploy/internal/resources/vaultprovider"
@@ -223,6 +225,7 @@ func (p *DokployProvider) Resources(_ context.Context) []func() resource.Resourc
 		ai.NewResource,
 		registry.NewResource,
 		tag.NewResource,
+		telemetryprovider.NewResource,
 		gitlabprovider.NewResource,
 		bitbucketprovider.NewResource,
 		giteaprovider.NewResource,
@@ -298,6 +301,7 @@ func (p *DokployProvider) DataSources(_ context.Context) []func() datasource.Dat
 		dsregistry.NewDataSource,
 		dsvaultprovider.NewDataSource,
 		dstag.NewDataSource,
+		dstelemetryprovider.NewDataSource,
 		dsmount.NewDataSource,
 		dspatch.NewDataSource,
 		dsport.NewDataSource,

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -208,5 +209,31 @@ func TestListAllDomainsWalksProjectsAndServices(t *testing.T) {
 	}
 	if !reflect.DeepEqual(calls, wantCalls) {
 		t.Errorf("calls = %v, want %v", calls, wantCalls)
+	}
+}
+
+// A service that another client deleted after project.all answers 404
+// "Service not found" (v0.31.0). The walk skips it; any other error stops it.
+func TestListAllDomainsSkipsADeletedService(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/project.all":
+			_, _ = fmt.Fprint(w, `[{"projectId":"p1","name":"one","environments":[
+				{"environmentId":"e1","applications":[{"applicationId":"gone","name":"web"}],"compose":[{"composeId":"co-1","name":"stack"}]}]}]`)
+		case "/api/domain.byApplicationId":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = fmt.Fprint(w, `{"message":"Service not found","code":"NOT_FOUND","data":{"code":"NOT_FOUND","httpStatus":404,"path":"domain.byApplicationId"}}`)
+		case "/api/domain.byComposeId":
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = fmt.Fprint(w, `{"message":"boom","code":"INTERNAL_SERVER_ERROR"}`)
+		}
+	}))
+	defer srv.Close()
+	c := testClient(t, srv)
+
+	_, err := c.ListAllDomains(context.Background())
+	var de *DokployError
+	if !errors.As(err, &de) || de.Path != "/domain.byComposeId" {
+		t.Fatalf("err = %v, want the compose error after the skipped application", err)
 	}
 }

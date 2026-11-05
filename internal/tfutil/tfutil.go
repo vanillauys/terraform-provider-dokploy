@@ -331,6 +331,27 @@ func AppNamePrefixAttribute() schema.StringAttribute {
 	}
 }
 
+// backupCustomNamePattern is the customName regex of backup.create and
+// backup.update (Dokploy v0.31.0), without the empty alternative.
+var backupCustomNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
+
+// BackupCustomNameAttribute builds custom_name of dokploy_backup and
+// dokploy_web_server_backup. The API rejects null, so the resource sends ""
+// for a null value, and a read maps "" back to null.
+func BackupCustomNameAttribute() schema.StringAttribute {
+	return schema.StringAttribute{
+		Optional: true,
+		Description: "Name part of each backup file, before the timestamp: `<custom_name>-<timestamp>.sql.gz` for a " +
+			"database and `webserver-backup-<custom_name>-<timestamp>.zip` for the Dokploy host. It starts with a letter or a digit, and it has only letters, digits, `.`, `_`, and `-`, at most 100 " +
+			"characters. Omit it for file names without a custom part. Dokploy v0.31.0 added this attribute.",
+		Validators: []validator.String{
+			stringvalidator.LengthAtMost(100),
+			stringvalidator.RegexMatches(backupCustomNamePattern,
+				"must start with a letter or a digit and use only letters, digits, '.', '_', and '-'"),
+		},
+	}
+}
+
 // SharedWithOrganizationAttribute is the `shared_with_organization`
 // attribute of the GitLab, Bitbucket, and Gitea providers. The flag has its
 // own endpoint (gitProvider.toggleShare), so it follows builds_concurrency

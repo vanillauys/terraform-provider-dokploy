@@ -1711,6 +1711,83 @@ package client
 // trial email. Nothing below the request schema changed for a self-hosted
 // server.
 //
+// # v0.31.0 census (probed 2026-11-05)
+//
+// The pin moved from v0.30.10 to v0.31.0 against a fresh v0.31.0 rig. The
+// census agrees with the upstream v0.30.10...v0.31.0 compare of the db
+// schema and the routers.
+//
+// Modeled in this release:
+//
+//   - compose.update gains pullImages, a NOT NULL boolean with a false
+//     default: each deploy runs `docker compose up` with `--pull always`,
+//     on docker-compose stacks only (utils/builders/compose.ts). It is
+//     pull_images on dokploy_compose, Optional+Computed with a false default
+//     like enable_submodules.
+//   - backup.create and backup.update gain customName, the middle part of
+//     each file name (utils/backups/utils.ts getBackupFileName). The zod
+//     schema is trimmed, at most 100 characters, optional and not nullable,
+//     so the client sends "" for no custom name. It is custom_name on
+//     dokploy_backup and dokploy_web_server_backup.
+//   - telemetryProvider is a new router: a log and metric destination that
+//     a Vector agent (timberio/vector) ships to. Probed live: create returns
+//     the record; one, all, create and update never return endpoint, apiKey
+//     or apiSecret. update is dialect B, and extraConfig MERGES into the
+//     stored object: a key set to null stays as a null value, a null
+//     extraConfig clears the object. A type change nulls the three
+//     credential columns and extraConfig unless the body sets them. The
+//     server rejects a signal that the type cannot send ("Grafana Loki cannot
+//     send metrics") and a missing required field of the type.
+//   - telemetryProvider.deployOnServer without serverId stores the selection
+//     in webServerSettings.telemetryProviderIds and starts the
+//     dokploy-vector swarm service on the Dokploy host (16 s on a cold rig,
+//     for the image pull). An empty providerIds is a 400, a disabled provider
+//     is a 400 "Select at least one enabled provider", and an id of another
+//     organization is a 401. removeOnServer clears the selection and stops
+//     the agent. telemetryProvider.remove strips the id from every selection
+//     and applies the agent again. It is telemetry_provider_ids on
+//     dokploy_web_server_settings. The selection of a remote server needs an
+//     SSH connection to that server, so dokploy_server does not model it.
+//
+// Not modeled:
+//
+//   - serverSecurity (fail2ban, SSH settings, sessions of a remote server)
+//     runs commands over SSH on a remote server. These are operations, not
+//     stored configuration.
+//   - transfer.start moves a service to another server as a subscription
+//     with progress events. server_id stays RequiresReplace.
+//   - backup.getDownloadUrl and listBackupFilesByBackupId, the account
+//     deletion endpoints of Dokploy Cloud, settings.togglePanelPort (it can
+//     close the port that this provider calls), and settings.updateTraefik.
+//   - mounts.update gains expectedContent, the edit guard of the UI file
+//     editor (censusExempt).
+//   - dnsProvider gains an optional ovh zone; the dnsProvider surface stays
+//     unmodeled by decision.
+//   - The whitelabeling config gains six fields; the surface is not modeled.
+//
+// Changes that broke the v1.10.1 provider, fixed in this release:
+//
+//   - libsql.create requires dockerImage: an omitted key is an HTTP 400
+//     "expected nonoptional, received undefined", although the zod schema
+//     still declares the v0.24.32 default. The client sends that default.
+//   - ai.one returns apiKey as "********" and ai.getAll leaves it out. An
+//     ai.update with the mask keeps the stored key, and ai.testConnection
+//     with the mask and an aiId tests the stored key. The resource keeps
+//     api_key from the configuration, and the create lookup no longer
+//     compares the key.
+//   - domain.byApplicationId and domain.byComposeId answer HTTP 404 "Service
+//     not found" for a deleted service (upstream b3cd3c50). ListAllDomains
+//     skips such a service.
+//   - notification.testTelegramConnection reports a failure for a bad bot
+//     token; on v0.30.8 it reported success for any input.
+//
+// Other changes, checked: certificates.create no longer accepts
+// certificatePath (the client never sent it), compose.delete defaults
+// deleteVolumes to false (the client always sends it), libsql validates
+// appName like the other engines (the provider seeds a valid one),
+// ai.testConnection gains aiId, and the application and compose save*
+// endpoints no longer reset the status to idle.
+//
 // # v0.30.10 census (probed 2026-10-24)
 //
 // The pin moved from v0.30.8 to v0.30.10 against a fresh v0.30.10 rig. The

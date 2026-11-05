@@ -146,3 +146,84 @@ resource "dokploy_web_server_settings" "test" {
 		},
 	})
 }
+
+// TestAccWebServerSettings_telemetryProviders selects a provider for the
+// Vector agent on the Dokploy host, then drops the attribute: the selection
+// must revert to the empty default on the server, which stops the agent.
+func TestAccWebServerSettings_telemetryProviders(t *testing.T) {
+	name := acctest.RandomName("wss-tp")
+	provider := fmt.Sprintf(`
+resource "dokploy_telemetry_provider" "test" {
+  name          = %q
+  provider_type = "loki"
+  signals       = ["logs"]
+  endpoint      = "http://loki.invalid:3100/loki/api/v1/push"
+}
+`, name)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: provider + `
+resource "dokploy_web_server_settings" "test" {
+  telemetry_provider_ids = [dokploy_telemetry_provider.test.id]
+}
+`,
+				ConfigPlanChecks: emptyPlan(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(res, "telemetry_provider_ids.#", "1"),
+					resource.TestCheckTypeSetElemAttrPair(res, "telemetry_provider_ids.*", "dokploy_telemetry_provider.test", "id"),
+					checkServer(func(s *client.WebServerSettings) error {
+						if len(s.TelemetryProviderIDs) != 1 {
+							return fmt.Errorf("server telemetryProviderIds = %v, want one id", s.TelemetryProviderIDs)
+						}
+						return nil
+					}),
+				),
+			},
+			{
+				Config:           provider + `resource "dokploy_web_server_settings" "test" {}`,
+				ConfigPlanChecks: emptyPlan(),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(res, "telemetry_provider_ids.#", "0"),
+					checkServer(func(s *client.WebServerSettings) error {
+						if len(s.TelemetryProviderIDs) != 0 {
+							return fmt.Errorf("server telemetryProviderIds = %v, want []", s.TelemetryProviderIDs)
+						}
+						return nil
+					}),
+				),
+			},
+		},
+	})
+}
+
+// TestAccWebServerSettings_upgradeFromV1_10 applies the settings with
+// v1.10.1, the last release without telemetry_provider_ids, then runs the
+// local build against that state. The plan must be empty: the server reads
+// [], which is also the default.
+func TestAccWebServerSettings_upgradeFromV1_10(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
+	config := `resource "dokploy_web_server_settings" "test" {}`
+
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() { acctest.PreCheck(t) },
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "1.10.1"},
+				},
+				Config: config,
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   config,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}

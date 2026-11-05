@@ -2,7 +2,7 @@
 
 [![Terraform Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.terraform.io%2Fv1%2Fproviders%2Fvanillauys%2Fdokploy&query=%24.version&prefix=v&label=registry&color=7B42BC&logo=terraform&logoColor=white)](https://registry.terraform.io/providers/vanillauys/dokploy/latest)
 [![Registry downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.terraform.io%2Fv2%2Fproviders%2Fvanillauys%2Fdokploy&query=%24.data.attributes.downloads&label=downloads&color=7B42BC)](https://registry.terraform.io/providers/vanillauys/dokploy/latest)
-[![Dokploy v0.30.10](https://img.shields.io/badge/Dokploy-v0.30.10-0EA5E9)](https://github.com/Dokploy/dokploy/releases/tag/v0.30.10)
+[![Dokploy v0.31.0](https://img.shields.io/badge/Dokploy-v0.31.0-0EA5E9)](https://github.com/Dokploy/dokploy/releases/tag/v0.31.0)
 [![test](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/test.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/test.yml)
 [![nightly acceptance](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/nightly.yml/badge.svg)](https://github.com/vanillauys/terraform-provider-dokploy/actions/workflows/nightly.yml)
 [![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=vanillauys_terraform-provider-dokploy&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vanillauys_terraform-provider-dokploy)
@@ -113,6 +113,7 @@ that it stays out of your repository.
 
 | Provider | Dokploy pin |
 |----------|-------------|
+| 1.11.0 | v0.31.0 |
 | 1.10.1 | v0.30.10 |
 | 1.8.0 – 1.10.0 | v0.30.8 |
 | 1.7.x | v0.30.7 |
@@ -144,7 +145,7 @@ that it stays out of your repository.
 | Storage and backups | [`dokploy_mount`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/mount), [`dokploy_destination`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/destination), [`dokploy_backup`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/backup), [`dokploy_volume_backup`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/volume_backup), [`dokploy_web_server_backup`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/web_server_backup), [`dokploy_network`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/network) |
 | Automation | [`dokploy_schedule`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/schedule) |
 | Notifications | `dokploy_<channel>_notification` for [Slack](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/slack_notification), [Discord](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/discord_notification), [Telegram](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/telegram_notification), [email](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/email_notification), [Resend](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/resend_notification), [Gotify](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/gotify_notification), [ntfy](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/ntfy_notification), [Mattermost](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/mattermost_notification), [Lark](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/lark_notification), [Microsoft Teams](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/teams_notification), [Pushover](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/pushover_notification), and a [custom webhook](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/custom_notification) |
-| Servers | [`dokploy_server`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/server), [`dokploy_ssh_key`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/ssh_key), [`dokploy_web_server_settings`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/web_server_settings) |
+| Servers | [`dokploy_server`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/server), [`dokploy_ssh_key`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/ssh_key), [`dokploy_web_server_settings`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/web_server_settings), [`dokploy_telemetry_provider`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/telemetry_provider) |
 | Integrations | [`dokploy_gitlab_provider`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/gitlab_provider), [`dokploy_bitbucket_provider`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/bitbucket_provider), [`dokploy_gitea_provider`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/gitea_provider), [`dokploy_registry`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/registry), [`dokploy_vault_provider`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/vault_provider), [`dokploy_ai`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/ai) |
 | Access | [`dokploy_organization`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/organization), [`dokploy_user`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/user), [`dokploy_user_permissions`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/user_permissions), [`dokploy_api_key`](https://registry.terraform.io/providers/vanillauys/dokploy/latest/docs/resources/api_key) |
 
@@ -191,6 +192,8 @@ them.
   UI; `dokploy_application` holds only their settings.
 - **`dokploy_server` stores the record only.** It does not install Docker on
   the machine. Run **Setup Server** in the Dokploy UI after the first apply.
+  Select the telemetry providers of a remote server in the Dokploy UI.
+  `dokploy_web_server_settings` selects them for the Dokploy host only.
 - **A GitLab or Gitea connection needs one browser step.** Terraform stores
   the OAuth application; a person authorizes it once in the Dokploy UI. The
   data sources report `is_configured` for that state. A GitHub App has no

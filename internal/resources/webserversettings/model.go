@@ -1,6 +1,9 @@
 package webserversettings
 
 import (
+	"sort"
+
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
@@ -17,6 +20,7 @@ type resourceModel struct {
 	EnableDockerCleanup types.Bool   `tfsdk:"enable_docker_cleanup"`
 	LogCleanupCron      types.String `tfsdk:"log_cleanup_cron"`
 	BuildsConcurrency   types.Int64  `tfsdk:"builds_concurrency"`
+	TelemetryProviders  types.Set    `tfsdk:"telemetry_provider_ids"`
 }
 
 // flatten maps the server row to the model. host and letsEncryptEmail read
@@ -36,6 +40,23 @@ func flatten(s *client.WebServerSettings, out *resourceModel) {
 		out.LogCleanupCron = types.StringValue("")
 	}
 	out.BuildsConcurrency = types.Int64Value(s.BuildsConcurrency)
+	ids := make([]attr.Value, 0, len(s.TelemetryProviderIDs))
+	for _, id := range s.TelemetryProviderIDs {
+		ids = append(ids, types.StringValue(id))
+	}
+	out.TelemetryProviders = types.SetValueMust(types.StringType, ids)
+}
+
+// telemetryProviderIDs returns the ids of a set in sorted order.
+func telemetryProviderIDs(s types.Set) []string {
+	ids := make([]string, 0, len(s.Elements()))
+	for _, v := range s.Elements() {
+		if str, ok := v.(types.String); ok {
+			ids = append(ids, str.ValueString())
+		}
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 // domainChanged reports whether the plan differs from the server in the

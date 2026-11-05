@@ -117,6 +117,7 @@ func TestFlattenResolvesNotNullBooleansToFalse(t *testing.T) {
 	for name, got := range map[string]types.Bool{
 		"enable_submodules": m.EnableSubmodules,
 		"randomize":         m.Randomize,
+		"pull_images":       m.PullImages,
 	} {
 		if got.IsNull() || got.IsUnknown() {
 			t.Errorf("%s = %v, want a concrete bool: the column is NOT NULL server-side", name, got)

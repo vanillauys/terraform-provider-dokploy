@@ -194,7 +194,18 @@ func TestAccCompose_optionalAttributesRevert(t *testing.T) {
   watch_paths                 = ["src/**"]
   enable_submodules           = true
   randomize                   = true
+  pull_images                 = true
 `),
+				Check: func(s *terraform.State) error {
+					c, err := getCompose(s, "dokploy_compose.test")
+					if err != nil {
+						return err
+					}
+					if c.PullImages == nil || !*c.PullImages {
+						return fmt.Errorf("pullImages = %v, want true", c.PullImages)
+					}
+					return nil
+				},
 			},
 			{
 				// Drop every optional attribute. The plan after apply and
@@ -234,6 +245,9 @@ func TestAccCompose_optionalAttributesRevert(t *testing.T) {
 					}
 					if len(c.WatchPaths) != 0 {
 						return fmt.Errorf("watchPaths = %v, want cleared", c.WatchPaths)
+					}
+					if c.PullImages == nil || *c.PullImages {
+						return fmt.Errorf("pullImages = %v, want the false default it reverts to", c.PullImages)
 					}
 					return nil
 				},
@@ -276,6 +290,37 @@ func TestAccCompose_upgradeFromV0(t *testing.T) {
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},
 				Check: resource.TestCheckNoResourceAttr("dokploy_compose.test", "isolated_deployment"),
+			},
+		},
+	})
+}
+
+// TestAccCompose_upgradeFromV1_10 creates the stack with v1.10.1, the last
+// release without pull_images, then runs the local build against that state.
+// The plan must be empty: the attribute reads the server's false, which is
+// also its default.
+func TestAccCompose_upgradeFromV1_10(t *testing.T) {
+	acctest.SkipWithoutTerraformRegistry(t)
+	projectName := acctest.RandomName("compose-proj")
+	name := acctest.RandomName("compose-up")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkComposeDestroy,
+		Steps: []resource.TestStep{
+			{
+				ExternalProviders: map[string]resource.ExternalProvider{
+					"dokploy": {Source: "vanillauys/dokploy", VersionConstraint: "1.10.1"},
+				},
+				Config: rawConfig(projectName, name, ``),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.ProviderFactories(),
+				Config:                   rawConfig(projectName, name, ``),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr("dokploy_compose.test", "pull_images", "false"),
 			},
 		},
 	})

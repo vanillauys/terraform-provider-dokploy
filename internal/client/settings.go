@@ -21,6 +21,9 @@ type WebServerSettings struct {
 	EnableDockerCleanup bool    `json:"enableDockerCleanup"`
 	LogCleanupCron      *string `json:"logCleanupCron"`
 	BuildsConcurrency   int64   `json:"buildsConcurrency"`
+	// TelemetryProviderIDs (v0.31.0) is the provider selection of the Vector
+	// agent on the Dokploy host. A fresh install reads [].
+	TelemetryProviderIDs []string `json:"telemetryProviderIds"`
 }
 
 // AssignWebServerDomainRequest is the body of settings.assignDomainServer,

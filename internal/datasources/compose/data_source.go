@@ -44,6 +44,7 @@ type model struct {
 	WatchPaths       types.List   `tfsdk:"watch_paths"`
 	EnableSubmodules types.Bool   `tfsdk:"enable_submodules"`
 	Randomize        types.Bool   `tfsdk:"randomize"`
+	PullImages       types.Bool   `tfsdk:"pull_images"`
 	CreateEnvFile    types.Bool   `tfsdk:"create_env_file"`
 	Icon             types.String `tfsdk:"icon"`
 	Status           types.String `tfsdk:"status"`
@@ -86,6 +87,7 @@ func (d *composeDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 	attrs["watch_paths"] = dsutil.StringList("Paths that limit an auto-deploy, or null.")
 	attrs["enable_submodules"] = dsutil.Bool("Whether Dokploy clones git submodules.")
 	attrs["randomize"] = dsutil.Bool("Whether Dokploy randomizes the generated resource names.")
+	attrs["pull_images"] = dsutil.Bool("Whether Dokploy pulls the latest images before each deploy.")
 	attrs["create_env_file"] = dsutil.Bool("Whether Dokploy writes the environment variables to a `.env` file.")
 	attrs["icon"] = dsutil.String("Service icon for the Dokploy UI, or null.")
 	attrs["status"] = dsutil.String("Service status from Dokploy.")
@@ -138,6 +140,7 @@ func (d *composeDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	config.WatchPaths = tfutil.StringListOrNull(ctx, co.WatchPaths, &resp.Diagnostics)
 	config.EnableSubmodules = types.BoolValue(co.EnableSubmodules != nil && *co.EnableSubmodules)
 	config.Randomize = types.BoolValue(co.Randomize != nil && *co.Randomize)
+	config.PullImages = types.BoolValue(co.PullImages != nil && *co.PullImages)
 	config.CreateEnvFile = types.BoolValue(co.CreateEnvFile)
 	config.Icon = tfutil.StringOrNull(co.Icon)
 	config.Status = types.StringValue(co.ComposeStatus)

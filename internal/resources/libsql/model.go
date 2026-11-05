@@ -134,11 +134,18 @@ func expandCreate(m *resourceModel, password string) client.CreateLibsqlRequest 
 		SqldPrimaryURL:   strPtr(m.SqldPrimaryURL),
 		ServerID:         strPtr(m.ServerID),
 		EnableNamespaces: m.EnableNamespaces.ValueBool(),
-		// DockerImage is a plain string with omitempty: an empty value drops
-		// the key so the server applies its own default. It must never be
-		// transmitted as an explicit null, which the server rejects.
-		DockerImage: m.DockerImage.ValueString(),
+		DockerImage:      dockerImageToCreate(m.DockerImage),
 	}
+}
+
+// dockerImageToCreate returns the configured image, else the server default.
+// Dokploy v0.31.0 rejects a create without dockerImage, and it rejects an
+// explicit null.
+func dockerImageToCreate(v types.String) string {
+	if v.IsNull() || v.IsUnknown() || v.ValueString() == "" {
+		return client.LibsqlDefaultDockerImage
+	}
+	return v.ValueString()
 }
 
 // expandUpdate builds the libsql.update request body. It takes ctx and diags

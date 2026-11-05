@@ -36,6 +36,9 @@ resource "dokploy_compose" "inline" {
   # the volumes is lost, so keep the default of false for a stateful stack.
   fresh_volumes = false
 
+  # Pull the latest nginx:alpine image on each deploy.
+  pull_images = true
+
   raw = {
     compose_file = <<-YAML
       services:
@@ -157,6 +160,7 @@ resource "dokploy_compose" "from_gitea" {
 - `github` (Attributes) Source the compose file from a GitHub App repository. (see [below for nested schema](#nestedatt--github))
 - `gitlab` (Attributes) Source the compose file from a GitLab project, through a `dokploy_gitlab_provider`. The provider must be authorized in the Dokploy UI before a deploy can clone from it. (see [below for nested schema](#nestedatt--gitlab))
 - `icon` (String) Service icon for the Dokploy UI: an icon name or a data URI, up to 2 MB.
+- `pull_images` (Boolean) Pull the latest version of each image on each deploy (`docker compose up --pull always`), so a moving tag such as `latest` gets the new image. Dokploy applies it to a `docker-compose` service only, not to a `stack`. Defaults to `false`. Dokploy v0.31.0 added this attribute.
 - `randomize` (Boolean) Randomize the generated resource names with `suffix`. Defaults to `false`.
 - `raw` (Attributes) Supply the compose file inline, without a repository. (see [below for nested schema](#nestedatt--raw))
 - `server_id` (String) Id of the remote server that runs the service. Defaults to the Dokploy host.

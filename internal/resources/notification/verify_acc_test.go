@@ -15,8 +15,9 @@ import (
 // supply a working webhook, SMTP server, or token, so a channel whose test
 // endpoint reports failures gets only the failure path: its attributes point
 // at 127.0.0.1:9, where nothing listens. A channel with passes set is one
-// whose Dokploy v0.30.8 test endpoint reports success for any input (probed
-// live, 2026-09-30: telegram and lark), so it gets the pass path only.
+// whose Dokploy test endpoint reports success for any input (probed live,
+// 2026-09-30: telegram and lark), so it gets the pass path only. Since
+// v0.31.0 the telegram endpoint reports a failure (probed live, 2026-11-05).
 type verifyCase struct {
 	kind   string
 	label  string
@@ -27,7 +28,7 @@ type verifyCase struct {
 var verifyCases = []verifyCase{
 	{kind: "slack", label: "Slack", attrs: `  webhook_url = "http://127.0.0.1:9/x"`},
 	{kind: "discord", label: "Discord", attrs: `  webhook_url = "http://127.0.0.1:9/x"`},
-	{kind: "telegram", label: "Telegram", attrs: "  bot_token = \"123:abc\"\n  chat_id   = \"-100123\"", passes: true},
+	{kind: "telegram", label: "Telegram", attrs: "  bot_token = \"123:abc\"\n  chat_id   = \"-100123\""},
 	{kind: "email", label: "Email", attrs: "  smtp_server  = \"127.0.0.1\"\n  smtp_port    = 9\n  username     = \"u\"\n  password     = \"p\"\n  from_address = \"a@example.com\"\n  to_addresses = [\"b@example.com\"]"},
 	{kind: "resend", label: "Resend", attrs: "  api_key      = \"re_invalid\"\n  from_address = \"a@example.com\"\n  to_addresses = [\"b@example.com\"]"},
 	{kind: "gotify", label: "Gotify", attrs: "  server_url = \"http://127.0.0.1:9\"\n  app_token  = \"t\""},

@@ -172,7 +172,10 @@ func TestAccLibsql_writeOnlyPassword(t *testing.T) {
 func TestAccLibsql_upgradeFromV0_11(t *testing.T) {
 	acctest.SkipWithoutTerraformRegistry(t)
 	name := acctest.RandomName("ls-up")
-	plain := "  database_password = \"acc-password-1\""
+	// Dokploy v0.31.0 rejects a libsql.create without dockerImage, and
+	// v0.11.0 sends the key only when docker_image is set.
+	image := "\n  docker_image = \"" + client.LibsqlDefaultDockerImage + "\""
+	plain := "  database_password = \"acc-password-1\"" + image
 	resource.Test(t, resource.TestCase{
 		TerraformVersionChecks: acctest.WriteOnlyVersionChecks(),
 		PreCheck:               func() { acctest.PreCheck(t) },
@@ -195,7 +198,7 @@ func TestAccLibsql_upgradeFromV0_11(t *testing.T) {
 			},
 			{
 				ProtoV6ProviderFactories: acctest.ProviderFactories(),
-				Config:                   libsqlWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-2\"\n  database_password_wo_version = 2"),
+				Config:                   libsqlWriteOnlyConfig(name, "  database_password_wo         = \"wo-password-2\"\n  database_password_wo_version = 2"+image),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction("dokploy_libsql.test", plancheck.ResourceActionUpdate)},
 				},

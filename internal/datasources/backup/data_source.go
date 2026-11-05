@@ -27,6 +27,7 @@ type model struct {
 	IncludeEncryptionKey types.Bool   `tfsdk:"include_encryption_key"`
 	ServiceName          types.String `tfsdk:"service_name"`
 	AppName              types.String `tfsdk:"app_name"`
+	CustomName           types.String `tfsdk:"custom_name"`
 }
 
 // flatten follows the resource: a compose parent reads back as service_type
@@ -51,6 +52,7 @@ func flatten(b *client.Backup, out *model) {
 	out.IncludeEncryptionKey = types.BoolValue(b.IncludeEncryptionKey)
 	out.ServiceName = tfutil.StringOrNull(b.ServiceName)
 	out.AppName = types.StringValue(b.AppName)
+	out.CustomName = tfutil.StringOrNull(b.CustomName)
 }
 
 // NewDataSource returns the dokploy_backup data source.
@@ -79,6 +81,7 @@ func NewDataSource() datasource.DataSource {
 			"keep_latest_count":      dsutil.Int64("Number of backups to keep, or null to keep all."),
 			"include_encryption_key": dsutil.Bool("Whether the backup includes the encryption key."),
 			"service_name":           dsutil.String("Compose service name, or null."),
+			"custom_name":            dsutil.String("Name part of each backup file, or null."),
 			"app_name":               dsutil.String("Internal name of the backup."),
 		},
 		Validators: dsutil.ChildValidators("service_id", []string{"service_type"}, "prefix"),

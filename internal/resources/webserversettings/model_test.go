@@ -1,8 +1,10 @@
 package webserversettings
 
 import (
+	"reflect"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
@@ -31,15 +33,17 @@ func TestFlattenValues(t *testing.T) {
 		ID: "w", ServerIP: strPtr("10.0.0.9"), CertificateType: "letsencrypt", HTTPS: true,
 		Host: strPtr("d.example.com"), LetsEncryptEmail: strPtr("a@example.com"),
 		EnableDockerCleanup: true, LogCleanupCron: strPtr("*/5 * * * *"), BuildsConcurrency: 3,
+		TelemetryProviderIDs: []string{"t1"},
 	}, &m)
 	want := resourceModel{
 		ID: types.StringValue("w"), ServerIP: types.StringValue("10.0.0.9"),
 		Host: types.StringValue("d.example.com"), HTTPS: types.BoolValue(true),
 		CertificateType: types.StringValue("letsencrypt"), LetsEncryptEmail: types.StringValue("a@example.com"),
 		EnableDockerCleanup: types.BoolValue(true), LogCleanupCron: types.StringValue("*/5 * * * *"),
-		BuildsConcurrency: types.Int64Value(3),
+		BuildsConcurrency:  types.Int64Value(3),
+		TelemetryProviders: types.SetValueMust(types.StringType, []attr.Value{types.StringValue("t1")}),
 	}
-	if m != want {
+	if !reflect.DeepEqual(m, want) {
 		t.Errorf("flatten = %+v, want %+v", m, want)
 	}
 }

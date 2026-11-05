@@ -179,7 +179,7 @@ func (r *libsqlResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		"docker_image": schema.StringAttribute{
 			Optional:      true,
 			Computed:      true,
-			Description:   "LibSQL Docker image, for example `ghcr.io/tursodatabase/libsql-server:v0.24.32`. That tag is also the server default when you omit the attribute, and it exists in the registry.",
+			Description:   "LibSQL Docker image, for example `ghcr.io/tursodatabase/libsql-server:v0.24.32`. If you omit the attribute, the provider sends that tag, which is also the Dokploy default.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
 		"server_id": schema.StringAttribute{

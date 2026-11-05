@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"net/url"
 )
 
@@ -162,21 +164,28 @@ func (c *Client) ListAllDomains(ctx context.Context) ([]Domain, error) {
 		return nil, err
 	}
 	var all []Domain
+	add := func(ds []Domain, err error) error {
+		// The two endpoints answer HTTP 404 "Service not found" for a service
+		// that another client deleted after project.all (probed live,
+		// v0.31.0, 2026-11-05). Such a service has no domains to list.
+		var de *DokployError
+		if errors.As(err, &de) && de.HTTPStatus == http.StatusNotFound && de.Code == "NOT_FOUND" {
+			return nil
+		}
+		all = append(all, ds...)
+		return err
+	}
 	for _, p := range projects {
 		for _, e := range p.Environments {
 			for _, a := range e.Applications {
-				ds, err := c.ListDomainsByApplication(ctx, a.ApplicationID)
-				if err != nil {
+				if err := add(c.ListDomainsByApplication(ctx, a.ApplicationID)); err != nil {
 					return nil, err
 				}
-				all = append(all, ds...)
 			}
 			for _, co := range e.Compose {
-				ds, err := c.ListDomainsByCompose(ctx, co.ComposeID)
-				if err != nil {
+				if err := add(c.ListDomainsByCompose(ctx, co.ComposeID)); err != nil {
 					return nil, err
 				}
-				all = append(all, ds...)
 			}
 		}
 	}

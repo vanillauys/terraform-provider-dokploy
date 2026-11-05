@@ -3,6 +3,8 @@ package ai
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"github.com/vanillauys/terraform-provider-dokploy/internal/client"
 )
 
@@ -48,5 +50,20 @@ func TestFlatten(t *testing.T) {
 	}
 	if !m.APIKeyWo.IsNull() || !m.APIKeyWoVersion.IsNull() {
 		t.Errorf("flatten() touched the write-only companions: %v %v", m.APIKeyWo, m.APIKeyWoVersion)
+	}
+}
+
+// Dokploy v0.31.0 returns the mask for apiKey. flatten must keep the prior
+// value, or the apply reports an inconsistent result.
+func TestFlattenKeepsKeyWhenMasked(t *testing.T) {
+	m := resourceModel{APIKey: types.StringValue("sk-prior")}
+	flatten(&client.AI{AIID: "ai-1", APIKey: client.AISecretMask}, &m)
+	if m.APIKey.ValueString() != "sk-prior" {
+		t.Errorf("api_key = %v, want the prior sk-prior", m.APIKey)
+	}
+	var imported resourceModel
+	flatten(&client.AI{AIID: "ai-1", APIKey: client.AISecretMask}, &imported)
+	if !imported.APIKey.IsNull() {
+		t.Errorf("imported api_key = %v, want null", imported.APIKey)
 	}
 }

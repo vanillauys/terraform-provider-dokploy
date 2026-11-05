@@ -8,9 +8,10 @@ import (
 // AI is one AI provider configuration (Settings > AI): an OpenAI-compatible
 // endpoint that Dokploy's AI features call.
 //
-// ai.one and ai.getAll return apiKey in CLEARTEXT (probed live, v0.30.5,
-// 2026-09-05). The resource attribute is Sensitive and its write-only
-// companion keeps it out of the state.
+// Since v0.31.0, ai.one returns apiKey as AISecretMask and ai.getAll leaves
+// it out (probed live, 2026-11-05). Before v0.31.0 both returned it in
+// cleartext. An update that sends the mask keeps the stored key, and
+// ai.testConnection with the mask and an aiId tests the stored key.
 type AI struct {
 	AIID           string `json:"aiId"`
 	Name           string `json:"name"`
@@ -21,6 +22,9 @@ type AI struct {
 	OrganizationID string `json:"organizationId"`
 	CreatedAt      string `json:"createdAt"`
 }
+
+// AISecretMask is the value that every AI read returns for apiKey.
+const AISecretMask = "********"
 
 // CreateAIRequest. Every field is required by the schema.
 type CreateAIRequest struct {
@@ -34,7 +38,7 @@ type CreateAIRequest struct {
 // UpdateAIRequest carries the full field set. ai.update is an upsert on the
 // server: a partial body fails with an HTTP 500 "Failed query: insert into
 // ai ... default" (probed live, v0.30.5, 2026-09-05), so the resource always
-// sends every field.
+// sends every field. APIKey set to AISecretMask keeps the stored key.
 type UpdateAIRequest struct {
 	AIID      string `json:"aiId"`
 	Name      string `json:"name"`
@@ -56,7 +60,8 @@ func (c *Client) CreateAI(ctx context.Context, req CreateAIRequest) (*AI, error)
 		func(ctx context.Context) error { return c.Post(ctx, "/ai.create", req, nil) },
 		func(a AI) string { return a.AIID },
 		func(a AI) bool {
-			return a.Name == req.Name && a.APIURL == req.APIURL && a.Model == req.Model && a.APIKey == req.APIKey
+			// ai.getAll leaves apiKey out, so the key cannot tell siblings apart.
+			return a.Name == req.Name && a.APIURL == req.APIURL && a.Model == req.Model
 		},
 	)
 	if err != nil {

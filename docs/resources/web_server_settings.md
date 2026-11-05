@@ -3,13 +3,13 @@
 page_title: "dokploy_web_server_settings Resource - dokploy"
 subcategory: "Servers and SSH keys"
 description: |-
-  The settings of the Dokploy host: the dashboard domain, the server IP, the Docker and access-log cleanup, and the number of concurrent builds. Use dokploy_server for a remote server.
+  The settings of the Dokploy host: the dashboard domain, the server IP, the Docker and access-log cleanup, the number of concurrent builds, and the telemetry providers of the Vector agent. Use dokploy_server for a remote server.
   ~> Each Dokploy installation has one settings record. Declare this resource once. terraform destroy removes the resource from the state only: the server keeps the current values. Dokploy Cloud has no web server settings.
 ---
 
 # dokploy_web_server_settings (Resource)
 
-The settings of the Dokploy host: the dashboard domain, the server IP, the Docker and access-log cleanup, and the number of concurrent builds. Use `dokploy_server` for a remote server.
+The settings of the Dokploy host: the dashboard domain, the server IP, the Docker and access-log cleanup, the number of concurrent builds, and the telemetry providers of the Vector agent. Use `dokploy_server` for a remote server.
 
 ~> Each Dokploy installation has one settings record. Declare this resource once. `terraform destroy` removes the resource from the state only: the server keeps the current values. Dokploy Cloud has no web server settings.
 
@@ -43,6 +43,7 @@ resource "dokploy_web_server_settings" "this" {
 - `lets_encrypt_email` (String) Email address for the Let's Encrypt account of the dashboard certificate.
 - `log_cleanup_cron` (String) Cron expression of the Traefik access-log cleanup, which keeps the last 1000 lines. Defaults to `0 0 * * *`. Set `""` to stop the cleanup. Dokploy does not validate the expression.
 - `server_ip` (String) Public IP of the Dokploy host. Dokploy uses it for the generated `traefik.me` domains. If you omit it, the server keeps the IP that the installer detected.
+- `telemetry_provider_ids` (Set of String) Ids of the `dokploy_telemetry_provider` records that the Vector agent on the Dokploy host sends data to. A change starts or updates the agent, which can take a minute while Docker pulls the image. An empty set stops the agent. Defaults to an empty set. Each provider must have `enabled = true`. Dokploy v0.31.0 added this attribute.
 
 ### Read-Only
 

@@ -74,6 +74,7 @@ resource "dokploy_domain" "mail" {
 - `enable_submodules` (Boolean) Whether Dokploy clones git submodules.
 - `env` (String, Sensitive) Environment variables as multiline `KEY=value` lines, exactly as Dokploy stores them. The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.
 - `icon` (String) Service icon for the Dokploy UI, or null.
+- `pull_images` (Boolean) Whether Dokploy pulls the latest images before each deploy.
 - `randomize` (Boolean) Whether Dokploy randomizes the generated resource names.
 - `server_id` (String) Id of the remote server that runs the service, or null for the Dokploy host.
 - `source_type` (String) Configured source type: `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `raw`.

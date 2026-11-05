@@ -55,6 +55,7 @@ func (r *webServerBackupResource) Schema(_ context.Context, _ resource.SchemaReq
 				Required:    true,
 				Description: "Key prefix inside the destination bucket, for example `dokploy/`.",
 			},
+			"custom_name": tfutil.BackupCustomNameAttribute(),
 			"enabled": schema.BoolAttribute{
 				Optional: true, Computed: true, Default: booldefault.StaticBool(true),
 				Description: "Whether the backup runs. Defaults to `true`. Dokploy leaves this field null for a " +

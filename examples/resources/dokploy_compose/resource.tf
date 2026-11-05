@@ -12,6 +12,9 @@ resource "dokploy_compose" "inline" {
   # the volumes is lost, so keep the default of false for a stateful stack.
   fresh_volumes = false
 
+  # Pull the latest nginx:alpine image on each deploy.
+  pull_images = true
+
   raw = {
     compose_file = <<-YAML
       services:
