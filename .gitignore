@@ -7,6 +7,11 @@
 __pycache__/
 dogfood/scratch/
 
+# Local Node tooling; the repo has no Node project
+/package.json
+/bun.lock
+/node_modules/
+
 # Local agent and IDE state
 .claude/
 .superpowers/
