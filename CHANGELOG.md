@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Each release publishes the Pulumi SDK `pulumi-dokploy` to npm, so SST and
+  Pulumi TypeScript programs can use the provider (#126).
+
 ## [1.11.0] - 2026-11-05
 
 ### Added

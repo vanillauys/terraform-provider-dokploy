@@ -48,3 +48,78 @@ jobs:
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: dist/*.zip
+
+  # Publishes the Pulumi SDK `pulumi-dokploy` to npm, because SST loads
+  # providers only from npm (#126). The SDK holds typed bindings only: at run
+  # time Pulumi downloads the signed provider binary from the Terraform Registry.
+  # npm trusted publishing (OIDC) authenticates the publish, so no npm token
+  # exists. The npm package settings must name this workflow file.
+  npm:
+    needs: goreleaser
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # SST 4.x runs @pulumi/pulumi 3.215.0. A newer CLI generates SDK code that
+      # 3.215.0 cannot run. Bump the version and the sha256 together.
+      PULUMI_VERSION: 3.215.0
+      PULUMI_SHA256: 0b2616e5602c34fec12f73a5e2d128a756d5cdec7bc7d57787af222c53b488cd
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Install the Pulumi CLI
+        run: |
+          curl -fsSL --proto '=https' -o "$RUNNER_TEMP/pulumi.tgz" "https://get.pulumi.com/releases/sdk/pulumi-v${PULUMI_VERSION}-linux-x64.tar.gz"
+          echo "${PULUMI_SHA256}  $RUNNER_TEMP/pulumi.tgz" | sha256sum -c -
+          tar xzf "$RUNNER_TEMP/pulumi.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/pulumi" >> "$GITHUB_PATH"
+      # `pulumi package add` reads the schema from the Terraform Registry, which
+      # lists a new version some minutes after the GitHub release.
+      - name: Wait for the Terraform Registry
+        run: |
+          for _ in $(seq 1 40); do
+            if curl -fsS https://registry.terraform.io/v1/providers/vanillauys/dokploy/versions \
+              | jq -e --arg v "${VERSION#v}" 'any(.versions[]; .version == $v)' > /dev/null; then
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::The Terraform Registry does not list ${VERSION#v} after 20 minutes."
+          exit 1
+      - name: Build the Pulumi SDK
+        run: |
+          mkdir "$RUNNER_TEMP/gen" && cd "$RUNNER_TEMP/gen"
+          printf 'name: dokploy-sdk\nruntime: nodejs\n' > Pulumi.yaml
+          echo '{}' > package.json
+          pulumi package add terraform-provider registry.terraform.io/vanillauys/dokploy "${VERSION#v}"
+          cd sdks/dokploy
+          cp "$GITHUB_WORKSPACE/LICENSE" LICENSE
+          # The generated postinstall script compiles the sources on install.
+          # The package ships compiled code and no scripts/ directory, so drop it.
+          jq '.name = "pulumi-dokploy"
+            | .repository = {type: "git", url: "git+https://github.com/vanillauys/terraform-provider-dokploy.git"}
+            | .files = ["bin/", "README.md", "LICENSE"]
+            | del(.scripts.postinstall)' package.json > package.json.new
+          mv package.json.new package.json
+          sed -i 's#distributed under \[MPL 2.0\](https://www.mozilla.org/en-US/MPL/2.0/)#distributed under the [MIT License](https://github.com/vanillauys/terraform-provider-dokploy/blob/master/LICENSE)#' README.md
+          grep -q 'MIT License' README.md
+          # tsc writes the published code, so the build packages come from a
+          # committed lockfile. The generated dependencies follow the Pulumi CLI
+          # template: when PULUMI_VERSION moves, make the lockfile again.
+          cp "$GITHUB_WORKSPACE/.github/pulumi-sdk/package-lock.json" package-lock.json
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
+          # getVersion() reads bin/package.json.
+          cp package.json bin/package.json
+          echo "SDK_DIR=$PWD" >> "$GITHUB_ENV"
+      - name: Publish to npm
+        working-directory: ${{ env.SDK_DIR }}
+        run: npm publish --access public
