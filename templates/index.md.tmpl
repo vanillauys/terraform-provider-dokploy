@@ -57,7 +57,7 @@ The provider follows [semantic versioning](https://semver.org) from v1.0.0:
   warning at plan time before a major release removes it.
 - The Dokploy compatibility pin moves in minor releases.
 
-Pin the minor version, for example `~> 1.9`, to get fixes and additions without a
+Pin the minor version, for example `~> 1.11`, to get fixes and additions without a
 breaking change. The [changelog](guides/changelog) names every change in
 each release.
 
