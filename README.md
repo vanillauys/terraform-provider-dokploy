@@ -56,7 +56,7 @@ them, deploys them, and keeps them in sync.
      required_providers {
        dokploy = {
          source  = "vanillauys/dokploy"
-         version = "~> 1.9"
+         version = "~> 1.11"
        }
      }
    }
@@ -98,6 +98,24 @@ The [Get started](https://registry.terraform.io/providers/vanillauys/dokploy/lat
 guide continues with a database, environment variables, and a second
 environment.
 
+## Pulumi
+
+The provider also works with [Pulumi](https://www.pulumi.com), in
+TypeScript, Python, Go, C#, Java, and YAML.
+
+- TypeScript: each release publishes the npm package
+  [`pulumi-dokploy`](https://www.npmjs.com/package/pulumi-dokploy). In an
+  [SST](https://sst.dev) app, run `sst add dokploy`.
+- Other languages: generate the SDK from the Terraform Registry. Use a
+  Pulumi CLI version that matches the `pulumi` library of your language.
+
+  ```sh
+  pulumi package add terraform-provider registry.terraform.io/vanillauys/dokploy
+  ```
+
+The provider reads `DOKPLOY_API_KEY` from the environment. Set the server
+address with `pulumi config set dokploy:endpoint https://dokploy.example.com`.
+
 ## Provider configuration
 
 | Argument | Environment variable | Required | Description |
@@ -128,7 +146,7 @@ that it stays out of your repository.
 - **Terraform:** 1.5 or later. The write-only attributes (`<name>_wo`) need
   1.11 or later. The nightly run tests Terraform 1.5.7 and the latest
   release.
-- **OpenTofu:** the nightly run tests OpenTofu 1.12.6 with the Terraform
+- **OpenTofu:** the nightly run tests OpenTofu 1.12.9 with the Terraform
   Registry address `vanillauys/dokploy`. OpenTofu 1.13 cannot import an ID
   that starts with `-`
   ([opentofu/opentofu#4644](https://github.com/opentofu/opentofu/issues/4644)).
@@ -236,7 +254,7 @@ The provider follows [semantic versioning](https://semver.org) from v1.0.0:
 - The Dokploy compatibility pin moves in minor releases, with the census of
   the upstream changes in the [changelog](CHANGELOG.md).
 
-Pin the minor version, for example `~> 1.9`, to get fixes and additions
+Pin the minor version, for example `~> 1.11`, to get fixes and additions
 without a breaking change.
 
 ## Contributing
