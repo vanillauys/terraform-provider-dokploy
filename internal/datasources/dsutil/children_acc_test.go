@@ -153,7 +153,7 @@ resource "dokploy_volume_backup" "solo" {
   name            = "%[1]s-solo"
   service_id      = dokploy_application.test.id
   service_type    = "application"
-  volume_name     = "acc-data"
+  volume_name     = dokploy_mount.solo.volume_name
   prefix          = "volumes/solo/"
   cron_expression = "0 4 * * *"
   destination_id  = dokploy_destination.test.id
@@ -163,7 +163,7 @@ resource "dokploy_volume_backup" "first" {
   name            = "%[1]s-twin"
   service_id      = dokploy_application.test.id
   service_type    = "application"
-  volume_name     = "acc-data"
+  volume_name     = dokploy_mount.solo.volume_name
   prefix          = "volumes/a/"
   cron_expression = "0 5 * * *"
   destination_id  = dokploy_destination.test.id
@@ -173,7 +173,7 @@ resource "dokploy_volume_backup" "second" {
   name            = "%[1]s-twin"
   service_id      = dokploy_application.test.id
   service_type    = "application"
-  volume_name     = "acc-data"
+  volume_name     = dokploy_mount.solo.volume_name
   prefix          = "volumes/b/"
   cron_expression = "0 6 * * *"
   destination_id  = dokploy_destination.test.id
