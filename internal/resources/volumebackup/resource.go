@@ -63,7 +63,7 @@ func (r *volumeBackupResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			"volume_name": schema.StringAttribute{
 				Required:    true,
-				Description: "Name of the Docker volume to archive.",
+				Description: "Name of the Docker volume to archive. Since Dokploy v0.31.1 the volume must belong to the service: a `dokploy_mount` of type `volume` on the service, or for a compose service a volume whose name starts with `<app_name>_` or that the container named by `service_name` mounts. Reference `dokploy_mount.<name>.volume_name` so that Terraform creates the mount first.",
 			},
 			"prefix": schema.StringAttribute{
 				Required:    true,

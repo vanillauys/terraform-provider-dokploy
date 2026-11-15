@@ -74,6 +74,14 @@ resource "dokploy_application" "test" {
   docker           = { image = "traefik/whoami:v1.10" }
   deploy_on_change = false
 }
+
+resource "dokploy_mount" "test" {
+  service_id   = dokploy_application.test.id
+  service_type = "application"
+  type         = "volume"
+  volume_name  = "acc-data"
+  mount_path   = "/data"
+}
 `, name+"-proj", name+"-dest", name)
 }
 
@@ -85,7 +93,7 @@ resource "dokploy_volume_backup" "test" {
   name            = %q
   service_id      = dokploy_application.test.id
   service_type    = "application"
-  volume_name     = "acc-data"
+  volume_name     = dokploy_mount.test.volume_name
   prefix          = "volumes/acc/"
   cron_expression = %q
   destination_id  = dokploy_destination.test.id
@@ -185,7 +193,7 @@ resource "dokploy_volume_backup" "redis" {
   name            = %q
   service_id      = dokploy_redis.test.id
   service_type    = "redis"
-  volume_name     = "redis-data"
+  volume_name     = "${dokploy_redis.test.app_name}-data"
   prefix          = "volumes/redis/"
   cron_expression = "0 6 * * *"
   destination_id  = dokploy_destination.test.id

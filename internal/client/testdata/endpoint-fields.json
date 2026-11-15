@@ -454,7 +454,6 @@
    "enabled",
    "endpointSpecSwarm",
    "env",
-   "environmentId",
    "giteaBranch",
    "giteaBuildPath",
    "giteaId",
@@ -980,7 +979,6 @@
    "description",
    "enableSubmodules",
    "env",
-   "environmentId",
    "giteaBranch",
    "giteaId",
    "giteaOwner",
@@ -1459,8 +1457,7 @@
    "description",
    "env",
    "environmentId",
-   "name",
-   "projectId"
+   "name"
   ],
   "required": [
    "environmentId"
@@ -1797,7 +1794,6 @@
    "enableNamespaces",
    "endpointSpecSwarm",
    "env",
-   "environmentId",
    "externalAdminPort",
    "externalGRPCPort",
    "externalPort",
@@ -1977,7 +1973,6 @@
    "dockerImage",
    "endpointSpecSwarm",
    "env",
-   "environmentId",
    "externalPort",
    "healthCheckSwarm",
    "labelsSwarm",
@@ -2135,7 +2130,6 @@
    "dockerImage",
    "endpointSpecSwarm",
    "env",
-   "environmentId",
    "externalPort",
    "healthCheckSwarm",
    "labelsSwarm",
@@ -2186,21 +2180,12 @@
  },
  "mounts.update": {
   "fields": [
-   "applicationId",
-   "composeId",
    "content",
    "expectedContent",
    "filePath",
    "hostPath",
-   "libsqlId",
-   "mariadbId",
-   "mongoId",
    "mountId",
    "mountPath",
-   "mysqlId",
-   "postgresId",
-   "redisId",
-   "serviceType",
    "type",
    "volumeName"
   ],
@@ -2348,7 +2333,6 @@
    "dockerImage",
    "endpointSpecSwarm",
    "env",
-   "environmentId",
    "externalPort",
    "healthCheckSwarm",
    "labelsSwarm",
@@ -3529,7 +3513,6 @@
    "dockerImage",
    "endpointSpecSwarm",
    "env",
-   "environmentId",
    "externalPort",
    "healthCheckSwarm",
    "labelsSwarm",
@@ -3604,15 +3587,45 @@
  },
  "project.update": {
   "fields": [
-   "createdAt",
    "description",
    "env",
    "name",
-   "organizationId",
    "projectId"
   ],
   "required": [
    "projectId"
+  ]
+ },
+ "projectExportImport.export": {
+  "fields": [
+   "passphrase",
+   "projectId",
+   "serviceIds"
+  ],
+  "required": [
+   "passphrase",
+   "projectId"
+  ]
+ },
+ "projectExportImport.import": {
+  "fields": [
+   "bundle",
+   "passphrase",
+   "serverId"
+  ],
+  "required": [
+   "bundle",
+   "passphrase"
+  ]
+ },
+ "projectExportImport.importPreview": {
+  "fields": [
+   "bundle",
+   "passphrase"
+  ],
+  "required": [
+   "bundle",
+   "passphrase"
   ]
  },
  "redirects.create": {
@@ -3782,7 +3795,6 @@
    "dockerImage",
    "endpointSpecSwarm",
    "env",
-   "environmentId",
    "externalPort",
    "healthCheckSwarm",
    "labelsSwarm",
@@ -3891,7 +3903,6 @@
  },
  "schedule.create": {
   "fields": [
-   "appName",
    "applicationId",
    "command",
    "composeId",
@@ -3900,7 +3911,6 @@
    "description",
    "enabled",
    "name",
-   "organizationId",
    "scheduleId",
    "scheduleType",
    "script",
@@ -3933,7 +3943,6 @@
  },
  "schedule.update": {
   "fields": [
-   "appName",
    "applicationId",
    "command",
    "composeId",
@@ -3942,7 +3951,6 @@
    "description",
    "enabled",
    "name",
-   "organizationId",
    "scheduleId",
    "scheduleType",
    "script",
@@ -4025,6 +4033,17 @@
    "serverType",
    "sshKeyId",
    "username"
+  ]
+ },
+ "server.generateConnectCommand": {
+  "fields": [
+   "description",
+   "enableDockerCleanup",
+   "name",
+   "serverType"
+  ],
+  "required": [
+   "name"
   ]
  },
  "server.remove": {
@@ -4794,30 +4813,12 @@
  "user.update": {
   "fields": [
    "allowImpersonation",
-   "banExpires",
-   "banReason",
-   "banned",
-   "createdAt",
-   "createdAt2",
    "currentPassword",
    "email",
-   "emailVerified",
-   "enableEnterpriseFeatures",
-   "enablePaidFeatures",
-   "expirationDate",
    "firstName",
-   "id",
    "image",
-   "isRegistered",
    "lastName",
-   "licenseKey",
-   "password",
-   "sendInvoiceNotifications",
-   "serversQuantity",
-   "stripeCustomerId",
-   "stripeSubscriptionId",
-   "twoFactorEnabled",
-   "updatedAt"
+   "password"
   ],
   "required": []
  },
@@ -4864,7 +4865,6 @@
  },
  "volumeBackups.create": {
   "fields": [
-   "appName",
    "applicationId",
    "composeId",
    "createdAt",
@@ -4911,7 +4911,6 @@
  },
  "volumeBackups.update": {
   "fields": [
-   "appName",
    "applicationId",
    "composeId",
    "createdAt",
