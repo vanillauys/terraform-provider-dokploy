@@ -16,12 +16,21 @@ A volume backup copies the contents of the volume as they are, so it works for a
 ## Example Usage
 
 ```terraform
-# Nightly archive of the uploads volume of an application.
+# Nightly archive of the uploads volume of an application. Dokploy accepts
+# only a volume that the service mounts, so the backup references the mount.
+resource "dokploy_mount" "uploads" {
+  service_id   = dokploy_application.web.id
+  service_type = "application"
+  type         = "volume"
+  volume_name  = "web-uploads"
+  mount_path   = "/app/uploads"
+}
+
 resource "dokploy_volume_backup" "uploads" {
   name            = "web-uploads-nightly"
   service_id      = dokploy_application.web.id
   service_type    = "application"
-  volume_name     = "web-uploads"
+  volume_name     = dokploy_mount.uploads.volume_name
   prefix          = "volumes/web/"
   cron_expression = "0 4 * * *"
   destination_id  = dokploy_destination.backups.id
@@ -30,12 +39,13 @@ resource "dokploy_volume_backup" "uploads" {
 }
 
 # Redis has no logical dump in Dokploy, so a volume backup is the only way
-# to capture it. dokploy_backup rejects a Redis parent at plan time.
+# to capture it. dokploy_backup rejects a Redis parent at plan time. Dokploy
+# creates the data volume <app_name>-data with each database.
 resource "dokploy_volume_backup" "cache" {
   name            = "cache-nightly"
   service_id      = dokploy_redis.cache.id
   service_type    = "redis"
-  volume_name     = "cache-data"
+  volume_name     = "${dokploy_redis.cache.app_name}-data"
   prefix          = "volumes/cache/"
   cron_expression = "30 4 * * *"
   destination_id  = dokploy_destination.backups.id
@@ -53,7 +63,7 @@ resource "dokploy_volume_backup" "cache" {
 - `prefix` (String) Key prefix inside the destination bucket, for example `volumes/web/`.
 - `service_id` (String) Id of the service that owns the volume. A change forces a replacement: the Dokploy update endpoint sets the new parent without a clear of the old one, and the record then belongs to two services at once.
 - `service_type` (String) Kind of service that `service_id` refers to: one of `application`, `postgres`, `mysql`, `mariadb`, `mongo`, `redis`, `compose`, `libsql`. A change forces a replacement, for the same reason as `service_id`.
-- `volume_name` (String) Name of the Docker volume to archive.
+- `volume_name` (String) Name of the Docker volume to archive. Since Dokploy v0.31.1 the volume must belong to the service: a `dokploy_mount` of type `volume` on the service, or for a compose service a volume whose name starts with `<app_name>_` or that the container named by `service_name` mounts. Reference `dokploy_mount.<name>.volume_name` so that Terraform creates the mount first.
 
 ### Optional
 

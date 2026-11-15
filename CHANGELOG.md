@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.31.0 to v0.31.2. The
+  endpoint census of a fresh v0.31.2 install (2026-11-15) agrees with the
+  upstream v0.31.0...v0.31.2 diff. v0.31.1 is a security release that removes
+  many server-managed fields from the update endpoints. The provider sent
+  none of them, so no attribute changes. The project export and import and
+  the server connect command of v0.31.2 are one-shot operations, so they stay
+  unmodeled. See `internal/client/doc.go`, "v0.31.2 census".
+- The Go toolchain moves to 1.26.11 for GO-2026-6859 in `net/http`.
+
+### Fixed
+
+- `dokploy_volume_backup`: since Dokploy v0.31.1 the volume must belong to the
+  service, either through a `dokploy_mount` of type `volume` or, for a
+  database, the `<app_name>-data` volume that Dokploy creates. The
+  description of `volume_name` and the examples now show this rule. Reference
+  `dokploy_mount.<name>.volume_name`, so that Terraform creates the mount
+  before the backup.
+
 ## [1.11.2] - 2026-11-07
 
 ### Changed

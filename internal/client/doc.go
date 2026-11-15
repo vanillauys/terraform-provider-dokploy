@@ -1711,6 +1711,62 @@ package client
 // trial email. Nothing below the request schema changed for a self-hosted
 // server.
 //
+// # v0.31.2 census (probed 2026-11-15)
+//
+// The pin moved from v0.31.0 to v0.31.2 against a fresh v0.31.2 rig. v0.31.1
+// is a security release, and v0.31.2 adds two features. The census agrees
+// with the upstream v0.31.0...v0.31.2 compare of the db schema and the
+// routers.
+//
+// Request fields that the server no longer accepts (zod strips them, so a
+// body with them still gets an HTTP 200). This client sent none of them;
+// only censusExempt entries go:
+//
+//   - environmentId on every service update (application, compose, libsql,
+//     and the five database engines). The move endpoints stay.
+//   - projectId on environment.update, and every field except name,
+//     description and env on project.update.
+//   - every parent column and serviceType on mounts.update.
+//   - appName and organizationId on schedule.create and schedule.update, and
+//     appName on volumeBackups.create and volumeBackups.update.
+//   - every server-managed column on user.update. allowImpersonation is new
+//     there; user.update writes the caller's own profile, which this
+//     provider does not model.
+//
+// Changes that broke the v1.11.2 provider, fixed in this release:
+//
+//   - volumeBackups.create answers HTTP 401 "This volume does not belong to
+//     the service." unless the service has a mount of type volume with that
+//     volumeName, or (compose only) the name starts with "<appName>_" or the
+//     container named by serviceName mounts it. A database gets the mount
+//     "<appName>-data" at create. volumeBackups.update checks the same rule
+//     when the volume name or the service name changes, and refuses a
+//     parent change ("cannot be moved to another service").
+//
+// Other changes, checked:
+//
+//   - application build fields (dockerfile, the build paths,
+//     dockerContextPath, publishDirectory) must match
+//     ^([a-zA-Z0-9._@+/][a-zA-Z0-9._@+/-]*)?$ with no ".." segment;
+//     dockerBuildStage, railpackVersion and herokuVersion must match
+//     ^([a-zA-Z0-9][a-zA-Z0-9._-]*)?$. compose.create checks composePath the
+//     same way. A bad value is an HTTP 400 at apply.
+//   - getWebServerSettings no longer returns sshPrivateKey, and masks the
+//     metrics token for a role below admin. sshKey.one, registry.one and
+//     the deploy webhook token are masked for read-only roles only. The
+//     provider needs an owner or admin key, so its reads are unchanged.
+//   - The update<Type> notification endpoints compare the type id of the
+//     body with the stored one. The client sends the stored id.
+//
+// Not modeled:
+//
+//   - projectExportImport.export, importPreview and import move a project
+//     between servers as an encrypted bundle. These are one-shot
+//     operations, not stored configuration.
+//   - server.generateConnectCommand and server.connectStatus make a one-time
+//     token and an SSH key; the remote server then registers itself. The
+//     token expires, so the result cannot stay in a state.
+//
 // # v0.31.0 census (probed 2026-11-05)
 //
 // The pin moved from v0.30.10 to v0.31.0 against a fresh v0.31.0 rig. The

@@ -42,7 +42,15 @@ import (
 //	json.dump(dict(sorted(out.items())),sys.stdout,indent=1)
 //	' > internal/client/testdata/endpoint-fields.json
 //
-// Snapshot taken against Dokploy v0.31.0 on 2026-11-05. Against the v0.30.10
+// Snapshot taken against Dokploy v0.31.2 on 2026-11-15. Against the v0.31.0
+// snapshot it adds projectExportImport.export, importPreview and import and
+// server.generateConnectCommand. Many endpoints lose request fields: every
+// service update loses environmentId, mounts.update loses its parent
+// columns, project.update, environment.update and user.update lose their
+// server-managed fields, and schedule and volume backup writes lose appName.
+// See doc.go "# v0.31.2 census".
+//
+// The v0.31.0 snapshot of 2026-11-05: against the v0.30.10
 // snapshot it adds the telemetryProvider, serverSecurity, and account
 // deletion endpoints, backup.getDownloadUrl, settings.togglePanelPort and
 // settings.updateTraefik. backup.create and backup.update gain customName,
@@ -210,23 +218,10 @@ func inEndpointStructs(typ reflect.Type) bool {
 // so the only entries left are ones where NOT sending the field is the
 // correct behaviour rather than a gap.
 var censusExempt = map[string]map[string]string{
-	// mounts.update accepts every parent column plus serviceType, and
-	// setting one does NOT clear the others: retargeting through this
-	// endpoint leaves the record with two parents (see UpdateMountRequest
-	// and doc.go for the live transcript). dokploy_mount marks its parent
-	// attributes RequiresReplace instead, so the client never needs to
-	// express a retarget and deliberately cannot.
+	// v0.31.1 cut mounts.update down to the mount fields: it no longer
+	// accepts a parent column, so a retarget through it is impossible.
 	"mounts.update": {
 		"expectedContent": "v0.31.0 edit guard of the UI file editor; the provider sends the full content",
-		"serviceType":     "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"applicationId":   "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"composeId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"postgresId":      "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"mysqlId":         "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"mariadbId":       "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"mongoId":         "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"redisId":         "parent is RequiresReplace; mounts.update corrupts on retarget",
-		"libsqlId":        "parent is RequiresReplace; mounts.update corrupts on retarget",
 	},
 	// destination.create/update accept serverId, but destination.one and
 	// destination.all never return it (verified live, v0.29.13,
@@ -239,18 +234,14 @@ var censusExempt = map[string]map[string]string{
 	// clearing the others, so a retarget leaves two parents on the record.
 	// schedule_type and service_id are RequiresReplace instead.
 	"schedule.update": {
-		"applicationId":  "parent is RequiresReplace; schedule.update corrupts on retarget",
-		"composeId":      "parent is RequiresReplace; schedule.update corrupts on retarget",
-		"serverId":       "parent is RequiresReplace; schedule.update corrupts on retarget",
-		"appName":        "server-generated; not user configuration",
-		"createdAt":      "server-generated; not user configuration",
-		"organizationId": "implied by the API key's organization",
+		"applicationId": "parent is RequiresReplace; schedule.update corrupts on retarget",
+		"composeId":     "parent is RequiresReplace; schedule.update corrupts on retarget",
+		"serverId":      "parent is RequiresReplace; schedule.update corrupts on retarget",
+		"createdAt":     "server-generated; not user configuration",
 	},
 	"schedule.create": {
-		"appName":        "server-generated; not user configuration",
-		"createdAt":      "server-generated; not user configuration",
-		"organizationId": "implied by the API key's organization",
-		"scheduleId":     "server-generated; the create endpoint assigns it",
+		"createdAt":  "server-generated; not user configuration",
+		"scheduleId": "server-generated; the create endpoint assigns it",
 	},
 	// volumeBackups.update accepts serviceType and every parent column, and
 	// retargeting through it leaves the record with two parents -- verified
@@ -265,11 +256,9 @@ var censusExempt = map[string]map[string]string{
 		"mongoId":       "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
 		"redisId":       "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
 		"libsqlId":      "parent is RequiresReplace; volumeBackups.update corrupts on retarget",
-		"appName":       "server-generated; not user configuration",
 		"createdAt":     "server-generated; not user configuration",
 	},
 	"volumeBackups.create": {
-		"appName":   "server-generated; not user configuration",
 		"createdAt": "server-generated; not user configuration",
 	},
 	"backup.create": {
@@ -286,7 +275,6 @@ var censusExempt = map[string]map[string]string{
 
 		"appName":       "server-generated; RequiresReplace on the resource, never updated",
 		"createdAt":     "server-generated; not user configuration",
-		"environmentId": "set through compose.move (MoveService), the endpoint the Dokploy UI uses",
 		"refreshToken":  "server-generated webhook token; rotating it is an imperative operation",
 		"composeStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
 		"env":           "set through compose.saveEnvironment, which is the endpoint the Dokploy UI uses",
@@ -309,7 +297,6 @@ var censusExempt = map[string]map[string]string{
 		"applicationStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
 		"createdAt":         "server-generated; not user configuration",
 		"env":               "set through libsql.saveEnvironment, which is the endpoint the Dokploy UI uses",
-		"environmentId":     "set through libsql.move (MoveService), the endpoint the Dokploy UI uses",
 		"externalAdminPort": "managed through libsql.saveExternalPorts, not in the primary update endpoint",
 		"externalGRPCPort":  "managed through libsql.saveExternalPorts, not in the primary update endpoint",
 		"externalPort":      "managed through libsql.saveExternalPorts, not in the primary update endpoint",
@@ -406,16 +393,9 @@ var censusExempt = map[string]map[string]string{
 	"mariadb.update":  databaseUpdateExemptions("mariadb", "databaseName", "databaseUser"),
 	"mongo.update":    databaseUpdateExemptions("mongo", "databaseUser"),
 	"redis.update":    databaseUpdateExemptions("redis"),
-	"project.update": {
-		"createdAt":      "server-generated; not user configuration",
-		"organizationId": "implied by the API key's organization",
-	},
 	"compose.deploy": {
 		"title":       "title of the deployment log entry; not configuration",
 		"description": "description of the deployment log entry; not configuration",
-	},
-	"environment.update": {
-		"projectId": "RequiresReplace on the resource; moving an environment between projects is not modelled",
 	},
 	"domain.create": {
 		"middlewares":         "Traefik middlewares; the Traefik surface is out of scope like the Traefik files (settings router)",
@@ -440,7 +420,6 @@ var censusExempt = map[string]map[string]string{
 			"appName":           "server-generated; RequiresReplace on the resource, never updated",
 			"applicationStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
 			"createdAt":         "server-generated; not user configuration",
-			"environmentId":     "set through application.move (MoveService), the endpoint the Dokploy UI uses",
 			"refreshToken":      "server-generated webhook token; rotating it is an imperative operation",
 			"enabled":           "start/stop state; a desired_state attribute needs its own design (gap plan D1)",
 		},
@@ -479,7 +458,6 @@ func databaseUpdateExemptions(engine string, replaceCredentials ...string) map[s
 		"appName":           "server-generated (suffixed for uniqueness on every create); Computed-only on the resource, never updated",
 		"applicationStatus": "server-mutable status; a deploy moves it, Terraform must not write it",
 		"createdAt":         "server-generated; not user configuration",
-		"environmentId":     "set through " + engine + ".move (MoveService), the endpoint the Dokploy UI uses",
 		"env":               "set through " + engine + ".saveEnvironment, which is the endpoint the Dokploy UI uses",
 		"externalPort":      "set through " + engine + ".saveExternalPort, which is the endpoint the Dokploy UI uses",
 	}
