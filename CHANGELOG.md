@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.3] - 2026-11-15
+
 ### Changed
 
 - The stated compatibility pin moves from Dokploy v0.31.0 to v0.31.2. The
