@@ -1518,6 +1518,16 @@
    "serverId"
   ]
  },
+ "forwardAuth.setPreviewEnabled": {
+  "fields": [
+   "applicationId",
+   "enabled"
+  ],
+  "required": [
+   "applicationId",
+   "enabled"
+  ]
+ },
  "gitProvider.remove": {
   "fields": [
    "gitProviderId"
@@ -3585,6 +3595,14 @@
    "projectId"
   ]
  },
+ "project.saveOnboardingStep": {
+  "fields": [
+   "step"
+  ],
+  "required": [
+   "step"
+  ]
+ },
  "project.update": {
   "fields": [
    "description",
@@ -3870,9 +3888,7 @@
  },
  "registry.update": {
   "fields": [
-   "createdAt",
    "imagePrefix",
-   "organizationId",
    "password",
    "registryId",
    "registryName",
@@ -3899,6 +3915,77 @@
   ],
   "required": [
    "rollbackId"
+  ]
+ },
+ "sandbox.create": {
+  "fields": [
+   "cpu",
+   "envVars",
+   "image",
+   "maxLifetimeMs",
+   "memoryMb",
+   "name",
+   "networkMode",
+   "pidsLimit",
+   "runtime",
+   "serverId",
+   "template",
+   "timeoutMs",
+   "workdir"
+  ],
+  "required": []
+ },
+ "sandbox.exec": {
+  "fields": [
+   "cmd",
+   "cwd",
+   "env",
+   "sandboxId",
+   "timeoutMs"
+  ],
+  "required": [
+   "cmd",
+   "sandboxId"
+  ]
+ },
+ "sandbox.kill": {
+  "fields": [
+   "sandboxId"
+  ],
+  "required": [
+   "sandboxId"
+  ]
+ },
+ "sandbox.remove": {
+  "fields": [
+   "sandboxId"
+  ],
+  "required": [
+   "sandboxId"
+  ]
+ },
+ "sandbox.setTimeout": {
+  "fields": [
+   "sandboxId",
+   "timeoutMs"
+  ],
+  "required": [
+   "sandboxId",
+   "timeoutMs"
+  ]
+ },
+ "sandbox.writeFile": {
+  "fields": [
+   "content",
+   "encoding",
+   "mode",
+   "path",
+   "sandboxId"
+  ],
+  "required": [
+   "content",
+   "path",
+   "sandboxId"
   ]
  },
  "schedule.create": {
@@ -4040,6 +4127,7 @@
    "description",
    "enableDockerCleanup",
    "name",
+   "onboarding",
    "serverType"
   ],
   "required": [
@@ -4496,6 +4584,7 @@
  },
  "stripe.createCheckoutSession": {
   "fields": [
+   "fromOnboarding",
    "isAnnual",
    "productId",
    "serverQuantity",

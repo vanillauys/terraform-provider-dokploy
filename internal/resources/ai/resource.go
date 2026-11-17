@@ -195,6 +195,11 @@ func (r *aiResource) Update(ctx context.Context, req resource.UpdateRequest, res
 	inUse := map[string]bool{"api_key": !cfg.APIKeyWo.IsNull()}
 	resp.Diagnostics.Append(tfutil.SetWriteOnlyFlags(ctx, resp.Private, secretNames, inUse)...)
 	key, send := tfutil.SecretToUpdate(plan.APIKey, cfg.APIKeyWo, state.APIKey, plan.APIKeyWoVersion, state.APIKeyWoVersion)
+	if !send && !plan.APIURL.Equal(state.APIURL) {
+		// Since Dokploy v0.31.3, ai.update refuses a new apiUrl with the
+		// mask (HTTP 400), so a new URL resends the write-only key.
+		key, send = cfg.APIKeyWo.ValueString(), true
+	}
 	if !send {
 		// ai.update is an upsert that needs the full body (client/ai.go), so
 		// a write-only key with nothing new to send resends the stored one.
