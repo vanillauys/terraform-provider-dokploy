@@ -1711,6 +1711,41 @@ package client
 // trial email. Nothing below the request schema changed for a self-hosted
 // server.
 //
+// # v0.31.4 census (probed 2026-11-17)
+//
+// The pin moved from v0.31.2 to v0.31.4 against a fresh v0.31.4 rig. The
+// census agrees with the upstream v0.31.2...v0.31.4 compare of the db schema
+// and the routers.
+//
+// Changes that broke the v1.11.3 provider, fixed in this release:
+//
+//   - Since v0.31.3, ai.update answers HTTP 400 "Changing the API URL
+//     requires entering the API key again" when apiUrl changes and apiKey is
+//     the mask. The api_key_wo path sent the mask when the version did not
+//     change; it now sends the write-only key when api_url changes. An
+//     absent apiKey now keeps the stored key, but the client always sends it.
+//
+// Other changes, checked:
+//
+//   - registry.update no longer accepts organizationId and createdAt (zod
+//     strips them). The client sent neither; only censusExempt entries go.
+//   - application.update does not accept the new previewForwardAuthEnabled
+//     column. forwardAuth.setPreviewEnabled sets it, and it is an
+//     enterprise (proprietary) feature.
+//   - domain.generateDomain and canGenerateTraefikMeDomains check that the
+//     server belongs to the caller's organization.
+//   - schedule.list asks for an owner or admin role for every schedule type.
+//
+// Not modeled:
+//
+//   - sandbox.* (create, exec, kill, remove, setTimeout, writeFile): short
+//     lived containers with a timeout. They are runtime objects, not stored
+//     configuration.
+//   - project.saveOnboardingStep, server.connectFailure, server.setupLog,
+//     the onboarding field of server.generateConnectCommand, and
+//     fromOnboarding on stripe.createCheckoutSession: Dokploy Cloud
+//     onboarding.
+//
 // # v0.31.2 census (probed 2026-11-15)
 //
 // The pin moved from v0.31.0 to v0.31.2 against a fresh v0.31.2 rig. v0.31.1

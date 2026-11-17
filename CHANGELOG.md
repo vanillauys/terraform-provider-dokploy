@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.4] - 2026-11-17
+
+### Changed
+
+- The stated compatibility pin moves from Dokploy v0.31.2 to v0.31.4. The
+  endpoint census of a fresh v0.31.4 install (2026-11-17) agrees with the
+  upstream v0.31.2...v0.31.4 diff. `registry.update` no longer accepts
+  `organizationId` and `createdAt`; the provider sent neither. The sandboxes
+  and the Dokploy Cloud onboarding endpoints are runtime or cloud-only
+  features, so they stay unmodeled. See `internal/client/doc.go`, "v0.31.4
+  census".
+
+### Fixed
+
+- `dokploy_ai`: since Dokploy v0.31.3, a change of `api_url` with
+  `api_key_wo` and an unchanged `api_key_wo_version` failed with "Changing the
+  API URL requires entering the API key again". The provider now sends the
+  write-only key again when `api_url` changes.
+
 ## [1.11.3] - 2026-11-15
 
 ### Changed

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -146,6 +147,14 @@ func TestAccAI_writeOnlyAPIKey(t *testing.T) {
 				Config:           aiConfig(name+"-renamed", "m", wo("sk-wo-1", 1)),
 				ConfigPlanChecks: update,
 				Check:            resource.ComposeAggregateTestCheckFunc(noSecretInState, checkServerKey()),
+			},
+			{
+				// A new URL with the same version: since Dokploy v0.31.3 the
+				// mask gets HTTP 400 here, so the key must go again.
+				Config:           strings.Replace(aiConfig(name+"-renamed", "m", wo("sk-wo-1", 1)), "api.example.com", "api2.example.com", 1),
+				ConfigPlanChecks: update,
+				Check: resource.ComposeAggregateTestCheckFunc(noSecretInState, checkServerKey(),
+					resource.TestCheckResourceAttr("dokploy_ai.test", "api_url", "https://api2.example.com/v1")),
 			},
 			{
 				Config:           aiConfig(name+"-renamed", "m", wo("sk-wo-2", 2)),

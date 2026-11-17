@@ -42,7 +42,13 @@ import (
 //	json.dump(dict(sorted(out.items())),sys.stdout,indent=1)
 //	' > internal/client/testdata/endpoint-fields.json
 //
-// Snapshot taken against Dokploy v0.31.2 on 2026-11-15. Against the v0.31.0
+// Snapshot taken against Dokploy v0.31.4 on 2026-11-17. Against the v0.31.2
+// snapshot it adds the sandbox endpoints, forwardAuth.setPreviewEnabled and
+// project.saveOnboardingStep. server.generateConnectCommand gains onboarding
+// and stripe.createCheckoutSession gains fromOnboarding. registry.update
+// loses organizationId and createdAt. See doc.go "# v0.31.4 census".
+//
+// The v0.31.2 snapshot of 2026-11-15: against the v0.31.0
 // snapshot it adds projectExportImport.export, importPreview and import and
 // server.generateConnectCommand. Many endpoints lose request fields: every
 // service update loses environmentId, mounts.update loses its parent
@@ -338,9 +344,7 @@ var censusExempt = map[string]map[string]string{
 		"updatedAt": "server-generated; the server rewrites it on every update",
 	},
 	"registry.update": {
-		"serverId":       "registry.one does not return it; a write-only field cannot round-trip",
-		"createdAt":      "server-generated; not user configuration",
-		"organizationId": "implied by the API key's organization",
+		"serverId": "registry.one does not return it; a write-only field cannot round-trip",
 	},
 	// The git provider records. The OAuth handshake fields (accessToken,
 	// refreshToken, expiresAt, lastAuthenticatedAt, giteaUsername) are
