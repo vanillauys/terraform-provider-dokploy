@@ -122,3 +122,10 @@ resource "dokploy_application" "swarm" {
     stop_grace_period = 10000000000 # 10 seconds
   }
 }
+
+# The deploy webhook of a service, for a CI secret store. Dokploy accepts a
+# call only when auto deploy is on.
+output "application_deploy_webhook" {
+  value     = "https://dokploy.example.com/api/deploy/${dokploy_application.example.refresh_token}"
+  sensitive = true
+}

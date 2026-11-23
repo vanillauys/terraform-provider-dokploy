@@ -104,3 +104,10 @@ resource "dokploy_compose" "from_gitea" {
 
   compose_path = "./compose/production.yml"
 }
+
+# The deploy webhook of a service, for a CI secret store. Dokploy accepts a
+# call only when auto deploy is on.
+output "compose_deploy_webhook" {
+  value     = "https://dokploy.example.com/api/deploy/compose/${dokploy_compose.from_github.refresh_token}"
+  sensitive = true
+}

@@ -108,6 +108,15 @@ resource "dokploy_application" "test" {
 						}
 						return nil
 					}),
+					func(s *terraform.State) error {
+						token := s.RootModule().Resources["dokploy_application.test"].Primary.Attributes["refresh_token"]
+						return fetchApplication(func(app *client.Application) error {
+							if app.RefreshToken == nil || token == "" || token != *app.RefreshToken {
+								return fmt.Errorf("refresh_token = %q, API says %v", token, app.RefreshToken)
+							}
+							return nil
+						})(s)
+					},
 				),
 			},
 			{

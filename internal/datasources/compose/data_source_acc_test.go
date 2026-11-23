@@ -50,6 +50,9 @@ func checkAgainstAPI(addr string) resource.TestCheckFunc {
 		if err != nil {
 			return fmt.Errorf("reading compose %s from the API: %w", rs.Primary.ID, err)
 		}
+		if got.RefreshToken == nil {
+			return fmt.Errorf("compose %s has no refreshToken", rs.Primary.ID)
+		}
 		for _, f := range []struct{ attr, want string }{
 			{"name", got.Name},
 			{"app_name", got.AppName},
@@ -59,6 +62,7 @@ func checkAgainstAPI(addr string) resource.TestCheckFunc {
 			{"compose_path", got.ComposePath},
 			{"status", got.ComposeStatus},
 			{"created_at", got.CreatedAt},
+			{"refresh_token", *got.RefreshToken},
 		} {
 			if have := rs.Primary.Attributes[f.attr]; have != f.want {
 				return fmt.Errorf("%s.%s = %q, API says %q", addr, f.attr, have, f.want)

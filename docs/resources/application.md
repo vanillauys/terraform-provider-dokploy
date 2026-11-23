@@ -140,6 +140,13 @@ resource "dokploy_application" "swarm" {
     stop_grace_period = 10000000000 # 10 seconds
   }
 }
+
+# The deploy webhook of a service, for a CI secret store. Dokploy accepts a
+# call only when auto deploy is on.
+output "application_deploy_webhook" {
+  value     = "https://dokploy.example.com/api/deploy/${dokploy_application.example.refresh_token}"
+  sensitive = true
+}
 ```
 
 ```terraform
@@ -234,6 +241,7 @@ resource "dokploy_application" "ha" {
 
 - `created_at` (String) Creation timestamp from the server.
 - `id` (String) Application id.
+- `refresh_token` (String, Sensitive) Token of the deploy webhook. Dokploy generates it at create. The webhook URL is `<endpoint>/api/deploy/<refresh_token>`. Dokploy accepts a call only when auto deploy is on. A rotation in the Dokploy UI shows on the next refresh.
 - `status` (String) Application status from Dokploy.
 
 <a id="nestedatt--bitbucket"></a>

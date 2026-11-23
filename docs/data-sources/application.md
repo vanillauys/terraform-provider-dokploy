@@ -45,6 +45,7 @@ data "dokploy_application" "by_name" {
 - `env` (String, Sensitive) Environment variables as multiline `KEY=value` lines, exactly as Dokploy stores them. The attribute is sensitive because it usually holds credentials that this provider did not write. The plan output redacts it, but the state stores it in plain text, like all Terraform data.
 - `icon` (String) Service icon for the Dokploy UI, or null.
 - `preview_deployments` (Attributes) Preview deployment settings. The build secrets are not part of the data source. (see [below for nested schema](#nestedatt--preview_deployments))
+- `refresh_token` (String, Sensitive) Token of the deploy webhook. Dokploy generates it at create. The webhook URL is `<endpoint>/api/deploy/<refresh_token>`. Dokploy accepts a call only when auto deploy is on. A rotation in the Dokploy UI shows on the next refresh.
 - `rollback` (Attributes) Rollback settings. (see [below for nested schema](#nestedatt--rollback))
 - `source_type` (String) Configured source type: `github`, `git`, or `docker`.
 - `status` (String) Application status.

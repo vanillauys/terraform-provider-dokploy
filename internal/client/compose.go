@@ -77,6 +77,10 @@ type Compose struct {
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
 
+	// RefreshToken is the secret of the deploy webhook. The server generates
+	// it at create; compose.refreshToken rotates it.
+	RefreshToken *string `json:"refreshToken"`
+
 	// v0.30.0. See doc.go's "compose createEnvFile" and "serviceNetworks
 	// and icon on compose.update" sections. CreateEnvFile is a bare bool
 	// (a fresh create defaults it to true). Icon's fresh-create default is

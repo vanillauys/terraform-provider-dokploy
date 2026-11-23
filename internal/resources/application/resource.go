@@ -436,6 +436,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 			Description:   "Creation timestamp from the server.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+		"refresh_token": tfutil.RefreshTokenAttribute("deploy"),
 	}
 	attrs["swarm"] = swarm.Attribute()
 	for k, v := range tfutil.DeployAttributes() {
@@ -519,6 +520,7 @@ func (r *applicationResource) persistPartial(ctx context.Context, resp *resource
 	}
 	m.Status = types.StringNull()
 	m.CreatedAt = types.StringNull()
+	m.RefreshToken = types.StringNull()
 	resp.Diagnostics.Append(resp.State.Set(ctx, &m)...)
 	resp.Diagnostics.AddError(
 		fmt.Sprintf("Application created, but %s failed", step),

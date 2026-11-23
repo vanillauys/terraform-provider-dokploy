@@ -76,6 +76,7 @@ resource "dokploy_domain" "mail" {
 - `icon` (String) Service icon for the Dokploy UI, or null.
 - `pull_images` (Boolean) Whether Dokploy pulls the latest images before each deploy.
 - `randomize` (Boolean) Whether Dokploy randomizes the generated resource names.
+- `refresh_token` (String, Sensitive) Token of the deploy webhook. Dokploy generates it at create. The webhook URL is `<endpoint>/api/deploy/compose/<refresh_token>`. Dokploy accepts a call only when auto deploy is on. A rotation in the Dokploy UI shows on the next refresh.
 - `server_id` (String) Id of the remote server that runs the service, or null for the Dokploy host.
 - `source_type` (String) Configured source type: `github`, `gitlab`, `bitbucket`, `gitea`, `git`, or `raw`.
 - `status` (String) Service status from Dokploy.

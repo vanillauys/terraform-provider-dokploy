@@ -95,6 +95,10 @@ type Application struct {
 	ServerID  *string `json:"serverId"`
 	CreatedAt string  `json:"createdAt"`
 
+	// RefreshToken is the secret of the deploy webhook. The server generates
+	// it at create; application.refreshToken rotates it.
+	RefreshToken *string `json:"refreshToken"`
+
 	// Display fields (v0.29.x), and the three application.update blocks of
 	// v1.4.0 (#52). See application_settings.go.
 	Title    *string `json:"title"`
