@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `dokploy_application`, `dokploy_compose`, and their data sources: the
+  sensitive, read-only `refresh_token` attribute holds the token of the
+  deploy webhook (#138). A rotation in the Dokploy UI shows on the next
+  refresh.
+
 ## [1.11.4] - 2026-11-17
 
 ### Changed

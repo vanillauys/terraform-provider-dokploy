@@ -33,6 +33,7 @@ type dataSourceModel struct {
 	SourceType    types.String `tfsdk:"source_type"`
 	Status        types.String `tfsdk:"status"`
 	CreatedAt     types.String `tfsdk:"created_at"`
+	RefreshToken  types.String `tfsdk:"refresh_token"`
 	Env           types.String `tfsdk:"env"`
 
 	// v1.4.0 (#52). preview_deployments leaves out build_secrets: the data
@@ -89,6 +90,11 @@ func (d *applicationDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"source_type": schema.StringAttribute{Computed: true, Description: "Configured source type: `github`, `git`, or `docker`."},
 			"status":      schema.StringAttribute{Computed: true, Description: "Application status."},
 			"created_at":  schema.StringAttribute{Computed: true, Description: "Creation timestamp."},
+			"refresh_token": schema.StringAttribute{
+				Computed:    true,
+				Sensitive:   true,
+				Description: tfutil.RefreshTokenDescription("deploy"),
+			},
 			// Marked sensitive, unlike the resource's `env`. On the resource
 			// the value is authored by the practitioner, who can decide what
 			// it holds; here it is whatever anyone put in the Dokploy UI —
@@ -190,6 +196,7 @@ func (d *applicationDataSource) Read(ctx context.Context, req datasource.ReadReq
 	config.SourceType = types.StringValue(app.SourceType)
 	config.Status = types.StringValue(app.ApplicationStatus)
 	config.CreatedAt = types.StringValue(app.CreatedAt)
+	config.RefreshToken = tfutil.StringOrNull(app.RefreshToken)
 	config.Env = tfutil.StringOrNull(app.Env)
 	config.Title = tfutil.StringOrNull(app.Title)
 	config.Subtitle = tfutil.StringOrNull(app.Subtitle)

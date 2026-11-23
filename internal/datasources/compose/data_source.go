@@ -49,6 +49,7 @@ type model struct {
 	Icon             types.String `tfsdk:"icon"`
 	Status           types.String `tfsdk:"status"`
 	CreatedAt        types.String `tfsdk:"created_at"`
+	RefreshToken     types.String `tfsdk:"refresh_token"`
 }
 
 func (d *composeDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -92,6 +93,7 @@ func (d *composeDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 	attrs["icon"] = dsutil.String("Service icon for the Dokploy UI, or null.")
 	attrs["status"] = dsutil.String("Service status from Dokploy.")
 	attrs["created_at"] = dsutil.String("Creation timestamp from the server.")
+	attrs["refresh_token"] = schema.StringAttribute{Computed: true, Sensitive: true, Description: tfutil.RefreshTokenDescription("deploy/compose")}
 	resp.Schema = schema.Schema{Description: lookup.Description(), Attributes: attrs}
 }
 
@@ -145,5 +147,6 @@ func (d *composeDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	config.Icon = tfutil.StringOrNull(co.Icon)
 	config.Status = types.StringValue(co.ComposeStatus)
 	config.CreatedAt = types.StringValue(co.CreatedAt)
+	config.RefreshToken = tfutil.StringOrNull(co.RefreshToken)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

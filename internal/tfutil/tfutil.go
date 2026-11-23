@@ -331,6 +331,24 @@ func AppNamePrefixAttribute() schema.StringAttribute {
 	}
 }
 
+// RefreshTokenDescription describes the deploy webhook token of a service
+// whose webhook URL is `<endpoint>/api/<webhookPath>/<refresh_token>`. The
+// resources and the data sources share it.
+func RefreshTokenDescription(webhookPath string) string {
+	return fmt.Sprintf("Token of the deploy webhook. Dokploy generates it at create. The webhook URL is `<endpoint>/api/%s/<refresh_token>`. Dokploy accepts a call only when auto deploy is on. A rotation in the Dokploy UI shows on the next refresh.", webhookPath)
+}
+
+// RefreshTokenAttribute is the read-only refresh_token of a resource. The
+// token stays the same until a rotation, so the plan keeps the prior value.
+func RefreshTokenAttribute(webhookPath string) schema.StringAttribute {
+	return schema.StringAttribute{
+		Computed:      true,
+		Sensitive:     true,
+		Description:   RefreshTokenDescription(webhookPath),
+		PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+	}
+}
+
 // backupCustomNamePattern is the customName regex of backup.create and
 // backup.update (Dokploy v0.31.0), without the empty alternative.
 var backupCustomNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)

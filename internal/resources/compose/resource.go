@@ -299,6 +299,7 @@ func (r *composeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			Description:   "Creation timestamp from the server.",
 			PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 		},
+		"refresh_token": tfutil.RefreshTokenAttribute("deploy/compose"),
 	}
 	for name, attr := range tfutil.DeployAttributes() {
 		attrs[name] = attr
@@ -348,6 +349,7 @@ func setComputed(c *client.Compose, m *resourceModel) {
 	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(c.AppName))
 	m.Status = types.StringValue(c.ComposeStatus)
 	m.CreatedAt = types.StringValue(c.CreatedAt)
+	m.RefreshToken = tfutil.StringOrNull(c.RefreshToken)
 }
 
 // newestDeploymentID reports the id of the service's most recent deployment.
@@ -419,6 +421,7 @@ func (r *composeResource) persistPartial(ctx context.Context, resp *resource.Cre
 	}
 	m.Status = types.StringNull()
 	m.CreatedAt = types.StringNull()
+	m.RefreshToken = types.StringNull()
 	resp.Diagnostics.Append(resp.State.Set(ctx, &m)...)
 	resp.Diagnostics.AddError(
 		fmt.Sprintf("Compose service created, but %s failed", step),

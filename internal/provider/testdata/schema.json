@@ -669,6 +669,12 @@
             "optional": true
           },
           {
+            "name": "refresh_token",
+            "type": "tftypes.String",
+            "computed": true,
+            "sensitive": true
+          },
+          {
             "name": "registry_id",
             "type": "tftypes.String",
             "optional": true
@@ -1656,6 +1662,12 @@
               ]
             },
             "optional": true
+          },
+          {
+            "name": "refresh_token",
+            "type": "tftypes.String",
+            "computed": true,
+            "sensitive": true
           },
           {
             "name": "server_id",
@@ -8382,6 +8394,12 @@
             "computed": true
           },
           {
+            "name": "refresh_token",
+            "type": "tftypes.String",
+            "computed": true,
+            "sensitive": true
+          },
+          {
             "name": "rollback",
             "nested": {
               "nesting": "SINGLE",
@@ -8684,6 +8702,12 @@
             "name": "randomize",
             "type": "tftypes.Bool",
             "computed": true
+          },
+          {
+            "name": "refresh_token",
+            "type": "tftypes.String",
+            "computed": true,
+            "sensitive": true
           },
           {
             "name": "server_id",

@@ -47,6 +47,7 @@ type resourceModel struct {
 	RegistryID        types.String `tfsdk:"registry_id"`
 	Status            types.String `tfsdk:"status"`
 	CreatedAt         types.String `tfsdk:"created_at"`
+	RefreshToken      types.String `tfsdk:"refresh_token"`
 	DeployOnChange    types.Bool   `tfsdk:"deploy_on_change"`
 	DeploymentTimeout types.String `tfsdk:"deployment_timeout"`
 
@@ -235,6 +236,7 @@ func unchangedExceptStatus(plan, state resourceModel) bool {
 		plan.Args.Equal(state.Args) &&
 		plan.RegistryID.Equal(state.RegistryID) &&
 		plan.CreatedAt.Equal(state.CreatedAt) &&
+		plan.RefreshToken.Equal(state.RefreshToken) &&
 		plan.DeployOnChange.Equal(state.DeployOnChange) &&
 		plan.DeploymentTimeout.Equal(state.DeploymentTimeout) &&
 		plan.NetworkIDs.Equal(state.NetworkIDs) &&
@@ -512,6 +514,7 @@ func setComputed(ctx context.Context, app *client.Application, m *resourceModel)
 	m.AppNamePrefix = types.StringValue(tfutil.AppNamePrefix(app.AppName))
 	m.Status = types.StringValue(app.ApplicationStatus)
 	m.CreatedAt = types.StringValue(app.CreatedAt)
+	m.RefreshToken = tfutil.StringOrNull(app.RefreshToken)
 	// build is optional+computed: fill it from the server when the plan
 	// left it unknown/null so state never holds an unknown value.
 	if m.Build.IsUnknown() || m.Build.IsNull() {
@@ -563,6 +566,7 @@ func flatten(ctx context.Context, app *client.Application, m *resourceModel) dia
 	m.WatchPaths = watchPathsValue(ctx, app.WatchPaths, &diags)
 	m.Status = types.StringValue(app.ApplicationStatus)
 	m.CreatedAt = types.StringValue(app.CreatedAt)
+	m.RefreshToken = tfutil.StringOrNull(app.RefreshToken)
 	m.NetworkIDs = tfutil.StringSetOrNull(ctx, app.NetworkIDs, &diags)
 	m.DetachDokployNetwork = types.BoolValue(app.DetachDokployNetwork)
 	m.Title = strOrNull(app.Title)

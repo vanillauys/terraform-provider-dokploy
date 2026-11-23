@@ -66,6 +66,10 @@ data "dokploy_application" "by_name" {
 					resource.TestCheckResourceAttrPair(
 						"data.dokploy_application.by_name", "id",
 						"dokploy_application.test", "id"),
+					resource.TestCheckResourceAttrSet("data.dokploy_application.test", "refresh_token"),
+					resource.TestCheckResourceAttrPair(
+						"data.dokploy_application.test", "refresh_token",
+						"dokploy_application.test", "refresh_token"),
 				),
 			},
 		},

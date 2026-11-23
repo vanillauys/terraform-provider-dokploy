@@ -98,8 +98,9 @@ type resourceModel struct {
 	Randomize        types.Bool   `tfsdk:"randomize"`
 	PullImages       types.Bool   `tfsdk:"pull_images"`
 
-	Status    types.String `tfsdk:"status"`
-	CreatedAt types.String `tfsdk:"created_at"`
+	Status       types.String `tfsdk:"status"`
+	CreatedAt    types.String `tfsdk:"created_at"`
+	RefreshToken types.String `tfsdk:"refresh_token"`
 
 	DeployOnChange    types.Bool   `tfsdk:"deploy_on_change"`
 	DeploymentTimeout types.String `tfsdk:"deployment_timeout"`
@@ -146,6 +147,7 @@ func flatten(ctx context.Context, c *client.Compose, m *resourceModel) diag.Diag
 
 	m.Status = types.StringValue(c.ComposeStatus)
 	m.CreatedAt = types.StringValue(c.CreatedAt)
+	m.RefreshToken = tfutil.StringOrNull(c.RefreshToken)
 
 	// autoDeploy and triggerType are genuinely nullable: a null on the wire
 	// is a real stored state, so it maps to a null attribute rather than to

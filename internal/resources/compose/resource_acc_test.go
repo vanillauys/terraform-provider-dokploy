@@ -134,6 +134,10 @@ func TestAccCompose_rawLifecycle(t *testing.T) {
 					if c.Env == nil || *c.Env != "KEY=value" {
 						return fmt.Errorf("env = %v", c.Env)
 					}
+					token := s.RootModule().Resources["dokploy_compose.test"].Primary.Attributes["refresh_token"]
+					if c.RefreshToken == nil || token == "" || token != *c.RefreshToken {
+						return fmt.Errorf("refresh_token = %q, API says %v", token, c.RefreshToken)
+					}
 					return nil
 				},
 			},
